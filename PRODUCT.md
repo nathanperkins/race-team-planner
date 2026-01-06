@@ -1,0 +1,97 @@
+# iracing-team-planner
+
+## Summary
+
+We are creating a simple team planner for endurance races in iRacing. The goal
+is to make it easy for members of our community to express their interest in
+specific races so that the admins can plan teams.
+
+## Existing Work
+
+One of our community members used ChatGPT to vibe code a simple app so far:
+
+* Data is stored in Google Sheets.
+* Views are implemented using Apps Script.
+* The Team View shows details on upcoming races, and the drivers that have signed up by car/class and timeslot.
+* The Signup View allows a driver to sign-up with Name, Weekend, Event, and Car/Class.
+  * Weekend, Event and Car/Class are auto-filled based on existing data.
+* Clicking on a timeslot to open a sign-up view that is already auto-filled.
+* iRacing data is synchronized using an API.
+
+## Enhancement
+
+We aim to professionalize the application to ensure longevity and maintainability.
+
+* **Modern Architecture**: Move from Apps Script/Sheets to a Next.js web application. This provides a better user experience, faster load times, and more UI flexibility.
+* **Robust Data Layer**: Replace Google Sheets with PostgreSQL. This ensures data integrity, supports concurrent writes, and enables relational queries (e.g., "all races for user X").
+* **Security**: Implement real authentication via Discord OAuth, ensuring that signups are tied to verified Discord identities rather than free-text names.
+* **Developer Experience**: A Docker-based local development environment allows any team member to spin up the full stack (App + DB) locally without conflicting with production.
+
+With support from one of the community's experienced software engineers, we would like to reimplement the app with the following improvements:
+
+* Use a flexible backend and frontend stack.
+* Keep the stack simple enough for a developer with limited experience and vibecode and test small changes locally.
+* Support authentication and authorization using Discord OAuth.
+* Deploy the app publicly with a dedicated domain (slight preference for GCP, but open to other options for simplicity and cost).
+* Automate deployment of the infrastructure and app with GitHub Actions.
+
+## Tech Stack Decisions
+
+* **App - Next.js**: The industry standard for React applications. specific choice for its file-based routing and API routes which simplifies the architecture (no separate backend repo needed).
+* **Prod Database - Postgresql on Supabase**: Managed Postgres provides reliability and backups without manual maintenance. Supabase offers a great free tier.
+* **Test/Local Database - Postgresql**: We will use a local Docker container running the same Postgres version as production to ensure 100% compatibility and consistency between environments.
+* **ORM - Prisma**: Typed database access makes it easy for developers to safely interact with the DB without writing raw SQL.
+* **Repo - GitHub**: Standard source control.
+* **App Deployment - Google Cloud Run**: Serverless container setups are perfect for low-traffic community apps. distinct advantage: scales to zero (costs $0) when not in use.
+* **Infra Deployment - Terraform**: Infrastructure as Code ensures we can recreate the environment if needed and tracks changes to cloud resources.
+* **Local development - Docker Compose**: Orchestrates the local Postgres container and the Next.js app for a one-command startup.
+
+## Resources
+
+### User
+Represents a community member who logs in via Discord.
+* `id`: UUID
+* `discordId`: String (Unique)
+* `name`: String (Display name)
+* `avatarUrl`: String
+
+### Event
+Represents a scheduled race weekend or special event.
+* `id`: UUID
+* `name`: String (e.g., "Sebring 12hr")
+* `startTime`: DateTime
+* `track`: String
+* `description`: String
+
+### Registration
+A user's expression of interest for an event.
+* `id`: UUID
+* `userId`: FK -> User
+* `eventId`: FK -> Event
+* `carClass`: String (e.g., "GT3", "GTP")
+* `preferredTimeslot`: String (or Enum)
+* `notes`: String
+
+## Implementation Plan
+
+### Phase 1: Foundation
+* [ ] Initialize Next.js project with TypeScript.
+* [ ] Set up Docker Compose for local PostgreSQL.
+* [ ] Configure Prisma and connect to local DB.
+* [ ] Create "Hello World" API endpoint verifying DB connection.
+
+### Phase 2: Data & Auth
+* [ ] Define `User`, `Event`, `Registration` schemas in Prisma.
+* [ ] Configure NextAuth.js with Discord Provider.
+* [ ] Create database migration scripts.
+
+### Phase 3: Core Features
+* [ ] **Event List**: View upcoming events (Home Page).
+* [ ] **Event Detail**: View details and existing signups for an event.
+* [ ] **Signup Flow**: Authenticated users can register for an event (pick car/time).
+* [ ] **My Signups**: View a list of races I have signed up for.
+
+### Phase 4: Production Readiness
+* [ ] Set up GitHub Actions for CI (Linting, Build Check).
+* [ ] Create Terraform configuration for GCP (Cloud Run, Artifact Registry).
+* [ ] Deploy to Production.
