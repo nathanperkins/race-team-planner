@@ -80,9 +80,13 @@ A user's expression of interest for an event.
 * [ ] Configure Prisma and connect to local DB.
 * [ ] Create "Hello World" API endpoint verifying DB connection.
 
-### Phase 2: Data & Auth
-* [ ] Define `User`, `Event`, `Registration` schemas in Prisma.
+### Phase 2a: User & Auth
+* [ ] Define `User` schema in Prisma.
 * [ ] Configure NextAuth.js with Discord Provider.
+* [ ] Create Login Page.
+
+### Phase 2b: Event Data
+* [ ] Define `Event` and `Registration` schemas in Prisma.
 * [ ] Create database migration scripts.
 
 ### Phase 3: Core Features
