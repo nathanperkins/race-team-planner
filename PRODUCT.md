@@ -91,9 +91,9 @@ A user's expression of interest for an event.
 * [x] Create seed script.
 
 ### Phase 3: Core Features
-* [ ] **Event List**: View upcoming events (Home Page).
-* [ ] **Event Detail**: View details and existing signups for an event.
-* [ ] **Signup Flow**: Authenticated users can register for an event (pick car/time).
+* [x] **Event List**: View upcoming events (Home Page).
+* [x] **Event Detail**: View details and existing signups for an event.
+* [x] **Signup Flow**: Authenticated users can register for an event (pick car/time).
 * [ ] **My Signups**: View a list of races I have signed up for.
 
 ### Phase 4: Production Readiness
