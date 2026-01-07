@@ -75,15 +75,15 @@ A user's expression of interest for an event.
 ## Implementation Plan
 
 ### Phase 1: Foundation
-* [ ] Initialize Next.js project with TypeScript.
-* [ ] Set up Docker Compose for local PostgreSQL.
-* [ ] Configure Prisma and connect to local DB.
-* [ ] Create "Hello World" API endpoint verifying DB connection.
+* [x] Initialize Next.js project with TypeScript.
+* [x] Set up Docker Compose for local PostgreSQL.
+* [x] Configure Prisma and connect to local DB.
+* [x] Create "Hello World" API endpoint verifying DB connection.
 
 ### Phase 2a: User & Auth
-* [ ] Define `User` schema in Prisma.
-* [ ] Configure NextAuth.js with Discord Provider.
-* [ ] Create Login Page.
+* [x] Define `User` schema in Prisma.
+* [x] Configure NextAuth.js with Discord Provider.
+* [x] Create Login Page.
 
 ### Phase 2b: Event Data
 * [ ] Define `Event` and `Registration` schemas in Prisma.
