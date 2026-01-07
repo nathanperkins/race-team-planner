@@ -86,8 +86,9 @@ A user's expression of interest for an event.
 * [x] Create Login Page.
 
 ### Phase 2b: Event Data
-* [ ] Define `Event` and `Registration` schemas in Prisma.
-* [ ] Create database migration scripts.
+* [x] Define `Event` and `Registration` schemas in Prisma.
+* [x] Create database migration scripts.
+* [x] Create seed script.
 
 ### Phase 3: Core Features
 * [ ] **Event List**: View upcoming events (Home Page).
