@@ -21,6 +21,7 @@ model User {
   image         String?
   accounts      Account[]
   sessions      Session[]
+  registrations Registration[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -63,4 +64,34 @@ model VerificationToken {
   expires    DateTime
 
   @@id([identifier, token])
+}
+
+model Event {
+  id          String   @id @default(cuid())
+  name        String
+  startTime   DateTime
+  track       String
+  description String?
+
+  registrations Registration[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Registration {
+  id                String   @id @default(cuid())
+  userId            String
+  eventId           String
+  carClass          String
+  preferredTimeslot String?
+  notes             String?
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, eventId])
 }
