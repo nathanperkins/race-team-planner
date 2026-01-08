@@ -58,8 +58,12 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const events = await prisma.event.findMany({
     where,
     include: {
-      _count: {
-        select: { registrations: true }
+      registrations: {
+        include: {
+          user: {
+            select: { name: true }
+          }
+        }
       }
     },
     orderBy: {
@@ -89,13 +93,13 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                 </div>
               )}
 
-              {event._count.registrations > 0 && (
+              {event.registrations.length > 0 && (
                 <div
                   className={`${styles.signupBadge} ${styles.hasSignups}`}
-                  title={`${event._count.registrations} signups`}
+                  data-tooltip={`Racers:\n${event.registrations.map(r => r.user.name).join("\n")}`}
                 >
                   <Users size={14} />
-                  <span>{event._count.registrations}</span>
+                  <span>{event.registrations.length}</span>
                 </div>
               )}
             </div>

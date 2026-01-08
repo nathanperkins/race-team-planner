@@ -173,6 +173,41 @@
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
+.signupBadge:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: 0.5rem;
+    background-color: #111827;
+    color: white;
+    padding: 0.4rem 0.6rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    white-space: pre-line;
+    text-align: center;
+    width: max-content;
+    max-width: 250px;
+    border: 1px solid #374151;
+    pointer-events: none;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+}
+
+.signupBadge:hover::before {
+    content: "";
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: 0.2rem;
+    border: 6px solid transparent;
+    border-top-color: #374151;
+    pointer-events: none;
+    z-index: 100;
+}
+
 .slashed {
     color: #6b7280;
     /* Slightly dimmer for empty state */

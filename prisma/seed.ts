@@ -116,7 +116,28 @@ async function main() {
     }
   })
 
-  console.log(sebring, daytona, alice, aliceRegistration, bob, bobRegistration, charlie)
+  const charlieRegistration = await prisma.registration.upsert({
+    where: {
+      userId_eventId: {
+        userId: charlie.id,
+        eventId: daytona.id,
+      }
+    },
+    update: {
+      carClass: 'LMP2',
+      preferredTimeslot: 'Daytime',
+      notes: 'Ready to race!',
+    },
+    create: {
+      userId: charlie.id,
+      eventId: daytona.id,
+      carClass: 'LMP2',
+      preferredTimeslot: 'Daytime',
+      notes: 'Ready to race!',
+    }
+  })
+
+  console.log(sebring, daytona, alice, aliceRegistration, bob, bobRegistration, charlie, charlieRegistration)
 }
 
 main()
