@@ -95,8 +95,9 @@ A user's expression of interest for an event.
 * [x] **Event Detail**: View details and existing signups for an event.
 * [x] **Signup Flow**: Authenticated users can register for an event (pick car/time).
 * [x] **My Signups**: View a list of races I have signed up for.
+* [ ] **Separate Styles from Logic**: Move styles to a separate file.
+* [ ] **Improve Styles**: Improve the styling of the app.
 * [ ] **Navigation**: Add a navigation sidebar to the left of the page.
-* [ ] **Improve Styles**: Improve the styling of the app and separate styles from logic.
 * [ ] **Sync Events from iRacing**: Use the iRacing API to sync events to the database.
 * [ ] **Check Membership in SRG Discord**: Use the Discord API to check if a user is a member of the SRG Discord.
 * [ ] Encrypt sensitive fields in the database using the `prisma-field-encryption` extension
