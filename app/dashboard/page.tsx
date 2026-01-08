@@ -69,10 +69,10 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   if (params.racer) {
     const racerIds = params.racer.split(',')
     // Match events where ALL selected racers are present (AND logic)
-    if (!where.AND) where.AND = []
+    const andConditions: Prisma.EventWhereInput[] = []
 
     racerIds.forEach(id => {
-      where.AND.push({
+      andConditions.push({
         registrations: {
           some: {
             userId: id
@@ -80,22 +80,27 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         }
       })
     })
+
+    // Assign array to AND (Prisma accepts EventWhereInput | EventWhereInput[])
+    where.AND = andConditions
   }
 
   // Time filtering
-  if (!where.startTime) where.startTime = {}
+  const startTimeFilter: Prisma.DateTimeFilter = {}
 
   if (params.from) {
-    where.startTime.gte = new Date(params.from)
+    startTimeFilter.gte = new Date(params.from)
   } else {
     const today = new Date()
     today.setHours(0,0,0,0)
-    where.startTime.gte = today
+    startTimeFilter.gte = today
   }
 
   if (params.to) {
-    where.startTime.lte = new Date(params.to)
+    startTimeFilter.lte = new Date(params.to)
   }
+
+  where.startTime = startTimeFilter
 
   const events = await prisma.event.findMany({
     where,
