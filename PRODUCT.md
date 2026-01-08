@@ -109,17 +109,20 @@ A user's expression of interest for an event.
 * [x] Add a badge to events in the list to show the number of signups.
 * [x] Add a filter looking for specific racers.
 * [x] Add a roster page.
-* [ ] **Implement roles**: Admins can modify all signups, users can only modify their own signups.
-* [ ] **Check Membership in SRG Discord**: Use the Discord API to check if a user is a member of the SRG Discord.
-* [ ] **Improve Styles**: Improve the styling of the app.
+* [ ] Add sync support for events with multiple timeslots.
+* [ ] Display more info about each event.
 
 ### Phase 3b: Improve local dev
 * [x] Add a mock auth provider.
 * [x] Add a mock iRacing API server.
-* [ ] Add a mock Discord API server.
 * [ ] Add tests.
 
 ### Phase 4: Production Readiness
 * [ ] Set up GitHub Actions for CI (Linting, Build Check).
 * [ ] Create Terraform configuration for GCP (Cloud Run, Artifact Registry).
+
 * [ ] Deploy to Production.
+
+### Phase 5: Post Launch
+* [ ] **Implement roles**: Admins can modify all signups, users can only modify their own signups.
+* [ ] **Check Membership in SRG Discord**: Use the Discord API to check if a user is a member of the SRG Discord.
