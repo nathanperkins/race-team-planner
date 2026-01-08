@@ -45,6 +45,13 @@ export default function Sidebar({ session }: SidebarProps) {
         >
           Roster
         </Link>
+
+        <Link
+          href="/expectations"
+          className={`${styles.link} ${isActive("/expectations") ? styles.activeLink : ""}`}
+        >
+          Team Expectations
+        </Link>
       </nav>
 
       <div className={styles.footer}>
