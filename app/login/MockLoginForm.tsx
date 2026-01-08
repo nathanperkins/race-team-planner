@@ -1,8 +1,12 @@
 import { signIn } from "@/lib/auth"
-import { MOCK_USERS } from "@/lib/mock-users"
+import prisma from "@/lib/prisma"
 import styles from "./login.module.css"
 
-export default function MockLoginForm() {
+export default async function MockLoginForm() {
+  const users = await prisma.user.findMany({
+    orderBy: { name: 'asc' }
+  })
+
   return (
     <div className={styles.devLogin}>
       <div className={styles.separator}>
@@ -12,16 +16,16 @@ export default function MockLoginForm() {
         className={styles.form}
         action={async (formData) => {
           "use server"
-          const email = formData.get("email")
-          await signIn("credentials", { email, redirectTo: "/" })
+          const id = formData.get("id")
+          await signIn("credentials", { id, redirectTo: "/" })
         }}
       >
-        <select name="email" className={styles.select} defaultValue="">
+        <select name="id" className={styles.select} defaultValue="">
           <option value="" disabled>
             Select a mock user...
           </option>
-          {MOCK_USERS.map((user) => (
-            <option key={user.email} value={user.email}>
+          {users.map((user) => (
+            <option key={user.id} value={user.id}>
               {user.name} ({user.email})
             </option>
           ))}
