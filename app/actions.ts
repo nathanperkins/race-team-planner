@@ -23,6 +23,15 @@ export async function registerForEvent(prevState: State, formData: FormData) {
     return { message: "Unauthorized" }
   }
 
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { expectationsVersion: true }
+  })
+
+  if (!user || (user.expectationsVersion ?? 0) < CURRENT_EXPECTATIONS_VERSION) {
+    return { message: "You must agree to the team expectations before signing up." }
+  }
+
   const validatedFields = RegistrationSchema.safeParse({
     eventId: formData.get("eventId"),
     carClass: formData.get("carClass"),
