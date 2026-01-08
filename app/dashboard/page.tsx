@@ -12,7 +12,7 @@ import styles from "./dashboard.module.css"
 
 interface PageProps {
   searchParams: Promise<{
-    hasSignups?: string;
+    signups?: string;
     carClass?: string;
     racer?: string;
     from?: string;
@@ -50,10 +50,20 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   // Build Prisma filter object
   const where: Prisma.EventWhereInput = {}
 
-  if (params.hasSignups === "true") {
+  if (params.signups === "any") {
     where.races = { some: { registrations: { some: {} } } }
-  } else if (params.hasSignups === "false") {
+  } else if (params.signups === "none") {
     where.races = { every: { registrations: { none: {} } } }
+  } else if (params.signups === "mine" && session.user?.id) {
+    where.races = {
+      some: {
+        registrations: {
+          some: {
+            userId: session.user.id
+          }
+        }
+      }
+    }
   }
 
   if (params.carClass) {

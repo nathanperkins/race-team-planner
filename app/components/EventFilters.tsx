@@ -9,7 +9,7 @@ interface EventFiltersProps {
   carClasses: string[];
   racers: { id: string; name: string | null }[];
   currentFilters: {
-    hasSignups?: string;
+    signups?: string;
     carClass?: string;
     racer?: string;
     from?: string;
@@ -60,21 +60,22 @@ export default function EventFilters({ carClasses, racers, currentFilters }: Eve
     <div className={styles.filterBar}>
       <div className={styles.filterGroup}>
         <label
-          htmlFor="hasSignups"
+          htmlFor="signups"
           className={styles.filterLabel}
           data-tooltip="Show only events with or without active signups."
         >
           Signups
         </label>
         <select
-          id="hasSignups"
+          id="signups"
           className={styles.filterSelect}
-          value={currentFilters.hasSignups || ""}
-          onChange={(e) => handleFilterChange("hasSignups", e.target.value)}
+          value={currentFilters.signups || ""}
+          onChange={(e) => handleFilterChange("signups", e.target.value)}
         >
           <option value="">All Events</option>
-          <option value="true">Has Signups</option>
-          <option value="false">No Signups</option>
+          <option value="any">Any Signups</option>
+          <option value="mine">My Signups</option>
+          <option value="none">No Signups</option>
         </select>
       </div>
 
@@ -206,7 +207,7 @@ export default function EventFilters({ carClasses, racers, currentFilters }: Eve
         </select>
       </div>
 
-      {(currentFilters.hasSignups || currentFilters.carClass || currentFilters.racer || currentFilters.from || currentFilters.to || currentFilters.sort) && (
+      {(currentFilters.signups || currentFilters.carClass || currentFilters.racer || currentFilters.from || currentFilters.to || currentFilters.sort) && (
         <button
           className={styles.clearButton}
           onClick={() => router.push(pathname)}
