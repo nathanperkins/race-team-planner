@@ -6,31 +6,52 @@ First, run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Database Management
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+This project uses **Prisma** with **PostgreSQL**.
 
-## Learn More
+### Start Database (Docker)
 
-To learn more about Next.js, take a look at the following resources:
+Ensure your local database is running:
+```bash
+docker-compose up -d
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Setup a Fresh Database
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+To set up your database for the first time or after a schema change (and seed it with default data):
+```bash
+npx prisma migrate dev
+```
 
-## Deploy on Vercel
+### Update Schema
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+After making changes to `prisma/schema.prisma`, generate a new migration:
+```bash
+npx prisma migrate dev --name <migration_name>
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Reset Database
+
+To completely wipe the database and re-apply all migrations and seeds (useful for resetting to a clean state):
+```bash
+npx prisma migrate reset
+```
+
+### Seed Data
+
+To manually re-run the seed script (restores default Events):
+```bash
+npx prisma db seed
+```
+
+### View Database
+
+Run the Prism Studio GUI to inspect data:
+```bash
+npx prisma studio
+```
