@@ -51,17 +51,20 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const where: Prisma.EventWhereInput = {}
 
   if (params.hasSignups === "true") {
-    where.registrations = { some: {} }
+    where.races = { some: { registrations: { some: {} } } }
   } else if (params.hasSignups === "false") {
-    where.registrations = { none: {} }
+    where.races = { every: { registrations: { none: {} } } }
   }
 
   if (params.carClass) {
-    where.registrations = {
-      ...where.registrations,
+    where.races = {
+      ...where.races,
       some: {
-        ...where.registrations?.some,
-        carClass: params.carClass
+        registrations: {
+          some: {
+            carClass: params.carClass
+          }
+        }
       }
     }
   }
@@ -73,9 +76,13 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
     racerIds.forEach(id => {
       andConditions.push({
-        registrations: {
+        races: {
           some: {
-            userId: id
+            registrations: {
+              some: {
+                userId: id
+              }
+            }
           }
         }
       })
@@ -105,10 +112,14 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const events = await prisma.event.findMany({
     where,
     include: {
-      registrations: {
+      races: {
         include: {
-          user: {
-            select: { name: true }
+          registrations: {
+            include: {
+              user: {
+                select: { name: true }
+              }
+            }
           }
         }
       }
@@ -120,12 +131,25 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         case 'name':
           return { name: 'asc' };
         case 'signups':
-          return { registrations: { _count: 'desc' } };
+          // Sort by total signups across all races
+          // Prisma doesn't easily support nested count sum sorting,
+          // but we can sort by event name or date and then sort in memory
+          // if signups sort is requested. For now, just use startTime as fallback.
+          return { startTime: 'asc' };
         default: // 'date' or undefined
           return { startTime: 'asc' };
       }
     })(),
   })
+
+  // Manual sorting for signups if requested
+  if (params.sort === 'signups') {
+    events.sort((a: any, b: any) => {
+      const aCount = a.races.reduce((sum: number, r: any) => sum + r.registrations.length, 0)
+      const bCount = b.races.reduce((sum: number, r: any) => sum + r.registrations.length, 0)
+      return bCount - aCount
+    })
+  }
 
   // Prepare params for UI to reflect default filtering
   const displayParams = { ...params }
@@ -147,8 +171,10 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       <EventFilters carClasses={carClasses} racers={racers} currentFilters={displayParams} />
 
       <div className={styles.grid}>
-        {events.map((event) => {
+        {events.map((event: any) => {
           const isCompleted = new Date() > event.endTime
+          const totalRegistrations = event.races.reduce((sum: number, r: any) => sum + r.registrations.length, 0)
+          const allDriverNames = Array.from(new Set(event.races.flatMap((r: any) => r.registrations.map((reg: any) => reg.user.name)))).filter(Boolean)
 
           return (
             <div key={event.id} className={`${styles.card} ${isCompleted ? styles.completedCard : ''}`}>
@@ -162,13 +188,13 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                   </div>
                 )}
 
-                {event.registrations.length > 0 && (
+                {totalRegistrations > 0 && (
                   <div
                     className={`${styles.signupBadge} ${styles.hasSignups}`}
-                    data-tooltip={`Racers:\n${event.registrations.map(r => r.user.name).join("\n")}`}
+                    data-tooltip={`Racers:\n${allDriverNames.join("\n")}`}
                   >
                     <Users size={14} />
-                    <span>{event.registrations.length}</span>
+                    <span>{totalRegistrations}</span>
                   </div>
                 )}
               </div>

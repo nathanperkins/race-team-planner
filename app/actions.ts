@@ -6,9 +6,8 @@ import { revalidatePath } from "next/cache"
 import { z } from "zod"
 
 const RegistrationSchema = z.object({
-  eventId: z.string(),
+  raceId: z.string(),
   carClass: z.string().min(1, "Car class is required"),
-  preferredTimeslot: z.string().optional(),
 })
 
 
@@ -17,24 +16,24 @@ type State = {
   errors?: Record<string, string[]>
 }
 
-export async function registerForEvent(prevState: State, formData: FormData) {
+export async function registerForRace(prevState: State, formData: FormData) {
   const session = await auth()
   if (!session || !session.user?.id) {
     return { message: "Unauthorized" }
   }
 
-  // Check event exists and is not completed
-  const requestedEventId = formData.get("eventId") as string
-  if (!requestedEventId) return { message: "Event ID required" }
+  // Check race exists and is not completed
+  const requestedRaceId = formData.get("raceId") as string
+  if (!requestedRaceId) return { message: "Race ID required" }
 
-  const event = await prisma.event.findUnique({
-    where: { id: requestedEventId },
-    select: { endTime: true }
+  const race = await prisma.race.findUnique({
+    where: { id: requestedRaceId },
+    select: { endTime: true, eventId: true }
   })
 
-  if (!event) return { message: "Event not found" }
-  if (new Date() > event.endTime) {
-      return { message: "Usage of time machine detected! This event has already finished." }
+  if (!race) return { message: "Race not found" }
+  if (new Date() > race.endTime) {
+      return { message: "Usage of time machine detected! This race has already finished." }
   }
 
   const user = await prisma.user.findUnique({
@@ -47,54 +46,47 @@ export async function registerForEvent(prevState: State, formData: FormData) {
   }
 
   const validatedFields = RegistrationSchema.safeParse({
-    eventId: formData.get("eventId"),
+    raceId: formData.get("raceId"),
     carClass: formData.get("carClass"),
-    preferredTimeslot: formData.get("preferredTimeslot"),
   })
 
   if (!validatedFields.success) {
     return { message: "Invalid fields", errors: validatedFields.error.flatten().fieldErrors }
   }
 
-  const { eventId, carClass, preferredTimeslot } = validatedFields.data
+  const { raceId, carClass } = validatedFields.data
 
   try {
     await prisma.registration.create({
       data: {
         userId: session.user.id,
-        eventId,
+        raceId,
         carClass,
-        preferredTimeslot,
       },
     })
 
-    revalidatePath(`/events/${eventId}`)
+    revalidatePath(`/events/${race.eventId}`)
     return { message: "Success" }
   } catch (e) {
     console.error("Registration error:", e)
-    return { message: "Failed to register. You might be already registered." }
+    return { message: "Failed to register. You might be already registered for this race." }
   }
 }
 
-export async function deleteRegistration(eventId: string) {
+export async function deleteRegistration(registrationId: string) {
   const session = await auth()
   if (!session || !session.user?.id) {
     throw new Error("Unauthorized")
   }
 
   try {
-    // Determine if the registration exists and if the user owns it
-    // Also fetch event to check if it's completed
     const registration = await prisma.registration.findUnique({
       where: {
-        userId_eventId: {
-          userId: session.user.id,
-          eventId: eventId
-        }
+        id: registrationId
       },
       include: {
-        event: {
-          select: { endTime: true }
+        race: {
+          select: { endTime: true, eventId: true }
         }
       }
     })
@@ -103,17 +95,21 @@ export async function deleteRegistration(eventId: string) {
         throw new Error("Registration not found")
     }
 
-    if (new Date() > registration.event.endTime) {
-        throw new Error("Cannot drop from a completed event")
+    if (registration.userId !== session.user.id) {
+        throw new Error("Unauthorized")
+    }
+
+    if (new Date() > registration.race.endTime) {
+        throw new Error("Cannot drop from a completed race")
     }
 
     await prisma.registration.delete({
       where: {
-         id: registration.id
+         id: registrationId
       }
     })
 
-    revalidatePath(`/events/${eventId}`)
+    revalidatePath(`/events/${registration.race.eventId}`)
     revalidatePath(`/users/${session.user.id}/signups`)
     return { message: "Success" }
 

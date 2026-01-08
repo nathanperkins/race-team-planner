@@ -56,30 +56,47 @@ model Event {
   id          String   @id @default(cuid())
   externalId  String?  @unique
   name        String
+  /// Derived from the earliest Race
   startTime   DateTime
+  /// Derived from the latest Race
   endTime     DateTime
   track       String
   description String?
 
-  registrations Registration[]
+  races Race[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-model Registration {
-  id                String   @id @default(cuid())
-  userId            String
-  eventId           String
-  carClass          String
-  preferredTimeslot String?
-  notes             String?
+model Race {
+  id         String   @id @default(cuid())
+  externalId String?  @unique
+  startTime  DateTime
+  endTime    DateTime
+  eventId    String
 
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  event         Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  registrations Registration[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([userId, eventId])
+  @@unique([eventId, startTime])
+}
+
+model Registration {
+  id       String @id @default(cuid())
+  userId   String
+  raceId   String
+  carClass String
+  notes    String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  race Race @relation(fields: [raceId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, raceId])
 }

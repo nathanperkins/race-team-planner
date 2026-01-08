@@ -111,7 +111,9 @@ A user's expression of interest for an event.
 * [x] Add a roster page.
 * [x] Don't allow user to register for completed races.
 * [x] Don't allow the user to drop from completed races.
-* [ ] Add sync support for events with multiple timeslots.
+* [x] Add sync support for events with multiple timeslots.
+* [ ] Add sync support for car classes.
+* [ ] Remove revoke agreement button.
 * [ ] Display more info about each event.
 
 ### Phase 3b: Improve local dev

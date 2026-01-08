@@ -1,23 +1,39 @@
 
 import crypto from 'node:crypto';
 
-export interface IRacingEvent {
-  externalId: string;
-  name: string;
+export interface IRacingRace {
+  externalId?: string;
   startTime: string;
-  endTime?: string;
+  endTime: string;
+}
+
+export interface IRacingEvent {
+  externalId?: string;
+  name: string;
+  startTime: string; // The earliest race start
+  endTime: string;   // The latest race end
   track: string;
   description: string;
+  races: IRacingRace[];
 }
 
 const MOCK_EVENTS: IRacingEvent[] = [
   {
-    externalId: 'ir_12345',
     name: 'iRacing Bathurst 12 Hour (Mock)',
     startTime: '2026-02-07T12:00:00Z',
     endTime: '2026-02-08T00:00:00Z',
     track: 'Mount Panorama Circuit',
     description: 'Mock data. Set IRACING_CLIENT_ID/SECRET to sync real data.',
+    races: [
+      {
+        startTime: '2026-02-07T12:00:00Z',
+        endTime: '2026-02-08T00:00:00Z',
+      },
+      {
+        startTime: '2026-02-07T18:00:00Z',
+        endTime: '2026-02-08T06:00:00Z',
+      }
+    ]
   }
 ];
 
@@ -125,17 +141,49 @@ async function fetchRealEvents(token: string): Promise<IRacingEvent[]> {
         const weekStart = new Date(week.start_date);
 
         if (weekEnd > now && weekStart <= thirtyDaysFromNow) {
-          let sessionStart = week.start_date;
-          if (week.race_time_descriptors?.[0]?.session_times?.[0]) {
-             sessionStart = week.race_time_descriptors[0].session_times[0];
+          const races: IRacingRace[] = [];
+
+          if (week.race_time_descriptors) {
+            for (const descriptor of week.race_time_descriptors) {
+              if (descriptor.session_times) {
+                for (let i = 0; i < descriptor.session_times.length; i++) {
+                  const sessionTime = descriptor.session_times[i];
+                  const start = new Date(sessionTime);
+                  const end = new Date(start.getTime() + (season.event_duration_minutes || 60) * 60000);
+                  const externalId = `ir_${season.series_id}_${season.season_id}_w${week.race_week_num}_s${i}`;
+                  races.push({
+                    externalId,
+                    startTime: start.toISOString(),
+                    endTime: end.toISOString(),
+                  });
+                }
+              }
+            }
           }
+
+          if (races.length === 0) {
+            const start = new Date(week.start_date);
+            const end = new Date(start.getTime() + (season.event_duration_minutes || 60) * 60000);
+            races.push({
+              startTime: start.toISOString(),
+              endTime: end.toISOString(),
+            });
+          }
+
+          // Sort races by start time
+          races.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+
+          const eventStart = races[0].startTime;
+          const eventEnd = races[races.length - 1].endTime;
 
           events.push({
             externalId: `ir_${season.series_id}_${season.season_id}_w${week.race_week_num}`,
             name: week.race_week_num === 0 ? name : `${name} - Week ${week.race_week_num + 1}`,
-            startTime: sessionStart,
+            startTime: eventStart,
+            endTime: eventEnd,
             track: week.track?.track_name || 'TBA',
             description: season.schedule_description || name,
+            races,
           });
         }
       }

@@ -22,8 +22,8 @@ export default async function RosterPage({ searchParams }: Props) {
   const usersData = await prisma.user.findMany({
     include: {
       registrations: {
-        select: {
-          event: {
+        include: {
+          race: {
             select: { endTime: true }
           }
         }
@@ -34,8 +34,8 @@ export default async function RosterPage({ searchParams }: Props) {
   // Process counts and sort
   const now = new Date()
   const users = usersData.map(user => {
-    const upcoming = user.registrations.filter(r => r.event.endTime > now).length
-    const completed = user.registrations.filter(r => r.event.endTime <= now).length
+    const upcoming = user.registrations.filter(r => r.race.endTime > now).length
+    const completed = user.registrations.filter(r => r.race.endTime <= now).length
     return { ...user, upcoming, completed }
   })
 

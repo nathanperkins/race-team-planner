@@ -31,10 +31,14 @@ export default async function UserSignupsPage({ params }: Props) {
   const registrations = await prisma.registration.findMany({
     where: { userId },
     include: {
-        event: true
+        race: {
+            include: {
+                event: true
+            }
+        }
     },
     orderBy: {
-        event: {
+        race: {
             startTime: 'asc'
         }
     }
@@ -57,45 +61,39 @@ export default async function UserSignupsPage({ params }: Props) {
                     <thead className={styles.thead}>
                         <tr>
                             <th className={styles.th}>Event</th>
-                            <th className={styles.th}>Date</th>
+                            <th className={styles.th}>Race Time</th>
                             <th className={styles.th}>Track</th>
                             <th className={styles.th}>Car Class</th>
-                            <th className={styles.th}>Timeslot</th>
                             {userId === session.user?.id && (
                                 <th className={styles.th}>Actions</th>
                             )}
                         </tr>
                     </thead>
                     <tbody>
-                        {registrations.map((reg) => (
+                        {registrations.map((reg: any) => (
                             <tr key={reg.id} className={styles.tr}>
                                 <td className={styles.td}>
-                                    <Link href={`/events/${reg.eventId}`} className={styles.eventName}>
-                                        {reg.event.name}
+                                    <Link href={`/events/${reg.race.eventId}`} className={styles.eventName}>
+                                        {reg.race.event.name}
                                     </Link>
                                 </td>
                                 <td className={styles.td}>
-                                    {new Date(reg.event.startTime).toLocaleString()}
+                                    {new Date(reg.race.startTime).toLocaleString()}
                                 </td>
-                                <td className={styles.td}>{reg.event.track}</td>
+                                <td className={styles.td}>{reg.race.event.track}</td>
                                 <td className={styles.td}>
                                     <span className={styles.classBadge}>
                                         {reg.carClass}
                                     </span>
                                 </td>
-                                <td className={styles.td}>
-                                    <span className={styles.timeslot}>
-                                        {reg.preferredTimeslot || "—"}
-                                    </span>
-                                </td>
                                 {userId === session.user?.id && (
                                     <td className={styles.td}>
-                                        {new Date() > reg.event.endTime ? (
+                                        {new Date() > reg.race.endTime ? (
                                             <span className={styles.completedText}>Completed</span>
                                         ) : (
                                             <form action={async () => {
                                                 "use server"
-                                                await deleteRegistration(reg.eventId)
+                                                await deleteRegistration(reg.id)
                                             }}>
                                                 <button type="submit" className={styles.deleteButton}>
                                                     Drop

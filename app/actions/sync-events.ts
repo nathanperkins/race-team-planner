@@ -10,6 +10,8 @@ export async function syncIRacingEvents() {
     const externalEvents = await fetchSpecialEvents();
 
     for (const event of externalEvents) {
+      if (!event.externalId) continue;
+
       // Default end time to 24 hours after start if not provided
       const start = new Date(event.startTime);
       const end = event.endTime ? new Date(event.endTime) : new Date(start.getTime() + 24 * 60 * 60 * 1000);
@@ -22,6 +24,14 @@ export async function syncIRacingEvents() {
           endTime: end,
           track: event.track,
           description: event.description,
+          races: {
+            deleteMany: {}, // Simple sync: wipe and recreate races
+            create: event.races.map(r => ({
+              externalId: r.externalId,
+              startTime: new Date(r.startTime),
+              endTime: new Date(r.endTime)
+            }))
+          }
         },
         create: {
           externalId: event.externalId,
@@ -30,6 +40,13 @@ export async function syncIRacingEvents() {
           endTime: end,
           track: event.track,
           description: event.description,
+          races: {
+            create: event.races.map(r => ({
+              externalId: r.externalId,
+              startTime: new Date(r.startTime),
+              endTime: new Date(r.endTime)
+            }))
+          }
         }
       });
     }

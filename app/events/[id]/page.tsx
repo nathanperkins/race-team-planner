@@ -4,7 +4,8 @@ import { auth } from "@/lib/auth"
 import prisma from "@/lib/prisma"
 import { notFound, redirect } from "next/navigation"
 import Image from "next/image"
-import EventRegistrationForm from "@/components/EventRegistrationForm"
+import RaceRegistrationForm from "@/components/RaceRegistrationForm"
+import RaceDetails from "@/components/RaceDetails"
 import { Cloud } from "lucide-react"
 import { deleteRegistration } from "@/app/actions"
 
@@ -30,12 +31,19 @@ export default async function EventPage({ params }: Props) {
   const event = await prisma.event.findUnique({
     where: { id },
     include: {
-      registrations: {
+      races: {
         include: {
-          user: true,
+          registrations: {
+            include: {
+              user: true,
+            },
+            orderBy: {
+              createdAt: 'asc'
+            }
+          },
         },
         orderBy: {
-          createdAt: 'asc'
+          startTime: 'asc'
         }
       },
     },
@@ -45,15 +53,13 @@ export default async function EventPage({ params }: Props) {
     notFound()
   }
 
-  // Check if current user is already registered
-  const userRegistration = event.registrations.find((r) => r.userId === session.user?.id)
+  // Check if current user is already registered for ANY race in this event
+  const userRegistrations = event.races.flatMap((race: any) => race.registrations).filter((reg: any) => reg.userId === session.user?.id)
 
   const isCompleted = new Date() > event.endTime
 
   return (
     <div className={styles.container}>
-
-
       <div className={styles.layout}>
         <div style={{ position: 'relative' }}>
           {event.externalId && (
@@ -70,7 +76,7 @@ export default async function EventPage({ params }: Props) {
                 📍 {event.track}
              </span>
              <span className={styles.metaItem}>
-                📅 {new Date(event.startTime).toLocaleString()}
+                📅 {new Date(event.startTime).toLocaleString()} - {new Date(event.endTime).toLocaleString()}
              </span>
           </div>
 
@@ -79,28 +85,14 @@ export default async function EventPage({ params }: Props) {
             <p className="text-gray-300">{event.description || "No description provided."}</p>
           </div>
 
-          <div className={styles.driversSection}>
-            <h3 className={styles.sectionTitle}>Registered Drivers ({event.registrations.length})</h3>
-
-            {event.registrations.length === 0 ? (
-                <p className="text-gray-500">No drivers registered yet. Be the first!</p>
+          <div className={styles.racesSection}>
+            <h3 className={styles.sectionTitle}>Races & Driver Lineups</h3>
+            {event.races.length === 0 ? (
+                <p className="text-gray-500">No races scheduled for this event.</p>
             ) : (
-                <div className={styles.driverList}>
-                    {event.registrations.map((reg) => (
-                        <div key={reg.id} className={styles.driverRow}>
-                            <div className={styles.driverInfo}>
-                                {reg.user.image && (
-                                    <Image src={reg.user.image} alt={reg.user.name || "User"} width={40} height={40} className={styles.avatar} />
-                                )}
-                                <div>
-                                    <p className={styles.driverName}>{reg.user.name}</p>
-                                    <p className={styles.driverClass}>Class: {reg.carClass}</p>
-                                </div>
-                            </div>
-                            <div className={styles.driverTimeslot}>
-                                {reg.preferredTimeslot && <p>{reg.preferredTimeslot}</p>}
-                            </div>
-                        </div>
+                <div className={styles.raceList}>
+                    {event.races.map((race: any) => (
+                        <RaceDetails key={race.id} race={race} userId={session.user.id} />
                     ))}
                 </div>
             )}
@@ -108,7 +100,6 @@ export default async function EventPage({ params }: Props) {
         </div>
 
         <div>
-           {/* Registration Form will go here */}
            <div className={styles.sidebar}>
               <h3 className={styles.sectionTitle}>Registration</h3>
                {isCompleted ? (
@@ -117,20 +108,6 @@ export default async function EventPage({ params }: Props) {
                        <p className={styles.completedDetail}>
                            This event ended on {new Date(event.endTime).toLocaleDateString()}. Registration is closed.
                        </p>
-                   </div>
-               ) : userRegistration ? (
-                   <div className={styles.registeredBox}>
-                       <p className={styles.registeredTitle}>✅ You are registered!</p>
-                       <p className={styles.registeredDetail}>Car Class: {userRegistration.carClass}</p>
-                       <p className={styles.registeredDetail}>Timeslot: {userRegistration.preferredTimeslot || "None"}</p>
-                       <form action={async () => {
-                         "use server"
-                         await deleteRegistration(event.id)
-                       }}>
-                         <button type="submit" className={styles.deleteButton}>
-                           Drop Signup
-                         </button>
-                       </form>
                    </div>
                ) : !hasAgreedToExpectations ? (
                    <div className={styles.warningBox}>
@@ -146,7 +123,7 @@ export default async function EventPage({ params }: Props) {
                        </a>
                    </div>
                ) : (
-                   <EventRegistrationForm eventId={event.id} />
+                   <RaceRegistrationForm races={event.races.map((r: any) => ({ id: r.id, startTime: r.startTime, endTime: r.endTime }))} userId={session.user.id} existingRegistrationRaceIds={userRegistrations.map((r: any) => r.raceId)} />
                )}
            </div>
         </div>
