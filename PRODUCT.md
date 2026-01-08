@@ -110,7 +110,7 @@ A user's expression of interest for an event.
 
 ### Phase 3b: Improve local dev
 * [x] Add a mock auth provider.
-* [ ] Add a mock iRacing API server.
+* [x] Add a mock iRacing API server.
 * [ ] Add a mock Discord API server.
 * [ ] Add tests.
 
