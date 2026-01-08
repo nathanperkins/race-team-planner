@@ -104,20 +104,8 @@ A user's expression of interest for an event.
 * [x] Use icons to denote synced vs manual events.
 * [x] Add filters for events.
 * [x] Encrypt sensitive fields like tokens in the database using the `prisma-field-encryption` extension
-* [ ] Fix issue where user and signout are shown in the middle of the sidebar when scrolled down. They should not be affected by scrolling.
-  * [ ] Also fix:
-
-  ```
-  [prisma-field-encryption] Warning: could not find a field to use to iterate over rows in model Account.
-  Automatic encryption/decryption/key rotation migrations are disabled for this model.
-  Read more: https://github.com/47ng/prisma-field-encryption#migrations
- POST /login 303 in 14ms (compile: 1609µs, render: 12ms)
-  [prisma-field-encryption] Warning: could not find a field to use to iterate over rows in model Account.
-    Automatic encryption/decryption/key rotation migrations are disabled for this model.
-    Read more: https://github.com/47ng/prisma-field-encryption#migrations
-  GET /api/auth/callback/discord?code=<snip> 302 in 1162ms (compile: 6ms, render: 1156ms)
-  ```
-
+* [x] Fix issue where user and signout are shown in the middle of the sidebar when scrolled down. They should not be affected by scrolling.
+* [x] Fix prisma-field-encryption warnings.
 * [ ] **Check Membership in SRG Discord**: Use the Discord API to check if a user is a member of the SRG Discord.
 * [ ] **Improve Styles**: Improve the styling of the app.
 * [ ] **Implement roles**: Admins can modify all signups, users can only modify their own signups.
