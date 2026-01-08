@@ -20,11 +20,10 @@ const initialState: State = {
 
 interface Props {
   races: { id: string; startTime: Date; endTime: Date }[]
-  userId: string
   existingRegistrationRaceIds: string[]
 }
 
-export default function RaceRegistrationForm({ races, userId, existingRegistrationRaceIds }: Props) {
+export default function RaceRegistrationForm({ races, existingRegistrationRaceIds }: Props) {
   const [state, formAction, isPending] = useActionState(registerForRace, initialState)
 
   return (

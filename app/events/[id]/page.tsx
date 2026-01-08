@@ -3,11 +3,9 @@ import { CURRENT_EXPECTATIONS_VERSION } from "@/lib/config"
 import { auth } from "@/lib/auth"
 import prisma from "@/lib/prisma"
 import { notFound, redirect } from "next/navigation"
-import Image from "next/image"
 import RaceRegistrationForm from "@/components/RaceRegistrationForm"
 import RaceDetails from "@/components/RaceDetails"
 import { Cloud } from "lucide-react"
-import { deleteRegistration } from "@/app/actions"
 
 import styles from "./event.module.css"
 
@@ -54,7 +52,7 @@ export default async function EventPage({ params }: Props) {
   }
 
   // Check if current user is already registered for ANY race in this event
-  const userRegistrations = event.races.flatMap((race: any) => race.registrations).filter((reg: any) => reg.userId === session.user?.id)
+  const userRegistrations = event.races.flatMap((race) => race.registrations).filter((reg) => reg.userId === session.user?.id)
 
   const isCompleted = new Date() > event.endTime
 
@@ -91,7 +89,7 @@ export default async function EventPage({ params }: Props) {
                 <p className="text-gray-500">No races scheduled for this event.</p>
             ) : (
                 <div className={styles.raceList}>
-                    {event.races.map((race: any) => (
+                    {event.races.map((race) => (
                         <RaceDetails key={race.id} race={race} userId={session.user.id} />
                     ))}
                 </div>
@@ -123,7 +121,7 @@ export default async function EventPage({ params }: Props) {
                        </a>
                    </div>
                ) : (
-                   <RaceRegistrationForm races={event.races.map((r: any) => ({ id: r.id, startTime: r.startTime, endTime: r.endTime }))} userId={session.user.id} existingRegistrationRaceIds={userRegistrations.map((r: any) => r.raceId)} />
+                   <RaceRegistrationForm races={event.races.map((r) => ({ id: r.id, startTime: r.startTime, endTime: r.endTime }))} existingRegistrationRaceIds={userRegistrations.map((r) => r.raceId)} />
                )}
            </div>
         </div>

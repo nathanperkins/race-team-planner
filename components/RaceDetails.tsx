@@ -2,8 +2,23 @@ import Image from "next/image"
 import { deleteRegistration } from "@/app/actions"
 import styles from "./RaceDetails.module.css"
 
+interface RaceWithRegistrations {
+  id: string
+  startTime: Date
+  endTime: Date
+  registrations: Array<{
+    id: string
+    carClass: string
+    userId: string
+    user: {
+      name: string | null
+      image: string | null
+    }
+  }>
+}
+
 interface Props {
-  race: any
+  race: RaceWithRegistrations
   userId: string
 }
 
@@ -23,7 +38,7 @@ export default function RaceDetails({ race, userId }: Props) {
         <p className="text-sm text-gray-500 mt-2">No drivers registered for this race.</p>
       ) : (
         <div className={styles.driverList}>
-          {race.registrations.map((reg: any) => (
+          {race.registrations.map((reg) => (
             <div key={reg.id} className={styles.driverRow}>
               <div className={styles.driverInfo}>
                 {reg.user.image && (

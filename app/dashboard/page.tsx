@@ -144,9 +144,9 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
   // Manual sorting for signups if requested
   if (params.sort === 'signups') {
-    events.sort((a: any, b: any) => {
-      const aCount = a.races.reduce((sum: number, r: any) => sum + r.registrations.length, 0)
-      const bCount = b.races.reduce((sum: number, r: any) => sum + r.registrations.length, 0)
+    events.sort((a, b) => {
+      const aCount = a.races.reduce((sum: number, r) => sum + r.registrations.length, 0)
+      const bCount = b.races.reduce((sum: number, r) => sum + r.registrations.length, 0)
       return bCount - aCount
     })
   }
@@ -171,10 +171,10 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       <EventFilters carClasses={carClasses} racers={racers} currentFilters={displayParams} />
 
       <div className={styles.grid}>
-        {events.map((event: any) => {
+        {events.map((event) => {
           const isCompleted = new Date() > event.endTime
-          const totalRegistrations = event.races.reduce((sum: number, r: any) => sum + r.registrations.length, 0)
-          const allDriverNames = Array.from(new Set(event.races.flatMap((r: any) => r.registrations.map((reg: any) => reg.user.name)))).filter(Boolean)
+          const totalRegistrations = event.races.reduce((sum: number, r) => sum + r.registrations.length, 0)
+          const allDriverNames = Array.from(new Set(event.races.flatMap((r) => r.registrations.map((reg) => reg.user.name)))).filter(Boolean)
 
           return (
             <div key={event.id} className={`${styles.card} ${isCompleted ? styles.completedCard : ''}`}>

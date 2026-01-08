@@ -70,7 +70,7 @@ export default async function UserSignupsPage({ params }: Props) {
                         </tr>
                     </thead>
                     <tbody>
-                        {registrations.map((reg: any) => (
+                        {registrations.map((reg) => (
                             <tr key={reg.id} className={styles.tr}>
                                 <td className={styles.td}>
                                     <Link href={`/events/${reg.race.eventId}`} className={styles.eventName}>
