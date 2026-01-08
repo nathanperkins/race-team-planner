@@ -117,7 +117,7 @@ A user's expression of interest for a specific race.
 * [ ] Add sync support for car classes.
 * [ ] Remove revoke agreement button.
 * [ ] Display more info about each event.
-* [ ] **Refactor Sync to use Upsert**: Individual race upserts to prevent wiping registrations.
+* [x] **Refactor Sync to use Upsert**: Individual race upserts to prevent wiping registrations.
 * [ ] **Add "Live" Badge**: Visual indicator in `RaceDetails` for ongoing races.
 * [ ] **Registration Overlap Warning**: Prevent or warn about double-booking same-time races.
 * [ ] **Race Driver Limits**: Optional capacity limits for sessions.
