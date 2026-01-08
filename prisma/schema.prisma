@@ -58,14 +58,6 @@ model Session {
   updatedAt DateTime @updatedAt
 }
 
-model VerificationToken {
-  identifier String
-  token      String
-  expires    DateTime
-
-  @@id([identifier, token])
-}
-
 model Event {
   id          String   @id @default(cuid())
   name        String
