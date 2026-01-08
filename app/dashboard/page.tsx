@@ -22,6 +22,7 @@ export default async function DashboardPage() {
       <header className="mb-12 flex items-center justify-between">
          <h1 className="text-3xl font-bold">Upcoming Events</h1>
          <div className="flex items-center gap-4">
+            <Link href={`/users/${session.user?.id}/signups`} className="text-sm hover:underline">My Signups</Link>
             <span className="text-sm text-gray-400">Signed in as {session.user?.name}</span>
             <Link href="/" className="text-sm hover:underline">Home</Link>
          </div>
