@@ -37,7 +37,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const carClasses = registrations.map(r => r.carClass).sort()
 
   // Fetch unique racers (users who have signed up)
-  const distinctUsers = await prisma.registration.findMany({
+  const distinctUsers: { user: { id: string; name: string | null } }[] = await prisma.registration.findMany({
     select: {
       user: {
         select: { id: true, name: true }
