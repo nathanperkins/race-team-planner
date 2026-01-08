@@ -110,7 +110,7 @@ A user's expression of interest for an event.
 * [x] Add a filter looking for specific racers.
 * [x] Add a roster page.
 * [x] Don't allow user to register for completed races.
-* [ ] Don't allow the user to drop from completed races.
+* [x] Don't allow the user to drop from completed races.
 * [ ] Add sync support for events with multiple timeslots.
 * [ ] Display more info about each event.
 
@@ -120,9 +120,8 @@ A user's expression of interest for an event.
 * [ ] Add tests.
 
 ### Phase 4: Production Readiness
-* [ ] Set up GitHub Actions for CI (Linting, Build Check).
+* [x] Set up GitHub Actions for CI (Linting, Build Check).
 * [ ] Create Terraform configuration for GCP (Cloud Run, Artifact Registry).
-
 * [ ] Deploy to Production.
 
 ### Phase 5: Post Launch
