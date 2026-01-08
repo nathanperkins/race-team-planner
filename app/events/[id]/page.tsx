@@ -42,11 +42,7 @@ export default async function EventPage({ params }: Props) {
 
   return (
     <div className={styles.container}>
-      <div className="mb-8">
-        <Link href="/dashboard" className={styles.backLink}>
-          &larr; Back to Dashboard
-        </Link>
-      </div>
+
 
       <div className={styles.layout}>
         <div>

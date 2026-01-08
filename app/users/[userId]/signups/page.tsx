@@ -42,11 +42,7 @@ export default async function UserSignupsPage({ params }: Props) {
 
   return (
     <div className={styles.container}>
-      <div className={styles.backLinkContainer}>
-        <Link href="/dashboard" className={styles.backLink}>
-          &larr; Back to Dashboard
-        </Link>
-      </div>
+
 
       <header className={styles.header}>
          <h1 className={styles.title}>{user.name === session.user?.name ? "My Signups" : `${user.name}'s Signups`}</h1>

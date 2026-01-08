@@ -23,11 +23,6 @@ export default async function DashboardPage() {
     <div className={styles.container}>
       <header className={styles.header}>
          <h1 className={styles.title}>Upcoming Events</h1>
-         <div className={styles.nav}>
-            <Link href={`/users/${session.user?.id}/signups`} className={styles.link}>My Signups</Link>
-            <span className={styles.userInfo}>Signed in as {session.user?.name}</span>
-            <Link href="/" className={styles.link}>Home</Link>
-         </div>
       </header>
 
       <div className={styles.grid}>

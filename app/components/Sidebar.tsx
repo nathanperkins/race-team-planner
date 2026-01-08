@@ -1,0 +1,55 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import styles from "./sidebar.module.css";
+import { signOut } from "next-auth/react";
+import { Session } from "next-auth";
+
+interface SidebarProps {
+  session: Session;
+}
+
+export default function Sidebar({ session }: SidebarProps) {
+  const pathname = usePathname();
+
+  const isActive = (path: string) => {
+    if (path === "/" && pathname === "/") return true;
+    if (path !== "/" && pathname.startsWith(path)) return true;
+    return false;
+  };
+
+  return (
+    <aside className={styles.sidebar}>
+      <div className={styles.title}>Team Planner</div>
+
+      <nav className={styles.nav}>
+        <Link
+          href="/dashboard"
+          className={`${styles.link} ${isActive("/dashboard") ? styles.activeLink : ""}`}
+        >
+          Events
+        </Link>
+
+        <Link
+          href={`/users/${session.user?.id}/signups`}
+          className={`${styles.link} ${isActive(`/users/${session.user?.id}`) ? styles.activeLink : ""}`}
+        >
+          My Signups
+        </Link>
+      </nav>
+
+      <div className={styles.footer}>
+        <div className={styles.userSection}>
+          <span className={styles.welcome}>{session.user?.name}</span>
+          <button
+            onClick={() => signOut({ callbackUrl: "/" })}
+            className={styles.signOutButton}
+          >
+            Sign Out
+          </button>
+        </div>
+      </div>
+    </aside>
+  );
+}
