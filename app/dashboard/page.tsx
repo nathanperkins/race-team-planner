@@ -79,19 +79,25 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       <div className={styles.grid}>
         {events.map((event) => (
           <div key={event.id} className={styles.card}>
-            <div
-              className={styles.sourceBadge}
-              data-tooltip={event.externalId ? "Synced from iRacing" : "Manually entered"}
-            >
-              {event.externalId ? <Cloud size={14} /> : <CloudOff size={14} />}
-            </div>
+            <div className={styles.badgeContainer}>
+              {event.externalId && (
+                <div
+                  className={styles.sourceBadge}
+                  data-tooltip="Synced from iRacing"
+                >
+                  <Cloud size={14} />
+                </div>
+              )}
 
-            <div
-              className={`${styles.signupBadge} ${event._count.registrations === 0 ? styles.slashed : styles.hasSignups}`}
-              title={`${event._count.registrations} signups`}
-            >
-              {event._count.registrations === 0 ? <User size={14} /> : <Users size={14} />}
-              {event._count.registrations > 0 && <span>{event._count.registrations}</span>}
+              {event._count.registrations > 0 && (
+                <div
+                  className={`${styles.signupBadge} ${styles.hasSignups}`}
+                  title={`${event._count.registrations} signups`}
+                >
+                  <Users size={14} />
+                  <span>{event._count.registrations}</span>
+                </div>
+              )}
             </div>
 
             <div className={styles.cardHeader}>

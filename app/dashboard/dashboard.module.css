@@ -108,10 +108,16 @@
     justify-content: space-between;
 }
 
-.sourceBadge {
+.badgeContainer {
     position: absolute;
     top: -0.5rem;
     left: -0.5rem;
+    display: flex;
+    gap: 0.5rem;
+    z-index: 20;
+}
+
+.sourceBadge {
     background-color: #374151;
     border-radius: 9999px;
     padding: 0.4rem;
@@ -120,7 +126,6 @@
     justify-content: center;
     color: #9ca3af;
     border: 1px solid #4b5563;
-    z-index: 10;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
@@ -155,9 +160,6 @@
 }
 
 .signupBadge {
-    position: absolute;
-    top: -0.5rem;
-    left: 2rem;
     display: flex;
     align-items: center;
     gap: 0.35rem;
@@ -169,7 +171,6 @@
     font-size: 0.75rem;
     font-weight: 500;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    z-index: 20;
 }
 
 .slashed {
