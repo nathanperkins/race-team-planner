@@ -13,6 +13,7 @@ interface PageProps {
   searchParams: Promise<{
     hasSignups?: string;
     carClass?: string;
+    racer?: string;
     from?: string;
     to?: string;
   }>;
@@ -33,6 +34,17 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   })
   const carClasses = registrations.map(r => r.carClass).sort()
 
+  // Fetch unique racers (users who have signed up)
+  const distinctUsers = await prisma.registration.findMany({
+    select: {
+      user: {
+        select: { id: true, name: true }
+      }
+    },
+    distinct: ['userId'],
+  })
+  const racers = distinctUsers.map(r => r.user).sort((a, b) => (a.name || "").localeCompare(b.name || ""))
+
   // Build Prisma filter object
   const where: any = {}
 
@@ -45,8 +57,27 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   if (params.carClass) {
     where.registrations = {
       ...where.registrations,
-      some: { carClass: params.carClass }
+      some: {
+        ...where.registrations?.some,
+        carClass: params.carClass
+      }
     }
+  }
+
+  if (params.racer) {
+    const racerIds = params.racer.split(',')
+    // Match events where ALL selected racers are present (AND logic)
+    if (!where.AND) where.AND = []
+
+    racerIds.forEach(id => {
+      where.AND.push({
+        registrations: {
+          some: {
+            userId: id
+          }
+        }
+      })
+    })
   }
 
   if (params.from || params.to) {
@@ -78,7 +109,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
          <SyncButton />
       </header>
 
-      <EventFilters carClasses={carClasses} currentFilters={params} />
+      <EventFilters carClasses={carClasses} racers={racers} currentFilters={params} />
 
       <div className={styles.grid}>
         {events.map((event) => (

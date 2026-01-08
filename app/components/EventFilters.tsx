@@ -2,23 +2,41 @@
 "use client";
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { useCallback } from "react";
+import { useCallback, useState, useRef, useEffect } from "react";
 import styles from "../dashboard/dashboard.module.css";
 
 interface EventFiltersProps {
   carClasses: string[];
+  racers: { id: string; name: string | null }[];
   currentFilters: {
     hasSignups?: string;
     carClass?: string;
+    racer?: string;
     from?: string;
     to?: string;
   };
 }
 
-export default function EventFilters({ carClasses, currentFilters }: EventFiltersProps) {
+export default function EventFilters({ carClasses, racers, currentFilters }: EventFiltersProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  const [isRacerDropdownOpen, setIsRacerDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsRacerDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [dropdownRef]);
 
   const createQueryString = useCallback(
     (name: string, value: string) => {
@@ -71,6 +89,50 @@ export default function EventFilters({ carClasses, currentFilters }: EventFilter
       </div>
 
       <div className={styles.filterGroup}>
+        <label htmlFor="racer" className={styles.filterLabel}>Racers</label>
+        <div className={styles.relative} ref={dropdownRef}>
+          <button
+            id="racer"
+            className={styles.filterSelect}
+            onClick={() => setIsRacerDropdownOpen(!isRacerDropdownOpen)}
+            style={{ minWidth: '150px', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+          >
+            {currentFilters.racer ? `${currentFilters.racer.split(',').length} Selected` : "All Racers"}
+            <span style={{ fontSize: '0.75em', marginLeft: '0.5rem' }}>▼</span>
+          </button>
+
+          {isRacerDropdownOpen && (
+            <div className={styles.multiSelectDropdown}>
+              {racers.map((racer) => {
+                const selectedRacers = currentFilters.racer ? currentFilters.racer.split(',') : [];
+                const isSelected = selectedRacers.includes(racer.id);
+
+                return (
+                  <label key={racer.id} className={styles.multiSelectItem}>
+                    <input
+                      type="checkbox"
+                      className={styles.checkbox}
+                      checked={isSelected}
+                      onChange={() => {
+                        let newSelected = [...selectedRacers];
+                        if (isSelected) {
+                          newSelected = newSelected.filter(id => id !== racer.id);
+                        } else {
+                          newSelected.push(racer.id);
+                        }
+                        handleFilterChange("racer", newSelected.join(","));
+                      }}
+                    />
+                    {racer.name || "Unknown"}
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className={styles.filterGroup}>
         <label htmlFor="from" className={styles.filterLabel}>From</label>
         <input
           id="from"
@@ -92,7 +154,7 @@ export default function EventFilters({ carClasses, currentFilters }: EventFilter
         />
       </div>
 
-      {(currentFilters.hasSignups || currentFilters.carClass || currentFilters.from || currentFilters.to) && (
+      {(currentFilters.hasSignups || currentFilters.carClass || currentFilters.racer || currentFilters.from || currentFilters.to) && (
         <button
           className={styles.clearButton}
           onClick={() => router.push(pathname)}
