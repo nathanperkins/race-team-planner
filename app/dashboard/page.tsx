@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth"
 import prisma from "@/lib/prisma"
 import { redirect } from "next/navigation"
 import Link from "next/link"
+import SyncButton from "../components/SyncButton"
 
 import styles from "./dashboard.module.css"
 
@@ -23,6 +24,7 @@ export default async function DashboardPage() {
     <div className={styles.container}>
       <header className={styles.header}>
          <h1 className={styles.title}>Upcoming Events</h1>
+         <SyncButton />
       </header>
 
       <div className={styles.grid}>

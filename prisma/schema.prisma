@@ -49,6 +49,7 @@ model Account {
 
 model Event {
   id          String   @id @default(cuid())
+  externalId  String?  @unique
   name        String
   startTime   DateTime
   track       String
