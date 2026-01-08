@@ -16,37 +16,41 @@ export async function syncIRacingEvents() {
       const start = new Date(event.startTime);
       const end = event.endTime ? new Date(event.endTime) : new Date(start.getTime() + 24 * 60 * 60 * 1000);
 
-      await prisma.event.upsert({
-        where: { externalId: event.externalId },
-        update: {
-          name: event.name,
-          startTime: start,
-          endTime: end,
-          track: event.track,
-          description: event.description,
-          races: {
-            deleteMany: {}, // Simple sync: wipe and recreate races
-            create: event.races.map(r => ({
+      await prisma.$transaction(async (tx) => {
+        const upsertedEvent = await tx.event.upsert({
+          where: { externalId: event.externalId },
+          update: {
+            name: event.name,
+            startTime: start,
+            endTime: end,
+            track: event.track,
+            description: event.description,
+          },
+          create: {
+            externalId: event.externalId,
+            name: event.name,
+            startTime: start,
+            endTime: end,
+            track: event.track,
+            description: event.description,
+          }
+        });
+
+        for (const r of event.races) {
+          await tx.race.upsert({
+            where: { externalId: r.externalId },
+            update: {
+              startTime: new Date(r.startTime),
+              endTime: new Date(r.endTime),
+              eventId: upsertedEvent.id,
+            },
+            create: {
               externalId: r.externalId,
               startTime: new Date(r.startTime),
-              endTime: new Date(r.endTime)
-            }))
-          }
-        },
-        create: {
-          externalId: event.externalId,
-          name: event.name,
-          startTime: start,
-          endTime: end,
-          track: event.track,
-          description: event.description,
-          races: {
-            create: event.races.map(r => ({
-              externalId: r.externalId,
-              startTime: new Date(r.startTime),
-              endTime: new Date(r.endTime)
-            }))
-          }
+              endTime: new Date(r.endTime),
+              eventId: upsertedEvent.id,
+            }
+          });
         }
       });
     }
