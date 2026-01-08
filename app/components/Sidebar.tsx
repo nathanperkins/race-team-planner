@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import styles from "./sidebar.module.css";
 import { signOut } from "next-auth/react";
 import { Session } from "next-auth";
+import Image from "next/image";
 
 interface SidebarProps {
   session: Session;
@@ -41,7 +42,18 @@ export default function Sidebar({ session }: SidebarProps) {
 
       <div className={styles.footer}>
         <div className={styles.userSection}>
-          <span className={styles.welcome}>{session.user?.name}</span>
+          <div className={styles.userInfo}>
+            {session.user?.image && (
+              <Image
+                src={session.user.image}
+                alt={session.user.name || "User"}
+                width={32}
+                height={32}
+                className={styles.avatar}
+              />
+            )}
+            <span className={styles.welcome}>{session.user?.name}</span>
+          </div>
           <button
             onClick={() => signOut({ callbackUrl: "/" })}
             className={styles.signOutButton}

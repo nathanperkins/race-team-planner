@@ -86,9 +86,28 @@
     gap: 0.5rem;
 }
 
+.userInfo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.25rem;
+}
+
+.avatar {
+    border-radius: 9999px;
+    border: 1px solid #e5e5e5;
+}
+
+@media (prefers-color-scheme: dark) {
+    .avatar {
+        border-color: #333;
+    }
+}
+
 .welcome {
     font-size: 0.875rem;
     font-weight: 500;
+    color: var(--foreground);
 }
 
 .signOutButton,
