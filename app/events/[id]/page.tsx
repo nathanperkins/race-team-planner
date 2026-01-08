@@ -2,7 +2,6 @@
 import { auth } from "@/lib/auth"
 import prisma from "@/lib/prisma"
 import { notFound, redirect } from "next/navigation"
-import Link from "next/link"
 import Image from "next/image"
 import EventRegistrationForm from "@/components/EventRegistrationForm"
 import { deleteRegistration } from "@/app/actions"

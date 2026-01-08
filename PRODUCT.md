@@ -98,8 +98,8 @@ A user's expression of interest for an event.
 * [x] **Separate Styles from Logic**: Move styles to a separate file.
 * [x] **Support dropping signups**: Allow users to drop signups from the details page or from "My Signups".
 * [x] **Navigation**: Add a navigation sidebar to the left of the page.
-* [ ] **Fix undefined user issue**: The user ID is undefined when accessing the signup page.
-* [ ] **Fix unauthorized issue**: Signups fail with unauthorized.
+* [x] **Fix undefined user issue**: The user ID is undefined when accessing the signup page.
+* [x] **Fix unauthorized issue**: Signups fail with unauthorized.
 * [ ] **Sync Events from iRacing**: Use the iRacing API to sync events to the database.
 * [ ] **Check Membership in SRG Discord**: Use the Discord API to check if a user is a member of the SRG Discord.
 * [ ] **Improve Styles**: Improve the styling of the app.
