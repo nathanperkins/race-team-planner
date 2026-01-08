@@ -30,7 +30,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   }
 
   // Fetch unique car classes for the filter dropdown
-  const registrations = await prisma.registration.findMany({
+  const registrations: { carClass: string }[] = await prisma.registration.findMany({
     select: { carClass: true },
     distinct: ['carClass'],
   })
