@@ -1,5 +1,5 @@
-
-import { signIn } from "@/lib/auth"
+import DiscordLoginForm from "./DiscordLoginForm"
+import MockLoginForm from "./MockLoginForm"
 import styles from "./login.module.css"
 
 export default function LoginPage() {
@@ -7,19 +7,9 @@ export default function LoginPage() {
     <div className={styles.container}>
       <div className={styles.card}>
         <h1 className={styles.title}>Sign In</h1>
-        <form
-          action={async () => {
-            "use server"
-            await signIn("discord", { redirectTo: "/" })
-          }}
-        >
-          <button
-            type="submit"
-            className={styles.button}
-          >
-            Sign in with Discord
-          </button>
-        </form>
+        <DiscordLoginForm />
+
+        {process.env.NODE_ENV === "development" && <MockLoginForm />}
       </div>
     </div>
   )

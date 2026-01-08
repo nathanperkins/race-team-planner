@@ -56,3 +56,56 @@
     outline: none;
     box-shadow: 0 0 0 2px #5865F2, 0 0 0 4px #111827;
 }
+
+.devLogin {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #374151;
+    /* gray-700 */
+}
+
+.separator {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+    /* text-sm */
+    color: #9CA3AF;
+    /* gray-400 */
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    /* tracking-wider */
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.select {
+    width: 100%;
+    border-radius: 0.25rem;
+    background-color: #374151;
+    /* gray-700 */
+    border: 1px solid #4B5563;
+    /* gray-600 */
+    padding: 0.5rem;
+    color: white;
+    margin-bottom: 1rem;
+}
+
+/* Make the mock login button a different color */
+.devLogin .button {
+    background-color: #059669;
+    /* emerald-600 */
+}
+
+.devLogin .button:hover {
+    background-color: #047857;
+    /* emerald-700 */
+}
+
+.devLogin .button:focus {
+    box-shadow: 0 0 0 2px #059669, 0 0 0 4px #111827;
+}
