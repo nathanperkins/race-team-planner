@@ -102,7 +102,7 @@ A user's expression of interest for an event.
 * [x] **Fix unauthorized issue**: Signups fail with unauthorized.
 * [x] **Sync Events from iRacing**: Use the iRacing API to sync events to the database.
 * [x] Use icons to denote synced vs manual events.
-* [ ] Add filters for events.
+* [x] Add filters for events.
 * [ ] **Check Membership in SRG Discord**: Use the Discord API to check if a user is a member of the SRG Discord.
 * [ ] **Improve Styles**: Improve the styling of the app.
 * [ ] **Implement roles**: Admins can modify all signups, users can only modify their own signups.
