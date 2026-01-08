@@ -27,7 +27,7 @@ const mockAuthProvider = Credentials({
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   session: {
-    strategy: process.env.NODE_ENV === "development" ? "jwt" : "database",
+    strategy: "jwt",
   },
   providers: [
     Discord,
