@@ -103,10 +103,11 @@ A user's expression of interest for an event.
 * [x] **Sync Events from iRacing**: Use the iRacing API to sync events to the database.
 * [x] Use icons to denote synced vs manual events.
 * [x] Add filters for events.
+* [x] Encrypt sensitive fields like tokens in the database using the `prisma-field-encryption` extension
+* [ ] Fix issue where user and signout are shown in the middle of the sidebar when scrolled down. They should not be affected by scrolling.
 * [ ] **Check Membership in SRG Discord**: Use the Discord API to check if a user is a member of the SRG Discord.
 * [ ] **Improve Styles**: Improve the styling of the app.
 * [ ] **Implement roles**: Admins can modify all signups, users can only modify their own signups.
-* [ ] Encrypt sensitive fields in the database using the `prisma-field-encryption` extension
 
 ### Phase 3b: Improve local dev
 * [x] Add a mock auth provider.

@@ -31,11 +31,14 @@ model Account {
   type              String
   provider          String
   providerAccountId String
+  /// @encrypted
   refresh_token     String?
+  /// @encrypted
   access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
+  /// @encrypted
   id_token          String?
   session_state     String?
 
