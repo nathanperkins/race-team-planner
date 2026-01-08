@@ -1,6 +1,24 @@
 import styles from "./expectations.module.css"
+import { auth } from "@/lib/auth"
+import prisma from "@/lib/prisma"
+import { redirect } from "next/navigation"
+import { CURRENT_EXPECTATIONS_VERSION } from "@/lib/config"
+import ExpectationsAgreement from "./ExpectationsAgreement"
+import ExpectationsAgreed from "./ExpectationsAgreed"
 
-export default function ExpectationsPage() {
+export default async function ExpectationsPage() {
+  const session = await auth()
+  if (!session) redirect("/login")
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { expectationsVersion: true }
+  })
+
+  if (!user) redirect("/login")
+
+  const hasAgreed = (user.expectationsVersion ?? 0) >= CURRENT_EXPECTATIONS_VERSION
+
   return (
     <div className={styles.container}>
       <div className={styles.content}>
@@ -63,17 +81,11 @@ export default function ExpectationsPage() {
           </ul>
         </section>
 
-        <section className={`${styles.section} ${styles.acknowledgement}`}>
-          <div className={styles.sectionHeader}>
-            <span className={styles.icon}>✅</span>
-            <h2 className={styles.sectionTitle}>Acknowledgement Required</h2>
-          </div>
-          <span className={styles.tagline}>By signing up, you confirm that you:</span>
-          <ul className={styles.list}>
-            <li className={styles.listItem}>Have read and understand these expectations</li>
-            <li className={styles.listItem}>Agree to operate with the team in mind</li>
-          </ul>
-        </section>
+        {hasAgreed ? (
+            <ExpectationsAgreed />
+        ) : (
+            <ExpectationsAgreement />
+        )}
       </div>
     </div>
   )

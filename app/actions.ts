@@ -89,3 +89,36 @@ export async function deleteRegistration(eventId: string) {
     throw new Error("Failed to delete registration")
   }
 }
+
+import { CURRENT_EXPECTATIONS_VERSION } from "@/lib/config"
+
+export async function agreeToExpectations() {
+  const session = await auth()
+  if (!session || !session.user?.id) {
+    throw new Error("Unauthorized")
+  }
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { expectationsVersion: CURRENT_EXPECTATIONS_VERSION }
+  })
+
+  revalidatePath("/expectations")
+  revalidatePath("/expectations")
+  revalidatePath("/events/[id]", "page") // Revalidate all event pages to potentially unlock signup
+}
+
+export async function unagreeToExpectations() {
+  const session = await auth()
+  if (!session || !session.user?.id) {
+    throw new Error("Unauthorized")
+  }
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { expectationsVersion: 0 }
+  })
+
+  revalidatePath("/expectations")
+  revalidatePath("/events/[id]", "page")
+}

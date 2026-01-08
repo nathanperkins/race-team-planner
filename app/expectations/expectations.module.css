@@ -104,14 +104,94 @@
     font-weight: bold;
 }
 
-.acknowledgement {
-    background-color: #064e3b;
-    /* emerald-900 */
-    border-color: #059669;
+.pendingAgreement {
+    background-color: #451a03;
+    /* amber-950 */
+    border-color: #d97706;
+    /* amber-600 */
+}
+
+.pendingAgreement .listItem::before {
+    color: #fbbf24;
+    /* amber-400 */
+}
+
+.pendingAgreement .agreeButton {
+    background-color: #d97706;
+    /* amber-600 */
+}
+
+.pendingAgreement .agreeButton:hover {
+    background-color: #b45309;
+    /* amber-700 */
+}
+
+.agreeButton {
+    display: block;
+    width: 100%;
+    margin-top: 1.5rem;
+    padding: 0.75rem;
+    background-color: #10b981;
+    /* emerald-500 */
+    color: white;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.agreeButton:hover {
+    background-color: #059669;
     /* emerald-600 */
 }
 
-.acknowledgement .listItem::before {
-    color: #34d399;
-    /* emerald-400 */
+.agreeButton:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.agreedBadge {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    background-color: #065f46;
+    /* emerald-800 */
+    color: #d1fae5;
+    /* emerald-100 */
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-top: 2rem;
+    border: 1px solid #059669;
+}
+
+.agreedContent {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.unagreeButton {
+    background: none;
+    border: none;
+    color: #6ee7b7;
+    /* emerald-300 */
+    font-size: 0.875rem;
+    cursor: pointer;
+    text-decoration: underline;
+    opacity: 0.8;
+    padding: 0.25rem 0.5rem;
+}
+
+.unagreeButton:hover {
+    color: white;
+    opacity: 1;
+}
+
+.unagreeButton:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
 }
