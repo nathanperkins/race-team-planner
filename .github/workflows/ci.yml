@@ -9,6 +9,10 @@ on:
 jobs:
   build-and-lint:
     runs-on: ubuntu-latest
+    env:
+      # Needed for prisma generate
+      DATABASE_URL: "postgresql://postgres:password@localhost:5432/iracing-team-planner"
+      NEXTAUTH_SECRET: "supersecret"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
