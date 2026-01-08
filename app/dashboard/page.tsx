@@ -1,11 +1,12 @@
 
 import { auth } from "@/lib/auth"
 import prisma from "@/lib/prisma"
+import { Prisma } from "@prisma/client"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import SyncButton from "../components/SyncButton"
 import EventFilters from "../components/EventFilters"
-import { Cloud, CloudOff, Users, User } from "lucide-react"
+import { Cloud, Users } from "lucide-react"
 
 import styles from "./dashboard.module.css"
 
@@ -47,7 +48,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const racers = distinctUsers.map(r => r.user).sort((a, b) => (a.name || "").localeCompare(b.name || ""))
 
   // Build Prisma filter object
-  const where: any = {}
+  const where: Prisma.EventWhereInput = {}
 
   if (params.hasSignups === "true") {
     where.registrations = { some: {} }

@@ -5,6 +5,7 @@ export interface IRacingEvent {
   externalId: string;
   name: string;
   startTime: string;
+  endTime?: string;
   track: string;
   description: string;
 }
@@ -14,6 +15,7 @@ const MOCK_EVENTS: IRacingEvent[] = [
     externalId: 'ir_12345',
     name: 'iRacing Bathurst 12 Hour (Mock)',
     startTime: '2026-02-07T12:00:00Z',
+    endTime: '2026-02-08T00:00:00Z',
     track: 'Mount Panorama Circuit',
     description: 'Mock data. Set IRACING_CLIENT_ID/SECRET to sync real data.',
   }
@@ -55,7 +57,7 @@ async function getAccessToken(): Promise<string | null> {
     if (!response.ok) return null;
     const data = await response.json();
     return data.access_token;
-  } catch (error) {
+  } catch {
     return null;
   }
 }

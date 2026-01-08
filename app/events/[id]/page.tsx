@@ -5,7 +5,7 @@ import prisma from "@/lib/prisma"
 import { notFound, redirect } from "next/navigation"
 import Image from "next/image"
 import EventRegistrationForm from "@/components/EventRegistrationForm"
-import { Cloud, CloudOff } from "lucide-react"
+import { Cloud } from "lucide-react"
 import { deleteRegistration } from "@/app/actions"
 
 import styles from "./event.module.css"
