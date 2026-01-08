@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
 import EventRegistrationForm from "@/components/EventRegistrationForm"
+import { deleteRegistration } from "@/app/actions"
 
 import styles from "./event.module.css"
 
@@ -101,6 +102,14 @@ export default async function EventPage({ params }: Props) {
                        <p className={styles.registeredTitle}>✅ You are registered!</p>
                        <p className={styles.registeredDetail}>Car Class: {userRegistration.carClass}</p>
                        <p className={styles.registeredDetail}>Timeslot: {userRegistration.preferredTimeslot || "None"}</p>
+                       <form action={async () => {
+                         "use server"
+                         await deleteRegistration(event.id)
+                       }}>
+                         <button type="submit" className={styles.deleteButton}>
+                           Drop Signup
+                         </button>
+                       </form>
                    </div>
                ) : (
                    <EventRegistrationForm eventId={event.id} />

@@ -197,3 +197,21 @@
     font-size: 0.875rem;
     /* text-sm */
 }
+
+.deleteButton {
+    margin-top: 1rem;
+    width: 100%;
+    padding: 0.5rem;
+    background-color: transparent;
+    border: 1px solid #7f1d1d;
+    color: #fca5a5;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+}
+
+.deleteButton:hover {
+    background-color: #7f1d1d;
+    color: white;
+}

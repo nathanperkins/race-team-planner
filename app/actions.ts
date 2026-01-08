@@ -52,3 +52,40 @@ export async function registerForEvent(prevState: State, formData: FormData) {
     return { message: "Failed to register. You might be already registered." }
   }
 }
+
+export async function deleteRegistration(eventId: string) {
+  const session = await auth()
+  if (!session || !session.user?.id) {
+    throw new Error("Unauthorized")
+  }
+
+  try {
+    // Determine if the registration exists and if the user owns it
+    const registration = await prisma.registration.findUnique({
+      where: {
+        userId_eventId: {
+          userId: session.user.id,
+          eventId: eventId
+        }
+      }
+    })
+
+    if (!registration) {
+        throw new Error("Registration not found")
+    }
+
+    await prisma.registration.delete({
+      where: {
+         id: registration.id
+      }
+    })
+
+    revalidatePath(`/events/${eventId}`)
+    revalidatePath(`/users/${session.user.id}/signups`)
+    return { message: "Success" }
+
+  } catch (e) {
+    console.error("Delete registration error:", e)
+    throw new Error("Failed to delete registration")
+  }
+}

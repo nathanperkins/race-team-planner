@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth"
 import prisma from "@/lib/prisma"
 import { notFound, redirect } from "next/navigation"
 import Link from "next/link"
+import { deleteRegistration } from "@/app/actions"
 
 import styles from "./signups.module.css"
 
@@ -64,6 +65,9 @@ export default async function UserSignupsPage({ params }: Props) {
                             <th className={styles.th}>Track</th>
                             <th className={styles.th}>Car Class</th>
                             <th className={styles.th}>Timeslot</th>
+                            {userId === session.user?.id && (
+                                <th className={styles.th}>Actions</th>
+                            )}
                         </tr>
                     </thead>
                     <tbody>
@@ -88,6 +92,18 @@ export default async function UserSignupsPage({ params }: Props) {
                                         {reg.preferredTimeslot || "—"}
                                     </span>
                                 </td>
+                                {userId === session.user?.id && (
+                                    <td className={styles.td}>
+                                        <form action={async () => {
+                                            "use server"
+                                            await deleteRegistration(reg.eventId)
+                                        }}>
+                                            <button type="submit" className={styles.deleteButton}>
+                                                Drop
+                                            </button>
+                                        </form>
+                                    </td>
+                                )}
                             </tr>
                         ))}
                     </tbody>
