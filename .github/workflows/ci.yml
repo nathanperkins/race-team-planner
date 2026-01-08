@@ -10,10 +10,10 @@ jobs:
   build-and-lint:
     runs-on: ubuntu-latest
     env:
-      # Needed for prisma generate
+      # Fake values needed for prisma generate
       DATABASE_URL: "postgresql://postgres:password@localhost:5432/iracing-team-planner"
       NEXTAUTH_SECRET: "supersecret"
-      PRISMA_FIELD_ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
+      PRISMA_FIELD_ENCRYPTION_KEY: "k1.aesgcm256.F0W6p-KqDyWug2NdRRJuYN-60mPJatEQxS9JclaZMU4="
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
