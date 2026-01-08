@@ -31,7 +31,10 @@ export default async function DashboardPage() {
       <div className={styles.grid}>
         {events.map((event) => (
           <div key={event.id} className={styles.card}>
-            <div className={styles.sourceBadge}>
+            <div
+              className={styles.sourceBadge}
+              data-tooltip={event.externalId ? "Synced from iRacing" : "Manually entered"}
+            >
               {event.externalId ? <Cloud size={14} /> : <User size={14} />}
             </div>
             <div className={styles.cardHeader}>

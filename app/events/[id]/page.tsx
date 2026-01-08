@@ -46,7 +46,10 @@ export default async function EventPage({ params }: Props) {
 
       <div className={styles.layout}>
         <div style={{ position: 'relative' }}>
-          <div className={styles.sourceBadge}>
+          <div
+            className={styles.sourceBadge}
+            data-tooltip={event.externalId ? "Synced from iRacing" : "Manually entered"}
+          >
             {event.externalId ? <Cloud size={16} /> : <User size={16} />}
           </div>
           <h1 className={styles.title}>{event.name}</h1>
