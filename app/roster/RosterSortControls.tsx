@@ -25,7 +25,9 @@ export default function RosterSortControls() {
         onChange={handleSortChange}
       >
         <option value="name">Name (A-Z)</option>
-        <option value="signups">Signups (High-Low)</option>
+        <option value="total">Total Races (High-Low)</option>
+        <option value="upcoming">Upcoming Races (High-Low)</option>
+        <option value="completed">Completed Races (High-Low)</option>
       </select>
     </div>
   );

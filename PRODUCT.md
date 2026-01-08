@@ -109,6 +109,8 @@ A user's expression of interest for an event.
 * [x] Add a badge to events in the list to show the number of signups.
 * [x] Add a filter looking for specific racers.
 * [x] Add a roster page.
+* [x] Don't allow user to register for completed races.
+* [ ] Don't allow the user to drop from completed races.
 * [ ] Add sync support for events with multiple timeslots.
 * [ ] Display more info about each event.
 

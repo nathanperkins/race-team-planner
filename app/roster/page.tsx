@@ -18,27 +18,38 @@ export default async function RosterPage({ searchParams }: Props) {
   const params = await searchParams
   const sort = typeof params.sort === 'string' ? params.sort : 'name'
 
-  let orderBy: any = { name: 'asc' }
-  if (sort === 'signups') {
-    orderBy = [
-      {
-        registrations: {
-          _count: 'desc'
-        }
-      },
-      {
-        name: 'asc'
-      }
-    ]
-  }
-
-  const users = await prisma.user.findMany({
+  // Fetch users with their registrations and event times
+  const usersData = await prisma.user.findMany({
     include: {
-      _count: {
-        select: { registrations: true }
+      registrations: {
+        select: {
+          event: {
+            select: { endTime: true }
+          }
+        }
       }
-    },
-    orderBy
+    }
+  })
+
+  // Process counts and sort
+  const now = new Date()
+  const users = usersData.map(user => {
+    const upcoming = user.registrations.filter(r => r.event.endTime > now).length
+    const completed = user.registrations.filter(r => r.event.endTime <= now).length
+    return { ...user, upcoming, completed }
+  })
+
+  users.sort((a, b) => {
+    switch (sort) {
+      case 'total':
+        return b.registrations.length - a.registrations.length || a.name!.localeCompare(b.name!)
+      case 'upcoming':
+        return b.upcoming - a.upcoming || a.name!.localeCompare(b.name!)
+      case 'completed':
+        return b.completed - a.completed || a.name!.localeCompare(b.name!)
+      default: // name
+        return (a.name || "").localeCompare(b.name || "")
+    }
   })
 
   return (
@@ -63,8 +74,12 @@ export default async function RosterPage({ searchParams }: Props) {
 
             <div className={styles.stats}>
               <div className={styles.statItem}>
-                <span className={styles.statValue}>{user._count.registrations}</span>
-                <span className={styles.statLabel}>Signups</span>
+                <span className={styles.statValue}>{user.upcoming}</span>
+                <span className={styles.statLabel}>Upcoming</span>
+              </div>
+              <div className={styles.statItem}>
+                <span className={styles.statValue}>{user.completed}</span>
+                <span className={styles.statLabel}>Completed</span>
               </div>
             </div>
 
