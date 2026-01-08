@@ -96,11 +96,12 @@ A user's expression of interest for an event.
 * [x] **Signup Flow**: Authenticated users can register for an event (pick car/time).
 * [x] **My Signups**: View a list of races I have signed up for.
 * [x] **Separate Styles from Logic**: Move styles to a separate file.
-* [ ] **Support dropping signups**: Allow users to drop signups from the details page or from "My Signups".
+* [x] **Support dropping signups**: Allow users to drop signups from the details page or from "My Signups".
 * [ ] **Navigation**: Add a navigation sidebar to the left of the page.
 * [ ] **Sync Events from iRacing**: Use the iRacing API to sync events to the database.
 * [ ] **Check Membership in SRG Discord**: Use the Discord API to check if a user is a member of the SRG Discord.
 * [ ] **Improve Styles**: Improve the styling of the app.
+* [ ] **Implement roles**: Admins can modify all signups, users can only modify their own signups.
 * [ ] Encrypt sensitive fields in the database using the `prisma-field-encryption` extension
 
 ### Phase 3b: Improve local dev
