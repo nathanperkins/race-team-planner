@@ -1,4 +1,3 @@
-
 "use server"
 
 import { auth } from "@/lib/auth"
@@ -12,7 +11,13 @@ const RegistrationSchema = z.object({
   preferredTimeslot: z.string().optional(),
 })
 
-export async function registerForEvent(prevState: any, formData: FormData) {
+
+type State = {
+  message: string
+  errors?: Record<string, string[]>
+}
+
+export async function registerForEvent(prevState: State, formData: FormData) {
   const session = await auth()
   if (!session || !session.user?.id) {
     return { message: "Unauthorized" }

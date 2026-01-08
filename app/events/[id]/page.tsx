@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth"
 import prisma from "@/lib/prisma"
 import { notFound, redirect } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 import EventRegistrationForm from "@/components/EventRegistrationForm"
 
 interface Props {
@@ -34,7 +35,7 @@ export default async function EventPage({ params }: Props) {
   }
 
   // Check if current user is already registered
-  const userRegistration = event.registrations.find((r: any) => r.userId === session.user?.id)
+  const userRegistration = event.registrations.find((r) => r.userId === session.user?.id)
 
   return (
     <div className="min-h-screen p-8 pb-20 sm:p-20 font-[family-name:var(--font-geist-sans)]">
@@ -68,11 +69,11 @@ export default async function EventPage({ params }: Props) {
                 <p className="text-gray-500">No drivers registered yet. Be the first!</p>
             ) : (
                 <div className="space-y-4">
-                    {event.registrations.map((reg: any) => (
+                    {event.registrations.map((reg) => (
                         <div key={reg.id} className="flex items-center justify-between border-b border-gray-800 pb-4 last:border-0 last:pb-0">
                             <div className="flex items-center gap-3">
                                 {reg.user.image && (
-                                    <img src={reg.user.image} alt={reg.user.name || "User"} className="h-10 w-10 rounded-full" />
+                                    <Image src={reg.user.image} alt={reg.user.name || "User"} width={40} height={40} className="rounded-full" />
                                 )}
                                 <div>
                                     <p className="font-medium text-white">{reg.user.name}</p>

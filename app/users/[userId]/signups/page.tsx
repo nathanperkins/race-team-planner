@@ -65,7 +65,7 @@ export default async function UserSignupsPage({ params }: Props) {
                         </tr>
                     </thead>
                     <tbody>
-                        {registrations.map((reg: any) => (
+                        {registrations.map((reg) => (
                             <tr key={reg.id} className="border-b border-gray-700 last:border-0 hover:bg-gray-750">
                                 <td className="px-6 py-4 font-medium text-white">
                                     <Link href={`/events/${reg.eventId}`} className="hover:underline">

@@ -29,7 +29,7 @@ export default async function DashboardPage() {
       </header>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {events.map((event: any) => (
+        {events.map((event) => (
           <div key={event.id} className="rounded-lg border border-gray-700 bg-gray-800 p-6 shadow-sm transition-colors hover:bg-gray-750">
             <div className="mb-4 flex items-start justify-between">
                <h2 className="text-xl font-semibold text-white">{event.name}</h2>

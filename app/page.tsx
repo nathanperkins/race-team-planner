@@ -15,7 +15,7 @@ export default async function Home() {
               <p className="text-xl">Welcome, {session.user?.name}!</p>
               <p className="text-sm text-gray-500">{session.user?.email}</p>
               {session.user?.image && (
-                <img src={session.user.image} alt="Avatar" className="w-16 h-16 rounded-full" />
+                <Image src={session.user.image} alt="Avatar" width={64} height={64} className="rounded-full" />
               )}
                <form
                 action={async () => {
