@@ -48,6 +48,8 @@ export default async function EventPage({ params }: Props) {
   // Check if current user is already registered
   const userRegistration = event.registrations.find((r) => r.userId === session.user?.id)
 
+  const isCompleted = new Date() > event.endTime
+
   return (
     <div className={styles.container}>
 
@@ -109,7 +111,14 @@ export default async function EventPage({ params }: Props) {
            {/* Registration Form will go here */}
            <div className={styles.sidebar}>
               <h3 className={styles.sectionTitle}>Registration</h3>
-               {userRegistration ? (
+               {isCompleted ? (
+                   <div className={styles.completedBox}>
+                       <p className={styles.completedTitle}>🏁 Event Completed</p>
+                       <p className={styles.completedDetail}>
+                           This event ended on {new Date(event.endTime).toLocaleDateString()}. Registration is closed.
+                       </p>
+                   </div>
+               ) : userRegistration ? (
                    <div className={styles.registeredBox}>
                        <p className={styles.registeredTitle}>✅ You are registered!</p>
                        <p className={styles.registeredDetail}>Car Class: {userRegistration.carClass}</p>

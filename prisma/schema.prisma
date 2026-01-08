@@ -57,6 +57,7 @@ model Event {
   externalId  String?  @unique
   name        String
   startTime   DateTime
+  endTime     DateTime
   track       String
   description String?
 

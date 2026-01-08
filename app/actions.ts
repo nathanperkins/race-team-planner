@@ -23,6 +23,20 @@ export async function registerForEvent(prevState: State, formData: FormData) {
     return { message: "Unauthorized" }
   }
 
+  // Check event exists and is not completed
+  const requestedEventId = formData.get("eventId") as string
+  if (!requestedEventId) return { message: "Event ID required" }
+
+  const event = await prisma.event.findUnique({
+    where: { id: requestedEventId },
+    select: { endTime: true }
+  })
+
+  if (!event) return { message: "Event not found" }
+  if (new Date() > event.endTime) {
+      return { message: "Usage of time machine detected! This event has already finished." }
+  }
+
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: { expectationsVersion: true }

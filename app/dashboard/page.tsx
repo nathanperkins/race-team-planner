@@ -122,49 +122,56 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       <EventFilters carClasses={carClasses} racers={racers} currentFilters={params} />
 
       <div className={styles.grid}>
-        {events.map((event) => (
-          <div key={event.id} className={styles.card}>
-            <div className={styles.badgeContainer}>
-              {event.externalId && (
-                <div
-                  className={styles.sourceBadge}
-                  data-tooltip="Synced from iRacing"
-                >
-                  <Cloud size={14} />
-                </div>
+        {events.map((event) => {
+          const isCompleted = new Date() > event.endTime
+
+          return (
+            <div key={event.id} className={`${styles.card} ${isCompleted ? styles.completedCard : ''}`}>
+              <div className={styles.badgeContainer}>
+                {event.externalId && (
+                  <div
+                    className={styles.sourceBadge}
+                    data-tooltip="Synced from iRacing"
+                  >
+                    <Cloud size={14} />
+                  </div>
+                )}
+
+                {event.registrations.length > 0 && (
+                  <div
+                    className={`${styles.signupBadge} ${styles.hasSignups}`}
+                    data-tooltip={`Racers:\n${event.registrations.map(r => r.user.name).join("\n")}`}
+                  >
+                    <Users size={14} />
+                    <span>{event.registrations.length}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className={styles.cardHeader}>
+                 <h2 className={styles.cardTitle}>
+                    {isCompleted && <span className={styles.completedIcon} title="Event Completed">🏁 </span>}
+                    {event.name}
+                 </h2>
+                 <span className={styles.dateBadge}>
+                    {new Date(event.startTime).toLocaleDateString()}
+                 </span>
+              </div>
+
+              <p className={styles.trackName}>{event.track}</p>
+              {event.description && (
+                  <p className={styles.description}>{event.description}</p>
               )}
 
-              {event.registrations.length > 0 && (
-                <div
-                  className={`${styles.signupBadge} ${styles.hasSignups}`}
-                  data-tooltip={`Racers:\n${event.registrations.map(r => r.user.name).join("\n")}`}
-                >
-                  <Users size={14} />
-                  <span>{event.registrations.length}</span>
-                </div>
-              )}
+              <Link
+                  href={`/events/${event.id}`}
+                  className={`${styles.viewButton} ${isCompleted ? styles.completedButton : ''}`}
+              >
+                  {isCompleted ? "View Past Event" : "View Details"}
+              </Link>
             </div>
-
-            <div className={styles.cardHeader}>
-               <h2 className={styles.cardTitle}>{event.name}</h2>
-               <span className={styles.dateBadge}>
-                  {new Date(event.startTime).toLocaleDateString()}
-               </span>
-            </div>
-
-            <p className={styles.trackName}>{event.track}</p>
-            {event.description && (
-                <p className={styles.description}>{event.description}</p>
-            )}
-
-            <Link
-                href={`/events/${event.id}`}
-                className={styles.viewButton}
-            >
-                View Details
-            </Link>
-          </div>
-        ))}
+          )
+        })}
 
         {events.length === 0 && (
             <p className={styles.emptyState}>No upcoming events found matching your filters.</p>

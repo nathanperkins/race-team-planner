@@ -410,6 +410,38 @@
     color: #9ca3af;
 }
 
+.completedCard {
+    opacity: 0.75;
+    border-color: #374151;
+    /* gray-700 */
+    background-color: #111827;
+    /* gray-900 (darker) */
+}
+
+.completedCard:hover {
+    opacity: 1;
+    border-color: #4b5563;
+    /* gray-600 */
+}
+
+.completedIcon {
+    font-size: 0.9em;
+    margin-right: 0.25rem;
+}
+
+.completedButton {
+    background-color: #374151;
+    /* gray-700 */
+    color: #9ca3af;
+    /* gray-400 */
+}
+
+.completedButton:hover {
+    background-color: #4b5563;
+    /* gray-600 */
+    color: white;
+}
+
 .emptyState {
     grid-column: 1 / -1;
     /* col-span-full */
