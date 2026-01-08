@@ -82,10 +82,19 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     })
   }
 
-  if (params.from || params.to) {
-    where.startTime = {}
-    if (params.from) where.startTime.gte = new Date(params.from)
-    if (params.to) where.startTime.lte = new Date(params.to)
+  // Time filtering
+  if (!where.startTime) where.startTime = {}
+
+  if (params.from) {
+    where.startTime.gte = new Date(params.from)
+  } else {
+    const today = new Date()
+    today.setHours(0,0,0,0)
+    where.startTime.gte = today
+  }
+
+  if (params.to) {
+    where.startTime.lte = new Date(params.to)
   }
 
   const events = await prisma.event.findMany({
@@ -113,6 +122,16 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     })(),
   })
 
+  // Prepare params for UI to reflect default filtering
+  const displayParams = { ...params }
+  if (!params.from) {
+      const d = new Date()
+      const year = d.getFullYear()
+      const month = String(d.getMonth() + 1).padStart(2, '0')
+      const day = String(d.getDate()).padStart(2, '0')
+      displayParams.from = `${year}-${month}-${day}`
+  }
+
   return (
     <div className={styles.container}>
       <header className={styles.header}>
@@ -120,7 +139,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
          <SyncButton />
       </header>
 
-      <EventFilters carClasses={carClasses} racers={racers} currentFilters={params} />
+      <EventFilters carClasses={carClasses} racers={racers} currentFilters={displayParams} />
 
       <div className={styles.grid}>
         {events.map((event) => {
