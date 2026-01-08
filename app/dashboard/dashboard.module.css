@@ -154,6 +154,52 @@
     pointer-events: none;
 }
 
+.signupBadge {
+    position: absolute;
+    top: -0.5rem;
+    left: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    background-color: #374151;
+    color: #9ca3af;
+    border: 1px solid #4b5563;
+    border-radius: 9999px;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    z-index: 20;
+}
+
+.slashed {
+    color: #6b7280;
+    /* Slightly dimmer for empty state */
+}
+
+.slashed::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 60%;
+    height: 1.5px;
+    background-color: currentColor;
+    transform: translate(-50%, -50%) rotate(45deg);
+    pointer-events: none;
+}
+
+.hasSignups {
+    background-color: #064e3b;
+    /* emerald-900 */
+    color: #d1fae5;
+    /* emerald-100 */
+    border-color: #059669;
+    /* emerald-600 */
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+    /* green glow */
+}
+
 .cardTitle {
     font-size: 1.25rem;
     /* text-xl */

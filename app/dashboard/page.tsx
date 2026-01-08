@@ -5,7 +5,7 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import SyncButton from "../components/SyncButton"
 import EventFilters from "../components/EventFilters"
-import { Cloud, CloudOff } from "lucide-react"
+import { Cloud, CloudOff, Users, User } from "lucide-react"
 
 import styles from "./dashboard.module.css"
 
@@ -57,6 +57,11 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
   const events = await prisma.event.findMany({
     where,
+    include: {
+      _count: {
+        select: { registrations: true }
+      }
+    },
     orderBy: {
       startTime: 'asc',
     },
@@ -80,6 +85,15 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             >
               {event.externalId ? <Cloud size={14} /> : <CloudOff size={14} />}
             </div>
+
+            <div
+              className={`${styles.signupBadge} ${event._count.registrations === 0 ? styles.slashed : styles.hasSignups}`}
+              title={`${event._count.registrations} signups`}
+            >
+              {event._count.registrations === 0 ? <User size={14} /> : <Users size={14} />}
+              {event._count.registrations > 0 && <span>{event._count.registrations}</span>}
+            </div>
+
             <div className={styles.cardHeader}>
                <h2 className={styles.cardTitle}>{event.name}</h2>
                <span className={styles.dateBadge}>
