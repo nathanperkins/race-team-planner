@@ -90,11 +90,22 @@ A user's expression of interest for an event.
 * [x] Create database migration scripts.
 * [x] Create seed script.
 
-### Phase 3: Core Features
+### Phase 3a: Core Features
 * [x] **Event List**: View upcoming events (Home Page).
 * [x] **Event Detail**: View details and existing signups for an event.
 * [x] **Signup Flow**: Authenticated users can register for an event (pick car/time).
-* [ ] **My Signups**: View a list of races I have signed up for.
+* [x] **My Signups**: View a list of races I have signed up for.
+* [ ] **Navigation**: Add a navigation sidebar to the left of the page.
+* [ ] **Improve Styles**: Improve the styling of the app and separate styles from logic.
+* [ ] **Sync Events from iRacing**: Use the iRacing API to sync events to the database.
+* [ ] **Check Membership in SRG Discord**: Use the Discord API to check if a user is a member of the SRG Discord.
+* [ ] Encrypt sensitive fields in the database using the `prisma-field-encryption` extension
+
+### Phase 3b: Improve local dev
+* [ ] Add a mock iRacing API server.
+* [ ] Add a mock Discord Auth server.
+* [ ] Add a mock Discord API server.
+* [ ] Add tests.
 
 ### Phase 4: Production Readiness
 * [ ] Set up GitHub Actions for CI (Linting, Build Check).
