@@ -50,7 +50,7 @@ export default async function UserSignupsPage({ params }: Props) {
 
       <div className={styles.tableCard}>
         {registrations.length === 0 ? (
-            <p className={styles.emptyText}>No signups found for this user.</p>
+            <p className={styles.emptyText}>No signups found for {user.name}.</p>
         ) : (
             <div className={styles.tableWrapper}>
                 <table className={styles.table}>
