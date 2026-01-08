@@ -16,6 +16,7 @@ interface PageProps {
     racer?: string;
     from?: string;
     to?: string;
+    sort?: string;
   }>;
 }
 
@@ -97,9 +98,18 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         }
       }
     },
-    orderBy: {
-      startTime: 'asc',
-    },
+    orderBy: (() => {
+      switch (params.sort) {
+        case 'dateDesc':
+          return { startTime: 'desc' };
+        case 'name':
+          return { name: 'asc' };
+        case 'signups':
+          return { registrations: { _count: 'desc' } };
+        default: // 'date' or undefined
+          return { startTime: 'asc' };
+      }
+    })(),
   })
 
   return (

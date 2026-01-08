@@ -14,6 +14,7 @@ interface EventFiltersProps {
     racer?: string;
     from?: string;
     to?: string;
+    sort?: string;
   };
 }
 
@@ -184,7 +185,28 @@ export default function EventFilters({ carClasses, racers, currentFilters }: Eve
         />
       </div>
 
-      {(currentFilters.hasSignups || currentFilters.carClass || currentFilters.racer || currentFilters.from || currentFilters.to) && (
+      <div className={styles.filterGroup}>
+        <label
+          htmlFor="sort"
+          className={styles.filterLabel}
+          data-tooltip="Sort events by date, name, or popularity."
+        >
+          Sort By
+        </label>
+        <select
+          id="sort"
+          className={styles.filterSelect}
+          value={currentFilters.sort || "date"}
+          onChange={(e) => handleFilterChange("sort", e.target.value)}
+        >
+          <option value="date">Date (Earliest)</option>
+          <option value="dateDesc">Date (Latest)</option>
+          <option value="name">Name (A-Z)</option>
+          <option value="signups">Most Signups</option>
+        </select>
+      </div>
+
+      {(currentFilters.hasSignups || currentFilters.carClass || currentFilters.racer || currentFilters.from || currentFilters.to || currentFilters.sort) && (
         <button
           className={styles.clearButton}
           onClick={() => router.push(pathname)}
