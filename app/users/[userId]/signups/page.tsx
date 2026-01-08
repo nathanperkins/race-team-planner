@@ -5,6 +5,8 @@ import prisma from "@/lib/prisma"
 import { notFound, redirect } from "next/navigation"
 import Link from "next/link"
 
+import styles from "./signups.module.css"
+
 interface Props {
   params: Promise<{ userId: string }>
 }
@@ -38,51 +40,53 @@ export default async function UserSignupsPage({ params }: Props) {
   })
 
   return (
-    <div className="min-h-screen p-8 pb-20 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <div className="mb-8">
-        <Link href="/dashboard" className="text-sm text-gray-400 hover:text-white">
+    <div className={styles.container}>
+      <div className={styles.backLinkContainer}>
+        <Link href="/dashboard" className={styles.backLink}>
           &larr; Back to Dashboard
         </Link>
       </div>
 
-      <header className="mb-12">
-         <h1 className="text-3xl font-bold">{user.name === session.user?.name ? "My Signups" : `${user.name}'s Signups`}</h1>
+      <header className={styles.header}>
+         <h1 className={styles.title}>{user.name === session.user?.name ? "My Signups" : `${user.name}'s Signups`}</h1>
       </header>
 
-      <div className="rounded-lg border border-gray-700 bg-gray-800 p-6 shadow-sm">
+      <div className={styles.tableCard}>
         {registrations.length === 0 ? (
-            <p className="text-gray-500">No signups found for this user.</p>
+            <p className={styles.emptyText}>No signups found for this user.</p>
         ) : (
-            <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm text-gray-300">
-                    <thead className="border-b border-gray-700 bg-gray-900/50 text-xs uppercase text-gray-400">
+            <div className={styles.tableWrapper}>
+                <table className={styles.table}>
+                    <thead className={styles.thead}>
                         <tr>
-                            <th className="px-6 py-3">Event</th>
-                            <th className="px-6 py-3">Date</th>
-                            <th className="px-6 py-3">Track</th>
-                            <th className="px-6 py-3">Car Class</th>
-                            <th className="px-6 py-3">Timeslot</th>
+                            <th className={styles.th}>Event</th>
+                            <th className={styles.th}>Date</th>
+                            <th className={styles.th}>Track</th>
+                            <th className={styles.th}>Car Class</th>
+                            <th className={styles.th}>Timeslot</th>
                         </tr>
                     </thead>
                     <tbody>
                         {registrations.map((reg) => (
-                            <tr key={reg.id} className="border-b border-gray-700 last:border-0 hover:bg-gray-750">
-                                <td className="px-6 py-4 font-medium text-white">
-                                    <Link href={`/events/${reg.eventId}`} className="hover:underline">
+                            <tr key={reg.id} className={styles.tr}>
+                                <td className={styles.td}>
+                                    <Link href={`/events/${reg.eventId}`} className={styles.eventName}>
                                         {reg.event.name}
                                     </Link>
                                 </td>
-                                <td className="px-6 py-4">
+                                <td className={styles.td}>
                                     {new Date(reg.event.startTime).toLocaleString()}
                                 </td>
-                                <td className="px-6 py-4">{reg.event.track}</td>
-                                <td className="px-6 py-4">
-                                    <span className="inline-flex items-center rounded-md bg-green-900/30 px-2 py-1 text-xs font-medium text-green-400 ring-1 ring-inset ring-green-900/50">
+                                <td className={styles.td}>{reg.event.track}</td>
+                                <td className={styles.td}>
+                                    <span className={styles.classBadge}>
                                         {reg.carClass}
                                     </span>
                                 </td>
-                                <td className="px-6 py-4 text-gray-400">
-                                    {reg.preferredTimeslot || "—"}
+                                <td className={styles.td}>
+                                    <span className={styles.timeslot}>
+                                        {reg.preferredTimeslot || "—"}
+                                    </span>
                                 </td>
                             </tr>
                         ))}

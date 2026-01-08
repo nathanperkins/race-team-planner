@@ -1,0 +1,199 @@
+.container {
+    min-height: 100vh;
+    padding: 2rem;
+    padding-bottom: 5rem;
+    font-family: var(--font-geist-sans), sans-serif;
+    color: white;
+    background-color: #111827;
+}
+
+@media (min-width: 640px) {
+    .container {
+        padding: 5rem;
+    }
+}
+
+.backLink {
+    font-size: 0.875rem;
+    /* text-sm */
+    color: #9ca3af;
+    /* text-gray-400 */
+    text-decoration: none;
+    margin-bottom: 2rem;
+    display: inline-block;
+}
+
+.backLink:hover {
+    color: white;
+}
+
+.layout {
+    display: grid;
+    gap: 3rem;
+    /* gap-12 */
+}
+
+@media (min-width: 1024px) {
+    .layout {
+        grid-template-columns: 2fr 1fr;
+    }
+}
+
+.title {
+    margin-bottom: 0.5rem;
+    /* mb-2 */
+    font-size: 2.25rem;
+    /* text-4xl */
+    font-weight: 700;
+    /* font-bold */
+}
+
+.meta {
+    margin-bottom: 2rem;
+    /* mb-8 */
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    /* gap-4 */
+    font-size: 0.875rem;
+    /* text-sm */
+    color: #9ca3af;
+    /* text-gray-400 */
+}
+
+.metaItem {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    /* gap-1 */
+}
+
+.prose {
+    margin-bottom: 3rem;
+    /* mb-12 */
+    max-width: none;
+    color: #d1d5db;
+    /* text-gray-300 */
+}
+
+.prose h3 {
+    font-size: 1.25rem;
+    /* text-xl */
+    font-weight: 600;
+    /* font-semibold */
+    color: white;
+    margin-bottom: 0.5rem;
+}
+
+.driversSection {
+    border-radius: 0.5rem;
+    /* rounded-lg */
+    background-color: #111827;
+    /* bg-gray-900 (explicit) */
+    padding: 1.5rem;
+    /* p-6 */
+}
+
+.sectionTitle {
+    margin-bottom: 1.5rem;
+    /* mb-6 */
+    font-size: 1.25rem;
+    /* text-xl */
+    font-weight: 600;
+    /* font-semibold */
+    color: white;
+}
+
+.driverList {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    /* space-y-4 */
+}
+
+.driverRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #1f2937;
+    /* border-gray-800 */
+    padding-bottom: 1rem;
+    /* pb-4 */
+}
+
+.driverRow:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.driverInfo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    /* gap-3 */
+}
+
+.avatar {
+    border-radius: 9999px;
+    /* rounded-full */
+}
+
+.driverName {
+    font-weight: 500;
+    /* font-medium */
+    color: white;
+}
+
+.driverClass {
+    font-size: 0.75rem;
+    /* text-xs */
+    color: #6b7280;
+    /* text-gray-500 */
+}
+
+.driverTimeslot {
+    text-align: right;
+    font-size: 0.875rem;
+    /* text-sm */
+    color: #9ca3af;
+    /* text-gray-400 */
+}
+
+.sidebar {
+    /* sticky top-8 */
+    position: sticky;
+    top: 2rem;
+    border-radius: 0.5rem;
+    /* rounded-lg */
+    border: 1px solid #374151;
+    /* border-gray-700 */
+    background-color: #1f2937;
+    /* bg-gray-800 */
+    padding: 1.5rem;
+    /* p-6 */
+    height: fit-content;
+}
+
+.registeredBox {
+    border-radius: 0.25rem;
+    /* rounded */
+    background-color: rgba(20, 83, 45, 0.5);
+    /* bg-green-900/50 */
+    padding: 1rem;
+    /* p-4 */
+    border: 1px solid #166534;
+    /* border-green-800 */
+    color: #bbf7d0;
+    /* text-green-200 */
+}
+
+.registeredTitle {
+    font-weight: 500;
+    /* font-medium */
+}
+
+.registeredDetail {
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    /* text-sm */
+}

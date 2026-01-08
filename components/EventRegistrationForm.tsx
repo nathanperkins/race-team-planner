@@ -5,6 +5,8 @@ import { useActionState } from "react"
 import { registerForEvent } from "@/app/actions"
 
 
+import styles from "./EventRegistrationForm.module.css"
+
 type State = {
   message: string
   errors?: {
@@ -21,11 +23,11 @@ export default function EventRegistrationForm({ eventId }: { eventId: string }) 
   const [state, formAction, isPending] = useActionState(registerForEvent, initialState)
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form action={formAction} className={styles.form}>
       <input type="hidden" name="eventId" value={eventId} />
 
-      <div>
-        <label htmlFor="carClass" className="mb-1 block text-sm font-medium text-gray-300">
+      <div className={styles.field}>
+        <label htmlFor="carClass" className={styles.label}>
           Car Class
         </label>
         <select
@@ -33,7 +35,7 @@ export default function EventRegistrationForm({ eventId }: { eventId: string }) 
           name="carClass"
           required
           defaultValue=""
-          className="w-full rounded border border-gray-600 bg-gray-700 p-2 text-white focus:border-blue-500 focus:outline-none"
+          className={styles.select}
         >
             <option value="" disabled>Select a class</option>
             <option value="GTP">GTP</option>
@@ -41,12 +43,12 @@ export default function EventRegistrationForm({ eventId }: { eventId: string }) 
             <option value="GTD">GTD / GT3</option>
         </select>
         {state?.errors?.carClass && (
-          <p className="mt-1 text-xs text-red-500">{state.errors.carClass[0]}</p>
+          <p className={styles.error}>{state.errors.carClass[0]}</p>
         )}
       </div>
 
-      <div>
-        <label htmlFor="preferredTimeslot" className="mb-1 block text-sm font-medium text-gray-300">
+      <div className={styles.field}>
+        <label htmlFor="preferredTimeslot" className={styles.label}>
           Preferred Timeslot (Optional)
         </label>
         <input
@@ -54,20 +56,20 @@ export default function EventRegistrationForm({ eventId }: { eventId: string }) 
           id="preferredTimeslot"
           name="preferredTimeslot"
           placeholder="e.g. Fri Night, Sat Morning"
-          className="w-full rounded border border-gray-600 bg-gray-700 p-2 text-white focus:border-blue-500 focus:outline-none"
+          className={styles.input}
         />
       </div>
 
       <button
         type="submit"
         disabled={isPending}
-        className="w-full rounded bg-blue-600 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+        className={styles.button}
       >
         {isPending ? "Signing up..." : "Sign Up"}
       </button>
 
       {state?.message && state.message !== "Success" && (
-         <p className="mt-2 text-center text-sm text-red-400">{state.message}</p>
+         <p className={styles.message}>{state.message}</p>
       )}
     </form>
   )

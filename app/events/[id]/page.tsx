@@ -6,6 +6,8 @@ import Link from "next/link"
 import Image from "next/image"
 import EventRegistrationForm from "@/components/EventRegistrationForm"
 
+import styles from "./event.module.css"
+
 interface Props {
   params: Promise<{ id: string }>
 }
@@ -38,49 +40,49 @@ export default async function EventPage({ params }: Props) {
   const userRegistration = event.registrations.find((r) => r.userId === session.user?.id)
 
   return (
-    <div className="min-h-screen p-8 pb-20 sm:p-20 font-[family-name:var(--font-geist-sans)]">
+    <div className={styles.container}>
       <div className="mb-8">
-        <Link href="/dashboard" className="text-sm text-gray-400 hover:text-white">
+        <Link href="/dashboard" className={styles.backLink}>
           &larr; Back to Dashboard
         </Link>
       </div>
 
-      <div className="grid gap-12 lg:grid-cols-[2fr_1fr]">
+      <div className={styles.layout}>
         <div>
-          <h1 className="mb-2 text-4xl font-bold">{event.name}</h1>
-          <div className="mb-8 flex flex-wrap gap-4 text-sm text-gray-400">
-             <span className="flex items-center gap-1">
+          <h1 className={styles.title}>{event.name}</h1>
+          <div className={styles.meta}>
+             <span className={styles.metaItem}>
                 📍 {event.track}
              </span>
-             <span className="flex items-center gap-1">
+             <span className={styles.metaItem}>
                 📅 {new Date(event.startTime).toLocaleString()}
              </span>
           </div>
 
-          <div className="prose prose-invert mb-12 max-w-none">
+          <div className={styles.prose}>
             <h3 className="text-xl font-semibold">Event Description</h3>
             <p className="text-gray-300">{event.description || "No description provided."}</p>
           </div>
 
-          <div className="rounded-lg bg-gray-900 p-6">
-            <h3 className="mb-6 text-xl font-semibold">Registered Drivers ({event.registrations.length})</h3>
+          <div className={styles.driversSection}>
+            <h3 className={styles.sectionTitle}>Registered Drivers ({event.registrations.length})</h3>
 
             {event.registrations.length === 0 ? (
                 <p className="text-gray-500">No drivers registered yet. Be the first!</p>
             ) : (
-                <div className="space-y-4">
+                <div className={styles.driverList}>
                     {event.registrations.map((reg) => (
-                        <div key={reg.id} className="flex items-center justify-between border-b border-gray-800 pb-4 last:border-0 last:pb-0">
-                            <div className="flex items-center gap-3">
+                        <div key={reg.id} className={styles.driverRow}>
+                            <div className={styles.driverInfo}>
                                 {reg.user.image && (
-                                    <Image src={reg.user.image} alt={reg.user.name || "User"} width={40} height={40} className="rounded-full" />
+                                    <Image src={reg.user.image} alt={reg.user.name || "User"} width={40} height={40} className={styles.avatar} />
                                 )}
                                 <div>
-                                    <p className="font-medium text-white">{reg.user.name}</p>
-                                    <p className="text-xs text-gray-500">Class: {reg.carClass}</p>
+                                    <p className={styles.driverName}>{reg.user.name}</p>
+                                    <p className={styles.driverClass}>Class: {reg.carClass}</p>
                                 </div>
                             </div>
-                            <div className="text-right text-sm text-gray-400">
+                            <div className={styles.driverTimeslot}>
                                 {reg.preferredTimeslot && <p>{reg.preferredTimeslot}</p>}
                             </div>
                         </div>
@@ -92,13 +94,13 @@ export default async function EventPage({ params }: Props) {
 
         <div>
            {/* Registration Form will go here */}
-           <div className="sticky top-8 rounded-lg border border-gray-700 bg-gray-800 p-6">
-              <h3 className="mb-4 text-xl font-semibold">Registration</h3>
+           <div className={styles.sidebar}>
+              <h3 className={styles.sectionTitle}>Registration</h3>
                {userRegistration ? (
-                   <div className="rounded bg-green-900/50 p-4 border border-green-800 text-green-200">
-                       <p className="font-medium">✅ You are registered!</p>
-                       <p className="mt-1 text-sm">Car Class: {userRegistration.carClass}</p>
-                       <p className="text-sm">Timeslot: {userRegistration.preferredTimeslot || "None"}</p>
+                   <div className={styles.registeredBox}>
+                       <p className={styles.registeredTitle}>✅ You are registered!</p>
+                       <p className={styles.registeredDetail}>Car Class: {userRegistration.carClass}</p>
+                       <p className={styles.registeredDetail}>Timeslot: {userRegistration.preferredTimeslot || "None"}</p>
                    </div>
                ) : (
                    <EventRegistrationForm eventId={event.id} />
