@@ -5,7 +5,7 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import SyncButton from "../components/SyncButton"
 import EventFilters from "../components/EventFilters"
-import { Cloud, User } from "lucide-react"
+import { Cloud, CloudOff } from "lucide-react"
 
 import styles from "./dashboard.module.css"
 
@@ -78,7 +78,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
               className={styles.sourceBadge}
               data-tooltip={event.externalId ? "Synced from iRacing" : "Manually entered"}
             >
-              {event.externalId ? <Cloud size={14} /> : <User size={14} />}
+              {event.externalId ? <Cloud size={14} /> : <CloudOff size={14} />}
             </div>
             <div className={styles.cardHeader}>
                <h2 className={styles.cardTitle}>{event.name}</h2>

@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma"
 import { notFound, redirect } from "next/navigation"
 import Image from "next/image"
 import EventRegistrationForm from "@/components/EventRegistrationForm"
-import { Cloud, User } from "lucide-react"
+import { Cloud, CloudOff } from "lucide-react"
 import { deleteRegistration } from "@/app/actions"
 
 import styles from "./event.module.css"
@@ -50,7 +50,7 @@ export default async function EventPage({ params }: Props) {
             className={styles.sourceBadge}
             data-tooltip={event.externalId ? "Synced from iRacing" : "Manually entered"}
           >
-            {event.externalId ? <Cloud size={16} /> : <User size={16} />}
+            {event.externalId ? <Cloud size={16} /> : <CloudOff size={16} />}
           </div>
           <h1 className={styles.title}>{event.name}</h1>
           <div className={styles.meta}>
