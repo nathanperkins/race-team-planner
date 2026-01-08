@@ -58,7 +58,13 @@ export default function EventFilters({ carClasses, racers, currentFilters }: Eve
   return (
     <div className={styles.filterBar}>
       <div className={styles.filterGroup}>
-        <label htmlFor="hasSignups" className={styles.filterLabel}>Signups</label>
+        <label
+          htmlFor="hasSignups"
+          className={styles.filterLabel}
+          data-tooltip="Show only events with or without active signups."
+        >
+          Signups
+        </label>
         <select
           id="hasSignups"
           className={styles.filterSelect}
@@ -72,7 +78,13 @@ export default function EventFilters({ carClasses, racers, currentFilters }: Eve
       </div>
 
       <div className={styles.filterGroup}>
-        <label htmlFor="carClass" className={styles.filterLabel}>Car Class</label>
+        <label
+          htmlFor="carClass"
+          className={styles.filterLabel}
+          data-tooltip="Filter by car class (e.g., GT3, LMP2)."
+        >
+          Car Class
+        </label>
         <select
           id="carClass"
           className={styles.filterSelect}
@@ -89,7 +101,13 @@ export default function EventFilters({ carClasses, racers, currentFilters }: Eve
       </div>
 
       <div className={styles.filterGroup}>
-        <label htmlFor="racer" className={styles.filterLabel}>Racers</label>
+        <label
+          htmlFor="racer"
+          className={styles.filterLabel}
+          data-tooltip="Shows events where ALL selected racers are signed up."
+        >
+          Racers
+        </label>
         <div className={styles.relative} ref={dropdownRef}>
           <button
             id="racer"
@@ -133,7 +151,13 @@ export default function EventFilters({ carClasses, racers, currentFilters }: Eve
       </div>
 
       <div className={styles.filterGroup}>
-        <label htmlFor="from" className={styles.filterLabel}>From</label>
+        <label
+          htmlFor="from"
+          className={styles.filterLabel}
+          data-tooltip="Show events starting on or after this date."
+        >
+          From
+        </label>
         <input
           id="from"
           type="date"
@@ -144,7 +168,13 @@ export default function EventFilters({ carClasses, racers, currentFilters }: Eve
       </div>
 
       <div className={styles.filterGroup}>
-        <label htmlFor="to" className={styles.filterLabel}>To</label>
+        <label
+          htmlFor="to"
+          className={styles.filterLabel}
+          data-tooltip="Show events starting on or before this date."
+        >
+          To
+        </label>
         <input
           id="to"
           type="date"

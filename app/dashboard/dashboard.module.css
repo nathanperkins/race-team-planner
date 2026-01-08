@@ -334,6 +334,50 @@
     text-transform: uppercase;
     color: #9ca3af;
     letter-spacing: 0.05em;
+    position: relative;
+    cursor: help;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.filterLabel::after {
+    content: "?";
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    background-color: #374151;
+    color: #9ca3af;
+    font-size: 0.6rem;
+    font-weight: normal;
+}
+
+.filterLabel:hover::before {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: 0.5rem;
+    background-color: #111827;
+    color: white;
+    padding: 0.4rem 0.6rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    white-space: normal;
+    text-align: center;
+    width: max-content;
+    max-width: 200px;
+    border: 1px solid #374151;
+    pointer-events: none;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+    text-transform: none;
+    font-weight: normal;
+    letter-spacing: normal;
 }
 
 .filterSelect,
