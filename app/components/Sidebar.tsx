@@ -38,6 +38,13 @@ export default function Sidebar({ session }: SidebarProps) {
         >
           My Signups
         </Link>
+
+        <Link
+          href="/roster"
+          className={`${styles.link} ${isActive("/roster") ? styles.activeLink : ""}`}
+        >
+          Roster
+        </Link>
       </nav>
 
       <div className={styles.footer}>

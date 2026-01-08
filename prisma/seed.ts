@@ -44,26 +44,6 @@ async function main() {
     }
   })
 
-  const aliceRegistration = await prisma.registration.upsert({
-    where: {
-      userId_eventId: {
-        userId: alice.id,
-        eventId: sebring.id,
-      }
-    },
-    update: {
-      carClass: 'GTP',
-      preferredTimeslot: 'Early Morning',
-      notes: 'Looking to drive the Cadillac.'
-    },
-    create: {
-      userId: alice.id,
-      eventId: sebring.id,
-      carClass: 'GTP',
-      preferredTimeslot: 'Early Morning',
-      notes: 'Looking to drive the Cadillac.'
-    }
-  })
 
   const bob = await prisma.user.upsert({
     where: { id: 'user_bob' },
@@ -137,7 +117,28 @@ async function main() {
     }
   })
 
-  console.log(sebring, daytona, alice, aliceRegistration, bob, bobRegistration, charlie, charlieRegistration)
+  const charlieRegistration2 = await prisma.registration.upsert({
+    where: {
+      userId_eventId: {
+        userId: charlie.id,
+        eventId: sebring.id,
+      }
+    },
+    update: {
+      carClass: 'GTP',
+      preferredTimeslot: 'Evening',
+      notes: 'Hunting for the win.'
+    },
+    create: {
+      userId: charlie.id,
+      eventId: sebring.id,
+      carClass: 'GTP',
+      preferredTimeslot: 'Evening',
+      notes: 'Hunting for the win.'
+    }
+  })
+
+  console.log(sebring, daytona, alice, bob, bobRegistration, charlie, charlieRegistration, charlieRegistration2)
 }
 
 main()
