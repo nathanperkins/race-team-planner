@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import SyncButton from "../components/SyncButton"
+import { Cloud, User } from "lucide-react"
 
 import styles from "./dashboard.module.css"
 
@@ -30,6 +31,9 @@ export default async function DashboardPage() {
       <div className={styles.grid}>
         {events.map((event) => (
           <div key={event.id} className={styles.card}>
+            <div className={styles.sourceBadge}>
+              {event.externalId ? <Cloud size={14} /> : <User size={14} />}
+            </div>
             <div className={styles.cardHeader}>
                <h2 className={styles.cardTitle}>{event.name}</h2>
                <span className={styles.dateBadge}>

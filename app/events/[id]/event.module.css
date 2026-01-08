@@ -39,9 +39,23 @@
     }
 }
 
+.sourceBadge {
+    position: absolute;
+    top: -1.5rem;
+    left: -2.5rem;
+    background-color: #1f2937;
+    border-radius: 9999px;
+    padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9ca3af;
+    border: 1px solid #374151;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
 .title {
     margin-bottom: 0.5rem;
-    /* mb-2 */
     font-size: 2.25rem;
     /* text-4xl */
     font-weight: 700;
