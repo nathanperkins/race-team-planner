@@ -59,17 +59,19 @@ Represents a community member who logs in via Discord.
 Represents a scheduled race weekend or special event.
 * `id`: UUID
 * `name`: String (e.g., "Sebring 12hr")
+### Race
+A scheduled session within an event.
+* `id`: UUID
+* `eventId`: FK -> Event
 * `startTime`: DateTime
-* `track`: String
-* `description`: String
+* `endTime`: DateTime
 
 ### Registration
-A user's expression of interest for an event.
+A user's expression of interest for a specific race.
 * `id`: UUID
 * `userId`: FK -> User
-* `eventId`: FK -> Event
+* `raceId`: FK -> Race
 * `carClass`: String (e.g., "GT3", "GTP")
-* `preferredTimeslot`: String (or Enum)
 * `notes`: String
 
 ## Implementation Plan
@@ -115,6 +117,10 @@ A user's expression of interest for an event.
 * [ ] Add sync support for car classes.
 * [ ] Remove revoke agreement button.
 * [ ] Display more info about each event.
+* [ ] **Refactor Sync to use Upsert**: Individual race upserts to prevent wiping registrations.
+* [ ] **Add "Live" Badge**: Visual indicator in `RaceDetails` for ongoing races.
+* [ ] **Registration Overlap Warning**: Prevent or warn about double-booking same-time races.
+* [ ] **Race Driver Limits**: Optional capacity limits for sessions.
 
 ### Phase 3b: Improve local dev
 * [x] Add a mock auth provider.
@@ -129,3 +135,4 @@ A user's expression of interest for an event.
 ### Phase 5: Post Launch
 * [ ] **Implement roles**: Admins can modify all signups, users can only modify their own signups.
 * [ ] **Check Membership in SRG Discord**: Use the Discord API to check if a user is a member of the SRG Discord.
+* [ ] Look into improving event sort performance for race count.
