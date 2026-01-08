@@ -174,25 +174,3 @@
     align-items: center;
     gap: 0.5rem;
 }
-
-.unagreeButton {
-    background: none;
-    border: none;
-    color: #6ee7b7;
-    /* emerald-300 */
-    font-size: 0.875rem;
-    cursor: pointer;
-    text-decoration: underline;
-    opacity: 0.8;
-    padding: 0.25rem 0.5rem;
-}
-
-.unagreeButton:hover {
-    color: white;
-    opacity: 1;
-}
-
-.unagreeButton:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-}
