@@ -107,7 +107,7 @@ A user's expression of interest for an event.
 * [ ] Encrypt sensitive fields in the database using the `prisma-field-encryption` extension
 
 ### Phase 3b: Improve local dev
-* [*] Add a mock auth provider.
+* [x] Add a mock auth provider.
 * [ ] Add a mock iRacing API server.
 * [ ] Add a mock Discord API server.
 * [ ] Add tests.
