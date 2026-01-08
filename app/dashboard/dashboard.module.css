@@ -228,6 +228,62 @@
     /* hover:bg-gray-200 */
 }
 
+.filterBar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background-color: #1f2937;
+    border: 1px solid #374151;
+    border-radius: 0.5rem;
+    align-items: flex-end;
+}
+
+.filterGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.filterLabel {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #9ca3af;
+    letter-spacing: 0.05em;
+}
+
+.filterSelect,
+.filterInput {
+    background-color: #111827;
+    border: 1px solid #374151;
+    color: white;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+}
+
+.filterSelect:focus,
+.filterInput:focus {
+    outline: none;
+    border-color: #3b82f6;
+}
+
+.clearButton {
+    background: none;
+    border: none;
+    color: #6b7280;
+    font-size: 0.875rem;
+    cursor: pointer;
+    text-decoration: underline;
+    padding: 0.5rem 0;
+}
+
+.clearButton:hover {
+    color: #9ca3af;
+}
+
 .emptyState {
     grid-column: 1 / -1;
     /* col-span-full */
