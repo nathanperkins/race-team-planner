@@ -84,17 +84,27 @@ export async function deleteRegistration(eventId: string) {
 
   try {
     // Determine if the registration exists and if the user owns it
+    // Also fetch event to check if it's completed
     const registration = await prisma.registration.findUnique({
       where: {
         userId_eventId: {
           userId: session.user.id,
           eventId: eventId
         }
+      },
+      include: {
+        event: {
+          select: { endTime: true }
+        }
       }
     })
 
     if (!registration) {
         throw new Error("Registration not found")
+    }
+
+    if (new Date() > registration.event.endTime) {
+        throw new Error("Cannot drop from a completed event")
     }
 
     await prisma.registration.delete({

@@ -90,14 +90,18 @@ export default async function UserSignupsPage({ params }: Props) {
                                 </td>
                                 {userId === session.user?.id && (
                                     <td className={styles.td}>
-                                        <form action={async () => {
-                                            "use server"
-                                            await deleteRegistration(reg.eventId)
-                                        }}>
-                                            <button type="submit" className={styles.deleteButton}>
-                                                Drop
-                                            </button>
-                                        </form>
+                                        {new Date() > reg.event.endTime ? (
+                                            <span className={styles.completedText}>Completed</span>
+                                        ) : (
+                                            <form action={async () => {
+                                                "use server"
+                                                await deleteRegistration(reg.eventId)
+                                            }}>
+                                                <button type="submit" className={styles.deleteButton}>
+                                                    Drop
+                                                </button>
+                                            </form>
+                                        )}
                                     </td>
                                 )}
                             </tr>
