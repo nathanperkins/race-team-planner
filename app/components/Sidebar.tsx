@@ -22,7 +22,7 @@ export default function Sidebar({ session }: SidebarProps) {
 
   return (
     <aside className={styles.sidebar}>
-      <div className={styles.title}>Team Planner</div>
+      <div className={styles.title}>Race Team Planner</div>
 
       <nav className={styles.nav}>
         <Link
