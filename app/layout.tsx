@@ -31,7 +31,7 @@ export default async function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         <div style={{ display: "flex", minHeight: "100vh" }}>
           {session && <Sidebar session={session} />}
-          <main style={{ flex: 1 }}>
+          <main style={{ flex: 1, marginLeft: session ? "250px" : "0" }}>
             {children}
           </main>
         </div>
