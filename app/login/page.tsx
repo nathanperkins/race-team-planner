@@ -9,7 +9,9 @@ export default function LoginPage() {
         <h1 className={styles.title}>Login</h1>
         <DiscordLoginForm />
 
-        {process.env.NODE_ENV === "development" && <MockLoginForm />}
+        {(process.env.NODE_ENV === "development") && (
+          <MockLoginForm />
+        )}
       </div>
     </div>
   )
