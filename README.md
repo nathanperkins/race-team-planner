@@ -30,7 +30,7 @@ Before running the project, ensure you have the following installed:
      ```bash
      npx cloak generate
      ```
-     *Note: Copy the CLOAK_MASTER_KEY from the output.*
+     >*Note: Copy the CLOAK_MASTER_KEY from the output.*
 
 3. **Configure Third-Party Services**
    - **Discord OAuth**:
