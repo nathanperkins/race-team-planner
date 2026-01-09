@@ -1,0 +1,21 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install system dependencies for Prisma
+RUN apk add --no-cache openssl libc6-compat
+
+# Install global prisma CLI
+# Match version with package.json
+RUN npm install -g prisma@6.19.1
+
+# Copy schema and migrations
+COPY prisma ./prisma
+
+# Copy start script for loading secrets
+COPY scripts/start.sh ./start.sh
+RUN chmod +x ./start.sh
+
+# Entrypoint loads secrets then runs CMD
+ENTRYPOINT ["./start.sh"]
+CMD ["prisma", "migrate", "deploy"]

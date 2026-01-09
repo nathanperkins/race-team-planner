@@ -1,0 +1,18 @@
+project_id               = "your-gcp-project-id"
+region                   = "us-central1"
+app_name                 = "iracing-team-planner"
+
+# Supabase
+supabase_access_token    = "sbt_..."
+supabase_organization_id = "org_..."
+supabase_db_password     = "your-strong-password"
+supabase_region          = "us-west-1"
+
+# NextAuth
+nextauth_secret          = ""  # generate with 'openssl rand -base64 32'
+nextauth_url             = ""  # Optional, usually inferred or set to custom domain
+
+# Prisma
+prisma_encryption_key    = ""  # generate with 'npx cloak generate'
+discord_id               = "your-discord-client-id"
+discord_secret           = "your-discord-client-secret"
