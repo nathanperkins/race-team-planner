@@ -1,60 +1,59 @@
+'use client'
 
-"use client";
-
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { useCallback, useState, useRef, useEffect } from "react";
-import styles from "../dashboard/dashboard.module.css";
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
+import { useCallback, useState, useRef, useEffect } from 'react'
+import styles from '../dashboard/dashboard.module.css'
 
 interface EventFiltersProps {
-  carClasses: string[];
-  racers: { id: string; name: string | null }[];
+  carClasses: string[]
+  racers: { id: string; name: string | null }[]
   currentFilters: {
-    signups?: string;
-    carClass?: string;
-    racer?: string;
-    from?: string;
-    to?: string;
-    sort?: string;
-  };
+    signups?: string
+    carClass?: string
+    racer?: string
+    from?: string
+    to?: string
+    sort?: string
+  }
 }
 
 export default function EventFilters({ carClasses, racers, currentFilters }: EventFiltersProps) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
 
-  const [isRacerDropdownOpen, setIsRacerDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [isRacerDropdownOpen, setIsRacerDropdownOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsRacerDropdownOpen(false);
+        setIsRacerDropdownOpen(false)
       }
     }
-    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside)
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [dropdownRef]);
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [dropdownRef])
 
   const createQueryString = useCallback(
     (name: string, value: string) => {
-      const params = new URLSearchParams(searchParams.toString());
+      const params = new URLSearchParams(searchParams.toString())
       if (value) {
-        params.set(name, value);
+        params.set(name, value)
       } else {
-        params.delete(name);
+        params.delete(name)
       }
-      return params.toString();
+      return params.toString()
     },
     [searchParams]
-  );
+  )
 
   const handleFilterChange = (name: string, value: string) => {
-    router.push(pathname + "?" + createQueryString(name, value));
-  };
+    router.push(pathname + '?' + createQueryString(name, value))
+  }
 
   return (
     <div className={styles.filterBar}>
@@ -69,8 +68,8 @@ export default function EventFilters({ carClasses, racers, currentFilters }: Eve
         <select
           id="signups"
           className={styles.filterSelect}
-          value={currentFilters.signups || ""}
-          onChange={(e) => handleFilterChange("signups", e.target.value)}
+          value={currentFilters.signups || ''}
+          onChange={(e) => handleFilterChange('signups', e.target.value)}
         >
           <option value="">All Events</option>
           <option value="any">Any Signups</option>
@@ -90,8 +89,8 @@ export default function EventFilters({ carClasses, racers, currentFilters }: Eve
         <select
           id="carClass"
           className={styles.filterSelect}
-          value={currentFilters.carClass || ""}
-          onChange={(e) => handleFilterChange("carClass", e.target.value)}
+          value={currentFilters.carClass || ''}
+          onChange={(e) => handleFilterChange('carClass', e.target.value)}
         >
           <option value="">All Classes</option>
           {carClasses.map((cls) => (
@@ -115,17 +114,25 @@ export default function EventFilters({ carClasses, racers, currentFilters }: Eve
             id="racer"
             className={styles.filterSelect}
             onClick={() => setIsRacerDropdownOpen(!isRacerDropdownOpen)}
-            style={{ minWidth: '150px', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+            style={{
+              minWidth: '150px',
+              textAlign: 'left',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
           >
-            {currentFilters.racer ? `${currentFilters.racer.split(',').length} Selected` : "All Racers"}
+            {currentFilters.racer
+              ? `${currentFilters.racer.split(',').length} Selected`
+              : 'All Racers'}
             <span style={{ fontSize: '0.75em', marginLeft: '0.5rem' }}>▼</span>
           </button>
 
           {isRacerDropdownOpen && (
             <div className={styles.multiSelectDropdown}>
               {racers.map((racer) => {
-                const selectedRacers = currentFilters.racer ? currentFilters.racer.split(',') : [];
-                const isSelected = selectedRacers.includes(racer.id);
+                const selectedRacers = currentFilters.racer ? currentFilters.racer.split(',') : []
+                const isSelected = selectedRacers.includes(racer.id)
 
                 return (
                   <label key={racer.id} className={styles.multiSelectItem}>
@@ -134,18 +141,18 @@ export default function EventFilters({ carClasses, racers, currentFilters }: Eve
                       className={styles.checkbox}
                       checked={isSelected}
                       onChange={() => {
-                        let newSelected = [...selectedRacers];
+                        let newSelected = [...selectedRacers]
                         if (isSelected) {
-                          newSelected = newSelected.filter(id => id !== racer.id);
+                          newSelected = newSelected.filter((id) => id !== racer.id)
                         } else {
-                          newSelected.push(racer.id);
+                          newSelected.push(racer.id)
                         }
-                        handleFilterChange("racer", newSelected.join(","));
+                        handleFilterChange('racer', newSelected.join(','))
                       }}
                     />
-                    {racer.name || "Unknown"}
+                    {racer.name || 'Unknown'}
                   </label>
-                );
+                )
               })}
             </div>
           )}
@@ -164,8 +171,8 @@ export default function EventFilters({ carClasses, racers, currentFilters }: Eve
           id="from"
           type="date"
           className={styles.filterInput}
-          value={currentFilters.from || ""}
-          onChange={(e) => handleFilterChange("from", e.target.value)}
+          value={currentFilters.from || ''}
+          onChange={(e) => handleFilterChange('from', e.target.value)}
         />
       </div>
 
@@ -181,8 +188,8 @@ export default function EventFilters({ carClasses, racers, currentFilters }: Eve
           id="to"
           type="date"
           className={styles.filterInput}
-          value={currentFilters.to || ""}
-          onChange={(e) => handleFilterChange("to", e.target.value)}
+          value={currentFilters.to || ''}
+          onChange={(e) => handleFilterChange('to', e.target.value)}
         />
       </div>
 
@@ -197,8 +204,8 @@ export default function EventFilters({ carClasses, racers, currentFilters }: Eve
         <select
           id="sort"
           className={styles.filterSelect}
-          value={currentFilters.sort || "date"}
-          onChange={(e) => handleFilterChange("sort", e.target.value)}
+          value={currentFilters.sort || 'date'}
+          onChange={(e) => handleFilterChange('sort', e.target.value)}
         >
           <option value="date">Date (Earliest)</option>
           <option value="dateDesc">Date (Latest)</option>
@@ -207,14 +214,16 @@ export default function EventFilters({ carClasses, racers, currentFilters }: Eve
         </select>
       </div>
 
-      {(currentFilters.signups || currentFilters.carClass || currentFilters.racer || currentFilters.from || currentFilters.to || currentFilters.sort) && (
-        <button
-          className={styles.clearButton}
-          onClick={() => router.push(pathname)}
-        >
+      {(currentFilters.signups ||
+        currentFilters.carClass ||
+        currentFilters.racer ||
+        currentFilters.from ||
+        currentFilters.to ||
+        currentFilters.sort) && (
+        <button className={styles.clearButton} onClick={() => router.push(pathname)}>
           Clear Filters
         </button>
       )}
     </div>
-  );
+  )
 }

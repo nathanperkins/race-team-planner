@@ -1,21 +1,21 @@
-import styles from "./expectations.module.css"
-import { auth } from "@/lib/auth"
-import prisma from "@/lib/prisma"
-import { redirect } from "next/navigation"
-import { CURRENT_EXPECTATIONS_VERSION } from "@/lib/config"
-import ExpectationsAgreement from "./ExpectationsAgreement"
-import ExpectationsAgreed from "./ExpectationsAgreed"
+import styles from './expectations.module.css'
+import { auth } from '@/lib/auth'
+import prisma from '@/lib/prisma'
+import { redirect } from 'next/navigation'
+import { CURRENT_EXPECTATIONS_VERSION } from '@/lib/config'
+import ExpectationsAgreement from './ExpectationsAgreement'
+import ExpectationsAgreed from './ExpectationsAgreed'
 
 export default async function ExpectationsPage() {
   const session = await auth()
-  if (!session) redirect("/login")
+  if (!session) redirect('/login')
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { expectationsVersion: true }
+    select: { expectationsVersion: true },
   })
 
-  if (!user) redirect("/login")
+  if (!user) redirect('/login')
 
   const hasAgreed = (user.expectationsVersion ?? 0) >= CURRENT_EXPECTATIONS_VERSION
 
@@ -25,7 +25,8 @@ export default async function ExpectationsPage() {
         <header className={styles.header}>
           <h1 className={styles.title}>SRG Endurance – Team Expectations</h1>
           <p className={styles.subtitle}>
-            Please review the expectations below <span className={styles.highlight}>before signing up</span>.
+            Please review the expectations below{' '}
+            <span className={styles.highlight}>before signing up</span>.
             <br />
             These standards exist to keep races clean, competitive, and enjoyable for everyone.
           </p>
@@ -39,7 +40,9 @@ export default async function ExpectationsPage() {
           <span className={styles.tagline}>Have fun and respect your teammates.</span>
           <ul className={styles.list}>
             <li className={styles.listItem}>No berating, blaming, or disrespect</li>
-            <li className={styles.listItem}>Accidents happen — reckless over-driving is not acceptable</li>
+            <li className={styles.listItem}>
+              Accidents happen — reckless over-driving is not acceptable
+            </li>
           </ul>
         </section>
 
@@ -74,18 +77,18 @@ export default async function ExpectationsPage() {
           </div>
           <span className={styles.tagline}>Reliability and communication are critical.</span>
           <ul className={styles.list}>
-            <li className={styles.listItem}>Be present and responsive in Discord at registration</li>
+            <li className={styles.listItem}>
+              Be present and responsive in Discord at registration
+            </li>
             <li className={styles.listItem}>If you commit, you are expected to show up</li>
-            <li className={styles.listItem}>No-shows risk team disqualification and IR penalties</li>
+            <li className={styles.listItem}>
+              No-shows risk team disqualification and IR penalties
+            </li>
             <li className={styles.listItem}>Communicate early if you need to step back</li>
           </ul>
         </section>
 
-        {hasAgreed ? (
-            <ExpectationsAgreed />
-        ) : (
-            <ExpectationsAgreement />
-        )}
+        {hasAgreed ? <ExpectationsAgreed /> : <ExpectationsAgreement />}
       </div>
     </div>
   )

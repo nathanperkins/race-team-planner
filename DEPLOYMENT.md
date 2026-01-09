@@ -6,9 +6,9 @@ This guide describes how to deploy the iRacing Team Planner application to **Goo
 
 Before you begin, ensure you have the following installed locally:
 
--   [Google Cloud SDK (`gcloud`)](https://cloud.google.com/sdk/docs/install)
--   [Terraform](https://developer.hashicorp.com/terraform/downloads)
--   [Docker](https://docs.docker.com/get-docker/)
+- [Google Cloud SDK (`gcloud`)](https://cloud.google.com/sdk/docs/install)
+- [Terraform](https://developer.hashicorp.com/terraform/downloads)
+- [Docker](https://docs.docker.com/get-docker/)
 
 You also need a **Supabase** project for the database.
 
@@ -17,36 +17,40 @@ You also need a **Supabase** project for the database.
 We have provided a helper script to set up your GCP project and remote state bucket.
 
 1.  **Run the Setup Script**:
+
     ```bash
     ./scripts/setup-gcp.sh
     ```
+
     Follow the prompts to:
-    -   Login to Google Cloud.
-    -   Select or create a GCP Project.
-    -   Enable necessary initial APIs.
-    -   Create a GCS bucket to store Terraform state.
+    - Login to Google Cloud.
+    - Select or create a GCP Project.
+    - Enable necessary initial APIs.
+    - Create a GCS bucket to store Terraform state.
 
     > **Important**: If you created a new project, make sure to [enable billing](https://console.cloud.google.com/billing) for it in the Google Cloud Console.
 
 ## Configuration
 
 1.  **Navigate to the Terraform directory**:
+
     ```bash
     cd terraform
     ```
 
 2.  **Create your variables file**:
+
     ```bash
     cp terraform.tfvars.example terraform.tfvars
     ```
 
 3.  **Update `terraform.tfvars`**:
     Open the file and fill in the required values:
-    -   `project_id`: Your GCP Project ID (from step 1).
-    -   `supabase_...`: Credentials from your Supabase project settings.
-    -   `nextauth_secret`: Generate one using `openssl rand -base64 32`.
-    -   `discord_...`: Your Discord OAuth credentials.
-    -   `iracing_...`: Credentials for iRacing Data API.
+    - `project_id`: Your GCP Project ID (from step 1).
+    - `supabase_...`: Credentials from your Supabase project settings.
+    - `nextauth_secret`: Generate one using `openssl rand -base64 32`.
+    - `discord_...`: Your Discord OAuth credentials.
+    - `iracing_...`: Credentials for iRacing Data API.
 
 4.  **Initialize Terraform**:
     Use the bucket name created in the setup step (e.g., `YOUR_PROJECT_ID-tf-state`).
@@ -63,6 +67,7 @@ We have a script that handles this entire pipeline:
 ```
 
 ### What `deploy.sh` does:
+
 1.  **Builds** the application and migration Docker images.
 2.  **Pushes** these images to Google Artifact Registry.
 3.  **Applies** any pending Terraform infrastructure changes.
@@ -72,7 +77,7 @@ We have a script that handles this entire pipeline:
 
 ## Troubleshooting
 
--   **Permission Errors**: Ensure your local `gcloud` user has the Editor or Owner role on the project.
--   **Docker Push Fails**: Run `gcloud auth configure-docker us-central1-docker.pkg.dev` again.
--   **Migration Fails**: Check the logs in the Cloud Run Jobs console. It often indicates a connection issue with Supabase or a mismatch in schema.
--   **Billing**: Cloud Run and Secret Manager require billing to be enabled on the project.
+- **Permission Errors**: Ensure your local `gcloud` user has the Editor or Owner role on the project.
+- **Docker Push Fails**: Run `gcloud auth configure-docker us-central1-docker.pkg.dev` again.
+- **Migration Fails**: Check the logs in the Cloud Run Jobs console. It often indicates a connection issue with Supabase or a mismatch in schema.
+- **Billing**: Cloud Run and Secret Manager require billing to be enabled on the project.

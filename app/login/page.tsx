@@ -1,8 +1,8 @@
-import DiscordLoginForm from "./DiscordLoginForm"
-import MockLoginForm from "./MockLoginForm"
-import styles from "./login.module.css"
+import DiscordLoginForm from './DiscordLoginForm'
+import MockLoginForm from './MockLoginForm'
+import styles from './login.module.css'
 
-import { features } from "@/lib/config"
+import { features } from '@/lib/config'
 
 // Helper component for the separator
 function LoginSeparator() {

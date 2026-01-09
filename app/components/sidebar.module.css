@@ -1,148 +1,147 @@
 .sidebar {
-    width: 250px;
-    height: 100vh;
-    background-color: var(--background);
-    border-right: 1px solid #e5e5e5;
-    display: flex;
-    flex-direction: column;
-    padding: 1.5rem;
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    overflow-y: auto;
-    flex-shrink: 0;
-    z-index: 50;
+  width: 250px;
+  height: 100vh;
+  background-color: var(--background);
+  border-right: 1px solid #e5e5e5;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  overflow-y: auto;
+  flex-shrink: 0;
+  z-index: 50;
 }
 
 @media (prefers-color-scheme: dark) {
-    .sidebar {
-        border-right-color: #333;
-    }
+  .sidebar {
+    border-right-color: #333;
+  }
 }
 
 .title {
-    font-size: 1.25rem;
-    font-weight: bold;
-    margin-bottom: 2rem;
-    color: var(--foreground);
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin-bottom: 2rem;
+  color: var(--foreground);
 }
 
 .nav {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
 }
 
 .link {
-    display: block;
-    padding: 0.75rem 1rem;
-    border-radius: 0.5rem;
-    color: #666;
-    transition: all 0.2s;
-    font-size: 0.95rem;
+  display: block;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  color: #666;
+  transition: all 0.2s;
+  font-size: 0.95rem;
 }
 
 .link:hover {
-    background-color: #f5f5f5;
-    color: var(--foreground);
+  background-color: #f5f5f5;
+  color: var(--foreground);
 }
 
 @media (prefers-color-scheme: dark) {
-    .link {
-        color: #a1a1a1;
-    }
+  .link {
+    color: #a1a1a1;
+  }
 
-    .link:hover {
-        background-color: #1a1a1a;
-        color: var(--foreground);
-    }
+  .link:hover {
+    background-color: #1a1a1a;
+    color: var(--foreground);
+  }
 }
 
 .activeLink {
-    background-color: #f5f5f5;
-    color: var(--foreground);
-    font-weight: 500;
+  background-color: #f5f5f5;
+  color: var(--foreground);
+  font-weight: 500;
 }
 
 @media (prefers-color-scheme: dark) {
-    .activeLink {
-        background-color: #1a1a1a;
-    }
+  .activeLink {
+    background-color: #1a1a1a;
+  }
 }
 
 .footer {
-    margin-top: auto;
-    border-top: 1px solid #e5e5e5;
-    padding-top: 1rem;
+  margin-top: auto;
+  border-top: 1px solid #e5e5e5;
+  padding-top: 1rem;
 }
 
 @media (prefers-color-scheme: dark) {
-    .footer {
-        border-top-color: #333;
-    }
+  .footer {
+    border-top-color: #333;
+  }
 }
 
 .userSection {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .userInfo {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.25rem;
 }
 
 .avatar {
-    border-radius: 9999px;
-    border: 1px solid #e5e5e5;
+  border-radius: 9999px;
+  border: 1px solid #e5e5e5;
 }
 
 @media (prefers-color-scheme: dark) {
-    .avatar {
-        border-color: #333;
-    }
+  .avatar {
+    border-color: #333;
+  }
 }
 
 .welcome {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--foreground);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--foreground);
 }
 
 .signOutButton,
 .signInLink {
-    width: 100%;
-    padding: 0.5rem;
-    border-radius: 0.375rem;
-    font-size: 0.875rem;
-    text-align: left;
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: #666;
-    transition: color 0.2s;
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #666;
+  transition: color 0.2s;
 }
 
 .signOutButton:hover,
 .signInLink:hover {
-    color: var(--foreground);
-    text-decoration: underline;
+  color: var(--foreground);
+  text-decoration: underline;
 }
 
 @media (prefers-color-scheme: dark) {
+  .signOutButton,
+  .signInLink {
+    color: #a1a1a1;
+  }
 
-    .signOutButton,
-    .signInLink {
-        color: #a1a1a1;
-    }
-
-    .signOutButton:hover,
-    .signInLink:hover {
-        color: var(--foreground);
-    }
+  .signOutButton:hover,
+  .signInLink:hover {
+    color: var(--foreground);
+  }
 }

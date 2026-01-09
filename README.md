@@ -7,6 +7,7 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 ## Prerequisites
 
 Before running the project, ensure you have the following installed:
+
 - [Node.js](https://nodejs.org/) (Project uses v18+)
 - [Docker](https://www.docker.com/) & Docker Compose (for the local database)
 
@@ -14,14 +15,15 @@ Before running the project, ensure you have the following installed:
 
 1. **Create Environment File**
    Copy the example environment file to `.env`:
+
    ```bash
    cp .env.example .env
    ```
 
 2. **Generate Secure Keys**
    Run the following commands to generate secrets for your `.env` file:
-
    - **AUTH_SECRET** (for NextAuth.js):
+
      ```bash
      openssl rand -base64 32
      ```
@@ -30,7 +32,7 @@ Before running the project, ensure you have the following installed:
      ```bash
      npx cloak generate
      ```
-     >*Note: Copy the CLOAK_MASTER_KEY from the output.*
+     > _Note: Copy the CLOAK_MASTER_KEY from the output._
 
 3. **Configure Third-Party Services**
    - **Discord OAuth**:
@@ -46,17 +48,20 @@ Before running the project, ensure you have the following installed:
 
 1. **Start the Database**
    Start the PostgreSQL container:
+
    ```bash
    docker-compose up -d
    ```
 
 2. **Install Dependencies**
+
    ```bash
    npm install
    ```
 
 3. **Initialize Database**
    Run migrations to set up the schema and seed data:
+
    ```bash
    npx prisma migrate dev
    ```
@@ -71,14 +76,17 @@ Before running the project, ensure you have the following installed:
 ## Development Workflow
 
 ### Database Schema Changes
+
 If you modify `prisma/schema.prisma`, you MUST create a migration to apply the changes:
 
 ```bash
 npx prisma migrate dev --name <descriptive_migration_name>
 ```
+
 > **Note**: This command automatically regenerates the Prisma Client. You may need to restart your development server (`npm run dev`) for the changes to take effect.
 
 ### Database Management Tools
+
 - **Reset Database**: Wipes the DB and re-applies migrations/seeds.
   ```bash
   npx prisma migrate reset
@@ -89,7 +97,9 @@ npx prisma migrate dev --name <descriptive_migration_name>
   ```
 
 ### Pre-Submission Testing
+
 Before submitting changes, run the following to ensure code quality:
+
 - **Linting**:
   ```bash
   npm run lint

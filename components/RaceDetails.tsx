@@ -1,6 +1,6 @@
-import Image from "next/image"
-import { deleteRegistration } from "@/app/actions"
-import styles from "./RaceDetails.module.css"
+import Image from 'next/image'
+import { deleteRegistration } from '@/app/actions'
+import styles from './RaceDetails.module.css'
 
 interface RaceWithRegistrations {
   id: string
@@ -28,9 +28,7 @@ export default function RaceDetails({ race, userId }: Props) {
   return (
     <div className={styles.raceCard}>
       <div className={styles.raceHeader}>
-        <h4 className={styles.raceTitle}>
-          Race: {new Date(race.startTime).toLocaleString()}
-        </h4>
+        <h4 className={styles.raceTitle}>Race: {new Date(race.startTime).toLocaleString()}</h4>
         {isRaceCompleted && <span className={styles.completedBadge}>Completed</span>}
       </div>
 
@@ -44,7 +42,7 @@ export default function RaceDetails({ race, userId }: Props) {
                 {reg.user.image && (
                   <Image
                     src={reg.user.image}
-                    alt={reg.user.name || "User"}
+                    alt={reg.user.name || 'User'}
                     width={32}
                     height={32}
                     className={styles.avatar}
@@ -59,7 +57,7 @@ export default function RaceDetails({ race, userId }: Props) {
                 {reg.userId === userId && (
                   <form
                     action={async () => {
-                      "use server"
+                      'use server'
                       await deleteRegistration(reg.id)
                     }}
                   >

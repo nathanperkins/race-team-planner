@@ -1,24 +1,24 @@
-import { signIn } from "@/lib/auth"
-import prisma from "@/lib/prisma"
-import styles from "./login.module.css"
-import MockLoginClient from "./MockLoginClient"
+import { signIn } from '@/lib/auth'
+import prisma from '@/lib/prisma'
+import styles from './login.module.css'
+import MockLoginClient from './MockLoginClient'
 
 export default async function MockLoginForm() {
   const users = await prisma.user.findMany({
-    orderBy: { name: 'asc' }
+    orderBy: { name: 'asc' },
   })
 
   async function loginAction(formData: FormData) {
-    "use server"
-    const id = formData.get("id")
+    'use server'
+    const id = formData.get('id')
     if (id) {
-      await signIn("credentials", { id, redirectTo: "/" })
+      await signIn('credentials', { id, redirectTo: '/' })
     }
   }
 
   return (
     <div className={styles.devLogin}>
-       <h3 className={styles.formHeader}>Dev Mode</h3>
+      <h3 className={styles.formHeader}>Dev Mode</h3>
       <MockLoginClient users={users} loginAction={loginAction} />
     </div>
   )

@@ -1,24 +1,24 @@
-"use client";
+'use client'
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import styles from "./sidebar.module.css";
-import { signOut } from "next-auth/react";
-import { Session } from "next-auth";
-import Image from "next/image";
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import styles from './sidebar.module.css'
+import { signOut } from 'next-auth/react'
+import { Session } from 'next-auth'
+import Image from 'next/image'
 
 interface SidebarProps {
-  session: Session;
+  session: Session
 }
 
 export default function Sidebar({ session }: SidebarProps) {
-  const pathname = usePathname();
+  const pathname = usePathname()
 
   const isActive = (path: string) => {
-    if (path === "/" && pathname === "/") return true;
-    if (path !== "/" && pathname.startsWith(path)) return true;
-    return false;
-  };
+    if (path === '/' && pathname === '/') return true
+    if (path !== '/' && pathname.startsWith(path)) return true
+    return false
+  }
 
   return (
     <aside className={styles.sidebar}>
@@ -27,28 +27,28 @@ export default function Sidebar({ session }: SidebarProps) {
       <nav className={styles.nav}>
         <Link
           href="/dashboard"
-          className={`${styles.link} ${isActive("/dashboard") ? styles.activeLink : ""}`}
+          className={`${styles.link} ${isActive('/dashboard') ? styles.activeLink : ''}`}
         >
           Events
         </Link>
 
         <Link
           href={`/users/${session.user?.id}/signups`}
-          className={`${styles.link} ${isActive(`/users/${session.user?.id}`) ? styles.activeLink : ""}`}
+          className={`${styles.link} ${isActive(`/users/${session.user?.id}`) ? styles.activeLink : ''}`}
         >
           My Signups
         </Link>
 
         <Link
           href="/roster"
-          className={`${styles.link} ${isActive("/roster") ? styles.activeLink : ""}`}
+          className={`${styles.link} ${isActive('/roster') ? styles.activeLink : ''}`}
         >
           Roster
         </Link>
 
         <Link
           href="/expectations"
-          className={`${styles.link} ${isActive("/expectations") ? styles.activeLink : ""}`}
+          className={`${styles.link} ${isActive('/expectations') ? styles.activeLink : ''}`}
         >
           Team Expectations
         </Link>
@@ -60,7 +60,7 @@ export default function Sidebar({ session }: SidebarProps) {
             {session.user?.image && (
               <Image
                 src={session.user.image}
-                alt={session.user.name || "User"}
+                alt={session.user.name || 'User'}
                 width={32}
                 height={32}
                 className={styles.avatar}
@@ -68,14 +68,11 @@ export default function Sidebar({ session }: SidebarProps) {
             )}
             <span className={styles.welcome}>{session.user?.name}</span>
           </div>
-          <button
-            onClick={() => signOut({ callbackUrl: "/" })}
-            className={styles.signOutButton}
-          >
+          <button onClick={() => signOut({ callbackUrl: '/' })} className={styles.signOutButton}>
             Sign Out
           </button>
         </div>
       </div>
     </aside>
-  );
+  )
 }

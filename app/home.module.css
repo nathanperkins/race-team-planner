@@ -1,149 +1,151 @@
 .mainContainer {
-    min-height: 100vh;
-    display: grid;
-    grid-template-rows: 20px 1fr 20px;
-    align-items: center;
-    justify-items: center;
-    padding: 2rem;
-    padding-bottom: 5rem;
-    gap: 4rem;
-    /* gap-16 */
-    font-family: var(--font-geist-sans), sans-serif;
-    background-color: #111827;
-    /* Dark theme assumption */
-    color: white;
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: 20px 1fr 20px;
+  align-items: center;
+  justify-items: center;
+  padding: 2rem;
+  padding-bottom: 5rem;
+  gap: 4rem;
+  /* gap-16 */
+  font-family: var(--font-geist-sans), sans-serif;
+  background-color: #111827;
+  /* Dark theme assumption */
+  color: white;
 }
 
 @media (min-width: 640px) {
-    .mainContainer {
-        padding: 5rem;
-    }
+  .mainContainer {
+    padding: 5rem;
+  }
 }
 
 .content {
-    display: flex;
-    flex-direction: column;
-    gap: 2rem;
-    /* gap-8 */
-    grid-row-start: 2;
-    align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  /* gap-8 */
+  grid-row-start: 2;
+  align-items: center;
 }
 
 @media (min-width: 640px) {
-    .content {
-        align-items: flex-start;
-    }
+  .content {
+    align-items: flex-start;
+  }
 }
 
 .title {
-    font-size: 2.25rem;
-    /* text-4xl */
-    font-weight: 700;
-    /* font-bold */
+  font-size: 2.25rem;
+  /* text-4xl */
+  font-weight: 700;
+  /* font-bold */
 }
 
 .userSection {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1rem;
-    /* gap-4 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  /* gap-4 */
 }
 
 .welcome {
-    font-size: 1.25rem;
-    /* text-xl */
+  font-size: 1.25rem;
+  /* text-xl */
 }
 
 .email {
-    font-size: 0.875rem;
-    /* text-sm */
-    color: #6b7280;
-    /* text-gray-500 */
+  font-size: 0.875rem;
+  /* text-sm */
+  color: #6b7280;
+  /* text-gray-500 */
 }
 
 .signOutButton {
-    border-radius: 9999px;
-    /* rounded-full */
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    transition: background-color 0.2s, border-color 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 2.5rem;
-    /* h-10 */
-    padding: 0 1rem;
-    /* px-4 */
-    font-size: 0.875rem;
-    /* text-sm */
-    background-color: transparent;
-    color: inherit;
-    cursor: pointer;
+  border-radius: 9999px;
+  /* rounded-full */
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  transition:
+    background-color 0.2s,
+    border-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.5rem;
+  /* h-10 */
+  padding: 0 1rem;
+  /* px-4 */
+  font-size: 0.875rem;
+  /* text-sm */
+  background-color: transparent;
+  color: inherit;
+  cursor: pointer;
 }
 
 @media (min-width: 640px) {
-    .signOutButton {
-        height: 3rem;
-        /* h-12 */
-        padding: 0 1.25rem;
-        /* px-5 */
-        min-width: 11rem;
-        /* min-w-44 */
-        font-size: 1rem;
-        /* text-base */
-    }
+  .signOutButton {
+    height: 3rem;
+    /* h-12 */
+    padding: 0 1.25rem;
+    /* px-5 */
+    min-width: 11rem;
+    /* min-w-44 */
+    font-size: 1rem;
+    /* text-base */
+  }
 }
 
 .signOutButton:hover {
-    background-color: #f2f2f2;
-    border-color: transparent;
+  background-color: #f2f2f2;
+  border-color: transparent;
 }
 
 /* Dark mode override for the button */
 @media (prefers-color-scheme: dark) {
-    .signOutButton {
-        border-color: rgba(255, 255, 255, 0.145);
-    }
+  .signOutButton {
+    border-color: rgba(255, 255, 255, 0.145);
+  }
 
-    .signOutButton:hover {
-        background-color: #1a1a1a;
-    }
+  .signOutButton:hover {
+    background-color: #1a1a1a;
+  }
 }
 
 .loginLink {
-    border-radius: 9999px;
-    /* rounded-full */
-    border: 1px solid transparent;
-    transition: colors 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: white;
-    /* foreground */
-    color: black;
-    /* background */
-    gap: 0.5rem;
-    /* gap-2 */
-    height: 2.5rem;
-    /* h-10 */
-    padding: 0 1rem;
-    /* px-4 */
-    font-size: 0.875rem;
-    /* text-sm */
-    text-decoration: none;
+  border-radius: 9999px;
+  /* rounded-full */
+  border: 1px solid transparent;
+  transition: colors 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: white;
+  /* foreground */
+  color: black;
+  /* background */
+  gap: 0.5rem;
+  /* gap-2 */
+  height: 2.5rem;
+  /* h-10 */
+  padding: 0 1rem;
+  /* px-4 */
+  font-size: 0.875rem;
+  /* text-sm */
+  text-decoration: none;
 }
 
 @media (min-width: 640px) {
-    .loginLink {
-        height: 3rem;
-        /* h-12 */
-        padding: 0 1.25rem;
-        /* px-5 */
-        font-size: 1rem;
-        /* text-base */
-    }
+  .loginLink {
+    height: 3rem;
+    /* h-12 */
+    padding: 0 1.25rem;
+    /* px-5 */
+    font-size: 1rem;
+    /* text-base */
+  }
 }
 
 .loginLink:hover {
-    background-color: #383838;
+  background-color: #383838;
 }

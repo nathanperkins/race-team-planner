@@ -1,11 +1,11 @@
-import { auth } from "@/lib/auth"
-import prisma from "@/lib/prisma"
-import { redirect } from "next/navigation"
-import Link from "next/link"
-import Image from "next/image"
-import styles from "./roster.module.css"
+import { auth } from '@/lib/auth'
+import prisma from '@/lib/prisma'
+import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import Image from 'next/image'
+import styles from './roster.module.css'
 
-import RosterSortControls from "./RosterSortControls"
+import RosterSortControls from './RosterSortControls'
 
 interface Props {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
@@ -13,7 +13,7 @@ interface Props {
 
 export default async function RosterPage({ searchParams }: Props) {
   const session = await auth()
-  if (!session) redirect("/login")
+  if (!session) redirect('/login')
 
   const params = await searchParams
   const sort = typeof params.sort === 'string' ? params.sort : 'name'
@@ -24,18 +24,18 @@ export default async function RosterPage({ searchParams }: Props) {
       registrations: {
         include: {
           race: {
-            select: { endTime: true }
-          }
-        }
-      }
-    }
+            select: { endTime: true },
+          },
+        },
+      },
+    },
   })
 
   // Process counts and sort
   const now = new Date()
-  const users = usersData.map(user => {
-    const upcoming = user.registrations.filter(r => r.race.endTime > now).length
-    const completed = user.registrations.filter(r => r.race.endTime <= now).length
+  const users = usersData.map((user) => {
+    const upcoming = user.registrations.filter((r) => r.race.endTime > now).length
+    const completed = user.registrations.filter((r) => r.race.endTime <= now).length
     return { ...user, upcoming, completed }
   })
 
@@ -48,7 +48,7 @@ export default async function RosterPage({ searchParams }: Props) {
       case 'completed':
         return b.completed - a.completed || a.name!.localeCompare(b.name!)
       default: // name
-        return (a.name || "").localeCompare(b.name || "")
+        return (a.name || '').localeCompare(b.name || '')
     }
   })
 
@@ -64,12 +64,12 @@ export default async function RosterPage({ searchParams }: Props) {
           <div key={user.id} className={styles.card}>
             <Image
               src={user.image || `https://api.dicebear.com/9.x/avataaars/svg?seed=${user.name}`}
-              alt={user.name || "User"}
+              alt={user.name || 'User'}
               className={styles.avatar}
               width={80}
               height={80}
             />
-            <h2 className={styles.name}>{user.name || "Unknown Driver"}</h2>
+            <h2 className={styles.name}>{user.name || 'Unknown Driver'}</h2>
             <p className={styles.email}>{user.email}</p>
 
             <div className={styles.stats}>

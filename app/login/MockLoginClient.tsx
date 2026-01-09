@@ -1,7 +1,7 @@
-"use client"
+'use client'
 
-import { useRef } from "react"
-import styles from "./login.module.css"
+import { useRef } from 'react'
+import styles from './login.module.css'
 
 interface User {
   id: string
@@ -18,11 +18,7 @@ export default function MockLoginClient({ users, loginAction }: MockLoginClientP
   const formRef = useRef<HTMLFormElement>(null)
 
   return (
-    <form
-      ref={formRef}
-      className={styles.form}
-      action={loginAction}
-    >
+    <form ref={formRef} className={styles.form} action={loginAction}>
       <select
         name="id"
         className={styles.select}

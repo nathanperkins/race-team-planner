@@ -1,14 +1,14 @@
-import NextAuth from "next-auth"
-import { PrismaAdapter } from "@auth/prisma-adapter"
-import prisma from "./prisma"
-import Discord from "next-auth/providers/discord"
-import Credentials from "next-auth/providers/credentials"
-import { features } from "@/lib/config"
+import NextAuth from 'next-auth'
+import { PrismaAdapter } from '@auth/prisma-adapter'
+import prisma from './prisma'
+import Discord from 'next-auth/providers/discord'
+import Credentials from 'next-auth/providers/credentials'
+import { features } from '@/lib/config'
 
 const mockAuthProvider = Credentials({
-  name: "Mock User",
+  name: 'Mock User',
   credentials: {
-    id: { label: "User ID", type: "text" },
+    id: { label: 'User ID', type: 'text' },
   },
   authorize: async (credentials) => {
     if (!credentials?.id) {
@@ -28,7 +28,7 @@ const mockAuthProvider = Credentials({
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   session: {
-    strategy: "jwt",
+    strategy: 'jwt',
   },
   providers: [
     ...(features.discordAuth ? [Discord] : []),

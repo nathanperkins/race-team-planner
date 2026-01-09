@@ -1,10 +1,10 @@
-'use strict'; // Error boundaries must be Client Components
+'use strict' // Error boundaries must be Client Components
 'use client'
 
 import { useEffect } from 'react'
-import Link from "next/link"
-import { AlertTriangle, RotateCcw, Home } from "lucide-react"
-import styles from "./error.module.css"
+import Link from 'next/link'
+import { AlertTriangle, RotateCcw, Home } from 'lucide-react'
+import styles from './error.module.css'
 
 export default function Error({
   error,
@@ -26,7 +26,7 @@ export default function Error({
         Something went wrong under the hood. The stewards are investigating.
         <br />
         <span style={{ fontSize: '0.875rem', opacity: 0.7, marginTop: '0.5rem', display: 'block' }}>
-            Error: {error.message || "Unknown error"}
+          Error: {error.message || 'Unknown error'}
         </span>
       </p>
 
