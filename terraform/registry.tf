@@ -7,10 +7,11 @@ resource "google_artifact_registry_repository" "app_repo" {
   cleanup_policy_dry_run = false
 
   cleanup_policies {
-    id     = "keep-recent-versions"
+    id     = "keep-latest"
     action = "KEEP"
-    most_recent_versions {
-      keep_count = 3
+    condition {
+      tag_state    = "TAGGED"
+      tag_prefixes = ["latest"]
     }
   }
 
