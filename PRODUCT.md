@@ -114,10 +114,14 @@ A user's expression of interest for a specific race.
 * [x] Don't allow user to register for completed races.
 * [x] Don't allow the user to drop from completed races.
 * [x] Add sync support for events with multiple timeslots.
-* [ ] Add sync support for car classes.
 * [x] Remove revoke agreement button.
-* [ ] Display more info about each event.
 * [x] **Refactor Sync to use Upsert**: Individual race upserts to prevent wiping registrations.
+* [ ] Add iRacing sync vars.
+* [ ] Consider providing .env file content directly instead of each individual var.
+* [ ] Fix syncing fails with success message.
+* [ ] Ensure that app fails fast when any important environment variables are missing.
+* [ ] Display more info about each event.
+* [ ] Add sync support for car classes.
 * [ ] **Add "Live" Badge**: Visual indicator in `RaceDetails` for ongoing races.
 * [ ] **Registration Overlap Warning**: Prevent or warn about double-booking same-time races.
 * [ ] **Race Driver Limits**: Optional capacity limits for sessions.
