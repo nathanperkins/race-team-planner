@@ -18,9 +18,7 @@ export default async function MockLoginForm() {
 
   return (
     <div className={styles.devLogin}>
-      <div className={styles.separator}>
-        <span>OR (Dev Mode)</span>
-      </div>
+       <h3 className={styles.formHeader}>Dev Mode</h3>
       <MockLoginClient users={users} loginAction={loginAction} />
     </div>
   )

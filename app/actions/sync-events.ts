@@ -5,8 +5,14 @@ import { fetchSpecialEvents } from '@/lib/iracing';
 import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 
+import { features } from '@/lib/config';
+
 export async function syncIRacingEvents() {
   try {
+    if (!features.iracingSync) {
+      return { success: false, error: 'iRacing integration is not enabled' };
+    }
+
     const externalEvents = await fetchSpecialEvents();
 
     for (const event of externalEvents) {

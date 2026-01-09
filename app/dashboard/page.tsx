@@ -21,6 +21,8 @@ interface PageProps {
   }>;
 }
 
+import { features } from "@/lib/config"
+
 export default async function DashboardPage({ searchParams }: PageProps) {
   const session = await auth()
   const params = await searchParams
@@ -175,7 +177,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     <div className={styles.container}>
       <header className={styles.header}>
          <h1 className={styles.title}>Upcoming Events</h1>
-         <SyncButton />
+         {features.iracingSync && <SyncButton />}
       </header>
 
       <EventFilters carClasses={carClasses} racers={racers} currentFilters={displayParams} />

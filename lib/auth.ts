@@ -3,6 +3,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter"
 import prisma from "./prisma"
 import Discord from "next-auth/providers/discord"
 import Credentials from "next-auth/providers/credentials"
+import { features } from "@/lib/config"
 
 const mockAuthProvider = Credentials({
   name: "Mock User",
@@ -30,8 +31,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     strategy: "jwt",
   },
   providers: [
-    Discord,
-    ...(process.env.NODE_ENV === "development" ? [mockAuthProvider] : []),
+    ...(features.discordAuth ? [Discord] : []),
+    ...(features.mockAuth ? [mockAuthProvider] : []),
   ],
   callbacks: {
     async jwt({ token, user }) {
