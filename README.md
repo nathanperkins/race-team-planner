@@ -27,11 +27,11 @@ Before running the project, ensure you have the following installed:
      ```
 
    - **PRISMA_FIELD_ENCRYPTION_KEY** (for Prisma Field Encryption):
-     *Note: Copy the CLOAK_MASTER_KEY.*
-
      ```bash
      npx cloak generate
      ```
+     *Note: Copy the CLOAK_MASTER_KEY from the output.*
+
 3. **Configure Third-Party Services**
    - **Discord OAuth**:
      - Create an application at the [Discord Developer Portal](https://discord.com/developers/applications).
@@ -72,6 +72,8 @@ Before running the project, ensure you have the following installed:
 
 ### Database Schema Changes
 If you modify `prisma/schema.prisma`, you MUST create a migration to apply the changes:
+
+```bash
 npx prisma migrate dev --name <descriptive_migration_name>
 ```
 > **Note**: This command automatically regenerates the Prisma Client. You may need to restart your development server (`npm run dev`) for the changes to take effect.
