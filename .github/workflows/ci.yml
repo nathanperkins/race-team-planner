@@ -37,6 +37,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
 
+      - name: Check Formatting
+        run: npx prettier --check .
+
       - name: Run Lint
         run: npm run lint
 
