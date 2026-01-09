@@ -42,7 +42,11 @@ echo "Pushing images to Artifact Registry..."
 docker push $IMAGE_URI
 docker push $MIGRATE_IMAGE_URI
 
-# 4. Run Database Migrations
+# 4a. Apply Terraform Changes
+ echo "Applying Terraform changes..."
+ (cd terraform && terraform apply)
+
+# 4b. Run Database Migrations
 echo "Updating migration job with new image..."
 gcloud run jobs update ${APP_NAME}-migrate \
   --image $MIGRATE_IMAGE_URI \
@@ -54,7 +58,7 @@ gcloud run jobs execute ${APP_NAME}-migrate \
   --region $REGION \
   --wait
 
-# 5. Deploy to Cloud Run
+# 4c. Deploy to Cloud Run
 echo "Deploying to Cloud Run..."
 gcloud run deploy $APP_NAME \
   --image $IMAGE_URI \
