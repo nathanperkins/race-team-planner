@@ -1,3 +1,7 @@
+# iracing-team-planner
+
+A team planner for endurance races in iRacing, designed to make it easy for community members to express interest in specific races so admins can plan teams.
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Prerequisites
@@ -17,17 +21,17 @@ Before running the project, ensure you have the following installed:
 2. **Generate Secure Keys**
    Run the following commands to generate secrets for your `.env` file:
 
-   - **Auth Secret** (for NextAuth.js):
+   - **AUTH_SECRET** (for NextAuth.js):
      ```bash
      openssl rand -base64 32
      ```
 
-   - **Encryption Key** (for Prisma Field Encryption):
+   - **PRISMA_FIELD_ENCRYPTION_KEY** (for Prisma Field Encryption):
+     *Note: Copy the CLOAK_MASTER_KEY.*
+
      ```bash
      npx cloak generate
      ```
-     *Note: Copy the CLOAK_MASTER_KEY*
-
 3. **Configure Third-Party Services**
    - **Discord OAuth**:
      - Create an application at the [Discord Developer Portal](https://discord.com/developers/applications).
@@ -68,9 +72,9 @@ Before running the project, ensure you have the following installed:
 
 ### Database Schema Changes
 If you modify `prisma/schema.prisma`, you MUST create a migration to apply the changes:
-```bash
 npx prisma migrate dev --name <descriptive_migration_name>
 ```
+> **Note**: This command automatically regenerates the Prisma Client. You may need to restart your development server (`npm run dev`) for the changes to take effect.
 
 ### Database Management Tools
 - **Reset Database**: Wipes the DB and re-applies migrations/seeds.
