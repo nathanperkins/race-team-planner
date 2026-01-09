@@ -10,7 +10,7 @@ resource "google_secret_manager_secret" "app_env" {
 resource "google_secret_manager_secret_version" "app_env" {
   secret      = google_secret_manager_secret.app_env.id
   secret_data = <<EOT
-DATABASE_URL="postgresql://postgres.${supabase_project.main.id}:${urlencode(var.supabase_db_password)}@aws-1-${var.supabase_region}.pooler.supabase.com:6543/postgres"
+DATABASE_URL="postgresql://postgres.${supabase_project.main.id}:${urlencode(var.supabase_db_password)}@aws-1-${var.supabase_region}.pooler.supabase.com:6543/postgres?pgbouncer=true"
 DIRECT_URL="postgresql://postgres:${urlencode(var.supabase_db_password)}@db.${supabase_project.main.id}.supabase.co:5432/postgres"
 NEXTAUTH_SECRET="${var.nextauth_secret}"
 PRISMA_FIELD_ENCRYPTION_KEY="${var.prisma_encryption_key}"
