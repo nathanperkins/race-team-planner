@@ -117,6 +117,7 @@ A user's expression of interest for a specific race.
 * [x] Remove revoke agreement button.
 * [x] **Refactor Sync to use Upsert**: Individual race upserts to prevent wiping registrations.
 * [x] Add iRacing sync vars.
+* [ ] Add a name filter for events.
 * [ ] Consider providing .env file content directly instead of each individual var.
 * [ ] Fix syncing fails with success message.
 * [ ] Ensure that app fails fast when any important environment variables are missing.
