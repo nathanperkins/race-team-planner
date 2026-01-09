@@ -115,7 +115,7 @@ A user's expression of interest for a specific race.
 * [x] Don't allow the user to drop from completed races.
 * [x] Add sync support for events with multiple timeslots.
 * [ ] Add sync support for car classes.
-* [ ] Remove revoke agreement button.
+* [x] Remove revoke agreement button.
 * [ ] Display more info about each event.
 * [x] **Refactor Sync to use Upsert**: Individual race upserts to prevent wiping registrations.
 * [ ] **Add "Live" Badge**: Visual indicator in `RaceDetails` for ongoing races.
