@@ -16,3 +16,9 @@ nextauth_url             = ""  # Optional, usually inferred or set to custom dom
 prisma_encryption_key    = ""  # generate with 'npx cloak generate'
 discord_id               = "your-discord-client-id"
 discord_secret           = "your-discord-client-secret"
+
+ # iRacing
+ iracing_username         = "your-iracing-email"
+ iracing_password         = "your-iracing-password"
+ iracing_client_id        = "your-iracing-data-api-client-id"     # Optional if only using mock data
+ iracing_client_secret    = "your-iracing-data-api-client-secret" # Optional if only using mock data

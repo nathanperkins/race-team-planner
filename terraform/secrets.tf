@@ -16,6 +16,10 @@ NEXTAUTH_SECRET="${var.nextauth_secret}"
 PRISMA_FIELD_ENCRYPTION_KEY="${var.prisma_encryption_key}"
 AUTH_DISCORD_ID="${var.discord_id}"
 AUTH_DISCORD_SECRET="${var.discord_secret}"
+IRACING_USERNAME="${var.iracing_username}"
+IRACING_PASSWORD="${var.iracing_password}"
+IRACING_CLIENT_ID="${var.iracing_client_id}"
+IRACING_CLIENT_SECRET="${var.iracing_client_secret}"
 EOT
 }
 

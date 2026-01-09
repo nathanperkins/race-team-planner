@@ -44,6 +44,30 @@ variable "discord_secret" {
   sensitive   = true
 }
 
+variable "iracing_username" {
+  description = "iRacing Username for API synchronization"
+  type        = string
+  sensitive   = true
+}
+
+variable "iracing_password" {
+  description = "iRacing Password for API synchronization"
+  type        = string
+  sensitive   = true
+}
+
+variable "iracing_client_id" {
+  description = "iRacing Client ID (for Data API)"
+  type        = string
+  sensitive   = true
+}
+
+variable "iracing_client_secret" {
+  description = "iRacing Client Secret (for Data API)"
+  type        = string
+  sensitive   = true
+}
+
 
 ##########
 # Defaults
