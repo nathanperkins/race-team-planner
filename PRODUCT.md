@@ -127,6 +127,8 @@ A user's expression of interest for a specific race.
 * [ ] **Add "Live" Badge**: Visual indicator in `RaceDetails` for ongoing races.
 * [ ] **Registration Overlap Warning**: Prevent or warn about double-booking same-time races.
 * [ ] **Race Driver Limits**: Optional capacity limits for sessions.
+* [ ] **Implement roles**: Admins can modify all signups, users can only modify their own signups.
+* [ ] **Check Membership in SRG Discord**: Use the Discord API to check if a user is a member of the SRG Discord.
 
 ### Phase 3b: Improve local dev
 * [x] Add a mock auth provider.
@@ -135,10 +137,9 @@ A user's expression of interest for a specific race.
 
 ### Phase 4: Production Readiness
 * [x] Set up GitHub Actions for CI (Linting, Build Check).
-* [ ] Create Terraform configuration for GCP (Cloud Run, Artifact Registry).
+* [x] Create Terraform configuration for GCP (Cloud Run, Artifact Registry).
+* [x] Deploy to Staging.
 * [ ] Deploy to Production.
 
 ### Phase 5: Post Launch
-* [ ] **Implement roles**: Admins can modify all signups, users can only modify their own signups.
-* [ ] **Check Membership in SRG Discord**: Use the Discord API to check if a user is a member of the SRG Discord.
 * [ ] Look into improving event sort performance for race count.
