@@ -98,3 +98,7 @@ Before submitting changes, run the following to ensure code quality:
   ```bash
   npm run build
   ```
+
+## Deployment
+
+For instructions on how to deploy this application to Google Cloud Platform, please see [DEPLOYMENT.md](DEPLOYMENT.md).
