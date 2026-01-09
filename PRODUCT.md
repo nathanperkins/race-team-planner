@@ -123,6 +123,7 @@ A user's expression of interest for a specific race.
 * [ ] Ensure that app fails fast when any important environment variables are missing.
 * [ ] Display more info about each event.
 * [ ] Add sync support for car classes.
+* [ ] Add sync support for racer info.
 * [ ] **Add "Live" Badge**: Visual indicator in `RaceDetails` for ongoing races.
 * [ ] **Registration Overlap Warning**: Prevent or warn about double-booking same-time races.
 * [ ] **Race Driver Limits**: Optional capacity limits for sessions.
