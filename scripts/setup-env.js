@@ -1,50 +1,51 @@
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
-const { generateKey } = require('@47ng/cloak');
+const fs = require('fs')
+const path = require('path')
+const crypto = require('crypto')
+const { generateKey } = require('@47ng/cloak')
 
-const envPath = path.join(__dirname,'..','.env');
-const examplePath = path.join(__dirname,'..','.env.example');
+const envPath = path.join(__dirname, '..', '.env')
+const examplePath = path.join(__dirname, '..', '.env.example')
 
 // Check if .env already exists
 if (fs.existsSync(envPath)) {
-    console.log('⚠️  .env already exists. Skipping generation to avoid overwriting your secrets.');
-    console.log('   If you want to regenerate it, please delete .env first.');
-    process.exit(0);
+  console.log('⚠️  .env already exists. Skipping generation to avoid overwriting your secrets.')
+  console.log('   If you want to regenerate it, please delete .env first.')
+  process.exit(0)
 }
 
 // Check if .env.example exists
 if (!fs.existsSync(examplePath)) {
-    console.error('❌ .env.example not found! Cannot generate .env.');
-    process.exit(1);
+  console.error('❌ .env.example not found! Cannot generate .env.')
+  process.exit(1)
 }
 
-console.log('Generating secure keys...');
+console.log('Generating secure keys...')
+;(async () => {
+  try {
+    // Generate AUTH_SECRET (32 bytes base64)
+    const authSecret = crypto.randomBytes(32).toString('base64')
+    console.log('✅ Generated AUTH_SECRET')
 
-(async () => {
-    try {
-        // Generate AUTH_SECRET (32 bytes base64)
-        const authSecret = crypto.randomBytes(32).toString('base64');
-        console.log('✅ Generated AUTH_SECRET');
+    // Generate PRISMA_FIELD_ENCRYPTION_KEY using cloak library directly
+    const cloakKey = await generateKey()
+    console.log('✅ Generated PRISMA_FIELD_ENCRYPTION_KEY')
 
-        // Generate PRISMA_FIELD_ENCRYPTION_KEY using cloak library directly
-        const cloakKey = await generateKey();
-        console.log('✅ Generated PRISMA_FIELD_ENCRYPTION_KEY');
+    // Read .env.example and replace values
+    let content = fs.readFileSync(examplePath, 'utf8')
 
-        // Read .env.example and replace values
-        let content = fs.readFileSync(examplePath,'utf8');
+    content = content.replace(/^AUTH_SECRET=""/m, `AUTH_SECRET="${authSecret}"`)
+    content = content.replace(
+      /^PRISMA_FIELD_ENCRYPTION_KEY=""/m,
+      `PRISMA_FIELD_ENCRYPTION_KEY="${cloakKey}"`
+    )
 
-        content = content.replace(/^AUTH_SECRET=""/m,`AUTH_SECRET="${authSecret}"`);
-        content = content.replace(/^PRISMA_FIELD_ENCRYPTION_KEY=""/m,`PRISMA_FIELD_ENCRYPTION_KEY="${cloakKey}"`);
+    // Write to .env
+    fs.writeFileSync(envPath, content)
 
-        // Write to .env
-        fs.writeFileSync(envPath,content);
-
-        console.log('\n🚀 Successfully created .env with generated secrets!');
-        console.log('   You can now run "npm run dev" to start the application.');
-
-    } catch (error) {
-        console.error('❌ Failed to generate keys:',error.message);
-        process.exit(1);
-    }
-})();
+    console.log('\n🚀 Successfully created .env with generated secrets!')
+    console.log('   You can now run "npm run dev" to start the application.')
+  } catch (error) {
+    console.error('❌ Failed to generate keys:', error.message)
+    process.exit(1)
+  }
+})()
