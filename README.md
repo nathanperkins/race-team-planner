@@ -35,14 +35,19 @@ Before running the project, ensure you have the following installed:
      > _Note: Copy the CLOAK_MASTER_KEY from the output._
 
 3. **Configure Third-Party Services**
-   - **Discord OAuth**:
-     - Create an application at the [Discord Developer Portal](https://discord.com/developers/applications).
-     - Add a Redirect URI: `http://localhost:3000/api/auth/callback/discord`.
-     - Copy the Client ID and Client Secret to `AUTH_DISCORD_ID` and `AUTH_DISCORD_SECRET` in the `.env` file.
 
-   - **iRacing Data API**:
-     - Follow the setup guide: [iRacing Data API Documentation](https://forums.iracing.com/discussion/15068/general-availability-of-data-api).
-     - Obtain your Client ID and Client Secret and copy them to the `.env` file.
+Third-party services are optional and are configured via environment
+variables. When the environment variables are not provided, the application
+will use a mock data set suitable for local development.
+
+- **Discord OAuth**:
+  - Create an application at the [Discord Developer Portal](https://discord.com/developers/applications).
+  - Add a Redirect URI: `http://localhost:3000/api/auth/callback/discord`.
+  - Copy the Client ID and Client Secret to `AUTH_DISCORD_ID` and `AUTH_DISCORD_SECRET` in the `.env` file.
+
+- **iRacing Data API**:
+  - Follow the setup guide: [iRacing Data API Documentation](https://forums.iracing.com/discussion/15068/general-availability-of-data-api).
+  - Obtain your Client ID and Client Secret and copy them to the `.env` file.
 
 ## Running Locally
 
