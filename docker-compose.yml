@@ -16,6 +16,8 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: iracing-planner-app
+    profiles:
+      - app
     depends_on:
       - db
     ports:
