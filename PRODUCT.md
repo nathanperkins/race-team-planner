@@ -131,6 +131,7 @@ A user's expression of interest for a specific race.
 - [x] **Refactor Sync to use Upsert**: Individual race upserts to prevent wiping registrations.
 - [x] Add iRacing sync vars.
 - [x] Enable features like Discord and iRacing based on whether environment variables are provided.
+- [ ] Always use local timezone.
 - [ ] Add a name filter for events.
 - [ ] Consider providing .env file content directly instead of each individual var.
 - [ ] Fix syncing fails with success message.
