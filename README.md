@@ -13,26 +13,12 @@ Before running the project, ensure you have the following installed:
 
 ## Environment Setup
 
-1. **Create Environment File**
-   Copy the example environment file to `.env`:
+1. **Initialize Environment**
+   Run the setup script to create your `.env` file and generate secure keys automatically:
 
    ```bash
-   cp .env.example .env
+   npm run setup-env
    ```
-
-2. **Generate Secure Keys**
-   Run the following commands to generate secrets for your `.env` file:
-   - **AUTH_SECRET** (for NextAuth.js):
-
-     ```bash
-     npm run generate-secret
-     ```
-
-   - **PRISMA_FIELD_ENCRYPTION_KEY** (for Prisma Field Encryption):
-     ```bash
-     npx cloak generate
-     ```
-     > _Note: Copy the CLOAK_MASTER_KEY from the output._
 
 3. **Configure Third-Party Services**
 
