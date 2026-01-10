@@ -9,7 +9,7 @@ supabase_db_password     = "your-strong-password"
 supabase_region          = "us-west-1"
 
 # NextAuth
-nextauth_secret          = ""  # generate with 'openssl rand -base64 32'
+nextauth_secret          = ""  # generate with 'npm run generate-secret'
 nextauth_url             = ""  # Optional, usually inferred or set to custom domain
 
 # Prisma

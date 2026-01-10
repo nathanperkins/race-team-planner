@@ -48,7 +48,7 @@ We have provided a helper script to set up your GCP project and remote state buc
     Open the file and fill in the required values:
     - `project_id`: Your GCP Project ID (from step 1).
     - `supabase_...`: Credentials from your Supabase project settings.
-    - `nextauth_secret`: Generate one using `openssl rand -base64 32`.
+    - `nextauth_secret`: Generate one using `npm run generate-secret`.
     - `discord_...`: Your Discord OAuth credentials.
     - `iracing_...`: Credentials for iRacing Data API.
 

@@ -25,7 +25,7 @@ Before running the project, ensure you have the following installed:
    - **AUTH_SECRET** (for NextAuth.js):
 
      ```bash
-     openssl rand -base64 32
+     npm run generate-secret
      ```
 
    - **PRISMA_FIELD_ENCRYPTION_KEY** (for Prisma Field Encryption):
