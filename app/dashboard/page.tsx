@@ -18,6 +18,7 @@ interface PageProps {
     from?: string
     to?: string
     sort?: string
+    name?: string
   }>
 }
 
@@ -123,6 +124,13 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   }
 
   where.startTime = startTimeFilter
+
+  if (params.name) {
+    where.name = {
+      contains: params.name,
+      mode: 'insensitive',
+    }
+  }
 
   const events = await prisma.event.findMany({
     where,

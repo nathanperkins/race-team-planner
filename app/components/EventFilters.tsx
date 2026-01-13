@@ -14,6 +14,7 @@ interface EventFiltersProps {
     from?: string
     to?: string
     sort?: string
+    name?: string
   }
 }
 
@@ -21,6 +22,37 @@ export default function EventFilters({ carClasses, racers, currentFilters }: Eve
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const [nameFilter, setNameFilter] = useState(currentFilters.name || '')
+
+  const createQueryString = useCallback(
+    (name: string, value: string) => {
+      const params = new URLSearchParams(searchParams.toString())
+      if (value) {
+        params.set(name, value)
+      } else {
+        params.delete(name)
+      }
+      return params.toString()
+    },
+    [searchParams]
+  )
+
+  const handleFilterChange = useCallback(
+    (name: string, value: string) => {
+      router.push(pathname + '?' + createQueryString(name, value))
+    },
+    [router, pathname, createQueryString]
+  )
+
+  // Debounce name filter changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (nameFilter !== (currentFilters.name || '')) {
+        handleFilterChange('name', nameFilter)
+      }
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [nameFilter, currentFilters.name, handleFilterChange])
 
   const [isRacerDropdownOpen, setIsRacerDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -38,25 +70,22 @@ export default function EventFilters({ carClasses, racers, currentFilters }: Eve
     }
   }, [dropdownRef])
 
-  const createQueryString = useCallback(
-    (name: string, value: string) => {
-      const params = new URLSearchParams(searchParams.toString())
-      if (value) {
-        params.set(name, value)
-      } else {
-        params.delete(name)
-      }
-      return params.toString()
-    },
-    [searchParams]
-  )
-
-  const handleFilterChange = (name: string, value: string) => {
-    router.push(pathname + '?' + createQueryString(name, value))
-  }
-
   return (
     <div className={styles.filterBar}>
+      <div className={styles.filterGroup}>
+        <label htmlFor="name" className={styles.filterLabel} data-tooltip="Filter by event name.">
+          Event Name
+        </label>
+        <input
+          id="name"
+          type="text"
+          className={styles.filterInput}
+          placeholder="Search events..."
+          value={nameFilter}
+          onChange={(e) => setNameFilter(e.target.value)}
+        />
+      </div>
+
       <div className={styles.filterGroup}>
         <label
           htmlFor="signups"
@@ -219,8 +248,15 @@ export default function EventFilters({ carClasses, racers, currentFilters }: Eve
         currentFilters.racer ||
         currentFilters.from ||
         currentFilters.to ||
-        currentFilters.sort) && (
-        <button className={styles.clearButton} onClick={() => router.push(pathname)}>
+        currentFilters.sort ||
+        currentFilters.name) && (
+        <button
+          className={styles.clearButton}
+          onClick={() => {
+            setNameFilter('')
+            router.push(pathname)
+          }}
+        >
           Clear Filters
         </button>
       )}
