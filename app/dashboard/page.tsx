@@ -126,10 +126,10 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   where.startTime = startTimeFilter
 
   if (params.name) {
-    where.name = {
-      contains: params.name,
-      mode: 'insensitive',
-    }
+    where.OR = [
+      { name: { contains: params.name, mode: 'insensitive' } },
+      { track: { contains: params.name, mode: 'insensitive' } },
+    ]
   }
 
   const events = await prisma.event.findMany({

@@ -73,14 +73,18 @@ export default function EventFilters({ carClasses, racers, currentFilters }: Eve
   return (
     <div className={styles.filterBar}>
       <div className={styles.filterGroup}>
-        <label htmlFor="name" className={styles.filterLabel} data-tooltip="Filter by event name.">
-          Event Name
+        <label
+          htmlFor="name"
+          className={styles.filterLabel}
+          data-tooltip="Filter by event name or track."
+        >
+          Event / Track
         </label>
         <input
           id="name"
           type="text"
           className={styles.filterInput}
-          placeholder="Search events..."
+          placeholder="Search events or tracks..."
           value={nameFilter}
           onChange={(e) => setNameFilter(e.target.value)}
         />
