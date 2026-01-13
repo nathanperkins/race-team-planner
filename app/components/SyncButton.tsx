@@ -2,46 +2,99 @@
 
 import { useState } from 'react'
 import { syncIRacingEvents } from '@/app/actions/sync-events'
+import { Cloud, X } from 'lucide-react'
+import styles from './sync-button.module.css'
 
 export default function SyncButton() {
   const [isSyncing, setIsSyncing] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [showPopup, setShowPopup] = useState(false)
+  const [status, setStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle')
 
   const handleSync = async () => {
     setIsSyncing(true)
-    setMessage('Syncing...')
+    setShowPopup(true)
+    setStatus('syncing')
+    setMessage('Syncing events from iRacing...')
 
-    const result = await syncIRacingEvents()
+    try {
+      const result = await syncIRacingEvents()
 
-    if (result.success) {
-      setMessage(`Successfully synced ${result.count} events!`)
-    } else {
-      setMessage(`Error: ${result.error}`)
+      if (result.success) {
+        setStatus('success')
+        setMessage(`Successfully synced ${result.count} events!`)
+      } else {
+        setStatus('error')
+        setMessage(`Error: ${result.error}`)
+      }
+    } catch (error) {
+        setStatus('error')
+        setMessage(`An unexpected error occurred.`)
+        console.error(error)
+    } finally {
+      setIsSyncing(false)
     }
+  }
 
-    setIsSyncing(false)
-
-    // Clear message after 3 seconds
-    setTimeout(() => setMessage(null), 3000)
+  const closePopup = () => {
+    setShowPopup(false)
+    setStatus('idle')
+    setMessage(null)
   }
 
   return (
-    <div style={{ marginBottom: '20px' }}>
+    <>
       <button
         onClick={handleSync}
         disabled={isSyncing}
-        style={{
-          backgroundColor: isSyncing ? '#ccc' : '#0070f3',
-          color: 'white',
-          border: 'none',
-          padding: '10px 20px',
-          borderRadius: '5px',
-          cursor: isSyncing ? 'not-allowed' : 'pointer',
-        }}
+        className={styles.syncButton}
       >
-        {isSyncing ? 'Syncing...' : 'Sync iRacing Events'}
+        <Cloud size={16} />
+        Sync iRacing Events
       </button>
-      {message && <span style={{ marginLeft: '10px', fontSize: '14px' }}>{message}</span>}
-    </div>
+
+      {showPopup && (
+        <div className={styles.overlay}>
+          <div className={styles.modal}>
+            {!isSyncing && (
+              <button
+                onClick={closePopup}
+                className={styles.closeButton}
+                aria-label="Close"
+              >
+                <X size={20} />
+              </button>
+            )}
+
+            <div className={styles.statusIcon}>
+              {status === 'syncing' && <div className={styles.spinner} />}
+              {status === 'success' && <div>✅</div>}
+              {status === 'error' && <div>❌</div>}
+            </div>
+
+            <h3 className={styles.title}>
+              {status === 'syncing'
+                ? 'Syncing in Progress'
+                : status === 'success'
+                  ? 'Sync Complete'
+                  : 'Sync Failed'}
+            </h3>
+
+            <p className={styles.message}>{message}</p>
+
+            {!isSyncing && (
+              <button
+                onClick={closePopup}
+                className={`${styles.actionButton} ${
+                  status === 'success' ? styles.successButton : styles.errorButton
+                }`}
+              >
+                Close
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   )
 }

@@ -134,6 +134,7 @@ A user's expression of interest for a specific race.
 - [x] Always use local timezone.
 - [x] Add a name filter for events.
 - [x] Ensure that app fails fast when critical environment variables are missing.
+- [x] Show sync status and messages in a pop-up instead of alongside the button.
 - [ ] Consider providing .env file content directly instead of each individual var.
 - [ ] Fix syncing fails with success message.
 - [ ] Display more info about each event.
