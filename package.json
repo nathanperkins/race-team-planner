@@ -10,7 +10,7 @@
     "format": "prettier --write .",
     "postinstall": "prisma generate",
     "generate-secret": "node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\"",
-    "setup-env": "node scripts/setup-env.js"
+    "setup-env": "npx ts-node scripts/setup-env.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

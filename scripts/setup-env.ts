@@ -1,10 +1,10 @@
-const fs = require('fs')
-const path = require('path')
-const crypto = require('crypto')
-const { generateKey } = require('@47ng/cloak')
+import fs from 'fs'
+import path from 'path'
+import crypto from 'crypto'
+import { generateKey } from '@47ng/cloak'
 
-const envPath = path.join(__dirname, '..', '.env')
-const examplePath = path.join(__dirname, '..', '.env.example')
+const envPath = path.join(process.cwd(), '.env')
+const examplePath = path.join(process.cwd(), '.env.example')
 
 // Check if .env already exists
 if (fs.existsSync(envPath)) {
@@ -45,7 +45,7 @@ console.log('Generating secure keys...')
     console.log('\n🚀 Successfully created .env with generated secrets!')
     console.log('   You can now run "npm run dev" to start the application.')
   } catch (error) {
-    console.error('❌ Failed to generate keys:', error.message)
+    console.error('❌ Failed to generate keys:', (error as Error).message)
     process.exit(1)
   }
 })()
