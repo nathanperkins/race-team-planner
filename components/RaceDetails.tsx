@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import FormattedDate from './FormattedDate'
 import { deleteRegistration } from '@/app/actions'
 import styles from './RaceDetails.module.css'
 
@@ -28,7 +29,9 @@ export default function RaceDetails({ race, userId }: Props) {
   return (
     <div className={styles.raceCard}>
       <div className={styles.raceHeader}>
-        <h4 className={styles.raceTitle}>Race: {new Date(race.startTime).toLocaleString()}</h4>
+        <h4 className={styles.raceTitle}>
+          Race: <FormattedDate date={race.startTime} />
+        </h4>
         {isRaceCompleted && <span className={styles.completedBadge}>Completed</span>}
       </div>
 

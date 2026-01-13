@@ -6,6 +6,7 @@ import Link from 'next/link'
 import SyncButton from '../components/SyncButton'
 import EventFilters from '../components/EventFilters'
 import { Cloud, Users } from 'lucide-react'
+import FormattedDate from '@/components/FormattedDate'
 
 import styles from './dashboard.module.css'
 
@@ -228,7 +229,15 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                   {event.name}
                 </h2>
                 <span className={styles.dateBadge}>
-                  {new Date(event.startTime).toLocaleDateString()}
+                  <FormattedDate
+                    date={event.startTime}
+                    format={{
+                      year: 'numeric',
+                      month: 'numeric',
+                      day: 'numeric',
+                    }}
+                    hideTimezone
+                  />
                 </span>
               </div>
 

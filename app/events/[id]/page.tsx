@@ -5,6 +5,7 @@ import prisma from '@/lib/prisma'
 import { notFound, redirect } from 'next/navigation'
 import RaceRegistrationForm from '@/components/RaceRegistrationForm'
 import RaceDetails from '@/components/RaceDetails'
+import FormattedDate from '@/components/FormattedDate'
 import { Cloud } from 'lucide-react'
 
 import styles from './event.module.css'
@@ -71,8 +72,7 @@ export default async function EventPage({ params }: Props) {
           <div className={styles.meta}>
             <span className={styles.metaItem}>📍 {event.track}</span>
             <span className={styles.metaItem}>
-              📅 {new Date(event.startTime).toLocaleString()} -{' '}
-              {new Date(event.endTime).toLocaleString()}
+              📅 <FormattedDate date={event.startTime} /> - <FormattedDate date={event.endTime} />
             </span>
           </div>
 
@@ -102,8 +102,12 @@ export default async function EventPage({ params }: Props) {
               <div className={styles.completedBox}>
                 <p className={styles.completedTitle}>🏁 Event Completed</p>
                 <p className={styles.completedDetail}>
-                  This event ended on {new Date(event.endTime).toLocaleDateString()}. Registration
-                  is closed.
+                  This event ended on{' '}
+                  <FormattedDate
+                    date={event.endTime}
+                    format={{ year: 'numeric', month: 'numeric', day: 'numeric' }}
+                  />
+                  . Registration is closed.
                 </p>
               </div>
             ) : !hasAgreedToExpectations ? (

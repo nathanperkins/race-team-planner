@@ -40,8 +40,15 @@ export default function RaceRegistrationForm({ races, existingRegistrationRaceId
             const isPast = new Date() > race.endTime
 
             return (
-              <option key={race.id} value={race.id} disabled={isRegistered || isPast}>
-                {new Date(race.startTime).toLocaleString()}{' '}
+              <option
+                key={race.id}
+                value={race.id}
+                disabled={isRegistered || isPast}
+                suppressHydrationWarning
+              >
+                {new Date(race.startTime).toLocaleString(undefined, {
+                  timeZoneName: 'short',
+                })}{' '}
                 {isRegistered ? '(Registered)' : isPast ? '(Past)' : ''}
               </option>
             )

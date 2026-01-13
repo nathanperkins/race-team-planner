@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
+import FormattedDate from '@/components/FormattedDate'
 import { deleteRegistration } from '@/app/actions'
 
 import styles from './signups.module.css'
@@ -75,7 +76,9 @@ export default async function UserSignupsPage({ params }: Props) {
                         {reg.race.event.name}
                       </Link>
                     </td>
-                    <td className={styles.td}>{new Date(reg.race.startTime).toLocaleString()}</td>
+                    <td className={styles.td}>
+                      <FormattedDate date={reg.race.startTime} />
+                    </td>
                     <td className={styles.td}>{reg.race.event.track}</td>
                     <td className={styles.td}>
                       <span className={styles.classBadge}>{reg.carClass}</span>
