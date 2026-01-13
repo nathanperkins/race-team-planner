@@ -132,10 +132,10 @@ A user's expression of interest for a specific race.
 - [x] Add iRacing sync vars.
 - [x] Enable features like Discord and iRacing based on whether environment variables are provided.
 - [x] Always use local timezone.
-- [ ] Add a name filter for events.
+- [x] Add a name filter for events.
+- [x] Ensure that app fails fast when critical environment variables are missing.
 - [ ] Consider providing .env file content directly instead of each individual var.
 - [ ] Fix syncing fails with success message.
-- [ ] Ensure that app fails fast when critical environment variables are missing.
 - [ ] Display more info about each event.
 - [ ] Add sync support for car classes.
 - [ ] Add sync support for racer info.
