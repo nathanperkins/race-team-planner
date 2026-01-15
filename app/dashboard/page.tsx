@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import SyncButton from '../components/SyncButton'
 import EventFilters from '../components/EventFilters'
-import { Cloud, Users } from 'lucide-react'
+import { Cloud, Users, Flag } from 'lucide-react'
 import FormattedDate from '@/components/FormattedDate'
 
 import styles from './dashboard.module.css'
@@ -200,6 +200,10 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             (sum: number, r) => sum + r.registrations.length,
             0
           )
+
+          const now = new Date()
+          const isLive = now >= event.startTime && now <= event.endTime
+
           const allDriverNames = Array.from(
             new Set(event.races.flatMap((r) => r.registrations.map((reg) => reg.user.name)))
           ).filter(Boolean)
@@ -213,6 +217,13 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                 {event.externalId && (
                   <div className={styles.sourceBadge} data-tooltip="Synced from iRacing">
                     <Cloud size={14} />
+                  </div>
+                )}
+
+                {isLive && (
+                  <div className={styles.liveBadge} data-tooltip="Event is Live">
+                    <Flag size={14} fill="currentColor" />
+                    <span className="sr-only">Live</span>
                   </div>
                 )}
 

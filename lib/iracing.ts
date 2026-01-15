@@ -99,7 +99,10 @@ export async function fetchSpecialEvents(): Promise<IRacingEvent[]> {
   const token = await getAccessToken()
 
   if (!token) {
-    return fetchMockEvents()
+    if (process.env.NODE_ENV === 'development') {
+      return fetchMockEvents()
+    }
+    throw new Error('Failed to authenticate with iRacing API')
   }
 
   return fetchRealEvents(token)
