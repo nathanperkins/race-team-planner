@@ -21,9 +21,10 @@ interface RaceWithRegistrations {
 interface Props {
   race: RaceWithRegistrations
   userId: string
+  eventId: string
 }
 
-export default function RaceDetails({ race, userId }: Props) {
+export default function RaceDetails({ race, userId, eventId }: Props) {
   const isRaceCompleted = new Date() > new Date(race.endTime)
 
   return (
@@ -58,12 +59,7 @@ export default function RaceDetails({ race, userId }: Props) {
               </div>
               <div className={styles.driverTimeslot}>
                 {reg.userId === userId && (
-                  <form
-                    action={async () => {
-                      'use server'
-                      await deleteRegistration(reg.id)
-                    }}
-                  >
+                  <form action={deleteRegistration.bind(null, reg.id, `/events/${eventId}`)}>
                     <button type="submit" className={styles.deleteButtonSmall}>
                       Drop
                     </button>

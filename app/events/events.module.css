@@ -1,0 +1,376 @@
+.main {
+  padding: 22px 22px 40px;
+}
+
+.topRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.topRow h1 {
+  margin: 0;
+  font-size: 28px;
+  letter-spacing: 0.2px;
+  font-weight: 650;
+}
+
+/* week grid: fixed tile width, more tiles appear as window grows */
+.weekGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 520px);
+  gap: 14px;
+  justify-content: start;
+  align-items: start;
+}
+
+@media (max-width: 840px) {
+  .weekGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* week tile */
+.weekTile {
+  position: relative;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+  background: linear-gradient(180deg, rgba(19, 36, 58, 0.86), rgba(15, 27, 46, 0.86));
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+}
+
+.weekTile.alt {
+  background: linear-gradient(180deg, rgba(16, 31, 51, 0.92), rgba(12, 23, 39, 0.9));
+}
+
+.weekTile::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  background: var(--accent, #2d6cdf);
+  opacity: 0.95;
+}
+
+.weekHeader {
+  padding: 14px 14px 10px 18px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent);
+}
+
+.weekTitle {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.weekTitle .wk {
+  font-weight: 650;
+  letter-spacing: 0.2px;
+  font-size: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.weekTitle .range {
+  color: rgba(234, 240, 255, 0.72);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.weekTitle .meta {
+  color: rgba(234, 240, 255, 0.48);
+  font-weight: 600;
+  font-size: 12px;
+  margin-top: 1px;
+}
+
+.tipText {
+  color: rgba(234, 240, 255, 0.55);
+  font-weight: 600;
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.weekBadge {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* pills */
+.pill {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(8, 14, 24, 0.4);
+  color: rgba(234, 240, 255, 0.78);
+  font-weight: 650;
+  font-size: 12px;
+  letter-spacing: 0.2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.pill:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.weekBody {
+  padding: 12px 14px 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  /* limit visible events to 3 and enable scrolling when more exist */
+  --event-row-h: 86px;
+  /* account for 2 gaps between 3 rows (2 * 10px = 20px) */
+  max-height: calc(var(--event-row-h) * 3 + 20px);
+  overflow: auto;
+}
+
+/* event rows are CLICKABLE */
+.eventRow {
+  position: relative;
+  background: rgba(8, 14, 24, 0.45);
+  border: 1px solid color-mix(in srgb, var(--licColor, #ef4444) 55%, rgba(255, 255, 255, 0.1));
+  border-radius: 14px;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    transform 0.05s ease;
+  text-decoration: none;
+  color: inherit;
+  /* fixed row height so tile shows exactly 3 rows before scrolling */
+  flex: 0 0 var(--event-row-h);
+  min-height: var(--event-row-h);
+  max-height: var(--event-row-h);
+  height: var(--event-row-h);
+}
+
+.eventRow:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: color-mix(in srgb, var(--licColor, #ef4444) 70%, rgba(255, 255, 255, 0.14));
+}
+
+.eventRow:active {
+  transform: translateY(1px);
+}
+
+/* license-coded left stripe (per event) */
+.eventRow::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  background: var(--licColor, #ef4444);
+  opacity: 0.95;
+}
+
+.eventLeft {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 6px;
+  overflow: hidden;
+}
+
+.eventTopLine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.eventName {
+  font-weight: 650;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1;
+}
+
+.eventTrack {
+  font-size: 12px;
+  color: rgba(234, 240, 255, 0.7);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trackDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--licColor, #ef4444);
+  opacity: 0.95;
+  flex-shrink: 0;
+}
+.licenseBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 12px;
+  border: 2px solid var(--licBorder, #ef4444);
+  background: var(--licFill, #ffe1e1);
+  color: var(--licText, #ef4444);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22);
+}
+
+.eventRow[style]::before,
+.eventRow::before {
+  background: var(--licColor, #ef4444);
+}
+
+.eventTimes {
+  font-size: 11px;
+  color: rgba(234, 240, 255, 0.48);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.timeSlot {
+  display: inline-flex;
+  align-items: center;
+}
+
+.timeSep {
+  color: rgba(234, 240, 255, 0.35);
+}
+
+.subRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.classPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.classPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(234, 240, 255, 0.9);
+  white-space: nowrap;
+}
+
+/* Right side: driver count pill + status text (not buttons) */
+.eventRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+  flex: 0 0 auto;
+}
+
+.driverPill {
+  position: relative;
+  cursor: default;
+  padding: 6px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(8, 14, 24, 0.4);
+  color: rgba(234, 240, 255, 0.78);
+  font-weight: 650;
+  font-size: 12px;
+  letter-spacing: 0.2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.driverIcon {
+  width: 14px;
+  height: 14px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.srText {
+  font-size: 11px;
+  color: rgba(234, 240, 255, 0.55);
+  font-weight: 600;
+}
+
+.weekFooter {
+  padding: 12px 14px 14px 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  color: rgba(234, 240, 255, 0.55);
+  font-weight: 600;
+  font-size: 12px;
+  background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.03));
+}
+
+.weekBody::-webkit-scrollbar {
+  width: 10px;
+}
+
+.weekBody::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  border: 2px solid rgba(0, 0, 0, 0);
+  background-clip: padding-box;
+}
+
+.weekBody::-webkit-scrollbar-track {
+  background: transparent;
+}

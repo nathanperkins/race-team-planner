@@ -1,4 +1,6 @@
 import crypto from 'node:crypto'
+import { writeFile } from 'node:fs/promises'
+import path from 'node:path'
 
 export interface IRacingRace {
   externalId?: string
@@ -116,6 +118,12 @@ async function fetchRealEvents(token: string): Promise<IRacingEvent[]> {
   try {
     const seasons = await fetchFromIRacing('/data/series/seasons', token)
     if (!seasons || !Array.isArray(seasons)) return []
+    if (process.env.IRACING_DEBUG_SEASONS === 'true') {
+      const dump = JSON.stringify(seasons, null, 2)
+      const outPath = path.join(process.cwd(), 'iracing-seasons.json')
+      await writeFile(outPath, dump, 'utf-8')
+      console.log('iRacing seasons raw written to:', outPath)
+    }
 
     const specialKeywords = [
       'special event',

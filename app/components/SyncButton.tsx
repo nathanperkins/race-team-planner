@@ -28,9 +28,9 @@ export default function SyncButton() {
         setMessage(`Error: ${result.error}`)
       }
     } catch (error) {
-        setStatus('error')
-        setMessage(`An unexpected error occurred.`)
-        console.error(error)
+      setStatus('error')
+      setMessage(`An unexpected error occurred.`)
+      console.error(error)
     } finally {
       setIsSyncing(false)
     }
@@ -44,11 +44,7 @@ export default function SyncButton() {
 
   return (
     <>
-      <button
-        onClick={handleSync}
-        disabled={isSyncing}
-        className={styles.syncButton}
-      >
+      <button onClick={handleSync} disabled={isSyncing} className={styles.syncButton}>
         <Cloud size={16} />
         Sync iRacing Events
       </button>
@@ -57,11 +53,7 @@ export default function SyncButton() {
         <div className={styles.overlay}>
           <div className={styles.modal}>
             {!isSyncing && (
-              <button
-                onClick={closePopup}
-                className={styles.closeButton}
-                aria-label="Close"
-              >
+              <button onClick={closePopup} className={styles.closeButton} aria-label="Close">
                 <X size={20} />
               </button>
             )}

@@ -88,7 +88,12 @@ export default async function EventPage({ params }: Props) {
             ) : (
               <div className={styles.raceList}>
                 {event.races.map((race) => (
-                  <RaceDetails key={race.id} race={race} userId={session.user.id} />
+                  <RaceDetails
+                    key={race.id}
+                    race={race}
+                    userId={session.user.id}
+                    eventId={event.id}
+                  />
                 ))}
               </div>
             )}

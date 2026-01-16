@@ -89,10 +89,11 @@ export default async function UserSignupsPage({ params }: Props) {
                           <span className={styles.completedText}>Completed</span>
                         ) : (
                           <form
-                            action={async () => {
-                              'use server'
-                              await deleteRegistration(reg.id)
-                            }}
+                            action={deleteRegistration.bind(
+                              null,
+                              reg.id,
+                              `/users/${userId}/signups`
+                            )}
                           >
                             <button type="submit" className={styles.deleteButton}>
                               Drop

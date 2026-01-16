@@ -17,9 +17,9 @@ async function main() {
         create: {
           startTime,
           endTime,
-        }
-      }
-    }
+        },
+      },
+    },
   })
 
   console.log('Created live event:', event.name, 'with ID:', event.id)

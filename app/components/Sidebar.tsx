@@ -29,7 +29,14 @@ export default function Sidebar({ session }: SidebarProps) {
           href="/dashboard"
           className={`${styles.link} ${isActive('/dashboard') ? styles.activeLink : ''}`}
         >
-          Events
+          Events Old
+        </Link>
+
+        <Link
+          href="/events"
+          className={`${styles.link} ${isActive('/events') ? styles.activeLink : ''}`}
+        >
+          Events New
         </Link>
 
         <Link

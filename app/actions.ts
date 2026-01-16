@@ -3,6 +3,7 @@
 import { auth } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 import { z } from 'zod'
 
 const RegistrationSchema = z.object({
@@ -72,18 +73,24 @@ export async function registerForRace(prevState: State, formData: FormData) {
   }
 }
 
-export async function deleteRegistration(registrationId: string) {
+export async function deleteRegistration(registrationId: string, returnPath?: string): Promise<void> {
   const session = await auth()
   if (!session || !session.user?.id) {
     throw new Error('Unauthorized')
   }
 
+  if (!registrationId) {
+    throw new Error('Registration ID required')
+  }
+
   try {
-    const registration = await prisma.registration.findUnique({
+    const registration = await prisma.registration.findFirst({
       where: {
         id: registrationId,
+        userId: session.user.id,
       },
-      include: {
+      select: {
+        id: true,
         race: {
           select: { endTime: true, eventId: true },
         },
@@ -91,15 +98,11 @@ export async function deleteRegistration(registrationId: string) {
     })
 
     if (!registration) {
-      throw new Error('Registration not found')
+      return
     }
 
-    if (registration.userId !== session.user.id) {
-      throw new Error('Unauthorized')
-    }
-
-    if (new Date() > registration.race.endTime) {
-      throw new Error('Cannot drop from a completed race')
+    if (registration.race && new Date() > registration.race.endTime) {
+      return
     }
 
     await prisma.registration.delete({
@@ -108,9 +111,14 @@ export async function deleteRegistration(registrationId: string) {
       },
     })
 
-    revalidatePath(`/events/${registration.race.eventId}`)
+    if (registration.race?.eventId) {
+      revalidatePath(`/events/${registration.race.eventId}`)
+    }
     revalidatePath(`/users/${session.user.id}/signups`)
-    return { message: 'Success' }
+    if (returnPath) {
+      redirect(returnPath)
+    }
+    return
   } catch (e) {
     console.error('Delete registration error:', e)
     throw new Error('Failed to delete registration')
