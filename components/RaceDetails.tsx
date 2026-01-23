@@ -58,7 +58,7 @@ export default function RaceDetails({ race, userId, eventId }: Props) {
                 </div>
               </div>
               <div className={styles.driverTimeslot}>
-                {reg.userId === userId && (
+                {reg.userId === userId && !isRaceCompleted && (
                   <form action={deleteRegistration.bind(null, reg.id, `/events/${eventId}`)}>
                     <button type="submit" className={styles.deleteButtonSmall}>
                       Drop

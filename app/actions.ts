@@ -76,7 +76,7 @@ export async function registerForRace(prevState: State, formData: FormData) {
 export async function deleteRegistration(registrationId: string, returnPath?: string): Promise<void> {
   const session = await auth()
   if (!session || !session.user?.id) {
-    throw new Error('Unauthorized')
+    throw new Error('Not authenticated')
   }
 
   if (!registrationId) {
@@ -98,11 +98,12 @@ export async function deleteRegistration(registrationId: string, returnPath?: st
     })
 
     if (!registration) {
+      // Nothing to delete because there is no registration associated with the user.
       return
     }
 
     if (registration.race && new Date() > registration.race.endTime) {
-      return
+      throw new Error('Cannot drop from a completed race')
     }
 
     await prisma.registration.delete({
