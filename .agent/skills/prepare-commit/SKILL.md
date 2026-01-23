@@ -1,4 +1,5 @@
 ---
+name: prepare-commit
 description: Helps prepare and verify local changes before committing to git.
 ---
 
