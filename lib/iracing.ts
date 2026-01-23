@@ -84,10 +84,18 @@ async function fetchFromIRacing(endpoint: string, token: string) {
     headers: { Authorization: `Bearer ${token}` },
   })
 
-  if (!response.ok) return null
+  if (!response.ok) {
+    throw new Error(`iRacing API Request Failed: ${response.status} ${response.statusText}`)
+  }
+
   const data = await response.json()
   if (data.link) {
     const dataResponse = await fetch(data.link)
+    if (!dataResponse.ok) {
+      throw new Error(
+        `iRacing Link Request Failed: ${dataResponse.status} ${dataResponse.statusText}`
+      )
+    }
     return dataResponse.json()
   }
   return data
@@ -115,109 +123,104 @@ async function fetchMockEvents(): Promise<IRacingEvent[]> {
 }
 
 async function fetchRealEvents(token: string): Promise<IRacingEvent[]> {
-  try {
-    const seasons = await fetchFromIRacing('/data/series/seasons', token)
-    if (!seasons || !Array.isArray(seasons)) return []
-    if (process.env.IRACING_DEBUG_SEASONS === 'true') {
-      const dump = JSON.stringify(seasons, null, 2)
-      const outPath = path.join(process.cwd(), 'iracing-seasons.json')
-      await writeFile(outPath, dump, 'utf-8')
-      console.log('iRacing seasons raw written to:', outPath)
-    }
+  const seasons = await fetchFromIRacing('/data/series/seasons', token)
+  if (!seasons || !Array.isArray(seasons)) return []
+  if (process.env.IRACING_DEBUG_SEASONS === 'true') {
+    const dump = JSON.stringify(seasons, null, 2)
+    const outPath = path.join(process.cwd(), 'iracing-seasons.json')
+    await writeFile(outPath, dump, 'utf-8')
+    console.log('iRacing seasons raw written to:', outPath)
+  }
 
-    const specialKeywords = [
-      'special event',
-      'roar',
-      '24h',
-      '12h',
-      '10h',
-      '6h',
-      '1000',
-      'endurance',
-      'major',
-      'petit le mans',
-      'sebring 12',
-      'bathurst 12',
-      'daytona 24',
-      'spa 24',
-      'nürburgring 24',
-    ]
+  const specialKeywords = [
+    'special event',
+    'roar',
+    '24h',
+    '12h',
+    '10h',
+    '6h',
+    '1000',
+    'endurance',
+    'major',
+    'petit le mans',
+    'sebring 12',
+    'bathurst 12',
+    'daytona 24',
+    'spa 24',
+    'nürburgring 24',
+  ]
 
-    const now = new Date()
-    const thirtyDaysFromNow = new Date()
-    thirtyDaysFromNow.setDate(now.getDate() + 30)
+  const now = new Date()
+  const thirtyDaysFromNow = new Date()
+  thirtyDaysFromNow.setDate(now.getDate() + 30)
 
-    const events: IRacingEvent[] = []
+  const events: IRacingEvent[] = []
 
-    for (const season of seasons) {
-      const name = season.season_name || ''
-      const lowerName = name.toLowerCase()
+  for (const season of seasons) {
+    const name = season.season_name || ''
+    const lowerName = name.toLowerCase()
 
-      const isTeam = season.driver_changes || (season.max_team_drivers ?? 1) > 1
+    const isTeam = season.driver_changes || (season.max_team_drivers ?? 1) > 1
 
-      if (!isMatch(lowerName, isTeam, specialKeywords)) continue
-      if (!season.schedules) continue
+    if (!isMatch(lowerName, isTeam, specialKeywords)) continue
+    if (!season.schedules) continue
 
-      for (const week of season.schedules) {
-        const weekEnd = new Date(week.week_end_time || week.start_date)
-        const weekStart = new Date(week.start_date)
+    for (const week of season.schedules) {
+      const weekEnd = new Date(week.week_end_time || week.start_date)
+      const weekStart = new Date(week.start_date)
 
-        if (weekEnd > now && weekStart <= thirtyDaysFromNow) {
-          const races: IRacingRace[] = []
+      if (weekEnd > now && weekStart <= thirtyDaysFromNow) {
+        const races: IRacingRace[] = []
 
-          if (week.race_time_descriptors) {
-            for (const descriptor of week.race_time_descriptors) {
-              if (descriptor.session_times) {
-                for (let i = 0; i < descriptor.session_times.length; i++) {
-                  const sessionTime = descriptor.session_times[i]
-                  const start = new Date(sessionTime)
-                  const end = new Date(
-                    start.getTime() + (season.event_duration_minutes || 60) * 60000
-                  )
-                  const externalId = `ir_${season.series_id}_${season.season_id}_w${week.race_week_num}_s${i}`
-                  races.push({
-                    externalId,
-                    startTime: start.toISOString(),
-                    endTime: end.toISOString(),
-                  })
-                }
+        if (week.race_time_descriptors) {
+          for (const descriptor of week.race_time_descriptors) {
+            if (descriptor.session_times) {
+              for (let i = 0; i < descriptor.session_times.length; i++) {
+                const sessionTime = descriptor.session_times[i]
+                const start = new Date(sessionTime)
+                const end = new Date(
+                  start.getTime() + (season.event_duration_minutes || 60) * 60000
+                )
+                const externalId = `ir_${season.series_id}_${season.season_id}_w${week.race_week_num}_s${i}`
+                races.push({
+                  externalId,
+                  startTime: start.toISOString(),
+                  endTime: end.toISOString(),
+                })
               }
             }
           }
+        }
 
-          if (races.length === 0) {
-            const start = new Date(week.start_date)
-            const end = new Date(start.getTime() + (season.event_duration_minutes || 60) * 60000)
-            races.push({
-              startTime: start.toISOString(),
-              endTime: end.toISOString(),
-            })
-          }
-
-          // Sort races by start time
-          races.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
-
-          const eventStart = races[0].startTime
-          const eventEnd = races[races.length - 1].endTime
-
-          events.push({
-            externalId: `ir_${season.series_id}_${season.season_id}_w${week.race_week_num}`,
-            name: week.race_week_num === 0 ? name : `${name} - Week ${week.race_week_num + 1}`,
-            startTime: eventStart,
-            endTime: eventEnd,
-            track: week.track?.track_name || 'TBA',
-            description: season.schedule_description || name,
-            races,
+        if (races.length === 0) {
+          const start = new Date(week.start_date)
+          const end = new Date(start.getTime() + (season.event_duration_minutes || 60) * 60000)
+          races.push({
+            startTime: start.toISOString(),
+            endTime: end.toISOString(),
           })
         }
+
+        // Sort races by start time
+        races.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+
+        const eventStart = races[0].startTime
+        const eventEnd = races[races.length - 1].endTime
+
+        events.push({
+          externalId: `ir_${season.series_id}_${season.season_id}_w${week.race_week_num}`,
+          name: week.race_week_num === 0 ? name : `${name} - Week ${week.race_week_num + 1}`,
+          startTime: eventStart,
+          endTime: eventEnd,
+          track: week.track?.track_name || 'TBA',
+          description: season.schedule_description || name,
+          races,
+        })
       }
     }
-
-    return events.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
-  } catch (error) {
-    console.error('Failed to fetch from iRacing API:', error)
-    return []
   }
+
+  return events.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
 }
 
 function isMatch(name: string, isTeam: boolean, keywords: string[]): boolean {
