@@ -1,3 +1,4 @@
+.agent
 Dockerfile
 .dockerignore
 .env*
