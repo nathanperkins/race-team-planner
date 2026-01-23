@@ -288,7 +288,9 @@ export default async function EventsPage({ searchParams }: PageProps) {
       target.events.push(mockEvent)
       target.meta.events = (target.meta.events || 0) + 1
       target.meta.tracks.add(mockEvent.track)
-      target.events.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+      target.events.sort(
+        (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+      )
     }
   } catch {}
 

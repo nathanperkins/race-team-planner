@@ -73,7 +73,10 @@ export async function registerForRace(prevState: State, formData: FormData) {
   }
 }
 
-export async function deleteRegistration(registrationId: string, returnPath?: string): Promise<void> {
+export async function deleteRegistration(
+  registrationId: string,
+  returnPath?: string
+): Promise<void> {
   const session = await auth()
   if (!session || !session.user?.id) {
     throw new Error('Not authenticated')
