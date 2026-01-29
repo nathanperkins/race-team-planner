@@ -26,17 +26,10 @@ export default function Sidebar({ session }: SidebarProps) {
 
       <nav className={styles.nav}>
         <Link
-          href="/dashboard"
-          className={`${styles.link} ${isActive('/dashboard') ? styles.activeLink : ''}`}
-        >
-          Events Old
-        </Link>
-
-        <Link
           href="/events"
           className={`${styles.link} ${isActive('/events') ? styles.activeLink : ''}`}
         >
-          Events New
+          Events
         </Link>
 
         <Link

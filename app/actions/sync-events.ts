@@ -94,7 +94,7 @@ export async function syncIRacingEvents() {
       })
     }
 
-    revalidatePath('/dashboard')
+    revalidatePath('/events')
     return { success: true, count: externalEvents.length }
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error'

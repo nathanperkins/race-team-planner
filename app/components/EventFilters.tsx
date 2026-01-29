@@ -2,7 +2,7 @@
 
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useCallback, useState, useRef, useEffect } from 'react'
-import styles from '../dashboard/dashboard.module.css'
+import styles from './EventFilters.module.css'
 
 interface EventFiltersProps {
   carClasses: { id: string; name: string; shortName: string }[]

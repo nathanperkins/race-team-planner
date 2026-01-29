@@ -13,7 +13,7 @@ export default function NotFound() {
       </p>
 
       <div className={styles.buttonGroup}>
-        <Link href="/dashboard" className={styles.primaryButton}>
+        <Link href="/events" className={styles.primaryButton}>
           <ArrowLeft size={18} />
           Return to Pits
         </Link>

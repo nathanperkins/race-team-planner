@@ -41,9 +41,9 @@ export default function Error({
           <RotateCcw size={18} />
           Try Again
         </button>
-        <Link href="/dashboard" className={styles.secondaryButton}>
+        <Link href="/events" className={styles.secondaryButton}>
           <Home size={18} />
-          Dashboard
+          Events
         </Link>
       </div>
     </div>
