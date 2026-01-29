@@ -113,6 +113,20 @@
   /* gap-1 */
 }
 
+.licenseBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 12px;
+  border: 1px solid var(--licColor, #ef4444);
+  background: color-mix(in srgb, var(--licColor, #ef4444) 20%, transparent);
+  color: var(--licColor, #ef4444);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22);
+}
+
 .prose {
   margin-bottom: 3rem;
   /* mb-12 */

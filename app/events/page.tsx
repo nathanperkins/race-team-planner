@@ -7,6 +7,7 @@ import EventFilters from '../components/EventFilters'
 import FormattedDate from '@/components/FormattedDate'
 import { Prisma } from '@prisma/client'
 import type { CSSProperties } from 'react'
+import { getLicenseForId, getLicenseColor } from '@/lib/utils'
 
 import styles from './events.module.css'
 
@@ -297,27 +298,6 @@ export default async function EventsPage({ searchParams }: PageProps) {
     }
   } catch {}
 
-  function licenseForId(id: string) {
-    const map = ['A', 'B', 'C', 'D', 'R']
-    let sum = 0
-    for (let i = 0; i < id.length; i++) sum += id.charCodeAt(i)
-    return map[sum % map.length]
-  }
-
-  function licenseColor(letter: string) {
-    switch (String(letter).toUpperCase()) {
-      case 'A':
-        return '#3b82f6'
-      case 'B':
-        return '#22c55e'
-      case 'C':
-        return '#facc15'
-      case 'D':
-        return '#fb923c'
-      default:
-        return '#ef4444'
-    }
-  }
 
   return (
     <main className={styles.main}>
@@ -360,9 +340,9 @@ export default async function EventsPage({ searchParams }: PageProps) {
                   (sum: number, race: RaceWithRegistrations) => sum + race.registrations.length,
                   0
                 )
-                const license = licenseForId(event.id)
+                const license = getLicenseForId(event.id)
                 const licenseStyle: LicenseStyle = {
-                  ['--licColor']: licenseColor(license),
+                  ['--licColor']: getLicenseColor(license),
                 }
 
                 return (
@@ -381,9 +361,9 @@ export default async function EventsPage({ searchParams }: PageProps) {
                           className={styles.licenseBadge}
                           title={`License ${license}`}
                           style={{
-                            borderColor: licenseColor(license),
-                            color: licenseColor(license),
-                            backgroundColor: `${licenseColor(license)}30`,
+                            borderColor: getLicenseColor(license),
+                            color: getLicenseColor(license),
+                            backgroundColor: `${getLicenseColor(license)}30`,
                           }}
                         >
                           {license} 2.0

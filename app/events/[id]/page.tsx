@@ -6,7 +6,8 @@ import { notFound, redirect } from 'next/navigation'
 import RaceRegistrationForm from '@/components/RaceRegistrationForm'
 import RaceDetails from '@/components/RaceDetails'
 import FormattedDate from '@/components/FormattedDate'
-import { Cloud } from 'lucide-react'
+import { Cloud, ShieldCheck } from 'lucide-react'
+import { getLicenseForId, getLicenseColor } from '@/lib/utils'
 
 import styles from './event.module.css'
 
@@ -60,6 +61,8 @@ export default async function EventPage({ params }: Props) {
     .filter((reg) => reg.userId === session.user?.id)
 
   const isCompleted = new Date() > event.endTime
+  const license = getLicenseForId(event.id)
+  const licenseColor = getLicenseColor(license)
 
   return (
     <div className={styles.container}>
@@ -75,6 +78,15 @@ export default async function EventPage({ params }: Props) {
             <span className={styles.metaItem}>📍 {event.track}</span>
             <span className={styles.metaItem}>
               📅 <FormattedDate date={event.startTime} /> - <FormattedDate date={event.endTime} />
+            </span>
+            <span className={styles.metaItem}>
+              <div
+                className={styles.licenseBadge}
+                style={{ '--licColor': licenseColor } as React.CSSProperties}
+              >
+                <ShieldCheck size={14} />
+                License {license} 2.0
+              </div>
             </span>
           </div>
 
