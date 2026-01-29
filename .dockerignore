@@ -1,5 +1,7 @@
 .agent
+.beads
 .codex
+.claude
 Dockerfile
 .dockerignore
 .env*

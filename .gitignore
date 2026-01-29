@@ -49,3 +49,6 @@ raw_data/
 next-env.d.ts
 
 /app/generated/prisma
+
+# ai related stuff
+.beads
