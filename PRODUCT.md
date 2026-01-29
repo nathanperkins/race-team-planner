@@ -135,10 +135,10 @@ A user's expression of interest for a specific race.
 - [x] Add a name filter for events.
 - [x] Ensure that app fails fast when critical environment variables are missing.
 - [x] Show sync status and messages in a pop-up instead of alongside the button.
+- [x] Add sync support for car classes.
 - [ ] Consider providing .env file content directly instead of each individual var.
 - [ ] Fix syncing fails with success message.
 - [ ] Display more info about each event.
-- [x] Add sync support for car classes.
 - [ ] Add sync support for racer info.
 - [ ] **Add "Live" Badge**: Visual indicator in `RaceDetails` for ongoing races.
 - [ ] **Registration Overlap Warning**: Prevent or warn about double-booking same-time races.

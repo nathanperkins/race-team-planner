@@ -17,6 +17,7 @@ export interface IRacingEvent {
   description: string
   races: IRacingRace[]
   carClassIds: number[]
+  licenseGroup?: number
 }
 
 export interface IRacingCarClass {
@@ -43,6 +44,7 @@ const MOCK_EVENTS: IRacingEvent[] = [
       },
     ],
     carClassIds: [],
+    licenseGroup: 4,
   },
 ]
 
@@ -248,6 +250,7 @@ async function fetchRealEvents(token: string): Promise<IRacingEvent[]> {
           description: season.schedule_description || name,
           races,
           carClassIds: season.car_class_ids || [],
+          licenseGroup: season.license_group,
         })
       }
     }

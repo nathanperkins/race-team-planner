@@ -61,7 +61,7 @@ export default async function EventPage({ params }: Props) {
     .filter((reg) => reg.userId === session.user?.id)
 
   const isCompleted = new Date() > event.endTime
-  const license = getLicenseForId(event.id)
+  const license = getLicenseForId(event.id, event.licenseGroup)
   const licenseColor = getLicenseColor(license)
 
   return (

@@ -91,6 +91,7 @@ const ENDPOINTS = [
   { name: 'tracks', path: '/data/track/get' },
   { name: 'series', path: '/data/series/get' },
   { name: 'member_info', path: '/data/member/info' },
+  { name: 'licenses', path: '/data/lookup/licenses' },
 ]
 
 async function main() {

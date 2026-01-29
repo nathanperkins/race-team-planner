@@ -58,6 +58,7 @@ export async function syncIRacingEvents() {
             endTime: end,
             track: event.track,
             description: event.description,
+            licenseGroup: event.licenseGroup,
             carClasses: {
               set: dbCarClassIds.map((id) => ({ id })),
             },
@@ -69,6 +70,7 @@ export async function syncIRacingEvents() {
             endTime: end,
             track: event.track,
             description: event.description,
+            licenseGroup: event.licenseGroup,
             carClasses: {
               connect: dbCarClassIds.map((id) => ({ id })),
             },

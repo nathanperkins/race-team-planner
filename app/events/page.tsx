@@ -279,6 +279,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
           updatedAt: now,
         },
       ],
+      licenseGroup: 3,
       createdAt: now,
       updatedAt: now,
     }
@@ -340,7 +341,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
                   (sum: number, race: RaceWithRegistrations) => sum + race.registrations.length,
                   0
                 )
-                const license = getLicenseForId(event.id)
+                const license = getLicenseForId(event.id, event.licenseGroup)
                 const licenseStyle: LicenseStyle = {
                   ['--licColor']: getLicenseColor(license),
                 }

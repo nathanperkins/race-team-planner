@@ -1,4 +1,21 @@
-export function getLicenseForId(id: string): string {
+export function getLicenseForId(id: string, licenseGroup?: number | null): string {
+  // Mapping based on iRacing license_group values
+  // 1: Rookie, 2: D, 3: C, 4: B, 5: A
+  const licenseMap: Record<number, string> = {
+    1: 'R',
+    2: 'D',
+    3: 'C',
+    4: 'B',
+    5: 'A',
+    6: 'Pro',
+    7: 'PWC',
+  }
+
+  if (licenseGroup && licenseMap[licenseGroup]) {
+    return licenseMap[licenseGroup]
+  }
+
+  // Fallback to hashing for mock/legacy data
   const map = ['A', 'B', 'C', 'D', 'R']
   let sum = 0
   for (let i = 0; i < id.length; i++) sum += id.charCodeAt(i)
