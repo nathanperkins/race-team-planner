@@ -42,6 +42,7 @@ const MOCK_EVENTS: IRacingEvent[] = [
         endTime: '2026-02-08T06:00:00Z',
       },
     ],
+    carClassIds: [],
   },
 ]
 
@@ -140,11 +141,13 @@ export async function fetchCarClasses(): Promise<IRacingCarClass[]> {
   const data = await fetchFromIRacing('/data/carclass/get', token)
   if (!data || !Array.isArray(data)) return []
 
-  return data.map((item: any) => ({
-    carClassId: item.car_class_id,
-    name: item.name,
-    shortName: item.short_name,
-  }))
+  return (data as { car_class_id: number; name: string; short_name: string }[]).map(
+    (item) => ({
+      carClassId: item.car_class_id,
+      name: item.name,
+      shortName: item.short_name,
+    })
+  )
 }
 
 async function fetchMockEvents(): Promise<IRacingEvent[]> {

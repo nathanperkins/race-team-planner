@@ -32,10 +32,6 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     redirect('/login')
   }
 
-  // Fetch unique car classes for the filter dropdown
-  const carClasses = await prisma.carClass.findMany({
-    orderBy: { shortName: 'asc' },
-  })
 
   // Fetch unique racers (users who have signed up)
   const distinctUsers: { user: { id: string; name: string | null } }[] =
@@ -66,14 +62,6 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             userId: session.user.id,
           },
         },
-      },
-    }
-  }
-
-  if (params.carClass) {
-    where.carClasses = {
-      some: {
-        id: params.carClass,
       },
     }
   }
@@ -123,6 +111,26 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       { name: { contains: params.name, mode: 'insensitive' } },
       { track: { contains: params.name, mode: 'insensitive' } },
     ]
+  }
+
+  // Fetch unique car classes for the filter dropdown based on current filters
+  // (excluding the car class filter itself so you can switch between available options)
+  const carClasses = await prisma.carClass.findMany({
+    where: {
+      events: {
+        some: where,
+      },
+    },
+    orderBy: { shortName: 'asc' },
+  })
+
+  // Finally add car class filter to events query
+  if (params.carClass) {
+    where.carClasses = {
+      some: {
+        id: params.carClass,
+      },
+    }
   }
 
   const events = await prisma.event.findMany({
