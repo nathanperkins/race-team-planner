@@ -3,6 +3,7 @@
 Dockerfile
 .dockerignore
 .env*
+raw_data/
 node_modules
 npm-debug.log
 README.md
