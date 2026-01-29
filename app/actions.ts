@@ -8,7 +8,7 @@ import { z } from 'zod'
 
 const RegistrationSchema = z.object({
   raceId: z.string(),
-  carClass: z.string().min(1, 'Car class is required'),
+  carClassId: z.string().min(1, 'Car class is required'),
 })
 
 type State = {
@@ -47,21 +47,21 @@ export async function registerForRace(prevState: State, formData: FormData) {
 
   const validatedFields = RegistrationSchema.safeParse({
     raceId: formData.get('raceId'),
-    carClass: formData.get('carClass'),
+    carClassId: formData.get('carClassId'),
   })
 
   if (!validatedFields.success) {
     return { message: 'Invalid fields', errors: validatedFields.error.flatten().fieldErrors }
   }
 
-  const { raceId, carClass } = validatedFields.data
+  const { raceId, carClassId } = validatedFields.data
 
   try {
     await prisma.registration.create({
       data: {
         userId: session.user.id,
         raceId,
-        carClass,
+        carClassId,
       },
     })
 

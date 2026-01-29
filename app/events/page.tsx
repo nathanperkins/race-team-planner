@@ -40,7 +40,8 @@ type EventWithRaces = Prisma.EventGetPayload<{
       include: {
         registrations: {
           include: {
-            user: { select: { name: true } }
+            user: { select: { name: true } },
+            carClass: true,
           }
         }
       }
@@ -67,11 +68,9 @@ export default async function EventsPage({ searchParams }: PageProps) {
   }
 
   // Fetch unique car classes for the filter dropdown
-  const registrations: { carClass: string }[] = await prisma.registration.findMany({
-    select: { carClass: true },
-    distinct: ['carClass'],
+  const carClasses = await prisma.carClass.findMany({
+    orderBy: { shortName: 'asc' },
   })
-  const carClasses = registrations.map((r) => r.carClass).sort()
 
   // Fetch unique racers (users who have signed up)
   const distinctUsers: { user: { id: string; name: string | null } }[] =
@@ -107,14 +106,9 @@ export default async function EventsPage({ searchParams }: PageProps) {
   }
 
   if (params.carClass) {
-    where.races = {
-      ...where.races,
+    where.carClasses = {
       some: {
-        registrations: {
-          some: {
-            carClass: params.carClass,
-          },
-        },
+        id: params.carClass,
       },
     }
   }
@@ -174,6 +168,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
               user: {
                 select: { name: true },
               },
+              carClass: true,
             },
           },
         },
@@ -399,7 +394,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
                         <div className={styles.classPills}>
                           {event.races
                             .flatMap((r: RaceWithRegistrations) =>
-                              r.registrations.map((reg: RegistrationWithUser) => reg.carClass)
+                              r.registrations.map((reg: RegistrationWithUser) => reg.carClass.shortName)
                             )
                             .filter(
                               (cls: string, i: number, arr: string[]) => arr.indexOf(cls) === i

@@ -33,11 +33,9 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   }
 
   // Fetch unique car classes for the filter dropdown
-  const registrations: { carClass: string }[] = await prisma.registration.findMany({
-    select: { carClass: true },
-    distinct: ['carClass'],
+  const carClasses = await prisma.carClass.findMany({
+    orderBy: { shortName: 'asc' },
   })
-  const carClasses = registrations.map((r) => r.carClass).sort()
 
   // Fetch unique racers (users who have signed up)
   const distinctUsers: { user: { id: string; name: string | null } }[] =
@@ -73,14 +71,9 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   }
 
   if (params.carClass) {
-    where.races = {
-      ...where.races,
+    where.carClasses = {
       some: {
-        registrations: {
-          some: {
-            carClass: params.carClass,
-          },
-        },
+        id: params.carClass,
       },
     }
   }

@@ -16,6 +16,13 @@ export interface IRacingEvent {
   track: string
   description: string
   races: IRacingRace[]
+  carClassIds: number[]
+}
+
+export interface IRacingCarClass {
+  carClassId: number
+  name: string
+  shortName: string
 }
 
 const MOCK_EVENTS: IRacingEvent[] = [
@@ -118,6 +125,28 @@ export async function fetchSpecialEvents(): Promise<IRacingEvent[]> {
   return fetchRealEvents(token)
 }
 
+/**
+ * Fetches all car classes from iRacing.
+ */
+export async function fetchCarClasses(): Promise<IRacingCarClass[]> {
+  const token = await getAccessToken()
+  if (!token) {
+    if (process.env.NODE_ENV === 'development') {
+      return []
+    }
+    throw new Error('Failed to authenticate with iRacing API')
+  }
+
+  const data = await fetchFromIRacing('/data/carclass/get', token)
+  if (!data || !Array.isArray(data)) return []
+
+  return data.map((item: any) => ({
+    carClassId: item.car_class_id,
+    name: item.name,
+    shortName: item.short_name,
+  }))
+}
+
 async function fetchMockEvents(): Promise<IRacingEvent[]> {
   return [...MOCK_EVENTS]
 }
@@ -215,6 +244,7 @@ async function fetchRealEvents(token: string): Promise<IRacingEvent[]> {
           track: week.track?.track_name || 'TBA',
           description: season.schedule_description || name,
           races,
+          carClassIds: season.car_class_ids || [],
         })
       }
     }

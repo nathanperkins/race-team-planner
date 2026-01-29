@@ -1,6 +1,6 @@
 'use server'
 
-import { fetchSpecialEvents } from '@/lib/iracing'
+import { fetchSpecialEvents, fetchCarClasses } from '@/lib/iracing'
 import prisma from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 
@@ -12,8 +12,30 @@ export async function syncIRacingEvents() {
       return { success: false, error: 'iRacing integration is not enabled' }
     }
 
-    const externalEvents = await fetchSpecialEvents()
+    const [externalEvents, externalCarClasses] = await Promise.all([
+      fetchSpecialEvents(),
+      fetchCarClasses(),
+    ])
 
+    // 1. Sync Car Classes first
+    const carClassMap = new Map<number, string>()
+    for (const carClass of externalCarClasses) {
+      const upserted = await prisma.carClass.upsert({
+        where: { externalId: carClass.carClassId },
+        update: {
+          name: carClass.name,
+          shortName: carClass.shortName,
+        },
+        create: {
+          externalId: carClass.carClassId,
+          name: carClass.name,
+          shortName: carClass.shortName,
+        },
+      })
+      carClassMap.set(carClass.carClassId, upserted.id)
+    }
+
+    // 2. Sync Events
     for (const event of externalEvents) {
       if (!event.externalId) continue
 
@@ -22,6 +44,10 @@ export async function syncIRacingEvents() {
       const end = event.endTime
         ? new Date(event.endTime)
         : new Date(start.getTime() + 24 * 60 * 60 * 1000)
+
+      const dbCarClassIds = (event.carClassIds || [])
+        .map((id) => carClassMap.get(id))
+        .filter((id): id is string => !!id)
 
       await prisma.$transaction(async (tx) => {
         const upsertedEvent = await tx.event.upsert({
@@ -32,6 +58,9 @@ export async function syncIRacingEvents() {
             endTime: end,
             track: event.track,
             description: event.description,
+            carClasses: {
+              set: dbCarClassIds.map((id) => ({ id })),
+            },
           },
           create: {
             externalId: event.externalId,
@@ -40,6 +69,9 @@ export async function syncIRacingEvents() {
             endTime: end,
             track: event.track,
             description: event.description,
+            carClasses: {
+              connect: dbCarClassIds.map((id) => ({ id })),
+            },
           },
         })
 

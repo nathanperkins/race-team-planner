@@ -35,6 +35,7 @@ export default async function EventPage({ params }: Props) {
           registrations: {
             include: {
               user: true,
+              carClass: true,
             },
             orderBy: {
               createdAt: 'asc',
@@ -45,6 +46,7 @@ export default async function EventPage({ params }: Props) {
           startTime: 'asc',
         },
       },
+      carClasses: true,
     },
   })
 
@@ -131,6 +133,11 @@ export default async function EventPage({ params }: Props) {
                   id: r.id,
                   startTime: r.startTime,
                   endTime: r.endTime,
+                }))}
+                carClasses={event.carClasses.map((cc) => ({
+                  id: cc.id,
+                  name: cc.name,
+                  shortName: cc.shortName,
                 }))}
                 existingRegistrationRaceIds={userRegistrations.map((r) => r.raceId)}
               />

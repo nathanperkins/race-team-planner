@@ -19,10 +19,15 @@ const initialState: State = {
 
 interface Props {
   races: { id: string; startTime: Date; endTime: Date }[]
+  carClasses: { id: string; name: string; shortName: string }[]
   existingRegistrationRaceIds: string[]
 }
 
-export default function RaceRegistrationForm({ races, existingRegistrationRaceIds }: Props) {
+export default function RaceRegistrationForm({
+  races,
+  carClasses,
+  existingRegistrationRaceIds,
+}: Props) {
   const [state, formAction, isPending] = useActionState(registerForRace, initialState)
 
   return (
@@ -58,18 +63,26 @@ export default function RaceRegistrationForm({ races, existingRegistrationRaceId
       </div>
 
       <div className={styles.field}>
-        <label htmlFor="carClass" className={styles.label}>
+        <label htmlFor="carClassId" className={styles.label}>
           Car Class
         </label>
-        <select id="carClass" name="carClass" required defaultValue="" className={styles.select}>
+        <select
+          id="carClassId"
+          name="carClassId"
+          required
+          defaultValue=""
+          className={styles.select}
+        >
           <option value="" disabled>
             Select a class
           </option>
-          <option value="GTP">GTP</option>
-          <option value="LMP2">LMP2</option>
-          <option value="GTD">GTD / GT3</option>
+          {carClasses.map((cc) => (
+            <option key={cc.id} value={cc.id}>
+              {cc.name} ({cc.shortName})
+            </option>
+          ))}
         </select>
-        {state?.errors?.carClass && <p className={styles.error}>{state.errors.carClass[0]}</p>}
+        {state?.errors?.carClassId && <p className={styles.error}>{state.errors.carClassId[0]}</p>}
       </div>
 
       <button type="submit" disabled={isPending} className={styles.button}>

@@ -9,7 +9,10 @@ interface RaceWithRegistrations {
   endTime: Date
   registrations: Array<{
     id: string
-    carClass: string
+    carClass: {
+      name: string
+      shortName: string
+    }
     userId: string
     user: {
       name: string | null
@@ -54,7 +57,7 @@ export default function RaceDetails({ race, userId, eventId }: Props) {
                 )}
                 <div>
                   <p className={styles.driverName}>{reg.user.name}</p>
-                  <p className={styles.driverClass}>Class: {reg.carClass}</p>
+                  <p className={styles.driverClass}>Class: {reg.carClass.shortName}</p>
                 </div>
               </div>
               <div className={styles.driverTimeslot}>

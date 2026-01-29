@@ -37,6 +37,7 @@ export default async function UserSignupsPage({ params }: Props) {
           event: true,
         },
       },
+      carClass: true,
     },
     orderBy: {
       race: {
@@ -81,7 +82,7 @@ export default async function UserSignupsPage({ params }: Props) {
                     </td>
                     <td className={styles.td}>{reg.race.event.track}</td>
                     <td className={styles.td}>
-                      <span className={styles.classBadge}>{reg.carClass}</span>
+                      <span className={styles.classBadge}>{reg.carClass.shortName}</span>
                     </td>
                     {userId === session.user?.id && (
                       <td className={styles.td}>

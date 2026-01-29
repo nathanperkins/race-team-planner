@@ -138,7 +138,7 @@ A user's expression of interest for a specific race.
 - [ ] Consider providing .env file content directly instead of each individual var.
 - [ ] Fix syncing fails with success message.
 - [ ] Display more info about each event.
-- [ ] Add sync support for car classes.
+- [x] Add sync support for car classes.
 - [ ] Add sync support for racer info.
 - [ ] **Add "Live" Badge**: Visual indicator in `RaceDetails` for ongoing races.
 - [ ] **Registration Overlap Warning**: Prevent or warn about double-booking same-time races.

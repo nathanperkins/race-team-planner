@@ -5,7 +5,7 @@ import { useCallback, useState, useRef, useEffect } from 'react'
 import styles from '../dashboard/dashboard.module.css'
 
 interface EventFiltersProps {
-  carClasses: string[]
+  carClasses: { id: string; name: string; shortName: string }[]
   racers: { id: string; name: string | null }[]
   currentFilters: {
     signups?: string
@@ -126,9 +126,9 @@ export default function EventFilters({ carClasses, racers, currentFilters }: Eve
           onChange={(e) => handleFilterChange('carClass', e.target.value)}
         >
           <option value="">All Classes</option>
-          {carClasses.map((cls) => (
-            <option key={cls} value={cls}>
-              {cls}
+          {carClasses.map((cc) => (
+            <option key={cc.id} value={cc.id}>
+              {cc.shortName || cc.name}
             </option>
           ))}
         </select>
