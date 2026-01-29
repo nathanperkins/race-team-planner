@@ -8,10 +8,13 @@ Run `bd prime` for workflow context, or install hooks (`bd hooks install`) for a
 **Quick reference:**
 - `bd ready` - Find unblocked work
 - `bd show <id>` - View issue details
-- `bd create "Title" --type task --priority 2` - Create issue
+- `bd create "Title" --description="Details" --type task --priority 2` - Create original issue
 - `bd update <id> --status=in_progress` - Claim work
 - `bd update <id> --title="New Title"` - Rename issue
 - `bd close <id>` - Complete work
+
+> [!IMPORTANT]
+> Always include a clear `--description="..."` when creating beads. This helps maintain context for future work and ensures that the rationale behind a task is documented.
 
 ### Organization & Hierarchy
 Organize large features into **epics** and break them down into **tasks**.
