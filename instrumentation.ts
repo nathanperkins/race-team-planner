@@ -4,6 +4,7 @@ export function register() {
   console.log('🚧 iRacing Team Planner Startup 🚧')
 
   console.log(`[Feature] Discord Auth: ${features.discordAuth ? 'Enabled ✅' : 'Disabled ❌'}`)
+  console.log(`[Feature] Discord Membership Check: ${features.discordMembership ? 'Configured ✅' : 'NOT Configured ⚠️'}`)
   console.log(`[Feature] Mock Auth: ${features.mockAuth ? 'Enabled (Dev Mode) ✅' : 'Disabled ❌'}`)
   console.log(`[Feature] iRacing Sync: ${features.iracingSync ? 'Enabled ✅' : 'Disabled ❌'}`)
 
