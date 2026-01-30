@@ -140,8 +140,7 @@ A user's expression of interest for a specific race.
 - [x] Display signup numbers per car class in the events list view.
 - [x] Add sync support for racer info.
 - [x] Sync and display race duration.
-- [ ] Consider providing .env file content directly instead of each individual var.
-- [ ] Fix syncing fails with success message.
+- [x] Fix syncing fails with success message.
 - [ ] **Add "Live" Badge**: Visual indicator in `RaceDetails` for ongoing races.
 - [ ] **Registration Overlap Warning**: Prevent or warn about double-booking same-time races.
 - [ ] **Race Driver Limits**: Optional capacity limits for sessions.
