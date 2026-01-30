@@ -5,6 +5,9 @@
   - Added the required column `carClassId` to the `Registration` table without a default value. This is not possible if the table is not empty.
 
 */
+-- Clean up old registrations that don't satisfy the new schema
+DELETE FROM "Registration";
+
 -- AlterTable
 ALTER TABLE "Registration" DROP COLUMN "carClass",
 ADD COLUMN     "carClassId" TEXT NOT NULL;
