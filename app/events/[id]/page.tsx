@@ -6,7 +6,7 @@ import { notFound, redirect } from 'next/navigation'
 import RaceRegistrationForm from '@/components/RaceRegistrationForm'
 import RaceDetails from '@/components/RaceDetails'
 import FormattedDate from '@/components/FormattedDate'
-import { Cloud, ShieldCheck, Thermometer, Droplets, Sun, CloudSun, Clouds, Timer } from 'lucide-react'
+import { Cloud, ShieldCheck, Thermometer, Droplets, Sun, CloudSun, Timer } from 'lucide-react'
 import { getLicenseForId, getLicenseColor, formatDuration } from '@/lib/utils'
 
 import styles from './event.module.css'
