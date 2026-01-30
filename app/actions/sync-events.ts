@@ -59,6 +59,10 @@ export async function syncIRacingEvents() {
             track: event.track,
             description: event.description,
             licenseGroup: event.licenseGroup,
+            tempValue: event.tempValue,
+            tempUnits: event.tempUnits,
+            relHumidity: event.relHumidity,
+            skies: event.skies,
             carClasses: {
               set: dbCarClassIds.map((id) => ({ id })),
             },
@@ -71,6 +75,10 @@ export async function syncIRacingEvents() {
             track: event.track,
             description: event.description,
             licenseGroup: event.licenseGroup,
+            tempValue: event.tempValue,
+            tempUnits: event.tempUnits,
+            relHumidity: event.relHumidity,
+            skies: event.skies,
             carClasses: {
               connect: dbCarClassIds.map((id) => ({ id })),
             },

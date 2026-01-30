@@ -80,6 +80,10 @@ model Event {
   /// Derived from the latest Race
   endTime     DateTime
   licenseGroup Int?
+  tempValue     Int?
+  tempUnits     Int?
+  relHumidity   Int?
+  skies         Int?
   races       Race[]
   carClasses  CarClass[] @relation("CarClassToEvent")
 }

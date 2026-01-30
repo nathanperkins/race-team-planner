@@ -280,6 +280,10 @@ export default async function EventsPage({ searchParams }: PageProps) {
         },
       ],
       licenseGroup: 3,
+      tempValue: null,
+      tempUnits: null,
+      relHumidity: null,
+      skies: null,
       createdAt: now,
       updatedAt: now,
     }
@@ -379,6 +383,22 @@ export default async function EventsPage({ searchParams }: PageProps) {
                       <div className={styles.subRow}>
                         <div className={styles.eventTimes}>
                           <FormattedDate date={event.startTime} />
+                        </div>
+                        <div className={styles.weatherList}>
+                          {event.tempValue !== null && (
+                            <div className={styles.weatherBadge} title="Temperature">
+                              <span className={styles.weatherIcon}>
+                                {event.tempUnits === 1 ? '🌡️' : '☀️'}
+                              </span>
+                              {event.tempValue}°{event.tempUnits === 0 ? 'F' : 'C'}
+                            </div>
+                          )}
+                          {event.relHumidity !== null && (
+                            <div className={styles.weatherBadge} title="Humidity">
+                              <span className={styles.weatherIcon}>💧</span>
+                              {event.relHumidity}%
+                            </div>
+                          )}
                         </div>
                         <div className={styles.classPills}>
                           {event.races

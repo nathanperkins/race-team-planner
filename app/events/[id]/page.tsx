@@ -6,7 +6,7 @@ import { notFound, redirect } from 'next/navigation'
 import RaceRegistrationForm from '@/components/RaceRegistrationForm'
 import RaceDetails from '@/components/RaceDetails'
 import FormattedDate from '@/components/FormattedDate'
-import { Cloud, ShieldCheck } from 'lucide-react'
+import { Cloud, ShieldCheck, Thermometer, Droplets, Sun, CloudSun, Clouds } from 'lucide-react'
 import { getLicenseForId, getLicenseColor } from '@/lib/utils'
 
 import styles from './event.module.css'
@@ -153,6 +153,54 @@ export default async function EventPage({ params }: Props) {
                 }))}
                 existingRegistrationRaceIds={userRegistrations.map((r) => r.raceId)}
               />
+            )}
+
+            {(event.tempValue !== null || event.relHumidity !== null) && (
+              <div className={styles.weatherGrid}>
+                {event.tempValue !== null && (
+                  <div className={styles.weatherBox}>
+                    <span className={styles.weatherLabel}>
+                      <Thermometer size={10} /> Temperature
+                    </span>
+                    <span className={styles.weatherValue}>
+                      {event.tempValue}°{event.tempUnits === 0 ? 'F' : 'C'}
+                    </span>
+                  </div>
+                )}
+                {event.relHumidity !== null && (
+                  <div className={styles.weatherBox}>
+                    <span className={styles.weatherLabel}>
+                      <Droplets size={10} /> Humidity
+                    </span>
+                    <span className={styles.weatherValue}>{event.relHumidity}%</span>
+                  </div>
+                )}
+                {event.skies !== null && (
+                  <div className={styles.weatherBox}>
+                    <span className={styles.weatherLabel}>
+                      {event.skies === 0 ? (
+                        <Sun size={10} />
+                      ) : event.skies === 1 ? (
+                        <CloudSun size={10} />
+                      ) : (
+                        <Cloud size={10} />
+                      )}{' '}
+                      Skies
+                    </span>
+                    <span className={styles.weatherValue}>
+                      {event.skies === 0
+                        ? 'Clear'
+                        : event.skies === 1
+                        ? 'Partly Cloudy'
+                        : event.skies === 2
+                        ? 'Mostly Cloudy'
+                        : event.skies === 3
+                        ? 'Overcast'
+                        : 'Unknown'}
+                    </span>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>

@@ -18,6 +18,10 @@ export interface IRacingEvent {
   races: IRacingRace[]
   carClassIds: number[]
   licenseGroup?: number
+  tempValue?: number
+  tempUnits?: number
+  relHumidity?: number
+  skies?: number
 }
 
 export interface IRacingCarClass {
@@ -110,6 +114,10 @@ const MOCK_EVENTS: IRacingEvent[] = [
     ],
     carClassIds: [],
     licenseGroup: 4,
+    tempValue: 78,
+    tempUnits: 0,
+    relHumidity: 55,
+    skies: 1,
   },
 ]
 
@@ -381,6 +389,10 @@ async function fetchRealEvents(token: string): Promise<IRacingEvent[]> {
           races,
           carClassIds: season.car_class_ids || [],
           licenseGroup: season.license_group,
+          tempValue: week.weather?.temp_value,
+          tempUnits: week.weather?.temp_units,
+          relHumidity: week.weather?.rel_humidity,
+          skies: week.weather?.skies,
         })
       }
     }

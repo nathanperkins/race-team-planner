@@ -242,6 +242,7 @@
   opacity: 0.95;
   flex-shrink: 0;
 }
+
 .licenseBadge {
   display: inline-flex;
   align-items: center;
@@ -373,4 +374,24 @@
 
 .weekBody::-webkit-scrollbar-track {
   background: transparent;
+}
+
+.weatherBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: rgba(234, 240, 255, 0.45);
+  font-weight: 600;
+}
+
+.weatherIcon {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.weatherList {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
