@@ -7,7 +7,7 @@ import EventFilters from '../components/EventFilters'
 import FormattedDate from '@/components/FormattedDate'
 import { Prisma } from '@prisma/client'
 import type { CSSProperties } from 'react'
-import { getLicenseForId, getLicenseColor } from '@/lib/utils'
+import { getLicenseForId, getLicenseColor, formatDuration } from '@/lib/utils'
 
 import styles from './events.module.css'
 
@@ -383,6 +383,11 @@ export default async function EventsPage({ searchParams }: PageProps) {
                       <div className={styles.subRow}>
                         <div className={styles.eventTimes}>
                           <FormattedDate date={event.startTime} />
+                          {event.durationMins && (
+                            <span className={styles.durationPill}>
+                              ⏱️ {formatDuration(event.durationMins)}
+                            </span>
+                          )}
                         </div>
                         <div className={styles.weatherList}>
                           {event.tempValue !== null && (

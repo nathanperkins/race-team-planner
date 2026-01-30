@@ -20,8 +20,9 @@ export interface IRacingEvent {
   licenseGroup?: number
   tempValue?: number
   tempUnits?: number
-  relHumidity?: number
-  skies?: number
+  relHumidity?: number;
+  skies?: number;
+  durationMins?: number;
 }
 
 export interface IRacingCarClass {
@@ -118,6 +119,7 @@ const MOCK_EVENTS: IRacingEvent[] = [
     tempUnits: 0,
     relHumidity: 55,
     skies: 1,
+    durationMins: 720,
   },
 ]
 
@@ -350,8 +352,9 @@ async function fetchRealEvents(token: string): Promise<IRacingEvent[]> {
               for (let i = 0; i < descriptor.session_times.length; i++) {
                 const sessionTime = descriptor.session_times[i]
                 const start = new Date(sessionTime)
+                const durationMinutes = week.race_time_limit || descriptor.session_minutes || 60
                 const end = new Date(
-                  start.getTime() + (season.event_duration_minutes || 60) * 60000
+                  start.getTime() + durationMinutes * 60000
                 )
                 const externalId = `ir_${season.series_id}_${season.season_id}_w${week.race_week_num}_s${i}`
                 races.push({
@@ -366,7 +369,8 @@ async function fetchRealEvents(token: string): Promise<IRacingEvent[]> {
 
         if (races.length === 0) {
           const start = new Date(week.start_date)
-          const end = new Date(start.getTime() + (season.event_duration_minutes || 60) * 60000)
+          const durationMinutes = week.race_time_limit || (week.race_time_descriptors && week.race_time_descriptors[0]?.session_minutes) || 60
+          const end = new Date(start.getTime() + durationMinutes * 60000)
           races.push({
             startTime: start.toISOString(),
             endTime: end.toISOString(),
@@ -375,6 +379,11 @@ async function fetchRealEvents(token: string): Promise<IRacingEvent[]> {
 
         // Sort races by start time
         races.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+
+        // Estimated duration
+        const estimatedDuration = week.race_time_limit ||
+                                 (week.race_time_descriptors && week.race_time_descriptors[0]?.session_minutes) ||
+                                 60
 
         const eventStart = races[0].startTime
         const eventEnd = races[races.length - 1].endTime
@@ -393,6 +402,7 @@ async function fetchRealEvents(token: string): Promise<IRacingEvent[]> {
           tempUnits: week.weather?.temp_units,
           relHumidity: week.weather?.rel_humidity,
           skies: week.weather?.skies,
+          durationMins: estimatedDuration,
         })
       }
     }

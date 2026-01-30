@@ -84,6 +84,7 @@ model Event {
   tempUnits     Int?
   relHumidity   Int?
   skies         Int?
+  durationMins  Int?       /// In minutes
   races       Race[]
   carClasses  CarClass[] @relation("CarClassToEvent")
 }

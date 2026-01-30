@@ -6,8 +6,8 @@ import { notFound, redirect } from 'next/navigation'
 import RaceRegistrationForm from '@/components/RaceRegistrationForm'
 import RaceDetails from '@/components/RaceDetails'
 import FormattedDate from '@/components/FormattedDate'
-import { Cloud, ShieldCheck, Thermometer, Droplets, Sun, CloudSun, Clouds } from 'lucide-react'
-import { getLicenseForId, getLicenseColor } from '@/lib/utils'
+import { Cloud, ShieldCheck, Thermometer, Droplets, Sun, CloudSun, Clouds, Timer } from 'lucide-react'
+import { getLicenseForId, getLicenseColor, formatDuration } from '@/lib/utils'
 
 import styles from './event.module.css'
 
@@ -79,6 +79,12 @@ export default async function EventPage({ params }: Props) {
             <span className={styles.metaItem}>
               📅 <FormattedDate date={event.startTime} /> - <FormattedDate date={event.endTime} />
             </span>
+            {event.durationMins && (
+              <span className={styles.metaItem}>
+                <Timer size={14} className="inline mr-1" />
+                {formatDuration(event.durationMins)}
+              </span>
+            )}
             <span className={styles.metaItem}>
               <div
                 className={styles.licenseBadge}

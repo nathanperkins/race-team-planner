@@ -139,6 +139,7 @@ A user's expression of interest for a specific race.
 - [x] Sync weather data and display in events list and details.
 - [x] Display signup numbers per car class in the events list view.
 - [x] Add sync support for racer info.
+- [x] Sync and display race duration.
 - [ ] Consider providing .env file content directly instead of each individual var.
 - [ ] Fix syncing fails with success message.
 - [ ] **Add "Live" Badge**: Visual indicator in `RaceDetails` for ongoing races.
