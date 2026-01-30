@@ -65,6 +65,7 @@ will use a mock data set suitable for local development.
     - Click **Build-A-Bot** if you haven't already.
     - Copy the **Token** and set `DISCORD_BOT_TOKEN`.
     - Set `DISCORD_GUILD_ID` to your Server ID (Enable Developer Mode in Discord to copy this).
+    - **Important**: In the **Bot** tab, scroll down to "Privileged Gateway Intents" and enable **Server Members Intent**. This is required to check guild membership.
     - **Important**: Invite the bot to your server using the OAuth2 URL Generator in the OAuth2 tab and include scope: `bot`.
 
 - **iRacing Data API**:
