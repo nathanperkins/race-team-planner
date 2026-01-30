@@ -4,6 +4,7 @@
 import Link from 'next/link'
 import { MapPinOff, ArrowLeft, ShieldAlert } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
+import { GuildMembershipStatus } from '@/lib/discord'
 import styles from './error.module.css'
 import { Suspense } from 'react'
 
@@ -11,17 +12,37 @@ function ErrorContent() {
   const searchParams = useSearchParams()
   const error = searchParams.get('error')
 
-  const isAccessDenied = error === 'access_denied_guild_membership'
+  const isAccessDenied = error === GuildMembershipStatus.NOT_MEMBER
+  const isConfigError = error === GuildMembershipStatus.CONFIG_ERROR
+  const isApiError = error === GuildMembershipStatus.API_ERROR
 
-  if (isAccessDenied) {
+  if (isAccessDenied || isConfigError || isApiError) {
     return (
       <div className={styles.container}>
         <ShieldAlert size={64} className={styles.errorIcon} />
-        <h1 className={styles.title}>Membership Required</h1>
+        <h1 className={styles.title}>
+          {isAccessDenied ? 'Membership Required' : 'Authentication Error'}
+        </h1>
         <p className={styles.message}>
-          Access is restricted to members of our Discord Community.
-          <br />
-          Please join our Discord server to access the Team Planner.
+          {isAccessDenied ? (
+            <>
+              Access is restricted to members of our Discord Community.
+              <br />
+              Please join our Discord server to access the Team Planner.
+            </>
+          ) : isConfigError ? (
+            <>
+              The application is missing required Discord configuration.
+              <br />
+              Please contact the administrator to verify <code>DISCORD_BOT_TOKEN</code> and <code>DISCORD_GUILD_ID</code>.
+            </>
+          ) : (
+            <>
+              An error occurred while verifying your community membership.
+              <br />
+              Please try again later or contact an administrator.
+            </>
+          )}
         </p>
         <div className={styles.buttonGroup}>
           <Link href="/" className={styles.primaryButton}>

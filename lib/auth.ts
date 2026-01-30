@@ -43,19 +43,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
       // 2. Perform Guild Membership Check for Discord
       if (account?.provider === 'discord') {
-        // Dynamic import to avoid circular dep issues if any, keeping it clean
-        const { checkGuildMembership } = await import('@/lib/discord')
-
-        // Use profile.id (Discord ID) not user.id (Database UUID)
         const discordId = profile?.id as string
 
         if (discordId) {
-          const isMember = await checkGuildMembership(discordId)
-          if (!isMember) {
-            // Redirect to a custom error page or return false to show default error
-            // Returning false displays default "AccessDenied" error on /api/auth/error
-            // We can customize this by returning a string URL later
-            return '/not-found?error=access_denied_guild_membership'
+          const { checkGuildMembership, GuildMembershipStatus } = await import('@/lib/discord')
+          const result = await checkGuildMembership(discordId)
+
+          if (result !== GuildMembershipStatus.MEMBER) {
+            return `/not-found?error=${result}`
           }
         }
       }
