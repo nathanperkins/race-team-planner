@@ -52,3 +52,6 @@ next-env.d.ts
 
 # ai related stuff
 .beads
+
+# bv (beads viewer) local config and caches
+.bv/
