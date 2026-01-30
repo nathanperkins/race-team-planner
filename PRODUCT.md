@@ -137,6 +137,7 @@ A user's expression of interest for a specific race.
 - [x] Show sync status and messages in a pop-up instead of alongside the button.
 - [x] Add sync support for car classes.
 - [x] Sync weather data and display in events list and details.
+- [x] Display signup numbers per car class in the events list view.
 - [x] Add sync support for racer info.
 - [ ] Consider providing .env file content directly instead of each individual var.
 - [ ] Fix syncing fails with success message.

@@ -419,11 +419,34 @@ export default async function EventsPage({ searchParams }: PageProps) {
                     </div>
 
                     <div className={styles.eventRight}>
-                      <div
-                        className={styles.driverPill}
-                        title={`${totalSignups} driver${totalSignups === 1 ? '' : 's'} signed up`}
-                      >
-                        👤 {totalSignups}
+                      <div className={styles.driverPillContainer}>
+                        <div
+                          className={styles.driverPill}
+                        >
+                          👤 {totalSignups}
+                        </div>
+                        {totalSignups > 0 && (
+                          <div className={styles.signupTooltip}>
+                            {Array.from(
+                              event.races
+                                .flatMap((r: RaceWithRegistrations) => r.registrations)
+                                .reduce((map, reg) => {
+                                  const className = reg.carClass.name
+                                  if (!map.has(className)) map.set(className, [])
+                                  map.get(className)!.push(reg.user.name || 'Anonymous')
+                                  return map
+                                }, new Map<string, string[]>())
+                                .entries()
+                            ).map(([className, drivers]) => (
+                              <div key={className} className={styles.tooltipClassGroup}>
+                                <div className={styles.tooltipClassName}>{className}</div>
+                                <div className={styles.tooltipDrivers}>
+                                  {drivers.join(', ')}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                       <div className={styles.srText}>Click event to view</div>
                     </div>
