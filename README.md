@@ -60,6 +60,12 @@ will use a mock data set suitable for local development.
   - Create an application at the [Discord Developer Portal](https://discord.com/developers/applications).
   - Add a Redirect URI: `http://localhost:3000/api/auth/callback/discord`.
   - Copy the Client ID and Client Secret to `AUTH_DISCORD_ID` and `AUTH_DISCORD_SECRET` in the `.env` file.
+  - **Discord Membership Check** (Required to restrict access to community members):
+    - In your Discord Application, go to the **Bot** tab.
+    - Click **Build-A-Bot** if you haven't already.
+    - Copy the **Token** and set `DISCORD_BOT_TOKEN`.
+    - Set `DISCORD_GUILD_ID` to your Server ID (Enable Developer Mode in Discord to copy this).
+    - **Important**: Invite the bot to your server using the OAuth2 URL Generator in the OAuth2 tab and include scope: `bot`.
 
 - **iRacing Data API**:
   - Follow the setup guide: [iRacing Data API Documentation](https://forums.iracing.com/discussion/15068/general-availability-of-data-api).

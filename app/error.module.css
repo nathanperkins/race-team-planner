@@ -17,6 +17,12 @@
   /* red-500 */
 }
 
+.errorIcon {
+  margin-bottom: 2rem;
+  color: #ef4444;
+  /* red-500 */
+}
+
 .warningIcon {
   margin-bottom: 2rem;
   color: #f59e0b;
