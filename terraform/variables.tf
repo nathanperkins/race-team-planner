@@ -44,6 +44,18 @@ variable "discord_secret" {
   sensitive   = true
 }
 
+variable "discord_bot_token" {
+  description = "Discord Bot Token for membership verification"
+  type        = string
+  sensitive   = true
+}
+
+variable "discord_guild_id" {
+  description = "Discord Guild ID to check membership against"
+  type        = string
+  sensitive   = true
+}
+
 variable "iracing_username" {
   description = "iRacing Username for API synchronization"
   type        = string

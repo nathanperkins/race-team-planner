@@ -20,6 +20,8 @@ IRACING_USERNAME="${var.iracing_username}"
 IRACING_PASSWORD="${var.iracing_password}"
 IRACING_CLIENT_ID="${var.iracing_client_id}"
 IRACING_CLIENT_SECRET="${var.iracing_client_secret}"
+DISCORD_BOT_TOKEN="${var.discord_bot_token}"
+DISCORD_GUILD_ID="${var.discord_guild_id}"
 EOT
 }
 
