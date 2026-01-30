@@ -2,30 +2,71 @@
 
 ## Issue Tracking
 
-This project uses **bd (beads)** for issue tracking.
+This project uses **bd (beads)** and [beads_viewer](https://github.com/Dicklesworthstone/beads_viewer) for issue tracking.
+Issues are stored in `.beads/` and tracked in git.
+
 Run `bd prime` for workflow context, or install hooks (`bd hooks install`) for auto-injection.
 
-**Quick reference:**
-- `bd ready` - Find unblocked work
-- `bd show <id>` - View issue details
-- `bd create "Title" --description="Details" --type task --priority 2` - Create original issue
-- `bd update <id> --status=in_progress` - Claim work
-- `bd update <id> --title="New Title"` - Rename issue
-- `bd close <id>` - Complete work
-- `bd sync` - Sync with git (run at session end)
+### Essential Commands
+
+```bash
+# View issues (launches TUI - avoid in automated sessions)
+bv
+
+# CLI commands for agents
+bd ready              # Show issues ready to work (no blockers)
+bd list --status=open # All open issues
+bd show <id>          # Full issue details with dependencies
+bd create --title="..." --description="..." --type=task --priority=2
+bd update <id> --status=in_progress
+bd close <id> --reason="Completed"
+bd close <id1> <id2>  # Close multiple issues at once
+bd sync               # Commit and push changes
+```
+
+### Workflow Pattern
+
+1. **Start**: Run `bd ready` to find actionable work.
+2. **Claim**: Use `bd update <id> --status=in_progress`.
+3. **Work**: Implement the task and update descriptions if needed.
+4. **Complete**: Use `bd close <id>`.
+5. **Sync**: Always run `bd sync` at the end of the session.
+
+### Key Concepts
+
+- **Hierarchy**: Use `bd create "Subtask" --parent <epic-id>` to organize work.
+- **Dependencies**: Use `bd dep add <id> <depends-on-id>` to mark blockers.
+- **Priority**: P0=critical, P1=high, P2=medium, P3=low, P4=backlog.
+- **Types**: task, bug, feature, epic, question, docs.
 
 > [!IMPORTANT]
 > Always include a clear `--description="..."` when creating beads. This helps maintain context for future work and ensures that the rationale behind a task is documented.
 
-### Organization & Hierarchy
-Organize large features into **epics** and break them down into **tasks**.
-- `bd create "My Epic" --type epic` - Create a top-level feature
-- `bd create "Subtask" --parent <epic-id>` - Create a task under an epic
-- `bd update <id> --parent <epic-id>` - Move an existing task under an epic
+When organizing beads, create epics or features for any large task, and then
+create subtasks under the epic or feature.
 
-### Dependencies
-Use dependencies to control the flow of work and mark blockers.
-- `bd dep add <id> <depends-on-id>` - Mark that `<id>` is blocked by `<depends-on-id>`
-- `bd blocked` - List all currently blocked issues
+### Session Protocol
+
+**Before ending any session, run this checklist:**
+
+```bash
+git add .               # Stage all changes
+bd sync                 # Commit beads changes
+git commit -m "..."     # Commit code changes
+git push                # Push to remote
+```
 
 For full workflow details: `bd prime`
+
+### Best Practices
+
+- Check `bd ready` at session start to find available work
+- Update status as you work (in_progress → closed)
+- Add comments to beads as you work. This is important for maintaining context
+    for future work and ensuring that the decisions and justifications for a task
+    are documented.
+- Create new issues with `bd create` when you discover tasks
+- Use descriptive titles and set appropriate priority/type
+- Always `bd sync` before ending session
+
+<!-- end-bv-agent-instructions -->
