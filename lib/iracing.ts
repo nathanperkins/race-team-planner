@@ -191,13 +191,27 @@ async function fetchFromIRacing(endpoint: string, token: string) {
  * Dispatches to real API if credentials are present, otherwise returns mock data.
  */
 export async function fetchSpecialEvents(): Promise<IRacingEvent[]> {
-  const token = await getAccessToken()
+  // 1. If no credentials in Dev, use Mock
+  const hasCreds =
+    process.env.IRACING_CLIENT_ID &&
+    process.env.IRACING_CLIENT_SECRET &&
+    process.env.IRACING_USERNAME &&
+    process.env.IRACING_PASSWORD
 
-  if (!token) {
+  if (!hasCreds) {
     if (process.env.NODE_ENV === 'development') {
+      console.warn('⚠️ No iRacing credentials found. Using MOCK data.')
       return fetchMockEvents()
     }
-    throw new Error('Failed to authenticate with iRacing API')
+    throw new Error('Missing iRacing credentials.')
+  }
+
+  // 2. If credentials exist, try to get token
+  const token = await getAccessToken()
+
+  // 3. If token fails but we had credentials, that's a REAL error
+  if (!token) {
+    throw new Error('Authentication failed. Please check your iRacing credentials.')
   }
 
   return fetchRealEvents(token)
@@ -207,12 +221,22 @@ export async function fetchSpecialEvents(): Promise<IRacingEvent[]> {
  * Fetches all car classes from iRacing.
  */
 export async function fetchCarClasses(): Promise<IRacingCarClass[]> {
-  const token = await getAccessToken()
-  if (!token) {
+  const hasCreds =
+    process.env.IRACING_CLIENT_ID &&
+    process.env.IRACING_CLIENT_SECRET &&
+    process.env.IRACING_USERNAME &&
+    process.env.IRACING_PASSWORD
+
+  if (!hasCreds) {
     if (process.env.NODE_ENV === 'development') {
       return []
     }
-    throw new Error('Failed to authenticate with iRacing API')
+    throw new Error('Missing iRacing credentials.')
+  }
+
+  const token = await getAccessToken()
+  if (!token) {
+    throw new Error('Authentication failed. Please check your iRacing credentials.')
   }
 
   const data = await fetchFromIRacing('/data/carclass/get', token)
