@@ -184,6 +184,45 @@
   color: white;
 }
 
+.paramGrid {
+  display: flex;
+  gap: 0.75rem;
+  width: 100%;
+  margin-bottom: 1.25rem;
+}
+
+.paramItem {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: rgba(15, 23, 42, 0.5);
+  padding: 0.75rem 0.25rem;
+  border-radius: 0.5rem;
+  border: 1px solid #334155;
+  border-left-width: 4px;
+}
+
+.paramValue {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #e2e8f0;
+}
+
+.paramLabel {
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  color: #94a3b8;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
 .statLabel {
   font-size: 0.6875rem;
   text-transform: uppercase;

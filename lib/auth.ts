@@ -44,6 +44,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       if (session.user && token.id) {
         session.user.id = token.id as string
+        const user = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { iracingCustomerId: true },
+        })
+        if (user) {
+          session.user.iracingCustomerId = user.iracingCustomerId
+        }
       }
       return session
     },

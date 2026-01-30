@@ -21,6 +21,7 @@ export default async function RosterPage({ searchParams }: Props) {
   // Fetch users with their registrations and event times
   const usersData = await prisma.user.findMany({
     include: {
+      racerStats: true,
       registrations: {
         include: {
           race: {
@@ -82,6 +83,44 @@ export default async function RosterPage({ searchParams }: Props) {
                 <span className={styles.statLabel}>Completed</span>
               </div>
             </div>
+
+            {user.racerStats && user.racerStats.length > 0 && (
+              <div className={styles.paramGrid}>
+                {(() => {
+                  // Prioritize Sports Car (5), then Formula (6), then Oval (1)
+                  const stats =
+                    user.racerStats.find((s) => s.categoryId === 5) ||
+                    user.racerStats.find((s) => s.categoryId === 6) ||
+                    user.racerStats.find((s) => s.categoryId === 1) ||
+                    user.racerStats[0]
+
+                  if (!stats) return null
+
+                   // Format license: "A 2.45"
+                  const licText = `${stats.groupName.replace('Class ', '').substring(0, 1)} ${stats.safetyRating.toFixed(2)}`
+
+                  return (
+                    <>
+                       <div className={styles.paramItem} style={{ borderColor: '#' + stats.color }}>
+                         <span className={styles.paramValue}>{stats.irating}</span>
+                         <span className={styles.paramLabel}>
+                            {stats.category === 'sports_car' ? 'Sports Car' :
+                             stats.category === 'formula_car' ? 'Formula' :
+                             stats.category === 'oval' ? 'Oval' :
+                             stats.category === 'dirt_oval' ? 'Dirt Oval' :
+                             stats.category === 'dirt_road' ? 'Dirt Road' :
+                             'iRating'}
+                         </span>
+                       </div>
+                       <div className={styles.paramItem} style={{ borderColor: '#' + stats.color }}>
+                         <span className={styles.paramValue}>{licText}</span>
+                         <span className={styles.paramLabel}>License</span>
+                       </div>
+                    </>
+                  )
+                })()}
+              </div>
+            )}
 
             <Link href={`/users/${user.id}/signups`} className={styles.viewButton}>
               View Schedule

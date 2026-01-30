@@ -26,6 +26,71 @@ export interface IRacingCarClass {
   shortName: string
 }
 
+export interface IRacingLicense {
+  categoryId: number
+  category: string
+  categoryName: string
+  licenseLevel: number
+  safetyRating: number
+  cpi: number
+  irating: number
+  ttRating: number
+  mprNumRaces: number
+  color: string
+  groupName: string
+  groupId: number
+  proPromotable: boolean
+  seq: number
+  mprNumTts: number
+}
+
+export interface IRacingMemberInfo {
+  custId: number
+  displayName: string
+  licenses: Record<string, IRacingLicense>
+}
+const MOCK_MEMBER_INFO: IRacingMemberInfo = {
+  custId: 123456,
+  displayName: 'Local Dev User',
+  licenses: {
+    sports_car: {
+      categoryId: 5,
+      category: 'sports_car',
+      categoryName: 'Sports Car',
+      licenseLevel: 19,
+      safetyRating: 3.55,
+      cpi: 80.5,
+      irating: 2500,
+      ttRating: 1350,
+      mprNumRaces: 0,
+      color: '0153db',
+      groupName: 'Class A',
+      groupId: 5,
+      proPromotable: false,
+      seq: 2,
+      mprNumTts: 0,
+    },
+    formula_car: {
+      categoryId: 6,
+      category: 'formula_car',
+      categoryName: 'Formula Car',
+      licenseLevel: 10,
+      safetyRating: 2.15,
+      cpi: 45.2,
+      irating: 1800,
+      ttRating: 1300,
+      mprNumRaces: 2,
+      color: '00c702',
+      groupName: 'Class B',
+      groupId: 4,
+      proPromotable: false,
+      seq: 3,
+      mprNumTts: 0,
+    },
+  },
+}
+
+
 const MOCK_EVENTS: IRacingEvent[] = [
   {
     name: 'iRacing Bathurst 12 Hour (Mock)',
@@ -150,6 +215,71 @@ export async function fetchCarClasses(): Promise<IRacingCarClass[]> {
       shortName: item.short_name,
     })
   )
+}
+
+
+/**
+ * Fetches stats for a specific customer ID using the authenticated session.
+ * Uses /data/member/get to retrieve public info.
+ */
+export async function fetchDriverStats(custId: number): Promise<IRacingMemberInfo | null> {
+  const token = await getAccessToken()
+  if (!token) {
+    if (process.env.NODE_ENV === 'development') {
+      return MOCK_MEMBER_INFO
+    }
+    throw new Error('Failed to authenticate with iRacing API')
+  }
+
+  // Fetch member profile
+  const response = await fetchFromIRacing(`/data/member/get?cust_ids=${custId}&include_licenses=true`, token)
+  if (!response || !response.members || !response.members[0]) return null
+
+  const member = response.members[0]
+
+  // Also fetch recent stats to ensure accuracy if needed, but member/get usually has current licenses
+  // The structure from member/get might differ slightly from member/info
+  // We need to map it carefully.
+
+  const licenses: Record<string, IRacingLicense> = {}
+
+  if (member.licenses) {
+     for (const lic of member.licenses) {
+        // Map dictionary based on category
+        const catKey =
+          lic.category_id === 1 ? 'oval' :
+          lic.category_id === 2 ? 'road' : // Deprecated/Old?
+          lic.category_id === 3 ? 'dirt_oval' :
+          lic.category_id === 4 ? 'dirt_road' :
+          lic.category_id === 5 ? 'sports_car' :
+          lic.category_id === 6 ? 'formula_car' :
+          `cat_${lic.category_id}`
+
+        licenses[catKey] = {
+             categoryId: lic.category_id,
+             category: lic.category_name, // member/get returns category_name usually
+             categoryName: lic.category_name,
+             licenseLevel: lic.license_level,
+             safetyRating: lic.safety_rating,
+             cpi: lic.cpi,
+             irating: lic.irating,
+             ttRating: lic.tt_rating,
+             mprNumRaces: lic.mpr_num_races,
+             color: lic.color,
+             groupName: lic.group_name,
+             groupId: lic.group_id,
+             proPromotable: lic.pro_promotable,
+             seq: lic.seq,
+             mprNumTts: lic.mpr_num_tts,
+        }
+     }
+  }
+
+  return {
+    custId: member.cust_id,
+    displayName: member.display_name,
+    licenses
+  }
 }
 
 async function fetchMockEvents(): Promise<IRacingEvent[]> {

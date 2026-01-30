@@ -187,6 +187,46 @@ async function main() {
     },
   })
 
+  // Add stats for Bob (active iRacing data)
+  await prisma.racerStats.upsert({
+    where: { userId_categoryId: { userId: bob.id, categoryId: 5 } },
+    update: {},
+    create: {
+      userId: bob.id,
+      categoryId: 5,
+      category: 'sports_car',
+      irating: 2850,
+      licenseLevel: 18, // A 3.xx
+      licenseGroup: 5,  // A
+      safetyRating: 3.42,
+      cpi: 75.0,
+      ttRating: 1350,
+      mprNumRaces: 4,
+      color: '0153db', // Blue
+      groupName: 'Class A',
+    },
+  })
+
+  // Add stats for Charlie (Rookie/Low level)
+  await prisma.racerStats.upsert({
+    where: { userId_categoryId: { userId: charlie.id, categoryId: 6 } },
+    update: {},
+    create: {
+      userId: charlie.id,
+      categoryId: 6,
+      category: 'formula_car',
+      irating: 1450,
+      licenseLevel: 10, // C 2.xx
+      licenseGroup: 3,  // C
+      safetyRating: 2.15,
+      cpi: 45.0,
+      ttRating: 1300,
+      mprNumRaces: 2,
+      color: 'feec04', // Yellow
+      groupName: 'Class C',
+    },
+  })
+
   const charlieRegistration = await prisma.registration.upsert({
     where: {
       userId_raceId: {

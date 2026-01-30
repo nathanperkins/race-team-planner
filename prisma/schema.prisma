@@ -17,8 +17,31 @@ model User {
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
   expectationsVersion Int            @default(0)
+  iracingCustomerId   String?
   accounts            Account[]
   registrations       Registration[]
+  racerStats          RacerStats[]
+}
+
+model RacerStats {
+  id            String   @id @default(cuid())
+  userId        String
+  categoryId    Int
+  category      String
+  irating       Int
+  licenseLevel  Int
+  licenseGroup  Int
+  safetyRating  Float
+  cpi           Float
+  ttRating      Int
+  mprNumRaces   Int
+  color         String
+  groupName     String
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, categoryId])
 }
 
 model Account {
