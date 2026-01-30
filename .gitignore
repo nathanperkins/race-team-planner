@@ -50,8 +50,5 @@ next-env.d.ts
 
 /app/generated/prisma
 
-# ai related stuff
-.beads
-
 # bv (beads viewer) local config and caches
 .bv/

@@ -12,6 +12,7 @@ Run `bd prime` for workflow context, or install hooks (`bd hooks install`) for a
 - `bd update <id> --status=in_progress` - Claim work
 - `bd update <id> --title="New Title"` - Rename issue
 - `bd close <id>` - Complete work
+- `bd sync` - Sync with git (run at session end)
 
 > [!IMPORTANT]
 > Always include a clear `--description="..."` when creating beads. This helps maintain context for future work and ensures that the rationale behind a task is documented.
