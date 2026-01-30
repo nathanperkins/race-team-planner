@@ -47,3 +47,31 @@ export async function checkGuildMembership(
     return GuildMembershipStatus.API_ERROR
   }
 }
+
+/**
+ * Diagnostic function to check if the Bot Token is valid and what bot it belongs to.
+ */
+export async function verifyBotToken(): Promise<{ name: string; id: string } | null> {
+  const botToken = process.env.DISCORD_BOT_TOKEN
+  if (!botToken) return null
+
+  try {
+    const response = await fetch(`${DISCORD_API_BASE}/users/@me`, {
+      headers: {
+        Authorization: `Bot ${botToken}`,
+      },
+    })
+
+    if (response.ok) {
+      const data = await response.json()
+      return { name: data.username, id: data.id }
+    } else {
+      const text = await response.text()
+      console.error(`❌ Discord Token Verification Failed: ${response.status} ${response.statusText}`, text)
+      return null
+    }
+  } catch (error) {
+    console.error('❌ Failed to connect to Discord API during verification:', error)
+    return null
+  }
+}

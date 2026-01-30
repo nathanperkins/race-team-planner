@@ -1,12 +1,22 @@
 import { features } from '@/lib/config'
 
-export function register() {
+export async function register() {
   console.log('🚧 iRacing Team Planner Startup 🚧')
 
   console.log(`[Feature] Discord Auth: ${features.discordAuth ? 'Enabled ✅' : 'Disabled ❌'}`)
   console.log(`[Feature] Discord Membership Check: ${features.discordMembership ? 'Configured ✅' : 'NOT Configured ⚠️'}`)
   console.log(`[Feature] Mock Auth: ${features.mockAuth ? 'Enabled (Dev Mode) ✅' : 'Disabled ❌'}`)
   console.log(`[Feature] iRacing Sync: ${features.iracingSync ? 'Enabled ✅' : 'Disabled ❌'}`)
+
+  if (features.discordMembership) {
+    const { verifyBotToken } = await import('@/lib/discord')
+    const bot = await verifyBotToken()
+    if (bot) {
+      console.log(`[Discord] Bot Identity Verified: ${bot.name} (${bot.id}) ✅`)
+    } else {
+      console.error('[Discord] Bot Token is INVALID ❌ (Received 401/Unauthorized)')
+    }
+  }
 
   if (!features.discordAuth && !features.mockAuth) {
     console.error('❌ CRITICAL: No authentication providers enabled. Application will not start.')
