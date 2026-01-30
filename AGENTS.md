@@ -26,11 +26,13 @@ bd sync               # Commit and push changes
 
 ### Workflow Pattern
 
-1. **Start**: Run `bd ready` to find actionable work.
-2. **Claim**: Use `bd update <id> --status=in_progress`.
-3. **Work**: Implement the task and update descriptions if needed.
-4. **Complete**: Use `bd close <id>`.
-5. **Sync**: Always run `bd sync` at the end of the session.
+1. **Focus**: Only work on **one epic or feature at a time**.
+2. **Start**: Run `bd ready` to find actionable work within your current epic.
+3. **Claim**: Use `bd update <id> --status=in_progress`.
+4. **Work**: Implement the task and update descriptions if needed.
+5. **Verify**: Once the epic or feature is complete, **stop and ask the user** if it is working correctly and which task to work on next.
+6. **Complete**: Use `bd close <id>`.
+7. **Sync**: Always run `bd sync` at the end of the session.
 
 ### Key Concepts
 
@@ -49,24 +51,30 @@ create subtasks under the epic or feature.
 
 **Before ending any session, run this checklist:**
 
+1. **Verify**: Ask the user if the feature is working correctly.
+2. **Commit**: Only commit and push code once verification is confirmed.
+
 ```bash
 git add .               # Stage all changes
 bd sync                 # Commit beads changes
-git commit -m "..."     # Commit code changes
-git push                # Push to remote
+# git commit -m "..."   # (After verification)
+# git push              # (After verification)
 ```
 
 For full workflow details: `bd prime`
 
 ### Best Practices
 
-- Check `bd ready` at session start to find available work
-- Update status as you work (in_progress → closed)
+- Only work on **one epic or feature at a time**.
+- Once an epic/feature is complete, stop and ask the user for the next task.
+- **Always ask the user** if a feature is working correctly before staging or committing any code changes.
+- Check `bd ready` at session start to find available work.
+- Update status as you work (in_progress → closed).
 - Add comments to beads as you work. This is important for maintaining context
     for future work and ensuring that the decisions and justifications for a task
     are documented.
-- Create new issues with `bd create` when you discover tasks
-- Use descriptive titles and set appropriate priority/type
-- Always `bd sync` before ending session
+- Create new issues with `bd create` when you discover tasks.
+- Use descriptive titles and set appropriate priority/type.
+- Always `bd sync` before ending session.
 
 <!-- end-bv-agent-instructions -->
