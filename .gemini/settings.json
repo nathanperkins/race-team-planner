@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "PreCompress": [
+      {
+        "hooks": [
+          {
+            "command": "bd prime && bd sync",
+            "type": "command"
+          }
+        ],
+        "matcher": ""
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "bd prime && bd sync",
+            "type": "command"
+          }
+        ],
+        "matcher": ""
+      }
+    ]
+  }
+}
