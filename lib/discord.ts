@@ -1,6 +1,4 @@
 
-import { features } from '@/lib/config'
-
 const DISCORD_API_BASE = 'https://discord.com/api/v10'
 
 /**

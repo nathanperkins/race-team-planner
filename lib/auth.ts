@@ -35,7 +35,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     ...(features.mockAuth ? [mockAuthProvider] : []),
   ],
   callbacks: {
-    async signIn({ user, account, profile }) {
+    async signIn({ account, profile }) {
       // 1. Allow Mock Auth to bypass checks
       if (account?.provider === 'credentials') {
         return true

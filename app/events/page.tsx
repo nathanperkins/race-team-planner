@@ -280,6 +280,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
         },
       ],
       licenseGroup: 3,
+      durationMins: null,
       tempValue: null,
       tempUnits: null,
       relHumidity: null,
