@@ -9,10 +9,20 @@ export async function register() {
   console.log(`[Feature] iRacing Sync: ${features.iracingSync ? 'Enabled ✅' : 'Disabled ❌'}`)
 
   if (features.discordMembership) {
-    const { verifyBotToken } = await import('@/lib/discord')
+    const { verifyBotToken, verifyGuildAccess } = await import('@/lib/discord')
+
+    // 1. Verify Token
     const bot = await verifyBotToken()
     if (bot) {
       console.log(`[Discord] Bot Identity Verified: ${bot.name} (${bot.id}) ✅`)
+
+      // 2. Verify Guild Access
+      const guild = await verifyGuildAccess()
+      if (guild) {
+        console.log(`[Discord] Guild Access Verified: "${guild.name}" (${process.env.DISCORD_GUILD_ID}) ✅`)
+      } else {
+        console.error(`[Discord] Guild Access FAILED ❌ (Is the bot in Server ID: ${process.env.DISCORD_GUILD_ID}?)`)
+      }
     } else {
       console.error('[Discord] Bot Token is INVALID ❌ (Received 401/Unauthorized)')
     }
