@@ -151,6 +151,7 @@ A user's expression of interest for a specific race.
 
 - [x] Add a mock auth provider.
 - [x] Add a mock iRacing API server.
+- [x] Add husky pre-commit git hooks for formatting, linting, and build verification.
 - [ ] Add tests.
 
 ### Phase 4: Production Readiness

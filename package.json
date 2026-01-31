@@ -10,7 +10,8 @@
     "format": "prettier --write .",
     "postinstall": "prisma generate",
     "generate-secret": "node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\"",
-    "setup-env": "npx ts-node scripts/setup-env.ts"
+    "setup-env": "npx ts-node scripts/setup-env.ts",
+    "prepare": "husky"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
@@ -32,6 +33,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
     "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
     "prettier": "^3.7.4",
     "prisma": "^6.19.1",
     "ts-node": "^10.9.2",
