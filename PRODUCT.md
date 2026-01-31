@@ -160,7 +160,3 @@ A user's expression of interest for a specific race.
 - [x] Create Terraform configuration for GCP (Cloud Run, Artifact Registry).
 - [x] Deploy to Staging.
 - [ ] Deploy to Production.
-
-### Phase 5: Post Launch
-
-- [ ] Look into improving event sort performance for race count.
