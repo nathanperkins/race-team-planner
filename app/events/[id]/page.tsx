@@ -91,7 +91,7 @@ export default async function EventPage({ params }: Props) {
                 style={{ '--licColor': licenseColor } as React.CSSProperties}
               >
                 <ShieldCheck size={14} />
-                License {license} 2.0
+                {license}
               </div>
             </span>
           </div>

@@ -1,36 +1,50 @@
-export function getLicenseForId(id: string, licenseGroup?: number | null): string {
-  // Mapping based on iRacing license_group values
-  // 1: Rookie, 2: D, 3: C, 4: B, 5: A
-  const licenseMap: Record<number, string> = {
-    1: 'R',
-    2: 'D',
-    3: 'C',
-    4: 'B',
-    5: 'A',
-    6: 'Pro',
-    7: 'PWC',
-  }
+export enum LicenseLevel {
+  ROOKIE = 1,
+  D = 2,
+  C = 3,
+  B = 4,
+  A = 5,
+  PRO = 6,
+  PWC = 7,
+}
 
-  if (licenseGroup && licenseMap[licenseGroup]) {
-    return licenseMap[licenseGroup]
+const LICENSE_NAMES: Record<LicenseLevel, string> = {
+  [LicenseLevel.ROOKIE]: 'Rookie',
+  [LicenseLevel.D]: 'Class D',
+  [LicenseLevel.C]: 'Class C',
+  [LicenseLevel.B]: 'Class B',
+  [LicenseLevel.A]: 'Class A',
+  [LicenseLevel.PRO]: 'Pro',
+  [LicenseLevel.PWC]: 'PWC',
+}
+
+export function getLicenseForId(id: string, licenseGroup?: number | null): string {
+  if (licenseGroup && LICENSE_NAMES[licenseGroup as LicenseLevel]) {
+    return LICENSE_NAMES[licenseGroup as LicenseLevel]
   }
 
   // Fallback to hashing for mock/legacy data
-  const map = ['A', 'B', 'C', 'D', 'R']
+  const map = [
+    LICENSE_NAMES[LicenseLevel.A],
+    LICENSE_NAMES[LicenseLevel.B],
+    LICENSE_NAMES[LicenseLevel.C],
+    LICENSE_NAMES[LicenseLevel.D],
+    LICENSE_NAMES[LicenseLevel.ROOKIE],
+  ]
   let sum = 0
   for (let i = 0; i < id.length; i++) sum += id.charCodeAt(i)
   return map[sum % map.length]
 }
 
-export function getLicenseColor(letter: string): string {
-  switch (String(letter).toUpperCase()) {
-    case 'A':
+export function getLicenseColor(name: string): string {
+  switch (name) {
+    case LICENSE_NAMES[LicenseLevel.A]:
       return '#3b82f6'
-    case 'B':
+    case LICENSE_NAMES[LicenseLevel.B]:
       return '#22c55e'
-    case 'C':
+    case LICENSE_NAMES[LicenseLevel.C]:
       return '#facc15'
-    case 'D':
+    case LICENSE_NAMES[LicenseLevel.D]:
       return '#fb923c'
     default:
       return '#ef4444'

@@ -372,7 +372,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
                             backgroundColor: `${getLicenseColor(license)}30`,
                           }}
                         >
-                          {license} 2.0
+                          {license}
                         </div>
                       </div>
 
