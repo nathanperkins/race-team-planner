@@ -4,7 +4,9 @@ export async function register() {
   console.log('🚧 iRacing Team Planner Startup 🚧')
 
   console.log(`[Feature] Discord Auth: ${features.discordAuth ? 'Enabled ✅' : 'Disabled ❌'}`)
-  console.log(`[Feature] Discord Membership Check: ${features.discordMembership ? 'Configured ✅' : 'NOT Configured ⚠️'}`)
+  console.log(
+    `[Feature] Discord Membership Check: ${features.discordMembership ? 'Configured ✅' : 'NOT Configured ⚠️'}`
+  )
   console.log(`[Feature] Mock Auth: ${features.mockAuth ? 'Enabled (Dev Mode) ✅' : 'Disabled ❌'}`)
   console.log(`[Feature] iRacing Sync: ${features.iracingSync ? 'Enabled ✅' : 'Disabled ❌'}`)
 
@@ -19,9 +21,13 @@ export async function register() {
       // 2. Verify Guild Access
       const guild = await verifyGuildAccess()
       if (guild) {
-        console.log(`[Discord] Guild Access Verified: "${guild.name}" (${process.env.DISCORD_GUILD_ID}) ✅`)
+        console.log(
+          `[Discord] Guild Access Verified: "${guild.name}" (${process.env.DISCORD_GUILD_ID}) ✅`
+        )
       } else {
-        console.error(`[Discord] Guild Access FAILED ❌ (Is the bot in Server ID: ${process.env.DISCORD_GUILD_ID}?)`)
+        console.error(
+          `[Discord] Guild Access FAILED ❌ (Is the bot in Server ID: ${process.env.DISCORD_GUILD_ID}?)`
+        )
       }
     } else {
       console.error('[Discord] Bot Token is INVALID ❌ (Received 401/Unauthorized)')

@@ -16,7 +16,7 @@ export default function ProfileForm({ initialCustomerId }: Props) {
   const [customerId, setCustomerId] = useState(initialCustomerId)
   const [isSaving, setIsSaving] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
-  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   const handleSync = async () => {
     if (!customerId) return
@@ -90,7 +90,9 @@ export default function ProfileForm({ initialCustomerId }: Props) {
       </button>
 
       {message && (
-        <div className={`${styles.message} ${message.type === 'success' ? styles.success : styles.error}`}>
+        <div
+          className={`${styles.message} ${message.type === 'success' ? styles.success : styles.error}`}
+        >
           {message.text}
         </div>
       )}

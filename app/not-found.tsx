@@ -1,4 +1,3 @@
-
 'use client'
 
 import Link from 'next/link'
@@ -25,9 +24,7 @@ function ErrorContent() {
         </h1>
         <p className={styles.message}>
           {isAccessDenied ? (
-            <>
-              Access is restricted to members of our Discord Community.
-            </>
+            <>Access is restricted to members of our Discord Community.</>
           ) : isConfigError ? (
             <>
               The application is missing required Discord configuration.

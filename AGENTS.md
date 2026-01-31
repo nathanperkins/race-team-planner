@@ -71,8 +71,8 @@ For full workflow details: `bd prime`
 - Check `bd ready` at session start to find available work.
 - Update status as you work (in_progress → closed).
 - Add comments to beads as you work. This is important for maintaining context
-    for future work and ensuring that the decisions and justifications for a task
-    are documented.
+  for future work and ensuring that the decisions and justifications for a task
+  are documented.
 - Create new issues with `bd create` when you discover tasks.
 - Use descriptive titles and set appropriate priority/type.
 - Always `bd sync` before ending session.

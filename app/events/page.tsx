@@ -41,8 +41,8 @@ type EventWithRaces = Prisma.EventGetPayload<{
       include: {
         registrations: {
           include: {
-            user: { select: { name: true } },
-            carClass: true,
+            user: { select: { name: true } }
+            carClass: true
           }
         }
       }
@@ -67,7 +67,6 @@ export default async function EventsPage({ searchParams }: PageProps) {
   if (!session) {
     redirect('/login')
   }
-
 
   // Fetch unique racers (users who have signed up)
   const distinctUsers: { user: { id: string; name: string | null } }[] =
@@ -101,7 +100,6 @@ export default async function EventsPage({ searchParams }: PageProps) {
       },
     }
   }
-
 
   if (params.racer) {
     const racerIds = params.racer.split(',')
@@ -304,7 +302,6 @@ export default async function EventsPage({ searchParams }: PageProps) {
     }
   } catch {}
 
-
   return (
     <main className={styles.main}>
       <div className={styles.topRow}>
@@ -409,7 +406,9 @@ export default async function EventsPage({ searchParams }: PageProps) {
                         <div className={styles.classPills}>
                           {event.races
                             .flatMap((r: RaceWithRegistrations) =>
-                              r.registrations.map((reg: RegistrationWithUser) => reg.carClass.shortName)
+                              r.registrations.map(
+                                (reg: RegistrationWithUser) => reg.carClass.shortName
+                              )
                             )
                             .filter(
                               (cls: string, i: number, arr: string[]) => arr.indexOf(cls) === i
@@ -426,11 +425,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
 
                     <div className={styles.eventRight}>
                       <div className={styles.driverPillContainer}>
-                        <div
-                          className={styles.driverPill}
-                        >
-                          👤 {totalSignups}
-                        </div>
+                        <div className={styles.driverPill}>👤 {totalSignups}</div>
                         {totalSignups > 0 && (
                           <div className={styles.signupTooltip}>
                             {Array.from(
@@ -446,9 +441,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
                             ).map(([className, drivers]) => (
                               <div key={className} className={styles.tooltipClassGroup}>
                                 <div className={styles.tooltipClassName}>{className}</div>
-                                <div className={styles.tooltipDrivers}>
-                                  {drivers.join(', ')}
-                                </div>
+                                <div className={styles.tooltipDrivers}>{drivers.join(', ')}</div>
                               </div>
                             ))}
                           </div>

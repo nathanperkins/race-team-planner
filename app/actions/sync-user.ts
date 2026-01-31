@@ -15,28 +15,30 @@ export async function syncCurrentUser() {
     // Check if user has a customer ID set
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { iracingCustomerId: true }
+      select: { iracingCustomerId: true },
     })
 
     let memberInfo = null
 
     if (user?.iracingCustomerId) {
-       // Sync using the specific ID
-       // Try/Catch for specific fetch in case it fails but fallback isn't appropriate?
-       // Actually if ID is set, we SHOULD use it.
-       const custIdInt = parseInt(user.iracingCustomerId, 10)
-       if (!isNaN(custIdInt)) {
-          memberInfo = await fetchDriverStats(custIdInt)
-       }
+      // Sync using the specific ID
+      // Try/Catch for specific fetch in case it fails but fallback isn't appropriate?
+      // Actually if ID is set, we SHOULD use it.
+      const custIdInt = parseInt(user.iracingCustomerId, 10)
+      if (!isNaN(custIdInt)) {
+        memberInfo = await fetchDriverStats(custIdInt)
+      }
     }
-
 
     if (!memberInfo) {
       if (process.env.NODE_ENV === 'development') {
-         // Return mock success in dev if no real data
-         return { success: true, message: 'Mock sync (no data)' }
+        // Return mock success in dev if no real data
+        return { success: true, message: 'Mock sync (no data)' }
       }
-      return { success: false, error: 'Failed to fetch member info. Ensure Customer ID is set in Profile.' }
+      return {
+        success: false,
+        error: 'Failed to fetch member info. Ensure Customer ID is set in Profile.',
+      }
     }
 
     // Upsert RacerStats

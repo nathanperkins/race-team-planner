@@ -96,26 +96,31 @@ export default async function RosterPage({ searchParams }: Props) {
 
                   if (!stats) return null
 
-                   // Format license: "A 2.45"
+                  // Format license: "A 2.45"
                   const licText = `${stats.groupName.replace('Class ', '').substring(0, 1)} ${stats.safetyRating.toFixed(2)}`
 
                   return (
                     <>
-                       <div className={styles.paramItem} style={{ borderColor: '#' + stats.color }}>
-                         <span className={styles.paramValue}>{stats.irating}</span>
-                         <span className={styles.paramLabel}>
-                            {stats.category === 'sports_car' ? 'Sports Car' :
-                             stats.category === 'formula_car' ? 'Formula' :
-                             stats.category === 'oval' ? 'Oval' :
-                             stats.category === 'dirt_oval' ? 'Dirt Oval' :
-                             stats.category === 'dirt_road' ? 'Dirt Road' :
-                             'iRating'}
-                         </span>
-                       </div>
-                       <div className={styles.paramItem} style={{ borderColor: '#' + stats.color }}>
-                         <span className={styles.paramValue}>{licText}</span>
-                         <span className={styles.paramLabel}>License</span>
-                       </div>
+                      <div className={styles.paramItem} style={{ borderColor: '#' + stats.color }}>
+                        <span className={styles.paramValue}>{stats.irating}</span>
+                        <span className={styles.paramLabel}>
+                          {stats.category === 'sports_car'
+                            ? 'Sports Car'
+                            : stats.category === 'formula_car'
+                              ? 'Formula'
+                              : stats.category === 'oval'
+                                ? 'Oval'
+                                : stats.category === 'dirt_oval'
+                                  ? 'Dirt Oval'
+                                  : stats.category === 'dirt_road'
+                                    ? 'Dirt Road'
+                                    : 'iRating'}
+                        </span>
+                      </div>
+                      <div className={styles.paramItem} style={{ borderColor: '#' + stats.color }}>
+                        <span className={styles.paramValue}>{licText}</span>
+                        <span className={styles.paramLabel}>License</span>
+                      </div>
                     </>
                   )
                 })()}

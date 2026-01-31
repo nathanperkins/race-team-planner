@@ -10,7 +10,8 @@ async function main() {
     update: {
       name: '[MOCK] Sebring 12hr',
       track: 'Mock Raceway Park',
-      description: 'THIS IS MOCK DATA. The classic 12 hour endurance race around the bumps of Sebring.',
+      description:
+        'THIS IS MOCK DATA. The classic 12 hour endurance race around the bumps of Sebring.',
     },
     create: {
       id: sebringId,
@@ -18,7 +19,8 @@ async function main() {
       track: 'Mock Raceway Park',
       startTime: new Date('2026-03-20T14:00:00Z'),
       endTime: new Date('2026-03-21T02:00:00Z'),
-      description: 'THIS IS MOCK DATA. The classic 12 hour endurance race around the bumps of Sebring.',
+      description:
+        'THIS IS MOCK DATA. The classic 12 hour endurance race around the bumps of Sebring.',
     },
   })
 
@@ -197,7 +199,7 @@ async function main() {
       category: 'sports_car',
       irating: 2850,
       licenseLevel: 18, // A 3.xx
-      licenseGroup: 5,  // A
+      licenseGroup: 5, // A
       safetyRating: 3.42,
       cpi: 75.0,
       ttRating: 1350,
@@ -217,7 +219,7 @@ async function main() {
       category: 'formula_car',
       irating: 1450,
       licenseLevel: 10, // C 2.xx
-      licenseGroup: 3,  // C
+      licenseGroup: 3, // C
       safetyRating: 2.15,
       cpi: 45.0,
       ttRating: 1300,
@@ -329,7 +331,6 @@ async function main() {
     update: {},
     create: { userId: charlie.id, raceId: pastSebringRace.id, carClassId: gt3.id },
   })
-
 
   console.log(
     sebring,

@@ -14,14 +14,14 @@ export enum GuildMembershipStatus {
  * @param userId The Discord User ID to check
  * @returns GuildMembershipStatus
  */
-export async function checkGuildMembership(
-  userId: string
-): Promise<GuildMembershipStatus> {
+export async function checkGuildMembership(userId: string): Promise<GuildMembershipStatus> {
   const botToken = process.env.DISCORD_BOT_TOKEN
   const guildId = process.env.DISCORD_GUILD_ID
 
   if (!botToken || !guildId) {
-    console.warn('⚠️ Discord membership check skipped: DISCORD_BOT_TOKEN or DISCORD_GUILD_ID missing')
+    console.warn(
+      '⚠️ Discord membership check skipped: DISCORD_BOT_TOKEN or DISCORD_GUILD_ID missing'
+    )
     return GuildMembershipStatus.CONFIG_ERROR
   }
 
@@ -67,7 +67,10 @@ export async function verifyBotToken(): Promise<{ name: string; id: string } | n
       return { name: data.username, id: data.id }
     } else {
       const text = await response.text()
-      console.error(`❌ Discord Token Verification Failed: ${response.status} ${response.statusText}`, text)
+      console.error(
+        `❌ Discord Token Verification Failed: ${response.status} ${response.statusText}`,
+        text
+      )
       return null
     }
   } catch (error) {

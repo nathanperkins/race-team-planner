@@ -197,12 +197,12 @@ export default async function EventPage({ params }: Props) {
                       {event.skies === 0
                         ? 'Clear'
                         : event.skies === 1
-                        ? 'Partly Cloudy'
-                        : event.skies === 2
-                        ? 'Mostly Cloudy'
-                        : event.skies === 3
-                        ? 'Overcast'
-                        : 'Unknown'}
+                          ? 'Partly Cloudy'
+                          : event.skies === 2
+                            ? 'Mostly Cloudy'
+                            : event.skies === 3
+                              ? 'Overcast'
+                              : 'Unknown'}
                     </span>
                   </div>
                 )}

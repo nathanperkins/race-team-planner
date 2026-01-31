@@ -46,8 +46,8 @@ async function getAccessToken(): Promise<string | null> {
     })
 
     if (!response.ok) {
-        console.error(`Auth failed: ${response.status} ${response.statusText}`)
-        return null
+      console.error(`Auth failed: ${response.status} ${response.statusText}`)
+      return null
     }
     const data = await response.json()
     return data.access_token
@@ -118,7 +118,10 @@ async function main() {
       await writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8')
       console.log(`✅ Saved to raw_data/${fileName}`)
     } catch (error) {
-      console.error(`❌ Failed to fetch ${endpoint.name}:`, error instanceof Error ? error.message : error)
+      console.error(
+        `❌ Failed to fetch ${endpoint.name}:`,
+        error instanceof Error ? error.message : error
+      )
     }
   }
 }

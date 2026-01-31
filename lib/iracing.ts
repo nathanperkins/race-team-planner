@@ -20,9 +20,9 @@ export interface IRacingEvent {
   licenseGroup?: number
   tempValue?: number
   tempUnits?: number
-  relHumidity?: number;
-  skies?: number;
-  durationMins?: number;
+  relHumidity?: number
+  skies?: number
+  durationMins?: number
 }
 
 export interface IRacingCarClass {
@@ -94,7 +94,6 @@ const MOCK_MEMBER_INFO: IRacingMemberInfo = {
     },
   },
 }
-
 
 const MOCK_EVENTS: IRacingEvent[] = [
   {
@@ -242,15 +241,12 @@ export async function fetchCarClasses(): Promise<IRacingCarClass[]> {
   const data = await fetchFromIRacing('/data/carclass/get', token)
   if (!data || !Array.isArray(data)) return []
 
-  return (data as { car_class_id: number; name: string; short_name: string }[]).map(
-    (item) => ({
-      carClassId: item.car_class_id,
-      name: item.name,
-      shortName: item.short_name,
-    })
-  )
+  return (data as { car_class_id: number; name: string; short_name: string }[]).map((item) => ({
+    carClassId: item.car_class_id,
+    name: item.name,
+    shortName: item.short_name,
+  }))
 }
-
 
 /**
  * Fetches stats for a specific customer ID using the authenticated session.
@@ -266,7 +262,10 @@ export async function fetchDriverStats(custId: number): Promise<IRacingMemberInf
   }
 
   // Fetch member profile
-  const response = await fetchFromIRacing(`/data/member/get?cust_ids=${custId}&include_licenses=true`, token)
+  const response = await fetchFromIRacing(
+    `/data/member/get?cust_ids=${custId}&include_licenses=true`,
+    token
+  )
   if (!response || !response.members || !response.members[0]) return null
 
   const member = response.members[0]
@@ -278,41 +277,47 @@ export async function fetchDriverStats(custId: number): Promise<IRacingMemberInf
   const licenses: Record<string, IRacingLicense> = {}
 
   if (member.licenses) {
-     for (const lic of member.licenses) {
-        // Map dictionary based on category
-        const catKey =
-          lic.category_id === 1 ? 'oval' :
-          lic.category_id === 2 ? 'road' : // Deprecated/Old?
-          lic.category_id === 3 ? 'dirt_oval' :
-          lic.category_id === 4 ? 'dirt_road' :
-          lic.category_id === 5 ? 'sports_car' :
-          lic.category_id === 6 ? 'formula_car' :
-          `cat_${lic.category_id}`
+    for (const lic of member.licenses) {
+      // Map dictionary based on category
+      const catKey =
+        lic.category_id === 1
+          ? 'oval'
+          : lic.category_id === 2
+            ? 'road' // Deprecated/Old?
+            : lic.category_id === 3
+              ? 'dirt_oval'
+              : lic.category_id === 4
+                ? 'dirt_road'
+                : lic.category_id === 5
+                  ? 'sports_car'
+                  : lic.category_id === 6
+                    ? 'formula_car'
+                    : `cat_${lic.category_id}`
 
-        licenses[catKey] = {
-             categoryId: lic.category_id,
-             category: lic.category_name, // member/get returns category_name usually
-             categoryName: lic.category_name,
-             licenseLevel: lic.license_level,
-             safetyRating: lic.safety_rating,
-             cpi: lic.cpi,
-             irating: lic.irating,
-             ttRating: lic.tt_rating,
-             mprNumRaces: lic.mpr_num_races,
-             color: lic.color,
-             groupName: lic.group_name,
-             groupId: lic.group_id,
-             proPromotable: lic.pro_promotable,
-             seq: lic.seq,
-             mprNumTts: lic.mpr_num_tts,
-        }
-     }
+      licenses[catKey] = {
+        categoryId: lic.category_id,
+        category: lic.category_name, // member/get returns category_name usually
+        categoryName: lic.category_name,
+        licenseLevel: lic.license_level,
+        safetyRating: lic.safety_rating,
+        cpi: lic.cpi,
+        irating: lic.irating,
+        ttRating: lic.tt_rating,
+        mprNumRaces: lic.mpr_num_races,
+        color: lic.color,
+        groupName: lic.group_name,
+        groupId: lic.group_id,
+        proPromotable: lic.pro_promotable,
+        seq: lic.seq,
+        mprNumTts: lic.mpr_num_tts,
+      }
+    }
   }
 
   return {
     custId: member.cust_id,
     displayName: member.display_name,
-    licenses
+    licenses,
   }
 }
 
@@ -377,9 +382,7 @@ async function fetchRealEvents(token: string): Promise<IRacingEvent[]> {
                 const sessionTime = descriptor.session_times[i]
                 const start = new Date(sessionTime)
                 const durationMinutes = week.race_time_limit || descriptor.session_minutes || 60
-                const end = new Date(
-                  start.getTime() + durationMinutes * 60000
-                )
+                const end = new Date(start.getTime() + durationMinutes * 60000)
                 const externalId = `ir_${season.series_id}_${season.season_id}_w${week.race_week_num}_s${i}`
                 races.push({
                   externalId,
@@ -393,7 +396,10 @@ async function fetchRealEvents(token: string): Promise<IRacingEvent[]> {
 
         if (races.length === 0) {
           const start = new Date(week.start_date)
-          const durationMinutes = week.race_time_limit || (week.race_time_descriptors && week.race_time_descriptors[0]?.session_minutes) || 60
+          const durationMinutes =
+            week.race_time_limit ||
+            (week.race_time_descriptors && week.race_time_descriptors[0]?.session_minutes) ||
+            60
           const end = new Date(start.getTime() + durationMinutes * 60000)
           races.push({
             startTime: start.toISOString(),
@@ -405,9 +411,10 @@ async function fetchRealEvents(token: string): Promise<IRacingEvent[]> {
         races.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
 
         // Estimated duration
-        const estimatedDuration = week.race_time_limit ||
-                                 (week.race_time_descriptors && week.race_time_descriptors[0]?.session_minutes) ||
-                                 60
+        const estimatedDuration =
+          week.race_time_limit ||
+          (week.race_time_descriptors && week.race_time_descriptors[0]?.session_minutes) ||
+          60
 
         const eventStart = races[0].startTime
         const eventEnd = races[races.length - 1].endTime

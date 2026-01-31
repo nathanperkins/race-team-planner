@@ -24,6 +24,7 @@ The project includes a self-contained script to fetch raw data from iRacing and 
     ```
 
 This script will:
+
 - Authenticate via OAuth2.
 - Fetch `seasons`, `car_classes`, `cars`, `tracks`, `series`, and `member_info`.
 - Save the results as JSON files in the `raw_data` directory.
@@ -31,15 +32,19 @@ This script will:
 ## Common Tasks
 
 ### Inspecting Raw Data
+
 If you need to understand the structure of the iRacing API responses (e.g., when adding support for new car classes or event types), check the files in `raw_data/` after running the pull script.
 
 ### Updating Sync Logic
+
 When modifying the synchronization logic in `lib/iracing.ts` or `app/actions/sync-events.ts`, use the raw data fetched by this script as a reference for the API's schema.
 
 ### Debugging Authentication
+
 If the script fails with "Auth failed," verify that your credentials in `.env` are correct and that the `IRACING_CLIENT_ID` matches the one provided by iRacing (if using OAuth).
 
 ## API Reference (Endpoints covered)
+
 - `/data/series/seasons`
 - `/data/carclass/get`
 - `/data/car/get`
