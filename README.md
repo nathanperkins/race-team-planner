@@ -25,7 +25,7 @@ Before running the project, ensure you have the following installed:
    npm install
    ```
 
-   > **Important**: This must be run _before_ setting up the environment.
+   > **Important**: This must be run _before_ setting up the environment. It also initializes Git hooks via Husky.
 
 3. **Initialize Environment**
    Run the setup script to create your `.env` file and generate secure keys automatically:
@@ -97,7 +97,7 @@ npx prisma migrate dev --name <descriptive_migration_name>
 
 ### Pre-Submission Testing
 
-Before submitting changes, run the following to ensure code quality:
+Before submitting changes, run the following to ensure code quality. **Note**: These checks run automatically via a Git pre-commit hook.
 
 - **Formatting**:
   ```bash
@@ -107,7 +107,7 @@ Before submitting changes, run the following to ensure code quality:
   ```bash
   npm run lint
   ```
-- **Build Check** (Type Checking):
+- **Build Check**:
   ```bash
   npm run build
   ```
