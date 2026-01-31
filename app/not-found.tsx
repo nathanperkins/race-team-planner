@@ -27,20 +27,18 @@ function ErrorContent() {
           {isAccessDenied ? (
             <>
               Access is restricted to members of our Discord Community.
-              <br />
-              Please join our Discord server to access the Team Planner.
             </>
           ) : isConfigError ? (
             <>
               The application is missing required Discord configuration.
               <br />
-              Please contact the administrator to verify <code>DISCORD_BOT_TOKEN</code> and <code>DISCORD_GUILD_ID</code>.
+              Please contact the administrator to verify the Discord configuration.
             </>
           ) : (
             <>
               An error occurred while verifying your community membership.
               <br />
-              Please try again later or contact an administrator.
+              Please contact an administrator to resolve the issue.
             </>
           )}
         </p>
