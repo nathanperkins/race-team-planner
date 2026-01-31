@@ -21,6 +21,11 @@ async function main() {
       endTime: new Date('2026-03-21T02:00:00Z'),
       description:
         'THIS IS MOCK DATA. The classic 12 hour endurance race around the bumps of Sebring.',
+      tempValue: 78,
+      tempUnits: 0,
+      relHumidity: 65,
+      skies: 1,
+      precipChance: 15,
     },
   })
 
@@ -48,6 +53,11 @@ async function main() {
       startTime: new Date('2026-01-24T18:40:00Z'),
       endTime: new Date('2026-01-25T18:40:00Z'),
       description: 'THIS IS MOCK DATA. The start of the IMSA season, twice around the clock.',
+      tempValue: 68,
+      tempUnits: 0,
+      relHumidity: 45,
+      skies: 0,
+      precipChance: 0,
     },
   })
 

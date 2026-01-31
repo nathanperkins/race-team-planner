@@ -283,6 +283,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
       tempUnits: null,
       relHumidity: null,
       skies: null,
+      precipChance: null,
       createdAt: now,
       updatedAt: now,
     }
@@ -396,10 +397,10 @@ export default async function EventsPage({ searchParams }: PageProps) {
                               {event.tempValue}°{event.tempUnits === 0 ? 'F' : 'C'}
                             </div>
                           )}
-                          {event.relHumidity !== null && (
-                            <div className={styles.weatherBadge} title="Humidity">
-                              <span className={styles.weatherIcon}>💧</span>
-                              {event.relHumidity}%
+                          {event.precipChance !== null && (
+                            <div className={styles.weatherBadge} title="Rain Chance">
+                              <span className={styles.weatherIcon}>🌧️</span>
+                              {event.precipChance}%
                             </div>
                           )}
                         </div>

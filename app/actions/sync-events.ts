@@ -63,6 +63,7 @@ export async function syncIRacingEvents() {
             tempUnits: event.tempUnits,
             relHumidity: event.relHumidity,
             skies: event.skies,
+            precipChance: event.precipChance,
             durationMins: event.durationMins,
             carClasses: {
               set: dbCarClassIds.map((id) => ({ id })),
@@ -80,6 +81,7 @@ export async function syncIRacingEvents() {
             tempUnits: event.tempUnits,
             relHumidity: event.relHumidity,
             skies: event.skies,
+            precipChance: event.precipChance,
             durationMins: event.durationMins,
             carClasses: {
               connect: dbCarClassIds.map((id) => ({ id })),

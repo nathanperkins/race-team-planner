@@ -22,6 +22,7 @@ export interface IRacingEvent {
   tempUnits?: number
   relHumidity?: number
   skies?: number
+  precipChance?: number
   durationMins?: number
 }
 
@@ -433,6 +434,7 @@ async function fetchRealEvents(token: string): Promise<IRacingEvent[]> {
           tempUnits: week.weather?.temp_units,
           relHumidity: week.weather?.rel_humidity,
           skies: week.weather?.skies,
+          precipChance: week.weather?.weather_summary?.precip_chance,
           durationMins: estimatedDuration,
         })
       }

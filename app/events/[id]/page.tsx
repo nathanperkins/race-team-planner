@@ -6,7 +6,16 @@ import { notFound, redirect } from 'next/navigation'
 import RaceRegistrationForm from '@/components/RaceRegistrationForm'
 import RaceDetails from '@/components/RaceDetails'
 import FormattedDate from '@/components/FormattedDate'
-import { Cloud, ShieldCheck, Thermometer, Droplets, Sun, CloudSun, Timer } from 'lucide-react'
+import {
+  Cloud,
+  ShieldCheck,
+  Thermometer,
+  Droplets,
+  Sun,
+  CloudSun,
+  Timer,
+  CloudRain,
+} from 'lucide-react'
 import { getLicenseForId, getLicenseColor, formatDuration } from '@/lib/utils'
 
 import styles from './event.module.css'
@@ -179,6 +188,14 @@ export default async function EventPage({ params }: Props) {
                       <Droplets size={10} /> Humidity
                     </span>
                     <span className={styles.weatherValue}>{event.relHumidity}%</span>
+                  </div>
+                )}
+                {event.precipChance !== null && (
+                  <div className={styles.weatherBox}>
+                    <span className={styles.weatherLabel}>
+                      <CloudRain size={10} /> Precipitation
+                    </span>
+                    <span className={styles.weatherValue}>{event.precipChance}%</span>
                   </div>
                 )}
                 {event.skies !== null && (
