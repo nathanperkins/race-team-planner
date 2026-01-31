@@ -56,6 +56,12 @@ variable "discord_guild_id" {
   sensitive   = true
 }
 
+variable "discord_admin_role_ids" {
+  description = "Comma-separated list of Discord Role IDs that have admin privileges"
+  type        = string
+  default     = ""
+}
+
 variable "iracing_username" {
   description = "iRacing Username for API synchronization"
   type        = string

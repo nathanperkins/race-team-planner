@@ -142,9 +142,6 @@ A user's expression of interest for a specific race.
 - [x] Sync and display race duration.
 - [x] Fix syncing fails with success message.
 - [x] **Check Membership in SRG Discord**: Use the Discord API to check if a user is a member of the SRG Discord.
-- [ ] **Add "Live" Badge**: Visual indicator in `RaceDetails` for ongoing races.
-- [ ] **Registration Overlap Warning**: Prevent or warn about double-booking same-time races.
-- [ ] **Race Driver Limits**: Optional capacity limits for sessions.
 - [x] **Implement roles**: Admins can modify all signups, users can only modify their own signups.
 
 ### Phase 3b: Improve local dev
@@ -152,11 +149,18 @@ A user's expression of interest for a specific race.
 - [x] Add a mock auth provider.
 - [x] Add a mock iRacing API server.
 - [x] Add husky pre-commit git hooks for formatting, linting, and build verification.
-- [ ] Add tests.
 
 ### Phase 4: Production Readiness
 
 - [x] Set up GitHub Actions for CI (Linting, Build Check).
 - [x] Create Terraform configuration for GCP (Cloud Run, Artifact Registry).
 - [x] Deploy to Staging.
+- [x] Pass `DISCORD_ADMIN_ROLE_IDS` through deployment automation (Terraform/CI).
 - [ ] Deploy to Production.
+
+### Phase 5: Low Priority Features
+
+- [ ] **Add "Live" Badge**: Visual indicator in `RaceDetails` for ongoing races.
+- [ ] **Registration Overlap Warning**: Prevent or warn about double-booking same-time races.
+- [ ] **Race Driver Limits**: Optional capacity limits for sessions.
+- [ ] **Add tests**: Add tests for important CUJs.
