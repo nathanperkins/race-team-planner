@@ -111,3 +111,41 @@ export async function verifyGuildAccess(): Promise<{ name: string } | null> {
     return null
   }
 }
+
+interface DiscordRole {
+  id: string
+  name: string
+}
+
+/**
+ * Diagnostic function to verify configured admin roles.
+ */
+export async function verifyAdminRoles(): Promise<string[]> {
+  const botToken = process.env.DISCORD_BOT_TOKEN
+  const guildId = process.env.DISCORD_GUILD_ID
+  const adminRoleIdsStr = process.env.DISCORD_ADMIN_ROLE_IDS
+
+  if (!botToken || !guildId || !adminRoleIdsStr) return []
+
+  const adminRoleIds = adminRoleIdsStr.split(',').map((id) => id.trim())
+
+  try {
+    const response = await fetch(`${DISCORD_API_BASE}/guilds/${guildId}/roles`, {
+      headers: {
+        Authorization: `Bot ${botToken}`,
+      },
+    })
+
+    if (response.ok) {
+      const roles: DiscordRole[] = await response.json()
+      const foundRoles = roles.filter((r) => adminRoleIds.includes(r.id)).map((r) => r.name)
+      return foundRoles
+    } else {
+      console.error(`❌ Discord Admin Role Verification Failed: ${response.status}`)
+      return []
+    }
+  } catch (error) {
+    console.error('❌ Failed to connect to Discord API during role verification:', error)
+    return []
+  }
+}

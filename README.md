@@ -67,6 +67,7 @@ will use a mock data set suitable for local development.
     - Set `DISCORD_GUILD_ID` to your Server ID (Enable Developer Mode in Discord to copy this).
     - **Important**: In the **Bot** tab, scroll down to "Privileged Gateway Intents" and enable **Server Members Intent**. This is required to check guild membership.
     - **Important**: Invite the bot to your server using the OAuth2 URL Generator in the OAuth2 tab and include scope: `bot`.
+    - Set `DISCORD_ADMIN_ROLE_IDS` to a comma-separated list of Role IDs that should have Administrative access in the app.
 
 - **iRacing Data API**:
   - Follow the setup guide: [iRacing Data API Documentation](https://forums.iracing.com/discussion/15068/general-availability-of-data-api).

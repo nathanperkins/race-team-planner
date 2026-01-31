@@ -11,7 +11,7 @@ export async function register() {
   console.log(`[Feature] iRacing Sync: ${features.iracingSync ? 'Enabled ✅' : 'Disabled ❌'}`)
 
   if (features.discordMembership) {
-    const { verifyBotToken, verifyGuildAccess } = await import('@/lib/discord')
+    const { verifyBotToken, verifyGuildAccess, verifyAdminRoles } = await import('@/lib/discord')
 
     // 1. Verify Token
     const bot = await verifyBotToken()
@@ -28,6 +28,14 @@ export async function register() {
         console.error(
           `[Discord] Guild Access FAILED ❌ (Is the bot in Server ID: ${process.env.DISCORD_GUILD_ID}?)`
         )
+      }
+
+      // 3. Verify Admin Roles
+      const adminRoles = await verifyAdminRoles()
+      if (adminRoles.length > 0) {
+        console.log(`[Discord] Admin Roles Verified: ${adminRoles.join(', ')} ✅`)
+      } else if (process.env.DISCORD_ADMIN_ROLE_IDS) {
+        console.error('[Discord] Admin Roles NOT FOUND ❌ (Check IDs in .env)')
       }
     } else {
       console.error('[Discord] Bot Token is INVALID ❌ (Received 401/Unauthorized)')
