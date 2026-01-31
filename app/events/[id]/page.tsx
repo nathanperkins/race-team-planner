@@ -121,6 +121,7 @@ export default async function EventPage({ params }: Props) {
                     key={race.id}
                     race={race}
                     userId={session.user.id}
+                    isAdmin={session.user.role === 'ADMIN'}
                     eventId={event.id}
                   />
                 ))}

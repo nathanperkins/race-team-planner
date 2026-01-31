@@ -307,7 +307,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
     <main className={styles.main}>
       <div className={styles.topRow}>
         <h1>Upcoming Events</h1>
-        <SyncButton />
+        {session?.user?.role === 'ADMIN' && <SyncButton />}
       </div>
 
       <EventFilters carClasses={carClasses} racers={racers} currentFilters={params} />

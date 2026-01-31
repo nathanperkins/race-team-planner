@@ -3,6 +3,7 @@ import prisma from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
+import { ShieldCheck } from 'lucide-react'
 import styles from './roster.module.css'
 
 import RosterSortControls from './RosterSortControls'
@@ -70,7 +71,10 @@ export default async function RosterPage({ searchParams }: Props) {
               width={80}
               height={80}
             />
-            <h2 className={styles.name}>{user.name || 'Unknown Driver'}</h2>
+            <h2 className={styles.name}>
+              {user.name || 'Unknown Driver'}
+              {user.role === 'ADMIN' && <ShieldCheck size={16} className={styles.adminIcon} />}
+            </h2>
             <p className={styles.email}>{user.email}</p>
 
             <div className={styles.stats}>

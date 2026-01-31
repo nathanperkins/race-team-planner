@@ -3,10 +3,17 @@
 import { fetchSpecialEvents, fetchCarClasses } from '@/lib/iracing'
 import prisma from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
-
 import { features } from '@/lib/config'
 
+import { auth } from '@/lib/auth'
+import { UserRole } from '@prisma/client'
+
 export async function syncIRacingEvents() {
+  const session = await auth()
+  if (session?.user?.role !== UserRole.ADMIN) {
+    return { success: false, error: 'Unauthorized: Admin role required' }
+  }
+
   try {
     if (!features.iracingSync) {
       return { success: false, error: 'iRacing integration is not enabled' }

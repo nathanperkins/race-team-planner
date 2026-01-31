@@ -12,9 +12,12 @@ export enum GuildMembershipStatus {
  * Requires DISCORD_BOT_TOKEN and DISCORD_GUILD_ID to be set.
  *
  * @param userId The Discord User ID to check
- * @returns GuildMembershipStatus
+ * @returns Object with status and user roles
  */
-export async function checkGuildMembership(userId: string): Promise<GuildMembershipStatus> {
+export async function checkGuildMembership(userId: string): Promise<{
+  status: GuildMembershipStatus
+  roles?: string[]
+}> {
   const botToken = process.env.DISCORD_BOT_TOKEN
   const guildId = process.env.DISCORD_GUILD_ID
 
@@ -22,7 +25,7 @@ export async function checkGuildMembership(userId: string): Promise<GuildMembers
     console.warn(
       '⚠️ Discord membership check skipped: DISCORD_BOT_TOKEN or DISCORD_GUILD_ID missing'
     )
-    return GuildMembershipStatus.CONFIG_ERROR
+    return { status: GuildMembershipStatus.CONFIG_ERROR }
   }
 
   try {
@@ -33,18 +36,22 @@ export async function checkGuildMembership(userId: string): Promise<GuildMembers
     })
 
     if (response.ok) {
-      return GuildMembershipStatus.MEMBER
+      const data = await response.json()
+      return {
+        status: GuildMembershipStatus.MEMBER,
+        roles: data.roles || [],
+      }
     } else if (response.status === 404) {
-      return GuildMembershipStatus.NOT_MEMBER
+      return { status: GuildMembershipStatus.NOT_MEMBER }
     } else {
       console.error(
         `Discord API error checking membership for ${userId}: ${response.status} ${response.statusText}`
       )
-      return GuildMembershipStatus.API_ERROR
+      return { status: GuildMembershipStatus.API_ERROR }
     }
   } catch (error) {
     console.error('Failed to check Discord guild membership:', error)
-    return GuildMembershipStatus.API_ERROR
+    return { status: GuildMembershipStatus.API_ERROR }
   }
 }
 

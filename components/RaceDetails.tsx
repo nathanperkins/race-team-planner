@@ -24,10 +24,11 @@ interface RaceWithRegistrations {
 interface Props {
   race: RaceWithRegistrations
   userId: string
+  isAdmin?: boolean
   eventId: string
 }
 
-export default function RaceDetails({ race, userId, eventId }: Props) {
+export default function RaceDetails({ race, userId, isAdmin = false, eventId }: Props) {
   const isRaceCompleted = new Date() > new Date(race.endTime)
 
   return (
@@ -61,7 +62,7 @@ export default function RaceDetails({ race, userId, eventId }: Props) {
                 </div>
               </div>
               <div className={styles.driverTimeslot}>
-                {reg.userId === userId && !isRaceCompleted && (
+                {(reg.userId === userId || isAdmin) && !isRaceCompleted && (
                   <form action={deleteRegistration.bind(null, reg.id, `/events/${eventId}`)}>
                     <button type="submit" className={styles.deleteButtonSmall}>
                       Drop

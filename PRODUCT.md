@@ -145,7 +145,7 @@ A user's expression of interest for a specific race.
 - [ ] **Add "Live" Badge**: Visual indicator in `RaceDetails` for ongoing races.
 - [ ] **Registration Overlap Warning**: Prevent or warn about double-booking same-time races.
 - [ ] **Race Driver Limits**: Optional capacity limits for sessions.
-- [ ] **Implement roles**: Admins can modify all signups, users can only modify their own signups.
+- [x] **Implement roles**: Admins can modify all signups, users can only modify their own signups.
 
 ### Phase 3b: Improve local dev
 

@@ -66,7 +66,9 @@ export default async function UserSignupsPage({ params }: Props) {
                   <th className={styles.th}>Race Time</th>
                   <th className={styles.th}>Track</th>
                   <th className={styles.th}>Car Class</th>
-                  {userId === session.user?.id && <th className={styles.th}>Actions</th>}
+                  {(userId === session.user?.id || session.user?.role === 'ADMIN') && (
+                    <th className={styles.th}>Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -84,7 +86,7 @@ export default async function UserSignupsPage({ params }: Props) {
                     <td className={styles.td}>
                       <span className={styles.classBadge}>{reg.carClass.shortName}</span>
                     </td>
-                    {userId === session.user?.id && (
+                    {(userId === session.user?.id || session.user?.role === 'ADMIN') && (
                       <td className={styles.td}>
                         {new Date() > reg.race.endTime ? (
                           <span className={styles.completedText}>Completed</span>

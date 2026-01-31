@@ -145,6 +145,15 @@
   font-weight: 600;
   color: white;
   margin-bottom: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.adminIcon {
+  color: #3b82f6;
+  flex-shrink: 0;
 }
 
 .email {

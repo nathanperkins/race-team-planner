@@ -38,7 +38,15 @@ function getLoginElements() {
   return elements
 }
 
-export default function LoginPage() {
+import { auth } from '@/lib/auth'
+import { redirect } from 'next/navigation'
+
+export default async function LoginPage() {
+  const session = await auth()
+  if (session) {
+    redirect('/')
+  }
+
   return (
     <div className={styles.container}>
       <div className={styles.card}>

@@ -18,9 +18,15 @@ model User {
   updatedAt           DateTime       @updatedAt
   expectationsVersion Int            @default(0)
   iracingCustomerId   String?
+  role                UserRole       @default(USER)
   accounts            Account[]
   registrations       Registration[]
   racerStats          RacerStats[]
+}
+
+enum UserRole {
+  USER
+  ADMIN
 }
 
 model RacerStats {

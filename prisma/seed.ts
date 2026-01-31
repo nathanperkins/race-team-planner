@@ -145,12 +145,14 @@ async function main() {
     where: { id: 'user_alice' },
     update: {
       name: 'Mock Alice (AI)',
+      role: 'ADMIN',
     },
     create: {
       id: 'user_alice',
       email: 'alice@example.com',
       name: 'Mock Alice (AI)',
       image: 'https://api.dicebear.com/9.x/avataaars/png?seed=Alice',
+      role: 'ADMIN',
     },
   })
 

@@ -87,13 +87,13 @@ export async function deleteRegistration(
   }
 
   try {
-    const registration = await prisma.registration.findFirst({
+    const registration = await prisma.registration.findUnique({
       where: {
         id: registrationId,
-        userId: session.user.id,
       },
       select: {
         id: true,
+        userId: true,
         race: {
           select: { endTime: true, eventId: true },
         },
@@ -103,6 +103,13 @@ export async function deleteRegistration(
     if (!registration) {
       // Nothing to delete because there is no registration associated with the user.
       return
+    }
+
+    const isAdmin = session.user.role === 'ADMIN'
+    const isOwner = registration.userId === session.user.id
+
+    if (!isAdmin && !isOwner) {
+      throw new Error('Unauthorized to delete this registration')
     }
 
     if (registration.race && new Date() > registration.race.endTime) {
