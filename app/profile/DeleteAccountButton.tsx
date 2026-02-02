@@ -59,7 +59,7 @@ export default function DeleteAccountButton({ userName }: DeleteAccountButtonPro
         <div className={styles.confirmContainer}>
           <p className={styles.confirmLabel}>
             To confirm, please type your name:{' '}
-            <span className={styles.confirmNameHighlight}>{userName}</span>
+            <span className={styles.confirmNameHighlight}>{userName.toLowerCase()}</span>
           </p>
           <input
             type="text"
