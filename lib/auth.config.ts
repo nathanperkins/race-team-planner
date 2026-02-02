@@ -37,5 +37,11 @@ export const authConfig = {
 
       return true
     },
+    async session({ session, token }) {
+      if (session.user && token.iracingCustomerId) {
+        session.user.iracingCustomerId = token.iracingCustomerId as string
+      }
+      return session
+    },
   },
 } satisfies NextAuthConfig

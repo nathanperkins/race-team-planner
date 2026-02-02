@@ -63,18 +63,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id
+        token.iracingCustomerId = user.iracingCustomerId
+        token.role = user.role
       }
 
-      // Ensure we always have the latest role in the token
-      if (token.id && (!token.role || trigger === 'signIn' || trigger === 'update')) {
+      // We still want to hit the DB on reloads/updates to ensure we have the latest
+      // info if it changed in the DB but wasn't updated in the token yet.
+      // This is efficient because Auth.js caches the JWT result for the request.
+      if (token.id && (trigger === 'signIn' || trigger === 'update' || !trigger)) {
         const dbUser = await prisma.user.findUnique({
           where: { id: token.id as string },
-          select: { role: true },
+          select: { role: true, iracingCustomerId: true },
         })
         if (dbUser) {
           token.role = dbUser.role
-        } else {
-          token.role = UserRole.USER
+          token.iracingCustomerId = dbUser.iracingCustomerId
         }
       }
 
@@ -84,15 +87,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (session.user && token.id) {
         session.user.id = token.id as string
         session.user.role = (token.role as UserRole) || UserRole.USER
-
-        // Fetch iRacing ID from DB
-        const user = await prisma.user.findUnique({
-          where: { id: token.id as string },
-          select: { iracingCustomerId: true },
-        })
-        if (user) {
-          session.user.iracingCustomerId = user.iracingCustomerId
-        }
+        session.user.iracingCustomerId = token.iracingCustomerId as string
       }
       return session
     },

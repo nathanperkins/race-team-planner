@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { updateProfile } from '@/app/actions/update-profile'
 import { syncCurrentUserAction } from '@/app/actions/sync'
+import { useSession } from 'next-auth/react'
 import styles from './profile.module.css'
 
 interface Props {
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export default function ProfileForm({ initialCustomerId }: Props) {
+  const { update } = useSession()
   const router = useRouter()
   const [customerId, setCustomerId] = useState(initialCustomerId)
   const [isSaving, setIsSaving] = useState(false)
@@ -45,6 +47,7 @@ export default function ProfileForm({ initialCustomerId }: Props) {
     try {
       const result = await updateProfile(formData)
       if (result.success) {
+        await update() // Refresh the session JWT
         setMessage({ type: 'success', text: 'Profile updated successfully' })
       } else {
         setMessage({ type: 'error', text: result.error || 'Failed to update' })

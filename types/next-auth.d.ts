@@ -14,12 +14,14 @@ declare module 'next-auth' {
 
   interface User {
     role: UserRole
+    iracingCustomerId?: string | null
   }
 }
 
 declare module '@auth/core/adapters' {
   interface AdapterUser {
     role: UserRole
+    iracingCustomerId?: string | null
   }
 }
 
@@ -27,5 +29,6 @@ declare module 'next-auth/jwt' {
   interface JWT {
     id: string
     role: UserRole
+    iracingCustomerId?: string | null
   }
 }
