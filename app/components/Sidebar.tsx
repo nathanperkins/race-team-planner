@@ -9,9 +9,10 @@ import Image from 'next/image'
 
 interface SidebarProps {
   session: Session
+  onLinkClick?: () => void
 }
 
-export default function Sidebar({ session }: SidebarProps) {
+export default function Sidebar({ session, onLinkClick }: SidebarProps) {
   const pathname = usePathname()
 
   const isActive = (path: string) => {
@@ -21,13 +22,12 @@ export default function Sidebar({ session }: SidebarProps) {
   }
 
   return (
-    <aside className={styles.sidebar}>
-      <div className={styles.title}>Race Team Planner</div>
-
+    <div className={styles.navWrapper}>
       <nav className={styles.nav}>
         <Link
           href="/events"
           className={`${styles.link} ${isActive('/events') ? styles.activeLink : ''}`}
+          onClick={onLinkClick}
         >
           Events
         </Link>
@@ -35,6 +35,7 @@ export default function Sidebar({ session }: SidebarProps) {
         <Link
           href={`/users/${session.user?.id}/signups`}
           className={`${styles.link} ${isActive(`/users/${session.user?.id}`) ? styles.activeLink : ''}`}
+          onClick={onLinkClick}
         >
           My Signups
         </Link>
@@ -42,6 +43,7 @@ export default function Sidebar({ session }: SidebarProps) {
         <Link
           href="/roster"
           className={`${styles.link} ${isActive('/roster') ? styles.activeLink : ''}`}
+          onClick={onLinkClick}
         >
           Roster
         </Link>
@@ -49,6 +51,7 @@ export default function Sidebar({ session }: SidebarProps) {
         <Link
           href="/expectations"
           className={`${styles.link} ${isActive('/expectations') ? styles.activeLink : ''}`}
+          onClick={onLinkClick}
         >
           Team Expectations
         </Link>
@@ -56,6 +59,7 @@ export default function Sidebar({ session }: SidebarProps) {
         <Link
           href="/profile"
           className={`${styles.link} ${isActive('/profile') ? styles.activeLink : ''}`}
+          onClick={onLinkClick}
         >
           My Profile
         </Link>
@@ -80,6 +84,6 @@ export default function Sidebar({ session }: SidebarProps) {
           </button>
         </div>
       </div>
-    </aside>
+    </div>
   )
 }

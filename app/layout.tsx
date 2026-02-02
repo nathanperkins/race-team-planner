@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
 import { auth } from '@/lib/auth'
-import Sidebar from './components/Sidebar'
+import LayoutWrapper from './components/LayoutWrapper'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -29,10 +29,7 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        <div style={{ display: 'flex', minHeight: '100vh' }}>
-          {session && <Sidebar session={session} />}
-          <main style={{ flex: 1, marginLeft: session ? '250px' : '0' }}>{children}</main>
-        </div>
+        <LayoutWrapper session={session}>{children}</LayoutWrapper>
       </body>
     </html>
   )

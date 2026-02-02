@@ -30,7 +30,20 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 1.5rem;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+@media (max-width: 640px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .title {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
 }
 
 @media (min-width: 640px) {
@@ -39,45 +52,10 @@
   }
 }
 
-.sortControls {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.sortLabel {
-  font-size: 0.875rem;
-  color: #9ca3af;
-  font-weight: 500;
-}
-
-.sortSelect {
-  background-color: #1f2937;
-  border: 1px solid #374151;
-  color: white;
-  padding: 0.5rem 2rem 0.5rem 1rem;
-  /* Extra padding for arrow */
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
-  cursor: pointer;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-  background-position: right 0.5rem center;
-  background-repeat: no-repeat;
-  background-size: 1.5em 1.5em;
-}
-
-.sortSelect:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
-}
-
 .title {
   font-size: 1.875rem;
   font-weight: 700;
   line-height: 1.1;
-  min-width: max-content;
   margin-right: auto;
 }
 

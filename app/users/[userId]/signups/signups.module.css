@@ -9,10 +9,17 @@
   background-color: #111827;
 }
 
+@media (max-width: 640px) {
+  .container {
+    padding: 0.75rem;
+    /* Reduced from 1rem */
+    padding-bottom: 5rem;
+  }
+}
+
 @media (min-width: 640px) {
   .container {
-    padding: 5rem;
-    /* sm:p-20 */
+    padding: 3rem;
   }
 }
 
@@ -47,15 +54,16 @@
 
 .tableCard {
   border-radius: 0.5rem;
-  /* rounded-lg */
   border: 1px solid #374151;
-  /* border-gray-700 */
   background-color: #1f2937;
-  /* bg-gray-800 */
-  padding: 1.5rem;
-  /* p-6 */
+  padding: 1rem;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  /* shadow-sm */
+}
+
+@media (min-width: 640px) {
+  .tableCard {
+    padding: 1.5rem;
+  }
 }
 
 .emptyText {
