@@ -12,6 +12,7 @@ export const proxy = auth((req) => {
   // (unless they are already on the profile page or a public/api route)
   if (isLoggedIn && !hasCustomerId) {
     const isProfilePage = nextUrl.pathname === '/profile'
+    const isExpectationsPage = nextUrl.pathname === '/expectations'
     const isApiRoute = nextUrl.pathname.startsWith('/api')
     const isPublicRoute =
       nextUrl.pathname === '/' ||
@@ -19,7 +20,7 @@ export const proxy = auth((req) => {
       nextUrl.pathname === '/not-found' ||
       nextUrl.pathname.includes('.')
 
-    if (!isProfilePage && !isApiRoute && !isPublicRoute) {
+    if (!isProfilePage && !isExpectationsPage && !isApiRoute && !isPublicRoute) {
       return Response.redirect(new URL('/profile', nextUrl))
     }
   }

@@ -52,7 +52,7 @@ export default function Sidebar({ session, onLinkClick }: SidebarProps) {
 
         <Link
           href="/expectations"
-          className={`${styles.link} ${isActive('/expectations') ? styles.activeLink : ''} ${!hasCustomerId ? styles.disabledLink : ''}`}
+          className={`${styles.link} ${isActive('/expectations') ? styles.activeLink : ''}`}
           onClick={onLinkClick}
         >
           Team Expectations
