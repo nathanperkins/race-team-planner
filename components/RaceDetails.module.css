@@ -41,6 +41,39 @@
   border: 1px solid #374151;
 }
 
+.liveBadge {
+  font-size: 0.75rem;
+  background-color: #064e3b;
+  color: #6ee7b7;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  border: 1px solid #059669;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-weight: 600;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+}
+
+.liveDot {
+  width: 6px;
+  height: 6px;
+  background-color: #10b981;
+  border-radius: 50%;
+  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
 .driverList {
   display: flex;
   flex-direction: column;

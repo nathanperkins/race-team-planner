@@ -1,6 +1,7 @@
 import type { NextAuthConfig } from 'next-auth'
 import Discord from 'next-auth/providers/discord'
 import { features } from '@/lib/config'
+import { UserRole } from '@prisma/client'
 
 export const authConfig = {
   providers: [
@@ -37,14 +38,21 @@ export const authConfig = {
 
       return true
     },
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id
+        token.role = user.role
+        token.iracingCustomerId = user.iracingCustomerId
+        token.expectationsVersion = user.expectationsVersion
+      }
+      return token
+    },
     async session({ session, token }) {
       if (session.user) {
-        if (token.iracingCustomerId) {
-          session.user.iracingCustomerId = token.iracingCustomerId as string
-        }
-        if (typeof token.expectationsVersion === 'number') {
-          session.user.expectationsVersion = token.expectationsVersion
-        }
+        session.user.id = token.id as string
+        session.user.role = (token.role as UserRole) || UserRole.USER
+        session.user.iracingCustomerId = token.iracingCustomerId as string
+        session.user.expectationsVersion = (token.expectationsVersion as number) || 0
       }
       return session
     },

@@ -29,7 +29,9 @@ interface Props {
 }
 
 export default function RaceDetails({ race, userId, isAdmin = false, eventId }: Props) {
-  const isRaceCompleted = new Date() > new Date(race.endTime)
+  const now = new Date()
+  const isRaceCompleted = now > new Date(race.endTime)
+  const isRaceLive = now >= new Date(race.startTime) && now <= new Date(race.endTime)
 
   return (
     <div className={styles.raceCard}>
@@ -37,6 +39,12 @@ export default function RaceDetails({ race, userId, isAdmin = false, eventId }: 
         <h4 className={styles.raceTitle}>
           Race: <FormattedDate date={race.startTime} />
         </h4>
+        {isRaceLive && (
+          <span className={styles.liveBadge}>
+            <span className={styles.liveDot} />
+            LIVE
+          </span>
+        )}
         {isRaceCompleted && <span className={styles.completedBadge}>Completed</span>}
       </div>
 

@@ -147,9 +147,9 @@ A user's expression of interest for a specific race.
 
 ### Phase 3c: Onboarding & User Flow
 
-- [ ] **Force iRacing Customer ID**: Require new users to provide their iRacing Customer ID.
-- [ ] **Team Expectations**: Users must read and agree to team expectations.
-- [ ] **Gate Access**: Restrict access to the dashboard until onboarding is complete.
+- [x] **Force iRacing Customer ID**: Require new users to provide their iRacing Customer ID.
+- [x] **Team Expectations**: Users must read and agree to team expectations.
+- [x] **Gate Access**: Restrict access to the dashboard until onboarding is complete.
 
 ### Phase 3b: Improve local dev
 
@@ -167,7 +167,7 @@ A user's expression of interest for a specific race.
 
 ### Phase 5: Low Priority Features
 
-- [ ] **Add "Live" Badge**: Visual indicator in `RaceDetails` for ongoing races.
+- [x] **Add "Live" Badge**: Visual indicator in `RaceDetails` for ongoing races.
 - [ ] **Registration Overlap Warning**: Prevent or warn about double-booking same-time races.
 - [ ] **Race Driver Limits**: Optional capacity limits for sessions.
 - [ ] **Add tests**: Add tests for important CUJs.

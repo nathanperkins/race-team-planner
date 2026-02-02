@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { updateProfile } from '@/app/actions/update-profile'
 import { useSession } from 'next-auth/react'
-import { Lock } from 'lucide-react'
+import { Lock, Loader2 } from 'lucide-react'
 import styles from './profile.module.css'
 
 interface Props {
@@ -17,27 +17,27 @@ export default function ProfileForm({ initialCustomerId, initialIracingName }: P
   const { update } = useSession()
   const router = useRouter()
   const [customerId, setCustomerId] = useState(initialCustomerId)
-  const [isSaving, setIsSaving] = useState(false)
+  const [isPending, startTransition] = useTransition()
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   const handleSubmit = async (formData: FormData) => {
-    setIsSaving(true)
     setMessage(null)
 
-    try {
-      const result = await updateProfile(formData)
-      if (result.success) {
-        await update() // Refresh the session JWT
-        router.refresh() // Refresh the server components
-        setMessage({ type: 'success', text: 'Profile updated successfully' })
-      } else {
-        setMessage({ type: 'error', text: result.error || 'Failed to update' })
+    startTransition(async () => {
+      try {
+        const result = await updateProfile(formData)
+        if (result.success) {
+          await update() // Refresh the session JWT
+          router.refresh() // Refresh the server components
+          setMessage({ type: 'success', text: 'Profile updated successfully' })
+        } else {
+          setMessage({ type: 'error', text: result.error || 'Failed to update' })
+        }
+      } catch (err) {
+        console.error('Update profile error:', err)
+        setMessage({ type: 'error', text: 'An unexpected error occurred' })
       }
-    } catch {
-      setMessage({ type: 'error', text: 'An unexpected error occurred' })
-    } finally {
-      setIsSaving(false)
-    }
+    })
   }
 
   return (
@@ -70,11 +70,25 @@ export default function ProfileForm({ initialCustomerId, initialIracingName }: P
         </div>
       </div>
 
-      <button type="submit" className={styles.button} disabled={isSaving}>
-        {isSaving ? 'Saving...' : 'Save Changes'}
+      <button type="submit" className={styles.button} disabled={isPending}>
+        {isPending ? (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
+            }}
+          >
+            <Loader2 className={styles.spin} size={18} />
+            Validating & Saving...
+          </div>
+        ) : (
+          'Save Changes'
+        )}
       </button>
 
-      {message && (
+      {message && !isPending && (
         <div
           className={`${styles.message} ${message.type === 'success' ? styles.success : styles.error}`}
         >

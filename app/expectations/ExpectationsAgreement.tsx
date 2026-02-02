@@ -1,12 +1,16 @@
 'use client'
 
 import { useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { agreeToExpectations } from '@/app/actions'
 import { CURRENT_EXPECTATIONS_VERSION } from '@/lib/config'
+import { useSession } from 'next-auth/react'
 import styles from './expectations.module.css'
 
 export default function ExpectationsAgreement() {
   const [isPending, startTransition] = useTransition()
+  const { update } = useSession()
+  const router = useRouter()
 
   return (
     <section className={`${styles.section} ${styles.pendingAgreement}`}>
@@ -28,6 +32,8 @@ export default function ExpectationsAgreement() {
         onClick={() =>
           startTransition(async () => {
             await agreeToExpectations()
+            await update()
+            router.refresh()
           })
         }
         disabled={isPending}
