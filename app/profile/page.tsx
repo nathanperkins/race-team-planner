@@ -4,6 +4,7 @@ import ProfileForm from './ProfileForm'
 import styles from './profile.module.css'
 import UserRoleBadge from '@/components/UserRoleBadge'
 import { CURRENT_EXPECTATIONS_VERSION } from '@/lib/config'
+import DeleteAccountButton from './DeleteAccountButton'
 
 export default async function ProfilePage() {
   const session = await auth()
@@ -56,6 +57,8 @@ export default async function ProfilePage() {
           userId={session.user.id!}
           initialCustomerId={session.user.iracingCustomerId || ''}
         />
+
+        <DeleteAccountButton />
       </div>
     </div>
   )
