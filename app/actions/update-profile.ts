@@ -31,6 +31,7 @@ export async function updateProfile(formData: FormData) {
       where: { id: session.user.id },
       data: {
         iracingCustomerId: customerId,
+        iracingName: customerId ? undefined : null,
       },
     })
 

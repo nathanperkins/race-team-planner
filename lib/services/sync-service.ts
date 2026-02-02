@@ -203,6 +203,12 @@ export async function syncUserStats(userId: string, overrideCustomerId?: string)
     throw new Error('Failed to fetch stats from iRacing.')
   }
 
+  // Update iracing name if changed
+  await prisma.user.update({
+    where: { id: userId },
+    data: { iracingName: memberInfo.displayName },
+  })
+
   // Upsert RacerStats
   for (const key in memberInfo.licenses) {
     const lic = memberInfo.licenses[key]

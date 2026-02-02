@@ -5,17 +5,23 @@ import styles from './profile.module.css'
 import UserRoleBadge from '@/components/UserRoleBadge'
 import { CURRENT_EXPECTATIONS_VERSION } from '@/lib/config'
 import DeleteAccountButton from './DeleteAccountButton'
+import prisma from '@/lib/prisma'
 
 export default async function ProfilePage() {
   const session = await auth()
   if (!session?.user) redirect('/login')
 
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+  })
+
+  if (!user) redirect('/login')
+
   return (
     <div className={styles.container}>
       <h1 className={styles.title}>User Profile</h1>
 
-      {(!session.user.iracingCustomerId ||
-        session.user.expectationsVersion < CURRENT_EXPECTATIONS_VERSION) && (
+      {(!user.iracingCustomerId || user.expectationsVersion < CURRENT_EXPECTATIONS_VERSION) && (
         <div className={styles.onboardingBanner}>
           <div className={styles.onboardingIcon}>!</div>
           <div className={styles.onboardingText}>
@@ -31,28 +37,28 @@ export default async function ProfilePage() {
       <div className={styles.card}>
         <div className={styles.field}>
           <label className={styles.label}>Name</label>
-          <div className={styles.value}>{session.user.name}</div>
+          <div className={styles.value}>{user.name}</div>
         </div>
         <div className={styles.field}>
           <label className={styles.label}>Email</label>
-          <div className={styles.value}>{session.user.email}</div>
+          <div className={styles.value}>{user.email}</div>
         </div>
         <div className={styles.field}>
           <label className={styles.label}>Role</label>
           <div className={styles.value}>
-            <UserRoleBadge role={session.user.role} />
+            <UserRoleBadge role={user.role} />
           </div>
         </div>
         <div className={styles.field}>
           <label className={styles.label}>
             Team Expectations
-            {session.user.expectationsVersion < CURRENT_EXPECTATIONS_VERSION && (
+            {user.expectationsVersion < CURRENT_EXPECTATIONS_VERSION && (
               <span className={styles.requiredBadge}>REQUIRED</span>
             )}
           </label>
           <div className={styles.value}>
-            {session.user.expectationsVersion >= CURRENT_EXPECTATIONS_VERSION ? (
-              <span className={styles.success}>Accepted (v{session.user.expectationsVersion})</span>
+            {user.expectationsVersion >= CURRENT_EXPECTATIONS_VERSION ? (
+              <span className={styles.success}>Accepted (v{user.expectationsVersion})</span>
             ) : (
               <span className={styles.error}>Not Accepted</span>
             )}
@@ -60,11 +66,12 @@ export default async function ProfilePage() {
         </div>
 
         <ProfileForm
-          userId={session.user.id!}
-          initialCustomerId={session.user.iracingCustomerId || ''}
+          userId={user.id}
+          initialCustomerId={user.iracingCustomerId || ''}
+          initialIracingName={user.iracingName || ''}
         />
 
-        <DeleteAccountButton userName={session.user.name || ''} />
+        <DeleteAccountButton userName={user.name || ''} />
       </div>
     </div>
   )
