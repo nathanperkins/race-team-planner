@@ -3,8 +3,8 @@ import prisma from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { ShieldCheck, User } from 'lucide-react'
 import styles from './roster.module.css'
+import UserRoleBadge from '@/components/UserRoleBadge'
 
 import RosterSortControls from './RosterSortControls'
 
@@ -74,10 +74,7 @@ export default async function RosterPage({ searchParams }: Props) {
             <h2 className={styles.name}>{user.name || 'Unknown Driver'}</h2>
             <p className={styles.email}>{user.email}</p>
             <div className={styles.roleContainer}>
-              <span className={user.role === 'ADMIN' ? styles.adminBadge : styles.userBadge}>
-                {user.role === 'ADMIN' ? <ShieldCheck size={14} /> : <User size={14} />}
-                {user.role === 'ADMIN' ? 'Admin' : 'User'}
-              </span>
+              <UserRoleBadge role={user.role} />
             </div>
 
             <div className={styles.stats}>
