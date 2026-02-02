@@ -57,6 +57,21 @@
   border: 1px solid #334155;
 }
 
+.clickableValue {
+  composes: value;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-decoration: none;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.clickableValue:hover {
+  background-color: #1e293b;
+  border-color: #3b82f6;
+}
+
 .input {
   width: 100%;
   padding: 0.75rem;

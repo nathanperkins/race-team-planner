@@ -6,6 +6,8 @@ import UserRoleBadge from '@/components/UserRoleBadge'
 import { CURRENT_EXPECTATIONS_VERSION } from '@/lib/config'
 import DeleteAccountButton from './DeleteAccountButton'
 import prisma from '@/lib/prisma'
+import { Lock, ChevronRight } from 'lucide-react'
+import Link from 'next/link'
 
 export default async function ProfilePage() {
   const session = await auth()
@@ -37,16 +39,23 @@ export default async function ProfilePage() {
       <div className={styles.card}>
         <div className={styles.field}>
           <label className={styles.label}>Name</label>
-          <div className={styles.value}>{user.name}</div>
+          <div className={styles.readOnlyField}>
+            <span>{user.name}</span>
+            <Lock size={14} style={{ opacity: 0.5 }} />
+          </div>
         </div>
         <div className={styles.field}>
           <label className={styles.label}>Email</label>
-          <div className={styles.value}>{user.email}</div>
+          <div className={styles.readOnlyField}>
+            <span>{user.email}</span>
+            <Lock size={14} style={{ opacity: 0.5 }} />
+          </div>
         </div>
         <div className={styles.field}>
           <label className={styles.label}>Role</label>
-          <div className={styles.value}>
+          <div className={styles.readOnlyField}>
             <UserRoleBadge role={user.role} />
+            <Lock size={14} style={{ opacity: 0.5 }} />
           </div>
         </div>
         <div className={styles.field}>
@@ -56,13 +65,14 @@ export default async function ProfilePage() {
               <span className={styles.requiredBadge}>REQUIRED</span>
             )}
           </label>
-          <div className={styles.value}>
+          <Link href="/expectations" className={styles.clickableValue}>
             {user.expectationsVersion >= CURRENT_EXPECTATIONS_VERSION ? (
               <span className={styles.success}>Accepted (v{user.expectationsVersion})</span>
             ) : (
               <span className={styles.error}>Not Accepted</span>
             )}
-          </div>
+            <ChevronRight size={14} style={{ opacity: 0.5 }} />
+          </Link>
         </div>
 
         <ProfileForm
