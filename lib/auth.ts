@@ -32,70 +32,69 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     strategy: 'jwt',
   },
   providers: [
-    ...(features.discordAuth ? [Discord] : []),
+    ...(features.discordAuth
+      ? [
+          Discord({
+            clientId: process.env.AUTH_DISCORD_ID,
+            clientSecret: process.env.AUTH_DISCORD_SECRET,
+            allowDangerousEmailAccountLinking: true,
+          }),
+        ]
+      : []),
     ...(features.mockAuth ? [mockAuthProvider] : []),
   ],
   callbacks: {
-    async signIn({ account, profile, user }) {
+    async signIn({ account, profile }) {
+      console.log(`[auth][signIn] Provider: ${account?.provider}, Email: ${profile?.email}`)
+
       // 1. Allow Mock Auth to bypass checks
       if (account?.provider === 'credentials') {
         return true
       }
 
       // 2. Perform Guild Membership Check for Discord
-      if (account?.provider === 'discord') {
-        const discordId = profile?.id as string
+      if (account?.provider === 'discord' && profile) {
+        const discordId = profile.id as string
 
         if (discordId) {
           const { checkGuildMembership, GuildMembershipStatus } = await import('@/lib/discord')
-          const { status, roles } = await checkGuildMembership(discordId)
+          const { status } = await checkGuildMembership(discordId)
 
           if (status !== GuildMembershipStatus.MEMBER) {
+            console.log(`[auth][signIn] Denying access: ${status}`)
             return `/not-found?error=${status}`
-          }
-
-          // Check if admin
-          const adminRoleIdsStr = process.env.DISCORD_ADMIN_ROLE_IDS || ''
-          const adminRoleIds = adminRoleIdsStr.split(',').map((id) => id.trim())
-          const isAdmin = roles?.some((roleId) => adminRoleIds.includes(roleId))
-
-          // We'll update the role in the database if it doesn't match
-          const targetRole = isAdmin ? UserRole.ADMIN : UserRole.USER
-
-          if (user.id) {
-            // Note: user.id here is the one from the database (since we have an adapter)
-            // If it's a new user, user.id might not be in the database yet until the sign-in finishes.
-            // But with Prisma adapter, it's usually already created or looked up.
-            await prisma.user.update({
-              where: { id: user.id },
-              data: { role: targetRole },
-            })
           }
         }
       }
 
       return true
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id
-        token.role = user.role
-      } else if (token.id && !token.role) {
-        // Fallback or lookup
+      }
+
+      // Ensure we always have the latest role in the token
+      if (token.id && (!token.role || trigger === 'signIn' || trigger === 'update')) {
         const dbUser = await prisma.user.findUnique({
           where: { id: token.id as string },
           select: { role: true },
         })
         if (dbUser) {
           token.role = dbUser.role
+        } else {
+          token.role = UserRole.USER
         }
       }
+
       return token
     },
     async session({ session, token }) {
       if (session.user && token.id) {
         session.user.id = token.id as string
-        session.user.role = token.role as UserRole
+        session.user.role = (token.role as UserRole) || UserRole.USER
+
+        // Fetch iRacing ID from DB
         const user = await prisma.user.findUnique({
           where: { id: token.id as string },
           select: { iracingCustomerId: true },
@@ -105,6 +104,40 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
       }
       return session
+    },
+  },
+  events: {
+    async signIn({ user, account, profile }) {
+      if (account?.provider === 'discord' && profile && user.id) {
+        console.log(`[auth][event][signIn] Syncing profile for ${user.email}`)
+
+        try {
+          // Check guild roles to determine admin status
+          const { checkGuildMembership } = await import('@/lib/discord')
+          const { roles } = await checkGuildMembership(profile.id as string)
+
+          const adminRoleIdsStr = process.env.DISCORD_ADMIN_ROLE_IDS || ''
+          const adminRoleIds = adminRoleIdsStr.split(',').map((id) => id.trim())
+          const isAdmin = roles?.some((roleId) => adminRoleIds.includes(roleId))
+          const targetRole = isAdmin ? UserRole.ADMIN : UserRole.USER
+
+          // Update the user record with latest info from Discord
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              role: targetRole,
+              name: profile.name || profile.username || user.name,
+              image: profile.image_url || profile.avatar || user.image,
+            },
+          })
+          console.log(`[auth][event][signIn] Profile sync complete. Role: ${targetRole}`)
+        } catch (error) {
+          console.error('[auth][event][signIn] Failed to sync profile:', error)
+        }
+      }
+    },
+    async linkAccount({ user }) {
+      console.log(`[auth][event][linkAccount] Account linked for user ${user.id}`)
     },
   },
 })
