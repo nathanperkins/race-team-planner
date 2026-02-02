@@ -38,8 +38,13 @@ export const authConfig = {
       return true
     },
     async session({ session, token }) {
-      if (session.user && token.iracingCustomerId) {
-        session.user.iracingCustomerId = token.iracingCustomerId as string
+      if (session.user) {
+        if (token.iracingCustomerId) {
+          session.user.iracingCustomerId = token.iracingCustomerId as string
+        }
+        if (typeof token.expectationsVersion === 'number') {
+          session.user.expectationsVersion = token.expectationsVersion
+        }
       }
       return session
     },

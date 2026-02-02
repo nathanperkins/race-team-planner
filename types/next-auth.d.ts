@@ -9,12 +9,14 @@ declare module 'next-auth' {
       image?: string | null
       iracingCustomerId?: string | null
       role: UserRole
+      expectationsVersion: number
     }
   }
 
   interface User {
     role: UserRole
     iracingCustomerId?: string | null
+    expectationsVersion: number
   }
 }
 
@@ -22,6 +24,7 @@ declare module '@auth/core/adapters' {
   interface AdapterUser {
     role: UserRole
     iracingCustomerId?: string | null
+    expectationsVersion: number
   }
 }
 
@@ -30,5 +33,6 @@ declare module 'next-auth/jwt' {
     id: string
     role: UserRole
     iracingCustomerId?: string | null
+    expectationsVersion: number
   }
 }

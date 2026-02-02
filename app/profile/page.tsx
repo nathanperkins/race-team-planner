@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import ProfileForm from './ProfileForm'
 import styles from './profile.module.css'
 import UserRoleBadge from '@/components/UserRoleBadge'
+import { CURRENT_EXPECTATIONS_VERSION } from '@/lib/config'
 
 export default async function ProfilePage() {
   const session = await auth()
@@ -38,6 +39,16 @@ export default async function ProfilePage() {
           <label className={styles.label}>Role</label>
           <div className={styles.value}>
             <UserRoleBadge role={session.user.role} />
+          </div>
+        </div>
+        <div className={styles.field}>
+          <label className={styles.label}>Team Expectations</label>
+          <div className={styles.value}>
+            {session.user.expectationsVersion >= CURRENT_EXPECTATIONS_VERSION ? (
+              <span className={styles.success}>Accepted (v{session.user.expectationsVersion})</span>
+            ) : (
+              <span className={styles.error}>Not Accepted</span>
+            )}
           </div>
         </div>
 

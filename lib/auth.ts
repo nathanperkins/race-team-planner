@@ -65,6 +65,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.id = user.id
         token.iracingCustomerId = user.iracingCustomerId
         token.role = user.role
+        token.expectationsVersion = user.expectationsVersion
       }
 
       // We still want to hit the DB on reloads/updates to ensure we have the latest
@@ -73,11 +74,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token.id && (trigger === 'signIn' || trigger === 'update' || !trigger)) {
         const dbUser = await prisma.user.findUnique({
           where: { id: token.id as string },
-          select: { role: true, iracingCustomerId: true },
+          select: { role: true, iracingCustomerId: true, expectationsVersion: true },
         })
         if (dbUser) {
           token.role = dbUser.role
           token.iracingCustomerId = dbUser.iracingCustomerId
+          token.expectationsVersion = dbUser.expectationsVersion
         }
       }
 
@@ -88,6 +90,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.id = token.id as string
         session.user.role = (token.role as UserRole) || UserRole.USER
         session.user.iracingCustomerId = token.iracingCustomerId as string
+        session.user.expectationsVersion = (token.expectationsVersion as number) || 0
       }
       return session
     },
