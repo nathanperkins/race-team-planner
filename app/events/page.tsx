@@ -303,10 +303,22 @@ export default async function EventsPage({ searchParams }: PageProps) {
     }
   } catch {}
 
+  const lastSync = await prisma.syncLog.findFirst({
+    where: { status: 'SUCCESS' },
+    orderBy: { endTime: 'desc' },
+  })
+
   return (
     <main className={styles.main}>
       <div className={styles.topRow}>
-        <h1>Upcoming Events</h1>
+        <div className={styles.titleGroup}>
+          <h1>Upcoming Events</h1>
+          {lastSync?.endTime && (
+            <span className={styles.lastSynced}>
+              Last synced: <FormattedDate date={lastSync.endTime} />
+            </span>
+          )}
+        </div>
         {session?.user?.role === 'ADMIN' && <SyncButton />}
       </div>
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { syncIRacingEvents } from '@/app/actions/sync-events'
+import { syncGlobalDataAction } from '@/app/actions/sync'
 import { Cloud, X } from 'lucide-react'
 import styles from './sync-button.module.css'
 
@@ -18,14 +18,14 @@ export default function SyncButton() {
     setMessage('Syncing events from iRacing...')
 
     try {
-      const result = await syncIRacingEvents()
+      const result = await syncGlobalDataAction()
 
       if (result.success) {
         setStatus('success')
         setMessage(`Successfully synced ${result.count} events!`)
       } else {
         setStatus('error')
-        setMessage(`Error: ${result.error}`)
+        setMessage(`Error: ${'error' in result ? result.error : 'Unknown error'}`)
       }
     } catch (error) {
       setStatus('error')

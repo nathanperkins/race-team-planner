@@ -135,3 +135,24 @@ model CarClass {
   registrations Registration[]
   events        Event[]        @relation("CarClassToEvent")
 }
+
+model SyncLog {
+  id        String     @id @default(cuid())
+  startTime DateTime   @default(now())
+  endTime   DateTime?
+  status    SyncStatus
+  error     String?
+  source    SyncSource @default(MANUAL)
+  count     Int?       // Number of events synced
+}
+
+enum SyncStatus {
+  SUCCESS
+  FAILURE
+  IN_PROGRESS
+}
+
+enum SyncSource {
+  MANUAL
+  CRON
+}

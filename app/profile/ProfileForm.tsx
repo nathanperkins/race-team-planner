@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { updateProfile } from '@/app/actions/update-profile'
-import { syncCurrentUser } from '@/app/actions/sync-user'
+import { syncCurrentUserAction } from '@/app/actions/sync'
 import styles from './profile.module.css'
 
 interface Props {
@@ -24,12 +24,12 @@ export default function ProfileForm({ initialCustomerId }: Props) {
     setIsSyncing(true)
     setMessage(null)
     try {
-      const result = await syncCurrentUser()
+      const result = await syncCurrentUserAction()
       if (result.success) {
         setMessage({ type: 'success', text: 'iRacing stats updated successfully' })
         router.refresh()
       } else {
-        setMessage({ type: 'error', text: result.error || 'Failed to sync' })
+        setMessage({ type: 'error', text: 'error' in result ? result.error : 'Failed to sync' })
       }
     } catch {
       setMessage({ type: 'error', text: 'An unexpected error occurred during sync' })
