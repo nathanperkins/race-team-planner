@@ -21,8 +21,8 @@ export default async function ProfilePage() {
           <div className={styles.onboardingText}>
             <h3>Account Setup Required</h3>
             <p>
-              Please enter your iRacing Customer ID and accept the latest Team Expectations to
-              access the rest of the site, enable event registration, and track your statistics.
+              Please resolve the required steps to access the rest of the site, enable event
+              registration, and track your statistics.
             </p>
           </div>
         </div>
