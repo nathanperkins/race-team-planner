@@ -1,9 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { updateProfile } from '@/app/actions/update-profile'
-import { syncCurrentUserAction } from '@/app/actions/sync'
 import { useSession } from 'next-auth/react'
 import styles from './profile.module.css'
 
@@ -14,31 +12,9 @@ interface Props {
 
 export default function ProfileForm({ initialCustomerId }: Props) {
   const { update } = useSession()
-  const router = useRouter()
   const [customerId, setCustomerId] = useState(initialCustomerId)
   const [isSaving, setIsSaving] = useState(false)
-  const [isSyncing, setIsSyncing] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-
-  const handleSync = async () => {
-    if (!customerId) return
-
-    setIsSyncing(true)
-    setMessage(null)
-    try {
-      const result = await syncCurrentUserAction()
-      if (result.success) {
-        setMessage({ type: 'success', text: 'iRacing stats updated successfully' })
-        router.refresh()
-      } else {
-        setMessage({ type: 'error', text: 'error' in result ? result.error : 'Failed to sync' })
-      }
-    } catch {
-      setMessage({ type: 'error', text: 'An unexpected error occurred during sync' })
-    } finally {
-      setIsSyncing(false)
-    }
-  }
 
   const handleSubmit = async (formData: FormData) => {
     setIsSaving(true)
@@ -77,20 +53,8 @@ export default function ProfileForm({ initialCustomerId }: Props) {
         />
       </div>
 
-      <button type="submit" className={styles.button} disabled={isSaving || isSyncing}>
+      <button type="submit" className={styles.button} disabled={isSaving}>
         {isSaving ? 'Saving...' : 'Save Changes'}
-      </button>
-
-      <div className={styles.divider}>or</div>
-
-      <button
-        type="button"
-        onClick={handleSync}
-        className={styles.syncButton}
-        disabled={isSaving || isSyncing || !customerId}
-        title={!customerId ? 'Set your Customer ID first' : ''}
-      >
-        {isSyncing ? 'Updating Stats...' : 'Update My iRacing Stats'}
       </button>
 
       {message && (
