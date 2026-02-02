@@ -179,17 +179,21 @@ export async function runIRacingSync(source: SyncSource = SyncSource.MANUAL) {
 /**
  * Syncs iRacing stats for a specific user.
  */
-export async function syncUserStats(userId: string) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { iracingCustomerId: true },
-  })
+export async function syncUserStats(userId: string, overrideCustomerId?: string) {
+  const customerId =
+    overrideCustomerId ||
+    (
+      await prisma.user.findUnique({
+        where: { id: userId },
+        select: { iracingCustomerId: true },
+      })
+    )?.iracingCustomerId
 
-  if (!user?.iracingCustomerId) {
+  if (!customerId) {
     throw new Error('User does not have an iRacing Customer ID set.')
   }
 
-  const custIdInt = parseInt(user.iracingCustomerId, 10)
+  const custIdInt = parseInt(customerId, 10)
   if (isNaN(custIdInt)) {
     throw new Error('Invalid iRacing Customer ID.')
   }
