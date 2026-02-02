@@ -23,6 +23,7 @@ IRACING_CLIENT_SECRET="${var.iracing_client_secret}"
 DISCORD_BOT_TOKEN="${var.discord_bot_token}"
 DISCORD_GUILD_ID="${var.discord_guild_id}"
 DISCORD_ADMIN_ROLE_IDS="${var.discord_admin_role_ids}"
+CRON_SECRET="${var.cron_secret}"
 EOT
 }
 

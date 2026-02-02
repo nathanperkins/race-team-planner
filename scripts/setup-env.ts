@@ -30,6 +30,10 @@ console.log('Generating secure keys...')
     const cloakKey = await generateKey()
     console.log('✅ Generated PRISMA_FIELD_ENCRYPTION_KEY')
 
+    // Generate CRON_SECRET (32 bytes base64)
+    const cronSecret = crypto.randomBytes(32).toString('base64')
+    console.log('✅ Generated CRON_SECRET')
+
     // Read .env.example and replace values
     let content = fs.readFileSync(examplePath, 'utf8')
 
@@ -38,6 +42,7 @@ console.log('Generating secure keys...')
       /^PRISMA_FIELD_ENCRYPTION_KEY=""/m,
       `PRISMA_FIELD_ENCRYPTION_KEY="${cloakKey}"`
     )
+    content = content.replace(/^CRON_SECRET=""/m, `CRON_SECRET="${cronSecret}"`)
 
     // Write to .env
     fs.writeFileSync(envPath, content)

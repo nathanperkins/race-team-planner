@@ -72,6 +72,10 @@ will use a mock data set suitable for local development.
 - **iRacing Data API**:
   - Follow the setup guide: [iRacing Data API Documentation](https://forums.iracing.com/discussion/15068/general-availability-of-data-api).
   - Obtain your Client ID and Client Secret and copy them to the `.env` file.
+  - **Cron Secret**:
+    - The `CRON_SECRET` variable is used to secure the `/api/cron/sync` endpoint from unauthorized calls.
+    - It is automatically generated when you run `npm run setup-env`.
+    - If setting up manually, you can generate one with `openssl rand -base64 32`.
 
 ## Development Workflow
 

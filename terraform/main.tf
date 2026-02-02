@@ -36,7 +36,8 @@ resource "google_project_service" "apis" {
     "cloudbuild.googleapis.com",
     "compute.googleapis.com", # Often required for various networking features
     "iam.googleapis.com",
-    "secretmanager.googleapis.com"
+    "secretmanager.googleapis.com",
+    "cloudscheduler.googleapis.com"
   ])
 
   project = var.project_id

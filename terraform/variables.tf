@@ -86,6 +86,12 @@ variable "iracing_client_secret" {
   sensitive   = true
 }
 
+variable "cron_secret" {
+  description = "A secret token to authorize the cron API route"
+  type        = string
+  sensitive   = true
+}
+
 
 ##########
 # Defaults

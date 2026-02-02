@@ -11,3 +11,7 @@ output "artifact_registry_repo" {
 output "supabase_project_ref" {
   value = supabase_project.main.id
 }
+
+output "sync_scheduler_job" {
+  value = google_cloud_scheduler_job.sync_job.name
+}

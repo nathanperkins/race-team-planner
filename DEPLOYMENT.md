@@ -51,6 +51,7 @@ We have provided a helper script to set up your GCP project and remote state buc
     - `nextauth_secret`: Generate one using `npm run generate-secret`.
     - `discord_...`: Your Discord OAuth credentials.
     - `iracing_...`: Credentials for iRacing Data API.
+    - `cron_secret`: A secure random string to authorize automated sync jobs.
 
 4.  **Initialize Terraform**:
     Use the bucket name created in the setup step (e.g., `YOUR_PROJECT_ID-tf-state`).
