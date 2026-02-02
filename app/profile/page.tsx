@@ -64,7 +64,7 @@ export default async function ProfilePage() {
           initialCustomerId={session.user.iracingCustomerId || ''}
         />
 
-        <DeleteAccountButton />
+        <DeleteAccountButton userName={session.user.name || ''} />
       </div>
     </div>
   )

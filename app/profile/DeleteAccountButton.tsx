@@ -5,14 +5,26 @@ import { signOut } from 'next-auth/react'
 import { deleteAccount } from '@/app/actions/delete-account'
 import styles from './profile.module.css'
 
-export default function DeleteAccountButton() {
+interface DeleteAccountButtonProps {
+  userName: string
+}
+
+export default function DeleteAccountButton({ userName }: DeleteAccountButtonProps) {
   const [isConfirming, setIsConfirming] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [confirmName, setConfirmName] = useState('')
   const [error, setError] = useState<string | null>(null)
+
+  const nameMatches = confirmName.toLowerCase() === userName.toLowerCase()
 
   const handleDelete = async () => {
     if (!isConfirming) {
       setIsConfirming(true)
+      return
+    }
+
+    if (!nameMatches) {
+      setError('Name does not match')
       return
     }
 
@@ -26,12 +38,10 @@ export default function DeleteAccountButton() {
         await signOut({ callbackUrl: '/' })
       } else {
         setError(result.error || 'Failed to delete account')
-        setIsConfirming(false)
       }
     } catch (err) {
       console.error('Delete account error:', err)
       setError('An unexpected error occurred')
-      setIsConfirming(false)
     } finally {
       setIsDeleting(false)
     }
@@ -40,38 +50,46 @@ export default function DeleteAccountButton() {
   return (
     <div className={styles.dangerZone}>
       <h2 className={styles.dangerTitle}>Danger Zone</h2>
-      <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginBottom: '1rem' }}>
+      <p className={styles.dangerDescription}>
         Once you delete your account, there is no going back. This will delete all your
         registrations and personal data.
       </p>
 
-      {error && (
-        <p className={styles.error} style={{ marginBottom: '1rem' }}>
-          {error}
-        </p>
+      {isConfirming && (
+        <div className={styles.confirmContainer}>
+          <p className={styles.confirmLabel}>
+            To confirm, please type your name:{' '}
+            <span className={styles.confirmNameHighlight}>{userName}</span>
+          </p>
+          <input
+            type="text"
+            className={styles.input}
+            value={confirmName}
+            onChange={(e) => setConfirmName(e.target.value)}
+            placeholder="Type your name here"
+            autoFocus
+          />
+        </div>
       )}
 
-      <button onClick={handleDelete} className={styles.deleteButton} disabled={isDeleting}>
-        {isDeleting
-          ? 'Deleting...'
-          : isConfirming
-            ? 'Are you absolutely sure? Click again to confirm.'
-            : 'Delete My Account'}
+      {error && <p className={`${styles.error} ${styles.errorMargin}`}>{error}</p>}
+
+      <button
+        onClick={handleDelete}
+        className={styles.deleteButton}
+        disabled={isDeleting || (isConfirming && !nameMatches)}
+      >
+        {isDeleting ? 'Deleting...' : isConfirming ? 'Confirm Deletion' : 'Delete My Account'}
       </button>
 
       {isConfirming && !isDeleting && (
         <button
-          onClick={() => setIsConfirming(false)}
-          style={{
-            marginTop: '0.5rem',
-            background: 'none',
-            border: 'none',
-            color: '#94a3b8',
-            fontSize: '0.875rem',
-            cursor: 'pointer',
-            textAlign: 'center',
-            width: '100%',
+          onClick={() => {
+            setIsConfirming(false)
+            setConfirmName('')
+            setError(null)
           }}
+          className={styles.cancelButton}
         >
           Cancel
         </button>

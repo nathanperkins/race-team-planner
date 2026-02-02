@@ -245,3 +245,44 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.dangerDescription {
+  color: #94a3b8;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.confirmContainer {
+  margin-bottom: 1.5rem;
+}
+
+.confirmLabel {
+  color: #f87171;
+  font-size: 0.875rem;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+}
+
+.confirmNameHighlight {
+  color: white;
+}
+
+.errorMargin {
+  margin-bottom: 1rem;
+}
+
+.cancelButton {
+  margin-top: 0.5rem;
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 0.875rem;
+  cursor: pointer;
+  text-align: center;
+  width: 100%;
+}
+
+.cancelButton:hover {
+  text-decoration: underline;
+  color: white;
+}
