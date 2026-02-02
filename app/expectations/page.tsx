@@ -24,9 +24,10 @@ export default async function ExpectationsPage() {
       <div className={styles.content}>
         <header className={styles.header}>
           <h1 className={styles.title}>SRG Endurance – Team Expectations</h1>
+          <div className={styles.versionTop}>Revision v{CURRENT_EXPECTATIONS_VERSION}</div>
           <p className={styles.subtitle}>
             Please review the expectations below{' '}
-            <span className={styles.highlight}>before signing up</span>.
+            <span className={styles.highlight}>to access the rest of the site</span>.
             <br />
             These standards exist to keep races clean, competitive, and enjoyable for everyone.
           </p>

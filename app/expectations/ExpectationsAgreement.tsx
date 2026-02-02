@@ -2,6 +2,7 @@
 
 import { useTransition } from 'react'
 import { agreeToExpectations } from '@/app/actions'
+import { CURRENT_EXPECTATIONS_VERSION } from '@/lib/config'
 import styles from './expectations.module.css'
 
 export default function ExpectationsAgreement() {
@@ -19,6 +20,10 @@ export default function ExpectationsAgreement() {
         <li className={styles.listItem}>Agree to operate with the team in mind</li>
       </ul>
 
+      <div className={styles.versionAgreement} style={{ marginTop: '1.5rem', marginBottom: '0' }}>
+        Revision v{CURRENT_EXPECTATIONS_VERSION}
+      </div>
+
       <button
         onClick={() =>
           startTransition(async () => {
@@ -27,6 +32,7 @@ export default function ExpectationsAgreement() {
         }
         disabled={isPending}
         className={styles.agreeButton}
+        style={{ marginTop: '0.75rem' }}
       >
         {isPending ? 'Agreeing...' : 'I Agree'}
       </button>

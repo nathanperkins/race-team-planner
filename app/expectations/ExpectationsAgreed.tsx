@@ -1,5 +1,6 @@
 'use client'
 
+import { CURRENT_EXPECTATIONS_VERSION } from '@/lib/config'
 import styles from './expectations.module.css'
 
 export default function ExpectationsAgreed() {
@@ -7,7 +8,7 @@ export default function ExpectationsAgreed() {
     <div className={styles.agreedBadge}>
       <div className={styles.agreedContent}>
         <span className={styles.icon}>✅</span>
-        <span>You have agreed to the current team expectations.</span>
+        <span>You have agreed to Revision v{CURRENT_EXPECTATIONS_VERSION}.</span>
       </div>
     </div>
   )

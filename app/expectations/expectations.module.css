@@ -46,6 +46,23 @@
   font-weight: 600;
 }
 
+.versionTop {
+  font-size: 0.875rem;
+  color: #60a5fa;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.versionAgreement {
+  font-size: 0.875rem;
+  color: #fbbf24;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
 .section {
   background-color: #1f2937;
   border: 1px solid #374151;
