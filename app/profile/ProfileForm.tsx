@@ -64,6 +64,7 @@ export default function ProfileForm({ initialCustomerId }: Props) {
       <div className={styles.field}>
         <label htmlFor="customerId" className={styles.label}>
           iRacing Customer ID
+          {!initialCustomerId && <span className={styles.requiredBadge}>REQUIRED</span>}
         </label>
         <input
           id="customerId"

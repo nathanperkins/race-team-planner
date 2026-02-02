@@ -132,6 +132,58 @@
   cursor: not-allowed;
 }
 
+.onboardingBanner {
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e1b4b 100%);
+  border: 1px solid #3b82f6;
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  max-width: 600px;
+  width: 100%;
+}
+
+.onboardingIcon {
+  background-color: #3b82f6;
+  color: white;
+  min-width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+.onboardingText h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #eff6ff;
+}
+
+.onboardingText p {
+  margin: 0.25rem 0 0 0;
+  font-size: 0.875rem;
+  color: #bfdbfe;
+  line-height: 1.4;
+}
+
+.requiredBadge {
+  background-color: #ef4444;
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 0.125rem 0.375rem;
+  border-radius: 9999px;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
 .divider {
   display: flex;
   align-items: center;

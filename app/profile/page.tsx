@@ -11,6 +11,20 @@ export default async function ProfilePage() {
   return (
     <div className={styles.container}>
       <h1 className={styles.title}>User Profile</h1>
+
+      {!session.user.iracingCustomerId && (
+        <div className={styles.onboardingBanner}>
+          <div className={styles.onboardingIcon}>!</div>
+          <div className={styles.onboardingText}>
+            <h3>Setup Required</h3>
+            <p>
+              Please enter your iRacing Customer ID to enable event registration and statistics
+              tracking.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className={styles.card}>
         <div className={styles.field}>
           <label className={styles.label}>Name</label>
