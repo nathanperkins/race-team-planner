@@ -44,7 +44,12 @@ export default async function ProfilePage() {
           </div>
         </div>
         <div className={styles.field}>
-          <label className={styles.label}>Team Expectations</label>
+          <label className={styles.label}>
+            Team Expectations
+            {session.user.expectationsVersion < CURRENT_EXPECTATIONS_VERSION && (
+              <span className={styles.requiredBadge}>REQUIRED</span>
+            )}
+          </label>
           <div className={styles.value}>
             {session.user.expectationsVersion >= CURRENT_EXPECTATIONS_VERSION ? (
               <span className={styles.success}>Accepted (v{session.user.expectationsVersion})</span>
