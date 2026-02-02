@@ -21,12 +21,14 @@ export default function Sidebar({ session, onLinkClick }: SidebarProps) {
     return false
   }
 
+  const hasCustomerId = !!session.user?.iracingCustomerId
+
   return (
     <div className={styles.navWrapper}>
       <nav className={styles.nav}>
         <Link
           href="/events"
-          className={`${styles.link} ${isActive('/events') ? styles.activeLink : ''}`}
+          className={`${styles.link} ${isActive('/events') ? styles.activeLink : ''} ${!hasCustomerId ? styles.disabledLink : ''}`}
           onClick={onLinkClick}
         >
           Events
@@ -34,7 +36,7 @@ export default function Sidebar({ session, onLinkClick }: SidebarProps) {
 
         <Link
           href={`/users/${session.user?.id}/signups`}
-          className={`${styles.link} ${isActive(`/users/${session.user?.id}`) ? styles.activeLink : ''}`}
+          className={`${styles.link} ${isActive(`/users/${session.user?.id}`) ? styles.activeLink : ''} ${!hasCustomerId ? styles.disabledLink : ''}`}
           onClick={onLinkClick}
         >
           My Signups
@@ -42,7 +44,7 @@ export default function Sidebar({ session, onLinkClick }: SidebarProps) {
 
         <Link
           href="/roster"
-          className={`${styles.link} ${isActive('/roster') ? styles.activeLink : ''}`}
+          className={`${styles.link} ${isActive('/roster') ? styles.activeLink : ''} ${!hasCustomerId ? styles.disabledLink : ''}`}
           onClick={onLinkClick}
         >
           Roster
@@ -50,7 +52,7 @@ export default function Sidebar({ session, onLinkClick }: SidebarProps) {
 
         <Link
           href="/expectations"
-          className={`${styles.link} ${isActive('/expectations') ? styles.activeLink : ''}`}
+          className={`${styles.link} ${isActive('/expectations') ? styles.activeLink : ''} ${!hasCustomerId ? styles.disabledLink : ''}`}
           onClick={onLinkClick}
         >
           Team Expectations
