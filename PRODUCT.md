@@ -145,6 +145,12 @@ A user's expression of interest for a specific race.
 - [x] **Implement roles**: Admins can modify all signups, users can only modify their own signups.
 - [x] **Automated iRacing Sync**: Background synchronization for events and driver stats.
 
+### Phase 3c: Onboarding & User Flow
+
+- [ ] **Force iRacing Customer ID**: Require new users to provide their iRacing Customer ID.
+- [ ] **Team Expectations**: Users must read and agree to team expectations.
+- [ ] **Gate Access**: Restrict access to the dashboard until onboarding is complete.
+
 ### Phase 3b: Improve local dev
 
 - [x] Add a mock auth provider.

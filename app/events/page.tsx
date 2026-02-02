@@ -334,12 +334,17 @@ export default async function EventsPage({ searchParams }: PageProps) {
               <div className={styles.weekTitle}>
                 <div className={styles.wk}>Week {week.weekNumber}</div>
                 <div className={styles.range}>
-                  {week.weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} –{' '}
-                  {week.weekEnd.toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                  })}
+                  <FormattedDate
+                    date={week.weekStart}
+                    format={{ month: 'short', day: 'numeric' }}
+                    hideTimezone
+                  />{' '}
+                  –{' '}
+                  <FormattedDate
+                    date={week.weekEnd}
+                    format={{ month: 'short', day: 'numeric', year: 'numeric' }}
+                    hideTimezone
+                  />
                 </div>
                 <div className={styles.meta}>
                   {week.meta.events} events • {week.meta.tracks.size} tracks
