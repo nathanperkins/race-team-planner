@@ -7,6 +7,8 @@ import { signOut } from 'next-auth/react'
 import { Session } from 'next-auth'
 import Image from 'next/image'
 
+import { CURRENT_EXPECTATIONS_VERSION } from '@/lib/config'
+
 interface SidebarProps {
   session: Session
   onLinkClick?: () => void
@@ -22,13 +24,16 @@ export default function Sidebar({ session, onLinkClick }: SidebarProps) {
   }
 
   const hasCustomerId = !!session.user?.iracingCustomerId
+  const hasAcceptedExpectations =
+    (session.user?.expectationsVersion ?? 0) >= CURRENT_EXPECTATIONS_VERSION
+  const isSetupComplete = hasCustomerId && hasAcceptedExpectations
 
   return (
     <div className={styles.navWrapper}>
       <nav className={styles.nav}>
         <Link
           href="/events"
-          className={`${styles.link} ${isActive('/events') ? styles.activeLink : ''} ${!hasCustomerId ? styles.disabledLink : ''}`}
+          className={`${styles.link} ${isActive('/events') ? styles.activeLink : ''} ${!isSetupComplete ? styles.disabledLink : ''}`}
           onClick={onLinkClick}
         >
           Events
@@ -36,7 +41,7 @@ export default function Sidebar({ session, onLinkClick }: SidebarProps) {
 
         <Link
           href={`/users/${session.user?.id}/signups`}
-          className={`${styles.link} ${isActive(`/users/${session.user?.id}`) ? styles.activeLink : ''} ${!hasCustomerId ? styles.disabledLink : ''}`}
+          className={`${styles.link} ${isActive(`/users/${session.user?.id}`) ? styles.activeLink : ''} ${!isSetupComplete ? styles.disabledLink : ''}`}
           onClick={onLinkClick}
         >
           My Signups
@@ -44,7 +49,7 @@ export default function Sidebar({ session, onLinkClick }: SidebarProps) {
 
         <Link
           href="/roster"
-          className={`${styles.link} ${isActive('/roster') ? styles.activeLink : ''} ${!hasCustomerId ? styles.disabledLink : ''}`}
+          className={`${styles.link} ${isActive('/roster') ? styles.activeLink : ''} ${!isSetupComplete ? styles.disabledLink : ''}`}
           onClick={onLinkClick}
         >
           Roster

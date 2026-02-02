@@ -14,14 +14,15 @@ export default async function ProfilePage() {
     <div className={styles.container}>
       <h1 className={styles.title}>User Profile</h1>
 
-      {!session.user.iracingCustomerId && (
+      {(!session.user.iracingCustomerId ||
+        session.user.expectationsVersion < CURRENT_EXPECTATIONS_VERSION) && (
         <div className={styles.onboardingBanner}>
           <div className={styles.onboardingIcon}>!</div>
           <div className={styles.onboardingText}>
             <h3>Account Setup Required</h3>
             <p>
-              Please enter your iRacing Customer ID to access the rest of the site, enable event
-              registration, and track your statistics.
+              Please enter your iRacing Customer ID and accept the latest Team Expectations to
+              access the rest of the site, enable event registration, and track your statistics.
             </p>
           </div>
         </div>
