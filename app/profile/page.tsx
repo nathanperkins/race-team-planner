@@ -16,10 +16,10 @@ export default async function ProfilePage() {
         <div className={styles.onboardingBanner}>
           <div className={styles.onboardingIcon}>!</div>
           <div className={styles.onboardingText}>
-            <h3>Setup Required</h3>
+            <h3>Account Setup Required</h3>
             <p>
-              Please enter your iRacing Customer ID to enable event registration and statistics
-              tracking.
+              Please enter your iRacing Customer ID to access the rest of the site, enable event
+              registration, and track your statistics.
             </p>
           </div>
         </div>
