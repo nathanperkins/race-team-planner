@@ -1,7 +1,7 @@
 import NextAuth from 'next-auth'
 import { PrismaAdapter } from '@auth/prisma-adapter'
 import prisma from './prisma'
-import Discord from 'next-auth/providers/discord'
+import { authConfig } from './auth.config'
 import Credentials from 'next-auth/providers/credentials'
 import { features } from '@/lib/config'
 import { UserRole } from '@prisma/client'
@@ -27,23 +27,14 @@ const mockAuthProvider = Credentials({
 })
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   adapter: PrismaAdapter(prisma),
   session: {
     strategy: 'jwt',
   },
-  providers: [
-    ...(features.discordAuth
-      ? [
-          Discord({
-            clientId: process.env.AUTH_DISCORD_ID,
-            clientSecret: process.env.AUTH_DISCORD_SECRET,
-            allowDangerousEmailAccountLinking: true,
-          }),
-        ]
-      : []),
-    ...(features.mockAuth ? [mockAuthProvider] : []),
-  ],
+  providers: [...authConfig.providers, ...(features.mockAuth ? [mockAuthProvider] : [])],
   callbacks: {
+    ...authConfig.callbacks,
     async signIn({ account, profile }) {
       console.log(`[auth][signIn] Provider: ${account?.provider}, Email: ${profile?.email}`)
 
