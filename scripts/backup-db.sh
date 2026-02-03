@@ -36,29 +36,33 @@ DAY_OF_MONTH=$(date -u +"%d")
 MONTH=$(date -u +"%m")
 
 BACKUP_FILE="backup-${TIMESTAMP}.sql.gz.gpg"
+BACKUP_PATH="/tmp/${BACKUP_FILE}"
+HOURLY_BACKUP_PATH="gs://${BACKUP_BUCKET}/hourly/${BACKUP_FILE}"
+WEEKLY_BACKUP_PATH="gs://${BACKUP_BUCKET}/weekly/${BACKUP_FILE}"
 
 echo "Starting encrypted database backup at ${TIMESTAMP}..."
 
 # Create the backup using pg_dump, compress with gzip, and encrypt with GPG
-pg_dump "$DB_URL" --no-owner --no-acl | gzip | gpg --symmetric --batch --passphrase "$BACKUP_ENCRYPTION_KEY" --cipher-algo AES256 > "/tmp/${BACKUP_FILE}"
+pg_dump "$DB_URL" --no-owner --no-acl | gzip | gpg --symmetric --batch --passphrase "$BACKUP_ENCRYPTION_KEY" --cipher-algo AES256 > "${BACKUP_PATH}"
 
-BACKUP_SIZE=$(ls -lh "/tmp/${BACKUP_FILE}" | awk '{print $5}')
+BACKUP_SIZE=$(ls -lh "${BACKUP_PATH}" | awk '{print $5}')
 echo "Encrypted backup created: ${BACKUP_FILE} (${BACKUP_SIZE})"
 
+
 # Upload to hourly folder (kept for 3 days via lifecycle rule)
-echo "Uploading to hourly/..."
-gcloud storage cp "/tmp/${BACKUP_FILE}" "gs://${BACKUP_BUCKET}/hourly/${BACKUP_FILE}"
+echo "Uploading to ${HOURLY_BACKUP_PATH}..."
+gcloud storage cp "${BACKUP_PATH}" "${HOURLY_BACKUP_PATH}"
 
 # On Sundays, also save to weekly folder (robust to timing/skips)
 if [ "$DAY_OF_WEEK" = "7" ]; then
-  echo "Uploading to weekly/..."
+  echo "Copying to ${WEEKLY_BACKUP_PATH}..."
   # Use a date-only filename for the weekly folder so multiple runs on Sunday
   # simply overwrite/update the same file, ensuring we always have a backup for the week.
   WEEKLY_DATE_FILE="backup-$(date -u +"%Y-%m-%d").sql.gz.gpg"
-  gcloud storage cp "/tmp/${BACKUP_FILE}" "gs://${BACKUP_BUCKET}/weekly/${WEEKLY_DATE_FILE}"
+  gcloud storage cp "${BACKUP_PATH}" "${WEEKLY_BACKUP_PATH}"
 fi
 
 # Clean up
-rm "/tmp/${BACKUP_FILE}"
+rm "${BACKUP_PATH}"
 
 echo "Encrypted backup completed successfully!"
