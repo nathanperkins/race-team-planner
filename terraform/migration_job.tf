@@ -10,7 +10,7 @@ resource "google_cloud_run_v2_job" "migrate" {
       service_account = google_service_account.cloud_run_sa.email
 
       containers {
-        image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.app_name}/${var.app_name}-migrate:latest"
+        image = "us-docker.pkg.dev/cloudrun/container/hello"
 
         # We need the secrets for DATABASE_URL
         volume_mounts {

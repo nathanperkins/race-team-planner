@@ -8,3 +8,7 @@ resource "supabase_project" "main" {
     ignore_changes = [database_password]
   }
 }
+
+data "supabase_pooler" "main" {
+  project_ref = supabase_project.main.id
+}

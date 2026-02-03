@@ -88,7 +88,7 @@ resource "google_cloud_run_v2_job" "db_backup" {
       service_account = google_service_account.cloud_run_sa.email
 
       containers {
-        image   = "${var.region}-docker.pkg.dev/${var.project_id}/${var.app_name}/${var.app_name}-dbtools:latest"
+        image   = "us-docker.pkg.dev/cloudrun/container/hello"
         command = ["/scripts/backup-db.sh"]
 
         env {
@@ -178,7 +178,7 @@ resource "google_cloud_run_v2_job" "db_restore" {
       service_account = google_service_account.cloud_run_sa.email
 
       containers {
-        image   = "${var.region}-docker.pkg.dev/${var.project_id}/${var.app_name}/${var.app_name}-dbtools:latest"
+        image   = "us-docker.pkg.dev/cloudrun/container/hello"
         command = ["/scripts/restore-db.sh"]
 
         # BACKUP_PATH must be provided when executing the job
@@ -236,7 +236,7 @@ resource "google_cloud_run_v2_job" "db_restore_test" {
       service_account = google_service_account.cloud_run_sa.email
 
       containers {
-        image   = "${var.region}-docker.pkg.dev/${var.project_id}/${var.app_name}/${var.app_name}-dbtools:latest"
+        image   = "us-docker.pkg.dev/cloudrun/container/hello"
         command = ["/scripts/test-restore.sh"]
 
         env {
