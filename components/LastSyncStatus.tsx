@@ -12,7 +12,7 @@ export default async function LastSyncStatus({ className }: { className?: string
 
   return (
     <span className={`${styles.lastSynced} ${className || ''}`}>
-      Data syncs every hour • Last: <FormattedDate date={lastSync.endTime} />
+      Data syncs every 8 hours • Last: <FormattedDate date={lastSync.endTime} />
     </span>
   )
 }

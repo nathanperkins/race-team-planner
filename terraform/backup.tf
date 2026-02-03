@@ -12,10 +12,10 @@ resource "google_storage_bucket" "db_backups" {
   # Lifecycle rules for backup retention
   # Files are organized by prefix: hourly/, daily/, weekly/, monthly/, yearly/
 
-  # Hourly backups: keep 24 hours (1 day)
+  # Hourly backups: keep 3 days
   lifecycle_rule {
     condition {
-      age            = 1  # 1 day
+      age            = 3
       matches_prefix = ["hourly/"]
       with_state     = "ANY"
     }
@@ -24,22 +24,10 @@ resource "google_storage_bucket" "db_backups" {
     }
   }
 
-  # Daily backups: keep 7 days
+  # Weekly backups: keep 8 weeks (56 days)
   lifecycle_rule {
     condition {
-      age                   = 7
-      matches_prefix        = ["daily/"]
-      with_state            = "ANY"
-    }
-    action {
-      type = "Delete"
-    }
-  }
-
-  # Weekly backups: keep 4 weeks (28 days)
-  lifecycle_rule {
-    condition {
-      age                   = 28
+      age                   = 56
       matches_prefix        = ["weekly/"]
       with_state            = "ANY"
     }
@@ -47,20 +35,6 @@ resource "google_storage_bucket" "db_backups" {
       type = "Delete"
     }
   }
-
-  # Monthly backups: keep 12 months (365 days)
-  lifecycle_rule {
-    condition {
-      age                   = 365
-      matches_prefix        = ["monthly/"]
-      with_state            = "ANY"
-    }
-    action {
-      type = "Delete"
-    }
-  }
-
-  # Yearly backups: no lifecycle rule (kept indefinitely)
 
   uniform_bucket_level_access = true
 
@@ -132,9 +106,9 @@ resource "google_cloud_run_v2_job" "db_backup" {
 
 # Cloud Scheduler to trigger hourly backups
 resource "google_cloud_scheduler_job" "db_backup_job" {
-  name             = "${var.app_name}-db-backup-hourly"
-  description      = "Triggers database backup every hour"
-  schedule         = "0 * * * *"
+  name             = "${var.app_name}-db-backup-4-hourly"
+  description      = "Triggers database backup every 4 hours"
+  schedule         = "0 */4 * * *"
   time_zone        = "UTC"
   attempt_deadline = "320s"
 

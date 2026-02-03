@@ -163,7 +163,7 @@ A user's expression of interest for a specific race.
 - [x] Create Terraform configuration for GCP (Cloud Run, Artifact Registry).
 - [x] Deploy to Staging.
 - [x] Pass `DISCORD_ADMIN_ROLE_IDS` through deployment automation (Terraform/CI).
-- [ ] Deploy to Production.
+- [x] Deploy to Production.
 
 ### Phase 5: Low Priority Features
 
@@ -171,3 +171,5 @@ A user's expression of interest for a specific race.
 - [ ] **Registration Overlap Warning**: Prevent or warn about double-booking same-time races.
 - [ ] **Race Driver Limits**: Optional capacity limits for sessions.
 - [ ] **Add tests**: Add tests for important CUJs.
+- [ ] **Improve registration flow**: Refine UI/UX for signing up for races.
+- [ ] **Registration Notes**: Allow users to add notes and display them on event details.

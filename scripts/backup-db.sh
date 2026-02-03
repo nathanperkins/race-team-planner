@@ -45,32 +45,15 @@ pg_dump "$DB_URL" --no-owner --no-acl | gzip | gpg --symmetric --batch --passphr
 BACKUP_SIZE=$(ls -lh "/tmp/${BACKUP_FILE}" | awk '{print $5}')
 echo "Encrypted backup created: ${BACKUP_FILE} (${BACKUP_SIZE})"
 
-# Upload to hourly folder (kept for 24 hours via lifecycle rule)
+# Upload to hourly folder (kept for 3 days via lifecycle rule)
 echo "Uploading to hourly/..."
 gcloud storage cp "/tmp/${BACKUP_FILE}" "gs://${BACKUP_BUCKET}/hourly/${BACKUP_FILE}"
 
-# At midnight UTC, also save to daily folder
-if [ "$HOUR" = "00" ]; then
-  echo "Uploading to daily/..."
-  gcloud storage cp "/tmp/${BACKUP_FILE}" "gs://${BACKUP_BUCKET}/daily/${BACKUP_FILE}"
-fi
-
-# On Sundays at midnight UTC, also save to weekly folder
+# On Sundays at midnight UTC (or the first backup of the day), also save to weekly folder
+# Since it runs every 4 hours, checking for HOUR=00 is correct for the midnight run.
 if [ "$HOUR" = "00" ] && [ "$DAY_OF_WEEK" = "7" ]; then
   echo "Uploading to weekly/..."
   gcloud storage cp "/tmp/${BACKUP_FILE}" "gs://${BACKUP_BUCKET}/weekly/${BACKUP_FILE}"
-fi
-
-# On the 1st of each month at midnight UTC, also save to monthly folder
-if [ "$HOUR" = "00" ] && [ "$DAY_OF_MONTH" = "01" ]; then
-  echo "Uploading to monthly/..."
-  gcloud storage cp "/tmp/${BACKUP_FILE}" "gs://${BACKUP_BUCKET}/monthly/${BACKUP_FILE}"
-fi
-
-# On January 1st at midnight UTC, also save to yearly folder
-if [ "$HOUR" = "00" ] && [ "$DAY_OF_MONTH" = "01" ] && [ "$MONTH" = "01" ]; then
-  echo "Uploading to yearly/..."
-  gcloud storage cp "/tmp/${BACKUP_FILE}" "gs://${BACKUP_BUCKET}/yearly/${BACKUP_FILE}"
 fi
 
 # Clean up
