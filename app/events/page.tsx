@@ -315,7 +315,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
           <h1>Upcoming Events</h1>
           {lastSync?.endTime && (
             <span className={styles.lastSynced}>
-              Last synced: <FormattedDate date={lastSync.endTime} />
+              Data syncs every hour • Last: <FormattedDate date={lastSync.endTime} />
             </span>
           )}
         </div>

@@ -335,3 +335,17 @@
     transform: rotate(360deg);
   }
 }
+
+.syncNote {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-bottom: 2rem;
+  text-align: left;
+  width: 100%;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+  align-self: flex-start;
+  margin-top: -1.5rem;
+  padding-left: 2px;
+}

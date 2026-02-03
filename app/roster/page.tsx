@@ -61,6 +61,8 @@ export default async function RosterPage({ searchParams }: Props) {
         <RosterSortControls />
       </header>
 
+      <p className={styles.syncNote}>Racer statistics are synchronized from iRacing every hour.</p>
+
       <div className={styles.grid}>
         {users.map((user) => (
           <div key={user.id} className={styles.card}>

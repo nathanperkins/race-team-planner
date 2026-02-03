@@ -27,6 +27,7 @@ export default async function ProfilePage() {
   return (
     <div className={styles.container}>
       <h1 className={styles.title}>User Profile</h1>
+      <p className={styles.syncNote}>Racer statistics are synchronized from iRacing every hour.</p>
 
       {!user.iracingCustomerId && (
         <div className={styles.onboardingBanner}>
