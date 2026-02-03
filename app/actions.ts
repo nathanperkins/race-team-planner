@@ -5,6 +5,7 @@ import prisma from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
+import { CURRENT_EXPECTATIONS_VERSION } from '@/lib/config'
 
 const RegistrationSchema = z.object({
   raceId: z.string(),
@@ -177,17 +178,15 @@ export async function deleteRegistration(
       revalidatePath(`/events/${registration.race.eventId}`)
     }
     revalidatePath(`/users/${session.user.id}/signups`)
-    if (returnPath) {
-      redirect(returnPath)
-    }
-    return
   } catch (e) {
     console.error('Delete registration error:', e)
     throw new Error('Failed to delete registration')
   }
-}
 
-import { CURRENT_EXPECTATIONS_VERSION } from '@/lib/config'
+  if (returnPath) {
+    redirect(returnPath)
+  }
+}
 
 export async function agreeToExpectations() {
   const session = await auth()
@@ -200,7 +199,6 @@ export async function agreeToExpectations() {
     data: { expectationsVersion: CURRENT_EXPECTATIONS_VERSION },
   })
 
-  revalidatePath('/expectations')
   revalidatePath('/expectations')
   revalidatePath('/events/[id]', 'page') // Revalidate all event pages to potentially unlock signup
 }
