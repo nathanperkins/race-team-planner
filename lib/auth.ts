@@ -68,10 +68,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.expectationsVersion = user.expectationsVersion
       }
 
-      // We still want to hit the DB on reloads/updates to ensure we have the latest
-      // info if it changed in the DB but wasn't updated in the token yet.
-      // This is efficient because Auth.js caches the JWT result for the request.
-      if (token.id && (trigger === 'signIn' || trigger === 'update' || !trigger)) {
+      // Auto-heal: Refresh from DB if info is missing OR if we're explicitly updating/signing in.
+      const isMissingInfo = !token.iracingCustomerId || token.role === undefined
+      const now = Date.now()
+      const lastChecked = (token.lastChecked as number) || 0
+      const cooldown = 10000 // 10 seconds
+
+      const shouldRefresh =
+        trigger === 'signIn' ||
+        trigger === 'update' ||
+        (isMissingInfo && now - lastChecked > cooldown)
+
+      if (token.id && shouldRefresh) {
+        // console.log(`[auth][jwt] Refreshing user data for ${token.email || token.id} (trigger: ${trigger || 'auto-heal'})`)
         const dbUser = await prisma.user.findUnique({
           where: { id: token.id as string },
           select: { role: true, iracingCustomerId: true, expectationsVersion: true },
@@ -80,6 +89,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           token.role = dbUser.role
           token.iracingCustomerId = dbUser.iracingCustomerId
           token.expectationsVersion = dbUser.expectationsVersion
+          token.lastChecked = now
         }
       }
 
