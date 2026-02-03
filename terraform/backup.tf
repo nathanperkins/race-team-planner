@@ -153,6 +153,15 @@ resource "google_cloud_scheduler_job" "db_backup_job" {
   ]
 }
 
+# Allow the service account to invoke the backup job
+resource "google_cloud_run_v2_job_iam_member" "db_backup_invoker" {
+  project  = google_cloud_run_v2_job.db_backup.project
+  location = google_cloud_run_v2_job.db_backup.location
+  name     = google_cloud_run_v2_job.db_backup.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.cloud_run_sa.email}"
+}
+
 # Cloud Run Job for database restore (manual trigger only)
 # Usage: gcloud run jobs execute iracing-team-planner-db-restore \
 #          --update-env-vars BACKUP_PATH=gs://bucket/daily/backup-xxx.sql.gz.gpg
@@ -297,4 +306,13 @@ resource "google_cloud_scheduler_job" "db_restore_test_job" {
     google_project_service.apis,
     google_cloud_run_v2_job.db_restore_test
   ]
+}
+
+# Allow the service account to invoke the restore test job
+resource "google_cloud_run_v2_job_iam_member" "db_restore_test_invoker" {
+  project  = google_cloud_run_v2_job.db_restore_test.project
+  location = google_cloud_run_v2_job.db_restore_test.location
+  name     = google_cloud_run_v2_job.db_restore_test.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.cloud_run_sa.email}"
 }
