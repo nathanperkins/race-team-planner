@@ -14,6 +14,7 @@ export interface IRacingEvent {
   startTime: string // The earliest race start
   endTime: string // The latest race end
   track: string
+  trackConfig?: string // e.g., "Grand Prix", "Road Course"
   description: string
   races: IRacingRace[]
   carClassIds: number[]
@@ -102,6 +103,7 @@ const MOCK_EVENTS: IRacingEvent[] = [
     startTime: '2026-02-07T12:00:00Z',
     endTime: '2026-02-08T00:00:00Z',
     track: 'Mount Panorama Circuit',
+    trackConfig: '2.195 km Grand Prix',
     description: 'Mock data. Set IRACING_CLIENT_ID/SECRET to sync real data.',
     races: [
       {
@@ -426,6 +428,7 @@ async function fetchRealEvents(token: string): Promise<IRacingEvent[]> {
           startTime: eventStart,
           endTime: eventEnd,
           track: week.track?.track_name || 'TBA',
+          trackConfig: week.track?.config_name || week.track?.track_config_name,
           description: season.schedule_description || name,
           races,
           carClassIds: season.car_class_ids || [],

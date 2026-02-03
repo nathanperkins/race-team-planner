@@ -8,7 +8,7 @@ import LastSyncStatus from '@/components/LastSyncStatus'
 import FormattedDate from '@/components/FormattedDate'
 import { Prisma } from '@prisma/client'
 import type { CSSProperties } from 'react'
-import { getLicenseForId, getLicenseColor, formatDuration } from '@/lib/utils'
+import { getLicenseForId, getLicenseColor, formatDuration, getSeriesNameOnly } from '@/lib/utils'
 
 import styles from './events.module.css'
 
@@ -368,7 +368,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
                     <div className={styles.eventLeft}>
                       <div className={styles.eventTopLine}>
                         <div className={styles.eventName} title={event.name}>
-                          {event.name}
+                          {getSeriesNameOnly(event.name)}
                         </div>
                         <div
                           className={styles.licenseBadge}
@@ -385,7 +385,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
 
                       <div className={styles.eventTrack}>
                         <span className={styles.trackDot}></span>
-                        <span>{event.track}</span>
+                        <span>{event.track}{event.trackConfig ? ` - ${event.trackConfig}` : ''}</span>
                       </div>
 
                       <div className={styles.subRow}>

@@ -59,3 +59,11 @@ export function formatDuration(minutes: number | null | undefined): string {
   if (h > 0) return `${h}h`
   return `${m}m`
 }
+
+export function getSeriesNameOnly(eventName: string): string {
+  // Extract series name by removing year, season, and week info
+  // Patterns to remove: "- 2025", "- 2026", "- 2027", etc., "Season 1", "Week 1", etc.
+  return eventName
+    .replace(/\s*-\s*20\d{2}\b.*$/i, '') // Remove year and everything after it
+    .trim()
+}

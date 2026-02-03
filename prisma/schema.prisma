@@ -81,6 +81,7 @@ model Event {
   /// Derived from the earliest Race
   startTime   DateTime
   track       String
+  trackConfig String?    /// e.g., "Grand Prix", "Road Course"
   description String?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
