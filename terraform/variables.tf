@@ -62,6 +62,12 @@ variable "discord_admin_role_ids" {
   default     = ""
 }
 
+variable "discord_notifications_channel_id" {
+  description = "The Discord Channel ID where notifications should be sent"
+  type        = string
+  default     = ""
+}
+
 variable "iracing_username" {
   description = "iRacing Username for API synchronization"
   type        = string
