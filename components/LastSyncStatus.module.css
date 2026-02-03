@@ -1,0 +1,8 @@
+.lastSynced {
+  font-size: 11px;
+  color: rgba(234, 240, 255, 0.45);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}

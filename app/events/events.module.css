@@ -23,15 +23,6 @@
   gap: 2px;
 }
 
-.lastSynced {
-  font-size: 11px;
-  color: rgba(234, 240, 255, 0.45);
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
 /* week grid: fixed tile width, more tiles appear as window grows */
 .weekGrid {
   display: grid;

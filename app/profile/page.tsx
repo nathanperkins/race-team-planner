@@ -8,6 +8,7 @@ import DeleteAccountButton from './DeleteAccountButton'
 import prisma from '@/lib/prisma'
 import { Lock, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
+import LastSyncStatus from '@/components/LastSyncStatus'
 
 export default async function ProfilePage() {
   const session = await auth()
@@ -27,7 +28,7 @@ export default async function ProfilePage() {
   return (
     <div className={styles.container}>
       <h1 className={styles.title}>User Profile</h1>
-      <p className={styles.syncNote}>Racer statistics are synchronized from iRacing every hour.</p>
+      <LastSyncStatus className={styles.syncNote} />
 
       {!user.iracingCustomerId && (
         <div className={styles.onboardingBanner}>

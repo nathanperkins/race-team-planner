@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import SyncButton from '../components/SyncButton'
 import EventFilters from '../components/EventFilters'
+import LastSyncStatus from '@/components/LastSyncStatus'
 import FormattedDate from '@/components/FormattedDate'
 import { Prisma } from '@prisma/client'
 import type { CSSProperties } from 'react'
@@ -303,21 +304,12 @@ export default async function EventsPage({ searchParams }: PageProps) {
     }
   } catch {}
 
-  const lastSync = await prisma.syncLog.findFirst({
-    where: { status: 'SUCCESS' },
-    orderBy: { endTime: 'desc' },
-  })
-
   return (
     <main className={styles.main}>
       <div className={styles.topRow}>
         <div className={styles.titleGroup}>
           <h1>Upcoming Events</h1>
-          {lastSync?.endTime && (
-            <span className={styles.lastSynced}>
-              Data syncs every hour • Last: <FormattedDate date={lastSync.endTime} />
-            </span>
-          )}
+          <LastSyncStatus />
         </div>
         {session?.user?.role === 'ADMIN' && <SyncButton />}
       </div>
