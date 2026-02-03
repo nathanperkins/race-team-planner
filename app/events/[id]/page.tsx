@@ -1,5 +1,3 @@
-import { CURRENT_EXPECTATIONS_VERSION } from '@/lib/config'
-
 import { auth } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { notFound, redirect } from 'next/navigation'
@@ -29,13 +27,6 @@ export default async function EventPage({ params }: Props) {
   if (!session) redirect('/login')
 
   const { id } = await params
-
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { expectationsVersion: true },
-  })
-
-  const hasAgreedToExpectations = (user?.expectationsVersion ?? 0) >= CURRENT_EXPECTATIONS_VERSION
 
   const event = await prisma.event.findUnique({
     where: { id },
@@ -144,16 +135,6 @@ export default async function EventPage({ params }: Props) {
                   />
                   . Registration is closed.
                 </p>
-              </div>
-            ) : !hasAgreedToExpectations ? (
-              <div className={styles.warningBox}>
-                <p className={styles.warningTitle}>Action Required</p>
-                <p className={styles.warningDetail}>
-                  You must review and agree to the latest Team Expectations before signing up.
-                </p>
-                <a href="/expectations" className={styles.reviewButton}>
-                  Review Expectations
-                </a>
               </div>
             ) : (
               <RaceRegistrationForm
