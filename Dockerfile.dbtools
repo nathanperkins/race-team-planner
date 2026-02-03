@@ -1,13 +1,14 @@
-# Dockerfile for database tools (backup, restore, migrate)
+# Dockerfile for database tools (backup, restore, test-restore)
 FROM google/cloud-sdk:slim
 
-# Install PostgreSQL client and gnupg
-RUN apt-get update && apt-get install -y postgresql-client gnupg && rm -rf /var/lib/apt/lists/*
+# Install PostgreSQL (full server for restore testing), client, and gnupg
+RUN apt-get update && apt-get install -y postgresql postgresql-client gnupg && rm -rf /var/lib/apt/lists/*
 
-# Copy all database scripts
-COPY scripts/backup-db.sh /scripts/backup.sh
-COPY scripts/restore-db.sh /scripts/restore.sh
+# Copy all database scripts (keep original names)
+COPY scripts/backup-db.sh /scripts/backup-db.sh
+COPY scripts/restore-db.sh /scripts/restore-db.sh
+COPY scripts/test-restore.sh /scripts/test-restore.sh
 RUN chmod +x /scripts/*.sh
 
 # Default to backup (override with CMD when running)
-CMD ["/scripts/backup.sh"]
+CMD ["/scripts/backup-db.sh"]

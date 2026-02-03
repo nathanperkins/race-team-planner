@@ -89,7 +89,7 @@ resource "google_cloud_run_v2_job" "db_backup" {
 
       containers {
         image   = "${var.region}-docker.pkg.dev/${var.project_id}/${var.app_name}/${var.app_name}-dbtools:latest"
-        command = ["/scripts/backup.sh"]
+        command = ["/scripts/backup-db.sh"]
 
         env {
           name  = "BACKUP_BUCKET"
@@ -170,7 +170,7 @@ resource "google_cloud_run_v2_job" "db_restore" {
 
       containers {
         image   = "${var.region}-docker.pkg.dev/${var.project_id}/${var.app_name}/${var.app_name}-dbtools:latest"
-        command = ["/scripts/restore.sh"]
+        command = ["/scripts/restore-db.sh"]
 
         # BACKUP_PATH must be provided when executing the job
         env {
@@ -210,5 +210,91 @@ resource "google_cloud_run_v2_job" "db_restore" {
   depends_on = [
     google_project_service.apis,
     google_storage_bucket.db_backups
+  ]
+}
+
+# Cloud Run Job for weekly backup restore test
+resource "google_cloud_run_v2_job" "db_restore_test" {
+  name     = "${var.app_name}-db-restore-test"
+  location = var.region
+
+  template {
+    task_count = 1
+
+    template {
+      max_retries     = 0
+      timeout         = "900s"  # 15 minutes for full restore test
+      service_account = google_service_account.cloud_run_sa.email
+
+      containers {
+        image   = "${var.region}-docker.pkg.dev/${var.project_id}/${var.app_name}/${var.app_name}-dbtools:latest"
+        command = ["/scripts/test-restore.sh"]
+
+        env {
+          name  = "BACKUP_BUCKET"
+          value = google_storage_bucket.db_backups.name
+        }
+
+        resources {
+          limits = {
+            cpu    = "2"
+            memory = "2Gi"
+          }
+        }
+
+        # Mount secrets for BACKUP_ENCRYPTION_KEY
+        volume_mounts {
+          name       = "secrets"
+          mount_path = "/secrets"
+        }
+      }
+
+      volumes {
+        name = "secrets"
+        secret {
+          secret = google_secret_manager_secret.app_env.secret_id
+          items {
+            version = "latest"
+            path    = ".env"
+          }
+        }
+      }
+    }
+  }
+
+  lifecycle {
+    ignore_changes = [
+      template[0].template[0].containers[0].image,
+      client,
+      client_version
+    ]
+  }
+
+  depends_on = [
+    google_project_service.apis,
+    google_storage_bucket.db_backups
+  ]
+}
+
+# Cloud Scheduler to trigger weekly restore test (Sundays at 3am UTC)
+resource "google_cloud_scheduler_job" "db_restore_test_job" {
+  name             = "${var.app_name}-db-restore-test-weekly"
+  description      = "Triggers backup restore test every Sunday"
+  schedule         = "0 3 * * 0"  # 3am UTC on Sundays
+  time_zone        = "UTC"
+  attempt_deadline = "600s"
+
+  http_target {
+    http_method = "POST"
+    uri         = "https://${var.region}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${var.project_id}/jobs/${google_cloud_run_v2_job.db_restore_test.name}:run"
+
+    oauth_token {
+      service_account_email = google_service_account.cloud_run_sa.email
+    }
+  }
+
+  depends_on = [
+    google_project_service.apis,
+    google_cloud_run_v2_job.db_restore_test
   ]
 }

@@ -65,6 +65,23 @@ echo ""
 
 psql "$DB_URL" < "/tmp/restore.sql"
 
+# Show restored data counts for all tables
+echo ""
+echo "Restored data summary:"
+
+# Get all table names in public schema
+TABLES=$(psql "$DB_URL" -t -c "SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename;" | tr -d ' ' | grep -v '^$')
+
+TABLE_COUNT=$(echo "$TABLES" | wc -l | tr -d ' ')
+echo "  Tables: ${TABLE_COUNT}"
+echo ""
+
+# Show row count for each table
+for TABLE in $TABLES; do
+  COUNT=$(psql "$DB_URL" -t -c "SELECT count(*) FROM \"${TABLE}\";" 2>/dev/null | tr -d ' ' || echo "error")
+  printf "  %-30s %s\n" "${TABLE}:" "${COUNT}"
+done
+
 # Clean up
 rm "/tmp/${BACKUP_FILENAME}" "/tmp/restore.sql"
 
