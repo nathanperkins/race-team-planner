@@ -47,28 +47,43 @@ fi
 echo "Latest backup: $(basename "$LATEST_BACKUP")"
 
 # 2. Initialize and start temporary PostgreSQL
-echo ""
+echo "Current user: $(whoami)"
 echo "Starting temporary PostgreSQL instance..."
 mkdir -p "$PGDATA"
-chmod 700 "$PGDATA"
+rm -rf "$PGDATA"/* # Ensure it's empty
 
-# Initialize the database
-initdb -D "$PGDATA" --auth=trust --username=postgres > /dev/null 2>&1
+# If we are root, we must run postgres as the postgres user
+if [ "$(id -u)" = "0" ]; then
+  echo "Running as root, switching to postgres user for DB operations..."
+  chown -R postgres:postgres "$PGDATA"
 
-# Start PostgreSQL in the background
-pg_ctl -D "$PGDATA" -l /tmp/pg.log -o "-p $PGPORT" start > /dev/null 2>&1
+  # Initialize the database as postgres user
+  su postgres -c "initdb -D \"$PGDATA\" --auth=trust --username=postgres"
+
+  # Start PostgreSQL as postgres user
+  su postgres -c "pg_ctl -D \"$PGDATA\" -l /tmp/pg.log -o \"-p $PGPORT\" start"
+else
+  # Initialize the database
+  initdb -D "$PGDATA" --auth=trust --username=postgres
+
+  # Start PostgreSQL in the background
+  pg_ctl -D "$PGDATA" -l /tmp/pg.log -o "-p $PGPORT" start
+fi
 
 # Wait for PostgreSQL to be ready
+echo "Waiting for PostgreSQL to be ready on port ${PGPORT}..."
 for i in {1..30}; do
   if pg_isready -p $PGPORT -q; then
     break
   fi
+  echo -n "."
   sleep 1
 done
+echo ""
 
 if ! pg_isready -p $PGPORT -q; then
-  echo "❌ ERROR: PostgreSQL failed to start"
-  cat /tmp/pg.log
+  echo "❌ ERROR: PostgreSQL failed to start (port ${PGPORT})"
+  [ -f /tmp/pg.log ] && cat /tmp/pg.log
   exit 1
 fi
 
@@ -94,7 +109,11 @@ fi
 # 4. Cleanup
 echo ""
 echo "Stopping test database..."
-pg_ctl -D "$PGDATA" stop > /dev/null 2>&1 || true
+if [ "$(id -u)" = "0" ]; then
+  su postgres -c "pg_ctl -D \"$PGDATA\" stop" || true
+else
+  pg_ctl -D "$PGDATA" stop || true
+fi
 rm -rf "$PGDATA" /tmp/pg.log
 
 # Report result
