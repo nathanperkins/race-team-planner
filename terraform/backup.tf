@@ -88,7 +88,8 @@ resource "google_cloud_run_v2_job" "db_backup" {
       service_account = google_service_account.cloud_run_sa.email
 
       containers {
-        image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.app_name}/${var.app_name}-backup:latest"
+        image   = "${var.region}-docker.pkg.dev/${var.project_id}/${var.app_name}/${var.app_name}-dbtools:latest"
+        command = ["/scripts/backup.sh"]
 
         env {
           name  = "BACKUP_BUCKET"
@@ -149,5 +150,65 @@ resource "google_cloud_scheduler_job" "db_backup_job" {
   depends_on = [
     google_project_service.apis,
     google_cloud_run_v2_job.db_backup
+  ]
+}
+
+# Cloud Run Job for database restore (manual trigger only)
+# Usage: gcloud run jobs execute iracing-team-planner-db-restore \
+#          --update-env-vars BACKUP_PATH=gs://bucket/daily/backup-xxx.sql.gz.gpg
+resource "google_cloud_run_v2_job" "db_restore" {
+  name     = "${var.app_name}-db-restore"
+  location = var.region
+
+  template {
+    task_count = 1
+
+    template {
+      max_retries     = 0  # No retries for restore - must be intentional
+      timeout         = "600s"  # 10 minutes for large restores
+      service_account = google_service_account.cloud_run_sa.email
+
+      containers {
+        image   = "${var.region}-docker.pkg.dev/${var.project_id}/${var.app_name}/${var.app_name}-dbtools:latest"
+        command = ["/scripts/restore.sh"]
+
+        # BACKUP_PATH must be provided when executing the job
+        env {
+          name  = "BACKUP_PATH"
+          value = ""  # Override this when executing
+        }
+
+        # Mount secrets for DATABASE_URL and BACKUP_ENCRYPTION_KEY
+        volume_mounts {
+          name       = "secrets"
+          mount_path = "/secrets"
+        }
+      }
+
+      volumes {
+        name = "secrets"
+        secret {
+          secret = google_secret_manager_secret.app_env.secret_id
+          items {
+            version = "latest"
+            path    = ".env"
+          }
+        }
+      }
+    }
+  }
+
+  lifecycle {
+    ignore_changes = [
+      template[0].template[0].containers[0].image,
+      template[0].template[0].containers[0].env,  # Ignore env changes from job executions
+      client,
+      client_version
+    ]
+  }
+
+  depends_on = [
+    google_project_service.apis,
+    google_storage_bucket.db_backups
   ]
 }

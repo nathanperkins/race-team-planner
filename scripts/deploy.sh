@@ -37,16 +37,16 @@ echo "Building Migration Docker image..."
 MIGRATE_IMAGE_URI="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}-migrate:latest"
 docker build --platform linux/amd64 -t $MIGRATE_IMAGE_URI -f Dockerfile.migrate .
 
-# 2c. Build Backup Image
-echo "Building Backup Docker image..."
-BACKUP_IMAGE_URI="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}-backup:latest"
-docker build --platform linux/amd64 -t $BACKUP_IMAGE_URI -f Dockerfile.backup .
+# 2c. Build Database Tools Image (backup, restore)
+echo "Building Database Tools Docker image..."
+DBTOOLS_IMAGE_URI="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}-dbtools:latest"
+docker build --platform linux/amd64 -t $DBTOOLS_IMAGE_URI -f Dockerfile.dbtools .
 
 # 3. Push to Artifact Registry
 echo "Pushing images to Artifact Registry..."
 docker push $IMAGE_URI
 docker push $MIGRATE_IMAGE_URI
-docker push $BACKUP_IMAGE_URI
+docker push $DBTOOLS_IMAGE_URI
 
 # 4a. Apply Terraform Changes
  echo "Applying Terraform changes..."
@@ -59,8 +59,13 @@ gcloud run jobs update ${APP_NAME}-migrate \
   --region $REGION
 
 echo "Updating backup job with new image..."
-gcloud run jobs update ${APP_NAME}-backup \
-  --image $BACKUP_IMAGE_URI \
+gcloud run jobs update ${APP_NAME}-db-backup \
+  --image $DBTOOLS_IMAGE_URI \
+  --region $REGION
+
+echo "Updating restore job with new image..."
+gcloud run jobs update ${APP_NAME}-db-restore \
+  --image $DBTOOLS_IMAGE_URI \
   --region $REGION
 
 # 5. Run Database Migrations
