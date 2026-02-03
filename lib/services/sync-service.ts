@@ -27,6 +27,9 @@ export async function runIRacingSync(source: SyncSource = SyncSource.MANUAL) {
       fetchSpecialEvents(),
       fetchCarClasses(),
     ])
+    console.log(
+      `[SyncService][${source}] Fetched ${externalEvents.length} events and ${externalCarClasses.length} car classes from iRacing.`
+    )
 
     // 3. Sync Car Classes First
     const carClassMap = new Map<number, string>()
@@ -45,6 +48,7 @@ export async function runIRacingSync(source: SyncSource = SyncSource.MANUAL) {
       })
       carClassMap.set(carClass.carClassId, upserted.id)
     }
+    console.log(`[SyncService][${source}] Upserted ${carClassMap.size} car classes.`)
 
     // 4. Sync Special Events
     for (const event of externalEvents) {
@@ -118,6 +122,7 @@ export async function runIRacingSync(source: SyncSource = SyncSource.MANUAL) {
         }
       })
     }
+    console.log(`[SyncService][${source}] Upserted ${externalEvents.length} events.`)
 
     // 5. Sync Driver Stats for all users with iracingCustomerId
     const usersToSync = await prisma.user.findMany({
@@ -140,6 +145,7 @@ export async function runIRacingSync(source: SyncSource = SyncSource.MANUAL) {
         // Continue to next user
       }
     }
+    console.log(`[SyncService][${source}] Finished syncing stats.`)
 
     // 6. Update Log to Success
     await prisma.syncLog.update({
