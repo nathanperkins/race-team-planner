@@ -41,6 +41,8 @@ function getLoginElements() {
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 
+import Image from 'next/image'
+
 export default async function LoginPage() {
   const session = await auth()
   if (session) {
@@ -49,8 +51,20 @@ export default async function LoginPage() {
 
   return (
     <div className={styles.container}>
+      <header className={styles.header}>
+        <Image
+          src="/logo.png"
+          alt="iRacing Team Planner Logo"
+          width={120}
+          height={120}
+          className={styles.logo}
+          priority
+        />
+        <h1 className={styles.appName}>iRacing</h1>
+        <p className={styles.appSubtitle}>Team Planner</p>
+      </header>
       <div className={styles.card}>
-        <h1 className={styles.title}>Login</h1>
+        <h2 className={styles.title}>Sign In</h2>
         {getLoginElements()}
       </div>
     </div>
