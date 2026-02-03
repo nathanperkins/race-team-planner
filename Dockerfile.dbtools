@@ -4,6 +4,12 @@ FROM google/cloud-sdk:slim
 # Install PostgreSQL (full server for restore testing), client, and gnupg
 RUN apt-get update && apt-get install -y postgresql postgresql-client gnupg && rm -rf /var/lib/apt/lists/*
 
+# Add PostgreSQL bin to PATH (for initdb, pg_ctl, pg_isready)
+# Find the installed version dynamically
+RUN PG_VERSION=$(ls /usr/lib/postgresql/ | head -1) && \
+    echo "export PATH=/usr/lib/postgresql/${PG_VERSION}/bin:\$PATH" >> /etc/profile.d/postgres.sh
+ENV PATH="/usr/lib/postgresql/15/bin:/usr/lib/postgresql/16/bin:/usr/lib/postgresql/17/bin:$PATH"
+
 # Copy all database scripts (keep original names)
 COPY scripts/backup-db.sh /scripts/backup-db.sh
 COPY scripts/restore-db.sh /scripts/restore-db.sh
