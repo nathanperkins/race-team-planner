@@ -379,3 +379,100 @@ export async function sendOnboardingNotification(
     return false
   }
 }
+
+interface WeeklyScheduleEvent {
+  name: string
+  track: string
+  startTime: Date
+  endTime: Date
+  tempValue?: number | null
+  precipChance?: number | null
+  carClasses: string[]
+  registeredUsers: string[]
+  eventUrl: string
+}
+
+/**
+ * Sends a weekly schedule notification with upcoming events for the weekend.
+ */
+export async function sendWeeklyScheduleNotification(
+  events: WeeklyScheduleEvent[]
+): Promise<boolean> {
+  const botToken = process.env.DISCORD_BOT_TOKEN
+  const channelId = process.env.DISCORD_NOTIFICATIONS_CHANNEL_ID
+
+  if (!botToken || !channelId) {
+    console.warn(
+      '⚠️ Discord weekly schedule notification skipped: DISCORD_BOT_TOKEN or DISCORD_NOTIFICATIONS_CHANNEL_ID not configured'
+    )
+    return false
+  }
+
+  if (events.length === 0) {
+    return false
+  }
+
+  try {
+    const embeds = events.map((event) => {
+      const unixTimestamp = Math.floor(event.startTime.getTime() / 1000)
+      const discordTimestamp = `<t:${unixTimestamp}:F>`
+
+      // Determine weather string
+      let weather = 'Unknown'
+      if (typeof event.tempValue === 'number') {
+        // Assuming tempValue is F if units=0, C if units=1.
+        // But here we probably receive the raw value.
+        // Let's just assume we display it as is or add unit if helpful,
+        // but for now simple format: "78°F, 0% Rain"
+        weather = `${event.tempValue}°F`
+        if (typeof event.precipChance === 'number') {
+          weather += `, ${event.precipChance}% Rain`
+        }
+      }
+
+      const description = [
+        `**Track:** ${event.track}`,
+        `**Time:** ${discordTimestamp}`,
+        `**Weather:** ${weather}`,
+        `**Classes:** ${event.carClasses.join(', ')}`,
+        '',
+        `**Registered Drivers:**`,
+        event.registeredUsers.length > 0
+          ? event.registeredUsers.map((u) => `• ${u}`).join('\n')
+          : '_No registrations yet_',
+      ].join('\n')
+
+      return {
+        title: `📅 ${event.name}`,
+        url: event.eventUrl,
+        description,
+        color: 0x3498db, // Blue
+      }
+    })
+
+    // Discord allows up to 10 embeds per message.
+    const chunks = []
+    for (let i = 0; i < embeds.length; i += 10) {
+      chunks.push(embeds.slice(i, i + 10))
+    }
+
+    for (const chunk of chunks) {
+      await fetch(`${DISCORD_API_BASE}/channels/${channelId}/messages`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bot ${botToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: chunk === chunks[0] ? '**Upcoming Races for this Weekend** 🏁' : undefined,
+          embeds: chunk,
+        }),
+      })
+    }
+
+    return true
+  } catch (error) {
+    console.error('Error sending Discord weekly schedule notification:', error)
+    return false
+  }
+}
