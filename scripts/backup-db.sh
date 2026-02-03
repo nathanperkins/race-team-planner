@@ -49,11 +49,13 @@ echo "Encrypted backup created: ${BACKUP_FILE} (${BACKUP_SIZE})"
 echo "Uploading to hourly/..."
 gcloud storage cp "/tmp/${BACKUP_FILE}" "gs://${BACKUP_BUCKET}/hourly/${BACKUP_FILE}"
 
-# On Sundays at midnight UTC (or the first backup of the day), also save to weekly folder
-# Since it runs every 4 hours, checking for HOUR=00 is correct for the midnight run.
-if [ "$HOUR" = "00" ] && [ "$DAY_OF_WEEK" = "7" ]; then
+# On Sundays, also save to weekly folder (robust to timing/skips)
+if [ "$DAY_OF_WEEK" = "7" ]; then
   echo "Uploading to weekly/..."
-  gcloud storage cp "/tmp/${BACKUP_FILE}" "gs://${BACKUP_BUCKET}/weekly/${BACKUP_FILE}"
+  # Use a date-only filename for the weekly folder so multiple runs on Sunday
+  # simply overwrite/update the same file, ensuring we always have a backup for the week.
+  WEEKLY_DATE_FILE="backup-$(date -u +"%Y-%m-%d").sql.gz.gpg"
+  gcloud storage cp "/tmp/${BACKUP_FILE}" "gs://${BACKUP_BUCKET}/weekly/${WEEKLY_DATE_FILE}"
 fi
 
 # Clean up
