@@ -82,4 +82,10 @@ resource "google_cloud_run_domain_mapping" "custom_domain" {
   spec {
     route_name = google_cloud_run_v2_service.default.name
   }
+
+  lifecycle {
+    ignore_changes = [
+      metadata,
+    ]
+  }
 }
