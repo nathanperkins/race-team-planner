@@ -82,6 +82,31 @@ will use a mock data set suitable for local development.
     - It is automatically generated when you run `npm run setup-env`.
     - If setting up manually, you can generate one with `openssl rand -base64 32`.
 
+### Database Backups
+
+Automated encrypted backups are configured in production via Cloud Run Jobs and Cloud Scheduler.
+
+- **Backup Encryption Key**:
+  - The `BACKUP_ENCRYPTION_KEY` is used to encrypt database backups with AES-256 via GPG.
+  - It is automatically generated when you run `npm run setup-env`.
+  - If setting up manually, generate one with `openssl rand -hex 32`.
+  - **Important**: Store this key securely! Without it, backups cannot be decrypted.
+
+- **Backup Retention**:
+  | Type | Retention |
+  |------|-----------|
+  | Hourly | 24 hours |
+  | Daily | 7 days |
+  | Weekly | 4 weeks |
+  | Monthly | 12 months |
+  | Yearly | Unlimited |
+
+- **Restoring a Backup**:
+  ```bash
+  ./scripts/restore-backup.sh gs://PROJECT-db-backups/daily/backup-2026-02-01T00-00-00Z.sql.gz.gpg
+  ```
+  This will decrypt the backup to `/tmp/restored.sql` which can then be applied with `psql`.
+
 ## Development Workflow
 
 ### Database Schema Changes

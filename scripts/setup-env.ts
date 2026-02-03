@@ -34,6 +34,10 @@ console.log('Generating secure keys...')
     const cronSecret = crypto.randomBytes(32).toString('base64')
     console.log('✅ Generated CRON_SECRET')
 
+    // Generate BACKUP_ENCRYPTION_KEY (32 bytes hex for GPG passphrase)
+    const backupKey = crypto.randomBytes(32).toString('hex')
+    console.log('✅ Generated BACKUP_ENCRYPTION_KEY')
+
     // Read .env.example and replace values
     let content = fs.readFileSync(examplePath, 'utf8')
 
@@ -43,6 +47,7 @@ console.log('Generating secure keys...')
       `PRISMA_FIELD_ENCRYPTION_KEY="${cloakKey}"`
     )
     content = content.replace(/^CRON_SECRET=""/m, `CRON_SECRET="${cronSecret}"`)
+    content = content.replace(/^BACKUP_ENCRYPTION_KEY=""/m, `BACKUP_ENCRYPTION_KEY="${backupKey}"`)
 
     // Write to .env
     fs.writeFileSync(envPath, content)

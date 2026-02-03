@@ -125,3 +125,10 @@ variable "nextauth_url" {
   type        = string
   default     = ""
 }
+
+variable "backup_encryption_key" {
+  description = "GPG passphrase for encrypting database backups"
+  type        = string
+  sensitive   = true
+  default     = ""
+}

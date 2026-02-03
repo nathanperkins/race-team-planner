@@ -26,3 +26,7 @@ discord_notifications_channel_id = "your-discord-channel-id"
  iracing_password         = "your-iracing-password"
  iracing_client_id        = "your-iracing-data-api-client-id"     # Optional if only using mock data
  iracing_client_secret    = "your-iracing-data-api-client-secret" # Optional if only using mock data
+
+ # Backups
+ cron_secret              = ""  # Secret for authenticating cron jobs
+ backup_encryption_key    = ""  # GPG passphrase for encrypting backups (generate a strong random string)
