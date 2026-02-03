@@ -385,6 +385,7 @@ interface WeeklyScheduleEvent {
   track: string
   startTime: Date
   endTime: Date
+  raceTimes: Date[]
   tempValue?: number | null
   precipChance?: number | null
   carClasses: string[]
@@ -414,32 +415,49 @@ export async function sendWeeklyScheduleNotification(
 
   try {
     const embeds = events.map((event) => {
-      const unixTimestamp = Math.floor(event.startTime.getTime() / 1000)
-      const discordTimestamp = `<t:${unixTimestamp}:F>`
-
       // Determine weather string
       let weather = 'Unknown'
       if (typeof event.tempValue === 'number') {
-        // Assuming tempValue is F if units=0, C if units=1.
-        // But here we probably receive the raw value.
-        // Let's just assume we display it as is or add unit if helpful,
-        // but for now simple format: "78°F, 0% Rain"
         weather = `${event.tempValue}°F`
         if (typeof event.precipChance === 'number') {
           weather += `, ${event.precipChance}% Rain`
         }
       }
 
+      // Format lists
+      const raceTimesList = event.raceTimes
+        .sort((a, b) => a.getTime() - b.getTime())
+        .map((time) => {
+          const unix = Math.floor(time.getTime() / 1000)
+          return `• <t:${unix}:F>`
+        })
+        .join('\n')
+
+      const classesList = event.carClasses
+        .sort()
+        .map((c) => `• ${c}`)
+        .join('\n')
+
+      const usersList =
+        event.registeredUsers.length > 0
+          ? event.registeredUsers
+              .sort()
+              .map((u) => `• ${u}`)
+              .join('\n')
+          : '• 👻 _No registrations yet — be the first!_'
+
       const description = [
         `🏟️ **Track:** ${event.track}`,
-        `🕐 **Time:** ${discordTimestamp}`,
         `🌤️ **Weather:** ${weather}`,
-        `🏎️ **Classes:** ${event.carClasses.join(', ')}`,
+        '',
+        `🕐 **Race Times:**`,
+        raceTimesList,
+        '',
+        `🏎️ **Classes:**`,
+        classesList,
         '',
         `👥 **Registered Drivers:**`,
-        event.registeredUsers.length > 0
-          ? event.registeredUsers.map((u) => `• ${u}`).join('\n')
-          : '👻 _No registrations yet — be the first!_',
+        usersList,
       ].join('\n')
 
       return {

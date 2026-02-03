@@ -62,8 +62,10 @@ export async function GET(request: NextRequest) {
 
       const registeredClasses = new Set<string>()
       const registeredUsers = new Set<string>()
+      const raceTimes: Date[] = []
 
       event.races.forEach((race) => {
+        raceTimes.push(race.startTime)
         race.registrations.forEach((reg) => {
           registeredClasses.add(reg.carClass.name)
           if (reg.user.name) registeredUsers.add(reg.user.name)
@@ -78,6 +80,7 @@ export async function GET(request: NextRequest) {
         track: event.track,
         startTime: event.startTime,
         endTime: event.endTime,
+        raceTimes: raceTimes,
         tempValue: event.tempValue,
         precipChance: event.precipChance,
         carClasses: Array.from(registeredClasses).sort(),
