@@ -371,36 +371,16 @@ export default async function EventsPage({ searchParams }: PageProps) {
                         <div className={styles.eventName} title={event.name}>
                           {getSeriesNameOnly(event.name)}
                         </div>
-                        <div
-                          className={styles.licenseBadge}
-                          title={`License ${license}`}
-                          style={{
-                            borderColor: getLicenseColor(license),
-                            color: getLicenseColor(license),
-                            backgroundColor: `${getLicenseColor(license)}30`,
-                          }}
-                        >
-                          {license}
-                        </div>
+                        {event.durationMins && (
+                          <span className={styles.durationPill}>
+                            ⏱️ {formatDuration(event.durationMins)}
+                          </span>
+                        )}
                       </div>
 
                       <div className={styles.eventTrack}>
                         <span className={styles.trackDot}></span>
-                        <span>
-                          {event.track}
-                          {event.trackConfig ? ` - ${event.trackConfig}` : ''}
-                        </span>
-                      </div>
-
-                      <div className={styles.subRow}>
-                        <div className={styles.eventTimes}>
-                          <FormattedDate date={event.startTime} />
-                          {event.durationMins && (
-                            <span className={styles.durationPill}>
-                              ⏱️ {formatDuration(event.durationMins)}
-                            </span>
-                          )}
-                        </div>
+                        <span>{event.track}</span>
                         <div className={styles.weatherList}>
                           {event.tempValue !== null && (
                             <div className={styles.weatherBadge} title="Temperature">
@@ -416,6 +396,30 @@ export default async function EventsPage({ searchParams }: PageProps) {
                               {event.precipChance}%
                             </div>
                           )}
+                        </div>
+                      </div>
+
+                      <div className={styles.trackConfig}>
+                        {event.trackConfig ? `- ${event.trackConfig}` : '\u00A0'}
+                      </div>
+
+                      <div className={styles.subRow}>
+                        <div className={styles.eventTimes}>
+                          {event.races.map((race, raceIdx) => (
+                            <span key={race.id}>
+                              <FormattedDate 
+                                date={race.startTime} 
+                                format={{ month: 'numeric', day: 'numeric' }}
+                                hideTimezone
+                              />
+                              {' • '}
+                              <FormattedDate 
+                                date={race.startTime} 
+                                format={{ hour: 'numeric', minute: '2-digit' }}
+                              />
+                              {raceIdx < event.races.length - 1 && ', '}
+                            </span>
+                          ))}
                         </div>
                         <div className={styles.classPills}>
                           {event.races
@@ -438,6 +442,17 @@ export default async function EventsPage({ searchParams }: PageProps) {
                     </div>
 
                     <div className={styles.eventRight}>
+                      <div
+                        className={styles.licenseBadge}
+                        title={`License ${license}`}
+                        style={{
+                          borderColor: getLicenseColor(license),
+                          color: getLicenseColor(license),
+                          backgroundColor: `${getLicenseColor(license)}30`,
+                        }}
+                      >
+                        {license}
+                      </div>
                       <div className={styles.driverPillContainer}>
                         <div className={styles.driverPill}>👤 {totalRegistrations}</div>
                         {totalRegistrations > 0 && (
@@ -461,7 +476,6 @@ export default async function EventsPage({ searchParams }: PageProps) {
                           </div>
                         )}
                       </div>
-                      <div className={styles.srText}>Click event to view</div>
                     </div>
                   </Link>
                 )

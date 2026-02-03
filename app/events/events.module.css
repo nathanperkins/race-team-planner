@@ -161,7 +161,7 @@
   border-radius: 14px;
   padding: 10px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   cursor: pointer;
   transition:
@@ -191,12 +191,16 @@
 .eventRow::before {
   content: '';
   position: absolute;
-  left: 0;
+  left: -1px;
   top: 0;
   bottom: 0;
-  width: 6px;
-  background: var(--licColor, #ef4444);
-  opacity: 0.95;
+  width: 9px;
+  background: linear-gradient(
+    90deg,
+    var(--licColor, #ef4444) 0%,
+    color-mix(in srgb, var(--licColor, #ef4444) 70%, rgba(255, 255, 255, 0.12)) 60%,
+    rgba(0, 0, 0, 0) 100%
+  );
   border-top-left-radius: 14px;
   border-bottom-left-radius: 14px;
 }
@@ -216,7 +220,6 @@
   align-items: center;
   gap: 8px;
   min-width: 0;
-  flex-wrap: wrap;
 }
 
 .eventName {
@@ -239,6 +242,14 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.trackConfig {
+  font-size: 11px;
+  color: rgba(234, 240, 255, 0.7);
+  font-weight: 600;
+  padding-left: 14px;
+  margin-bottom: 5px;
 }
 
 .trackDot {
@@ -287,6 +298,8 @@
   padding: 2px 6px;
   border-radius: 4px;
   color: rgba(234, 240, 255, 0.7);
+  font-weight: 650;
+  font-size: 13px;
 }
 
 .timeSlot {
@@ -355,6 +368,7 @@
 .driverPillContainer {
   position: relative;
   display: inline-block;
+  margin-top: 5px;
 }
 
 .signupTooltip {
