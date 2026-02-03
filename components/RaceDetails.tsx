@@ -1,7 +1,7 @@
 import Image from 'next/image'
 import FormattedDate from './FormattedDate'
-import { deleteRegistration } from '@/app/actions'
 import styles from './RaceDetails.module.css'
+import DropRegistrationButton from './DropRegistrationButton'
 
 interface RaceWithRegistrations {
   id: string
@@ -71,11 +71,7 @@ export default function RaceDetails({ race, userId, isAdmin = false, eventId }: 
               </div>
               <div className={styles.driverTimeslot}>
                 {(reg.userId === userId || isAdmin) && !isRaceCompleted && (
-                  <form action={deleteRegistration.bind(null, reg.id, `/events/${eventId}`)}>
-                    <button type="submit" className={styles.deleteButtonSmall}>
-                      Drop
-                    </button>
-                  </form>
+                  <DropRegistrationButton registrationId={reg.id} />
                 )}
               </div>
             </div>

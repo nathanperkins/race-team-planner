@@ -3,7 +3,6 @@
 import { auth } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { CURRENT_EXPECTATIONS_VERSION } from '@/lib/config'
 
@@ -125,10 +124,7 @@ export async function registerForRace(prevState: State, formData: FormData) {
   }
 }
 
-export async function deleteRegistration(
-  registrationId: string,
-  returnPath?: string
-): Promise<void> {
+export async function deleteRegistration(registrationId: string): Promise<void> {
   const session = await auth()
   if (!session || !session.user?.id) {
     throw new Error('Not authenticated')
@@ -183,9 +179,9 @@ export async function deleteRegistration(
     throw new Error('Failed to delete registration')
   }
 
-  if (returnPath) {
-    redirect(returnPath)
-  }
+  // Redirecting throws a NEXT_REDIRECT error which appears as a failure to the
+  // client component so we rely on revalidatePath to update the UI on the
+  // client.
 }
 
 export async function agreeToExpectations() {

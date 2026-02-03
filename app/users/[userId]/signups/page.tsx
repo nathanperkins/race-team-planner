@@ -3,7 +3,7 @@ import prisma from '@/lib/prisma'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import FormattedDate from '@/components/FormattedDate'
-import { deleteRegistration } from '@/app/actions'
+import DropRegistrationButton from '@/components/DropRegistrationButton'
 
 import styles from './signups.module.css'
 
@@ -89,17 +89,7 @@ export default async function UserSignupsPage({ params }: Props) {
                         {new Date() > reg.race.endTime ? (
                           <span className={styles.completedText}>Completed</span>
                         ) : (
-                          <form
-                            action={deleteRegistration.bind(
-                              null,
-                              reg.id,
-                              `/users/${userId}/signups`
-                            )}
-                          >
-                            <button type="submit" className={styles.deleteButton}>
-                              Drop
-                            </button>
-                          </form>
+                          <DropRegistrationButton registrationId={reg.id} />
                         )}
                       </td>
                     )}
