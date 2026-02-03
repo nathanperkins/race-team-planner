@@ -1,7 +1,7 @@
 resource "google_cloud_scheduler_job" "sync_job" {
   name             = "${var.app_name}-sync-job"
-  description      = "Triggers iRacing synchronization every 4 hours"
-  schedule         = "0 */4 * * *"
+  description      = "Triggers iRacing synchronization every hour"
+  schedule         = "0 * * * *"
   time_zone        = "UTC"
   attempt_deadline = "320s"
 
