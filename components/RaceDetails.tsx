@@ -25,10 +25,9 @@ interface Props {
   race: RaceWithRegistrations
   userId: string
   isAdmin?: boolean
-  eventId: string
 }
 
-export default function RaceDetails({ race, userId, isAdmin = false, eventId }: Props) {
+export default function RaceDetails({ race, userId, isAdmin = false }: Props) {
   const now = new Date()
   const isRaceCompleted = now > new Date(race.endTime)
   const isRaceLive = now >= new Date(race.startTime) && now <= new Date(race.endTime)

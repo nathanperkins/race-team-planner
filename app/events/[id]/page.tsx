@@ -13,6 +13,8 @@ import {
   CloudSun,
   Timer,
   CloudRain,
+  MapPin,
+  Calendar,
 } from 'lucide-react'
 import { getLicenseForId, getLicenseColor, formatDuration } from '@/lib/utils'
 
@@ -66,45 +68,125 @@ export default async function EventPage({ params }: Props) {
 
   return (
     <div className={styles.container}>
-      <div className={styles.layout}>
-        <div style={{ position: 'relative' }}>
+      {/* 1. Identity Header */}
+      <header className={styles.eventHeader}>
+        <div className={styles.headerTop}>
           {event.externalId && (
-            <div className={styles.sourceBadge} data-tooltip="Synced from iRacing">
-              <Cloud size={16} />
-            </div>
+            <span className={styles.badge} title="Synced from iRacing">
+              <Cloud size={14} /> Synced
+            </span>
           )}
-          <h1 className={styles.title}>{event.name}</h1>
-          <div className={styles.meta}>
-            <span className={styles.metaItem}>📍 {event.track}</span>
-            <span className={styles.metaItem}>
-              📅 <FormattedDate date={event.startTime} /> - <FormattedDate date={event.endTime} />
+          <div
+            className={styles.licenseBadgeLarge}
+            style={{ '--licColor': licenseColor } as React.CSSProperties}
+          >
+            <ShieldCheck size={16} />
+            {license}
+          </div>
+        </div>
+        <h1 className={styles.eventTitle}>{event.name}</h1>
+        <div className={styles.eventSubHeader}>
+          <span className={styles.headerItem}>
+            <MapPin size={16} /> {event.track}
+          </span>
+          <span className={styles.headerItem}>
+            <Calendar size={16} /> <FormattedDate date={event.startTime} /> -{' '}
+            <FormattedDate date={event.endTime} />
+          </span>
+        </div>
+      </header>
+
+      {/* 2. Environment & Stats Bar */}
+      <div className={styles.statsBar}>
+        <div className={styles.statsItem}>
+          <Timer size={18} className={styles.statsIcon} />
+          <div>
+            <span className={styles.statsLabel}>Duration</span>
+            <span className={styles.statsValue}>
+              {event.durationMins ? formatDuration(event.durationMins) : 'N/A'}
             </span>
-            {event.durationMins && (
-              <span className={styles.metaItem}>
-                <Timer size={14} className="inline mr-1" />
-                {formatDuration(event.durationMins)}
-              </span>
-            )}
-            <span className={styles.metaItem}>
-              <div
-                className={styles.licenseBadge}
-                style={{ '--licColor': licenseColor } as React.CSSProperties}
-              >
-                <ShieldCheck size={14} />
-                {license}
+          </div>
+        </div>
+
+        {/* Weather Sub-group */}
+        {(event.tempValue !== null ||
+          event.relHumidity !== null ||
+          event.precipChance !== null) && (
+          <>
+            <div className={styles.statsDivider} />
+            <div className={styles.statsItem}>
+              <Thermometer size={18} className={styles.statsIcon} />
+              <div>
+                <span className={styles.statsLabel}>Temp</span>
+                <span className={styles.statsValue}>
+                  {event.tempValue !== null
+                    ? `${event.tempValue}°${event.tempUnits === 0 ? 'F' : 'C'}`
+                    : 'N/A'}
+                </span>
               </div>
-            </span>
+            </div>
+            <div className={styles.statsItem}>
+              <Droplets size={18} className={styles.statsIcon} />
+              <div>
+                <span className={styles.statsLabel}>Humidity</span>
+                <span className={styles.statsValue}>
+                  {event.relHumidity !== null ? `${event.relHumidity}%` : 'N/A'}
+                </span>
+              </div>
+            </div>
+            <div className={styles.statsItem}>
+              <CloudRain size={18} className={styles.statsIcon} />
+              <div>
+                <span className={styles.statsLabel}>Precip</span>
+                <span className={styles.statsValue}>
+                  {event.precipChance !== null ? `${event.precipChance}%` : 'N/A'}
+                </span>
+              </div>
+            </div>
+            <div className={styles.statsItem}>
+              {event.skies === 0 ? (
+                <Sun size={18} />
+              ) : event.skies === 1 ? (
+                <CloudSun size={18} />
+              ) : (
+                <Cloud size={18} />
+              )}
+              <div>
+                <span className={styles.statsLabel}>Skies</span>
+                <span className={styles.statsValue}>
+                  {event.skies === 0
+                    ? 'Clear'
+                    : event.skies === 1
+                      ? 'Partly Cloudy'
+                      : event.skies === 2
+                        ? 'Mostly'
+                        : event.skies === 3
+                          ? 'Overcast'
+                          : 'N/A'}
+                </span>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* 3. Content Grid */}
+      <div className={styles.mainGrid}>
+        {/* Left: Detail Feed */}
+        <section className={styles.mainContent}>
+          <div className={styles.contentCard}>
+            <h2 className={styles.cardHeading}>About The Event</h2>
+            <p className={styles.description}>
+              {event.description || 'No additional information available for this event.'}
+            </p>
           </div>
 
-          <div className={styles.prose}>
-            <h3 className="text-xl font-semibold">Event Description</h3>
-            <p className="text-gray-300">{event.description || 'No description provided.'}</p>
-          </div>
-
-          <div className={styles.racesSection}>
-            <h3 className={styles.sectionTitle}>Races & Driver Lineups</h3>
+          <div className={styles.raceSection}>
+            <h2 className={styles.cardHeading}>Races & Driver Lineups</h2>
             {event.races.length === 0 ? (
-              <p className="text-gray-500">No races scheduled for this event.</p>
+              <div className={styles.emptyNotice}>
+                No race sessions have been defined for this event yet.
+              </div>
             ) : (
               <div className={styles.raceList}>
                 {event.races.map((race) => (
@@ -113,102 +195,55 @@ export default async function EventPage({ params }: Props) {
                     race={race}
                     userId={session.user.id}
                     isAdmin={session.user.role === 'ADMIN'}
-                    eventId={event.id}
                   />
                 ))}
               </div>
             )}
           </div>
-        </div>
+        </section>
 
-        <div>
-          <div className={styles.sidebar}>
-            <h3 className={styles.sectionTitle}>Registration</h3>
+        {/* Right: Tactics & Registration */}
+        <aside className={styles.sideContent}>
+          <div className={styles.sideCard}>
+            <h3 className={styles.cardTitle}>Registration</h3>
             {isCompleted ? (
-              <div className={styles.completedBox}>
-                <p className={styles.completedTitle}>🏁 Event Completed</p>
-                <p className={styles.completedDetail}>
-                  This event ended on{' '}
-                  <FormattedDate
-                    date={event.endTime}
-                    format={{ year: 'numeric', month: 'numeric', day: 'numeric' }}
-                  />
-                  . Registration is closed.
-                </p>
+              <div className={styles.eventClosed}>
+                <p>🏁 Mapping Complete</p>
+                <span>Registration is no longer available for this event.</span>
               </div>
             ) : (
-              <RaceRegistrationForm
-                races={event.races.map((r) => ({
-                  id: r.id,
-                  startTime: r.startTime,
-                  endTime: r.endTime,
-                }))}
-                carClasses={event.carClasses.map((cc) => ({
-                  id: cc.id,
-                  name: cc.name,
-                  shortName: cc.shortName,
-                }))}
-                existingRegistrationRaceIds={userRegistrations.map((r) => r.raceId)}
-              />
-            )}
-
-            {(event.tempValue !== null || event.relHumidity !== null) && (
-              <div className={styles.weatherGrid}>
-                {event.tempValue !== null && (
-                  <div className={styles.weatherBox}>
-                    <span className={styles.weatherLabel}>
-                      <Thermometer size={10} /> Temperature
-                    </span>
-                    <span className={styles.weatherValue}>
-                      {event.tempValue}°{event.tempUnits === 0 ? 'F' : 'C'}
-                    </span>
-                  </div>
-                )}
-                {event.relHumidity !== null && (
-                  <div className={styles.weatherBox}>
-                    <span className={styles.weatherLabel}>
-                      <Droplets size={10} /> Humidity
-                    </span>
-                    <span className={styles.weatherValue}>{event.relHumidity}%</span>
-                  </div>
-                )}
-                {event.precipChance !== null && (
-                  <div className={styles.weatherBox}>
-                    <span className={styles.weatherLabel}>
-                      <CloudRain size={10} /> Precipitation
-                    </span>
-                    <span className={styles.weatherValue}>{event.precipChance}%</span>
-                  </div>
-                )}
-                {event.skies !== null && (
-                  <div className={styles.weatherBox}>
-                    <span className={styles.weatherLabel}>
-                      {event.skies === 0 ? (
-                        <Sun size={10} />
-                      ) : event.skies === 1 ? (
-                        <CloudSun size={10} />
-                      ) : (
-                        <Cloud size={10} />
-                      )}{' '}
-                      Skies
-                    </span>
-                    <span className={styles.weatherValue}>
-                      {event.skies === 0
-                        ? 'Clear'
-                        : event.skies === 1
-                          ? 'Partly Cloudy'
-                          : event.skies === 2
-                            ? 'Mostly Cloudy'
-                            : event.skies === 3
-                              ? 'Overcast'
-                              : 'Unknown'}
-                    </span>
-                  </div>
-                )}
+              <div className={styles.formWrapper}>
+                <RaceRegistrationForm
+                  races={event.races.map((r) => ({
+                    id: r.id,
+                    startTime: r.startTime,
+                    endTime: r.endTime,
+                  }))}
+                  carClasses={event.carClasses.map((cc) => ({
+                    id: cc.id,
+                    name: cc.name,
+                    shortName: cc.shortName,
+                  }))}
+                  existingRegistrationRaceIds={userRegistrations.map((r) => r.raceId)}
+                />
               </div>
             )}
           </div>
-        </div>
+
+          <div className={styles.sideCardSecondary}>
+            <h3 className={styles.cardTitleSmall}>Event Window</h3>
+            <div className={styles.timeInfo}>
+              <div className={styles.timeRow}>
+                <span>Opens</span>
+                <FormattedDate date={event.startTime} />
+              </div>
+              <div className={styles.timeRow}>
+                <span>Closes</span>
+                <FormattedDate date={event.endTime} />
+              </div>
+            </div>
+          </div>
+        </aside>
       </div>
     </div>
   )
