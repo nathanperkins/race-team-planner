@@ -19,18 +19,23 @@ export default async function ProfilePage() {
 
   if (!user) redirect('/login')
 
+  // Secondary server-side check
+  if (user.expectationsVersion < CURRENT_EXPECTATIONS_VERSION) {
+    redirect('/expectations')
+  }
+
   return (
     <div className={styles.container}>
       <h1 className={styles.title}>User Profile</h1>
 
-      {(!user.iracingCustomerId || user.expectationsVersion < CURRENT_EXPECTATIONS_VERSION) && (
+      {!user.iracingCustomerId && (
         <div className={styles.onboardingBanner}>
           <div className={styles.onboardingIcon}>!</div>
           <div className={styles.onboardingText}>
             <h3>Account Setup Required</h3>
             <p>
-              Please resolve the required steps to access the rest of the site, enable event
-              registration, and track your statistics.
+              Please provide your iRacing Customer ID to complete your profile and access the
+              dashboard.
             </p>
           </div>
         </div>
@@ -59,18 +64,9 @@ export default async function ProfilePage() {
           </div>
         </div>
         <div className={styles.field}>
-          <label className={styles.label}>
-            Team Expectations
-            {user.expectationsVersion < CURRENT_EXPECTATIONS_VERSION && (
-              <span className={styles.requiredBadge}>REQUIRED</span>
-            )}
-          </label>
+          <label className={styles.label}>Team Expectations</label>
           <Link href="/expectations" className={styles.clickableValue}>
-            {user.expectationsVersion >= CURRENT_EXPECTATIONS_VERSION ? (
-              <span className={styles.success}>Accepted (v{user.expectationsVersion})</span>
-            ) : (
-              <span className={styles.error}>Not Accepted</span>
-            )}
+            <span className={styles.success}>Accepted (v{user.expectationsVersion})</span>
             <ChevronRight size={14} style={{ opacity: 0.5 }} />
           </Link>
         </div>

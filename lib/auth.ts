@@ -3,7 +3,7 @@ import { PrismaAdapter } from '@auth/prisma-adapter'
 import prisma from './prisma'
 import { authConfig } from './auth.config'
 import Credentials from 'next-auth/providers/credentials'
-import { features } from '@/lib/config'
+import { features, CURRENT_EXPECTATIONS_VERSION } from '@/lib/config'
 import { UserRole } from '@prisma/client'
 
 const mockAuthProvider = Credentials({
@@ -36,8 +36,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     ...authConfig.callbacks,
     async signIn({ account, profile }) {
-      console.log(`[auth][signIn] Provider: ${account?.provider}, Email: ${profile?.email}`)
-
       // 1. Allow Mock Auth to bypass checks
       if (account?.provider === 'credentials') {
         return true
@@ -69,18 +67,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
 
       // Auto-heal: Refresh from DB if info is missing OR if we're explicitly updating/signing in.
-      const isMissingInfo = !token.iracingCustomerId || token.role === undefined
+      const isMissingInfo =
+        !token.iracingCustomerId ||
+        ((token.expectationsVersion as number) || 0) < CURRENT_EXPECTATIONS_VERSION
       const now = Date.now()
       const lastChecked = (token.lastChecked as number) || 0
-      const cooldown = 10000 // 10 seconds
+      const cooldown = 5000 // 5 seconds
 
       const shouldRefresh =
-        trigger === 'signIn' ||
-        trigger === 'update' ||
+        !!trigger || // Refresh on any trigger (signIn, signUp, update)
         (isMissingInfo && now - lastChecked > cooldown)
 
       if (token.id && shouldRefresh) {
-        // console.log(`[auth][jwt] Refreshing user data for ${token.email || token.id} (trigger: ${trigger || 'auto-heal'})`)
+        // console.log(`[auth][jwt] Refreshing user data (trigger: ${trigger || 'auto-heal'})`)
         const dbUser = await prisma.user.findUnique({
           where: { id: token.id as string },
           select: { role: true, iracingCustomerId: true, expectationsVersion: true },

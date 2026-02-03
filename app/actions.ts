@@ -200,5 +200,9 @@ export async function agreeToExpectations() {
   })
 
   revalidatePath('/expectations')
-  revalidatePath('/events/[id]', 'page') // Revalidate all event pages to potentially unlock signup
+  revalidatePath('/profile')
+  revalidatePath('/roster')
+  revalidatePath('/events/[id]', 'page')
+
+  return { success: true }
 }

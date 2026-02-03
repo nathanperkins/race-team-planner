@@ -20,6 +20,7 @@ model User {
   iracingCustomerId   String?
   iracingName         String?
   role                UserRole       @default(USER)
+  onboardedAnnounced  Boolean        @default(false)
   accounts            Account[]
   registrations       Registration[]
   racerStats          RacerStats[]

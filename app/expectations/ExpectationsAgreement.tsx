@@ -1,7 +1,6 @@
 'use client'
 
 import { useTransition } from 'react'
-import { useRouter } from 'next/navigation'
 import { agreeToExpectations } from '@/app/actions'
 import { CURRENT_EXPECTATIONS_VERSION } from '@/lib/config'
 import { useSession } from 'next-auth/react'
@@ -10,7 +9,6 @@ import styles from './expectations.module.css'
 export default function ExpectationsAgreement() {
   const [isPending, startTransition] = useTransition()
   const { update } = useSession()
-  const router = useRouter()
 
   return (
     <section className={`${styles.section} ${styles.pendingAgreement}`}>
@@ -31,9 +29,12 @@ export default function ExpectationsAgreement() {
       <button
         onClick={() =>
           startTransition(async () => {
-            await agreeToExpectations()
-            await update()
-            router.refresh()
+            const result = await agreeToExpectations()
+            if (result.success) {
+              await update({ refresh: true }) // Force trigger: 'update'
+              // Hard reload to ensure middleware sees the new cookie
+              window.location.href = '/profile'
+            }
           })
         }
         disabled={isPending}

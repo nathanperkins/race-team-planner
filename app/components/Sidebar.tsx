@@ -3,19 +3,18 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import styles from './sidebar.module.css'
-import { signOut } from 'next-auth/react'
-import { Session } from 'next-auth'
+import { signOut, useSession } from 'next-auth/react'
 import Image from 'next/image'
 
 import { CURRENT_EXPECTATIONS_VERSION } from '@/lib/config'
 
 interface SidebarProps {
-  session: Session
   onLinkClick?: () => void
 }
 
-export default function Sidebar({ session, onLinkClick }: SidebarProps) {
+export default function Sidebar({ onLinkClick }: SidebarProps) {
   const pathname = usePathname()
+  const { data: session } = useSession()
 
   const isActive = (path: string) => {
     if (path === '/' && pathname === '/') return true
@@ -23,9 +22,11 @@ export default function Sidebar({ session, onLinkClick }: SidebarProps) {
     return false
   }
 
-  const hasCustomerId = !!session.user?.iracingCustomerId
+  if (!session?.user) return null
+
+  const hasCustomerId = !!session.user.iracingCustomerId
   const hasAcceptedExpectations =
-    (session.user?.expectationsVersion ?? 0) >= CURRENT_EXPECTATIONS_VERSION
+    (session.user.expectationsVersion ?? 0) >= CURRENT_EXPECTATIONS_VERSION
   const isSetupComplete = hasCustomerId && hasAcceptedExpectations
 
   return (
@@ -65,7 +66,7 @@ export default function Sidebar({ session, onLinkClick }: SidebarProps) {
 
         <Link
           href="/profile"
-          className={`${styles.link} ${isActive('/profile') ? styles.activeLink : ''}`}
+          className={`${styles.link} ${isActive('/profile') ? styles.activeLink : ''} ${!hasAcceptedExpectations ? styles.disabledLink : ''}`}
           onClick={onLinkClick}
         >
           My Profile

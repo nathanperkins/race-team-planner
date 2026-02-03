@@ -199,6 +199,14 @@ interface RegistrationNotificationData {
   eventUrl: string
 }
 
+interface OnboardingNotificationData {
+  userName: string
+  userAvatarUrl?: string
+  iracingCustomerId: string
+  iracingName?: string
+  profileUrl: string
+}
+
 /**
  * Sends a Discord notification when a user registers for a race.
  * Uses the bot token to send messages to a configured channel.
@@ -218,14 +226,8 @@ export async function sendRegistrationNotification(
   }
 
   try {
-    const raceTimeFormatted = data.raceStartTime.toLocaleString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      timeZoneName: 'short',
-    })
+    const unixTimestamp = Math.floor(data.raceStartTime.getTime() / 1000)
+    const discordTimestamp = `<t:${unixTimestamp}:F>`
 
     const embed: {
       title: string
@@ -248,7 +250,7 @@ export async function sendRegistrationNotification(
         },
         {
           name: '🕐 Race Time',
-          value: raceTimeFormatted,
+          value: discordTimestamp,
           inline: true,
         },
       ],
@@ -288,6 +290,92 @@ export async function sendRegistrationNotification(
     return true
   } catch (error) {
     console.error('Error sending Discord registration notification:', error)
+    return false
+  }
+}
+
+/**
+ * Sends a Discord notification when a user completes onboarding.
+ * Requires DISCORD_BOT_TOKEN and DISCORD_NOTIFICATIONS_CHANNEL_ID to be set.
+ */
+export async function sendOnboardingNotification(
+  data: OnboardingNotificationData
+): Promise<boolean> {
+  const botToken = process.env.DISCORD_BOT_TOKEN
+  const channelId = process.env.DISCORD_NOTIFICATIONS_CHANNEL_ID
+
+  if (!botToken || !channelId) {
+    console.warn(
+      '⚠️ Discord onboarding notification skipped: DISCORD_BOT_TOKEN or DISCORD_NOTIFICATIONS_CHANNEL_ID not configured'
+    )
+    return false
+  }
+
+  try {
+    const embed: {
+      title: string
+      description: string
+      color: number
+      fields: Array<{ name: string; value: string; inline: boolean }>
+      url: string
+      timestamp: string
+      footer: { text: string }
+      thumbnail?: { url: string }
+    } = {
+      title: '👋 New User Onboarded',
+      description: `**${data.userName}** has completed the onboarding process.`,
+      color: 0x00ff00, // Green
+      fields: [
+        {
+          name: '🆔 iRacing ID',
+          value: data.iracingCustomerId,
+          inline: true,
+        },
+      ],
+      url: data.profileUrl,
+      timestamp: new Date().toISOString(),
+      footer: {
+        text: 'iRacing Team Planner',
+      },
+    }
+
+    if (data.iracingName) {
+      embed.fields.push({
+        name: '🏎️ iRacing Name',
+        value: data.iracingName,
+        inline: true,
+      })
+    }
+
+    if (data.userAvatarUrl) {
+      embed.thumbnail = {
+        url: data.userAvatarUrl,
+      }
+    }
+
+    const response = await fetch(`${DISCORD_API_BASE}/channels/${channelId}/messages`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bot ${botToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        embeds: [embed],
+      }),
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error(
+        `Failed to send Discord onboarding notification: ${response.status} ${response.statusText}`,
+        errorText
+      )
+      return false
+    }
+
+    return true
+  } catch (error) {
+    console.error('Error sending Discord onboarding notification:', error)
     return false
   }
 }
