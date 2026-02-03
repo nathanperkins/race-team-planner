@@ -1,7 +1,6 @@
 import { auth } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { notFound, redirect } from 'next/navigation'
-import RaceRegistrationForm from '@/components/RaceRegistrationForm'
 import RaceDetails from '@/components/RaceDetails'
 import FormattedDate from '@/components/FormattedDate'
 import {
@@ -195,6 +194,11 @@ export default async function EventPage({ params }: Props) {
                     race={race}
                     userId={session.user.id}
                     isAdmin={session.user.role === 'ADMIN'}
+                    carClasses={event.carClasses.map((cc) => ({
+                      id: cc.id,
+                      name: cc.name,
+                      shortName: cc.shortName,
+                    }))}
                   />
                 ))}
               </div>
@@ -205,27 +209,19 @@ export default async function EventPage({ params }: Props) {
         {/* Right: Tactics & Registration */}
         <aside className={styles.sideContent}>
           <div className={styles.sideCard}>
-            <h3 className={styles.cardTitle}>Registration</h3>
+            <h3 className={styles.cardTitle}>Status</h3>
             {isCompleted ? (
               <div className={styles.eventClosed}>
                 <p>🏁 Mapping Complete</p>
                 <span>Registration is no longer available for this event.</span>
               </div>
             ) : (
-              <div className={styles.formWrapper}>
-                <RaceRegistrationForm
-                  races={event.races.map((r) => ({
-                    id: r.id,
-                    startTime: r.startTime,
-                    endTime: r.endTime,
-                  }))}
-                  carClasses={event.carClasses.map((cc) => ({
-                    id: cc.id,
-                    name: cc.name,
-                    shortName: cc.shortName,
-                  }))}
-                  existingRegistrationRaceIds={userRegistrations.map((r) => r.raceId)}
-                />
+              <div className={styles.statusInfo}>
+                <p>
+                  {userRegistrations.length > 0
+                    ? `You are registered for ${userRegistrations.length} race${userRegistrations.length > 1 ? 's' : ''}.`
+                    : 'You are not registered for any races yet.'}
+                </p>
               </div>
             )}
           </div>

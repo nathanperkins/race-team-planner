@@ -258,3 +258,17 @@
   color: #f3f4f6;
   font-weight: 600;
 }
+
+.statusInfo {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.statusInfo p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #d1d5db;
+  line-height: 1.5;
+}

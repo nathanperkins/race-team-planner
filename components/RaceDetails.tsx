@@ -2,6 +2,7 @@ import Image from 'next/image'
 import FormattedDate from './FormattedDate'
 import styles from './RaceDetails.module.css'
 import DropRegistrationButton from './DropRegistrationButton'
+import QuickRegistration from './QuickRegistration'
 
 interface RaceWithRegistrations {
   id: string
@@ -10,6 +11,7 @@ interface RaceWithRegistrations {
   registrations: Array<{
     id: string
     carClass: {
+      id: string
       name: string
       shortName: string
     }
@@ -25,12 +27,15 @@ interface Props {
   race: RaceWithRegistrations
   userId: string
   isAdmin?: boolean
+  carClasses: { id: string; name: string; shortName: string }[]
 }
 
-export default function RaceDetails({ race, userId, isAdmin = false }: Props) {
+export default function RaceDetails({ race, userId, isAdmin = false, carClasses }: Props) {
   const now = new Date()
   const isRaceCompleted = now > new Date(race.endTime)
   const isRaceLive = now >= new Date(race.startTime) && now <= new Date(race.endTime)
+
+  const isUserRegistered = race.registrations.some((reg) => reg.userId === userId)
 
   return (
     <div className={styles.raceCard}>
@@ -76,6 +81,10 @@ export default function RaceDetails({ race, userId, isAdmin = false }: Props) {
             </div>
           ))}
         </div>
+      )}
+
+      {!isUserRegistered && !isRaceCompleted && (
+        <QuickRegistration raceId={race.id} carClasses={carClasses} />
       )}
     </div>
   )
