@@ -1,8 +1,16 @@
-import { PrismaClient } from '@prisma/client'
+import { Prisma, PrismaClient } from '@prisma/client'
 import { fieldEncryptionExtension } from 'prisma-field-encryption'
 
 const prismaClientSingleton = () => {
-  return new PrismaClient().$extends(fieldEncryptionExtension())
+  const client = new PrismaClient({
+    log: [{ level: 'query', emit: 'event' }],
+  })
+
+  client.$on('query', (e: Prisma.QueryEvent) => {
+    console.log(`[Prisma] Query: ${e.query} - ${e.duration}ms`)
+  })
+
+  return client.$extends(fieldEncryptionExtension())
 }
 
 type PrismaClientSingleton = ReturnType<typeof prismaClientSingleton>
