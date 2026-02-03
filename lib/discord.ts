@@ -431,15 +431,15 @@ export async function sendWeeklyScheduleNotification(
       }
 
       const description = [
-        `**Track:** ${event.track}`,
-        `**Time:** ${discordTimestamp}`,
-        `**Weather:** ${weather}`,
-        `**Classes:** ${event.carClasses.join(', ')}`,
+        `🏟️ **Track:** ${event.track}`,
+        `🕐 **Time:** ${discordTimestamp}`,
+        `🌤️ **Weather:** ${weather}`,
+        `🏎️ **Classes:** ${event.carClasses.join(', ')}`,
         '',
-        `**Registered Drivers:**`,
+        `👥 **Registered Drivers:**`,
         event.registeredUsers.length > 0
           ? event.registeredUsers.map((u) => `• ${u}`).join('\n')
-          : '_No registrations yet_',
+          : '👻 _No registrations yet — be the first!_',
       ].join('\n')
 
       return {
