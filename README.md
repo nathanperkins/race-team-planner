@@ -68,6 +68,11 @@ will use a mock data set suitable for local development.
     - **Important**: In the **Bot** tab, scroll down to "Privileged Gateway Intents" and enable **Server Members Intent**. This is required to check guild membership.
     - **Important**: Invite the bot to your server using the OAuth2 URL Generator in the OAuth2 tab and include scope: `bot`.
     - Set `DISCORD_ADMIN_ROLE_IDS` to a comma-separated list of Role IDs that should have Administrative access in the app.
+  - **Discord Notifications** (Optional - for race registration and event notifications):
+    - Enable Developer Mode in Discord (User Settings → Advanced → Developer Mode).
+    - Right-click the channel where you want notifications sent and select "Copy ID".
+    - Set `DISCORD_NOTIFICATIONS_CHANNEL_ID` to this channel ID.
+    - **Note**: The bot must have permission to send messages in this channel.
 
 - **iRacing Data API**:
   - Follow the setup guide: [iRacing Data API Documentation](https://forums.iracing.com/discussion/15068/general-availability-of-data-api).

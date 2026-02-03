@@ -11,7 +11,8 @@ export async function register() {
   console.log(`[Feature] iRacing Sync: ${features.iracingSync ? 'Enabled ✅' : 'Disabled ❌'}`)
 
   if (features.discordMembership) {
-    const { verifyBotToken, verifyGuildAccess, verifyAdminRoles } = await import('@/lib/discord')
+    const { verifyBotToken, verifyGuildAccess, verifyAdminRoles, verifyNotificationsChannel } =
+      await import('@/lib/discord')
 
     // 1. Verify Token
     const bot = await verifyBotToken()
@@ -36,6 +37,20 @@ export async function register() {
         console.log(`[Discord] Admin Roles Verified: ${adminRoles.join(', ')} ✅`)
       } else if (process.env.DISCORD_ADMIN_ROLE_IDS) {
         console.error('[Discord] Admin Roles NOT FOUND ❌ (Check IDs in .env)')
+      }
+
+      // 4. Verify Notifications Channel
+      const notificationsChannel = await verifyNotificationsChannel()
+      if (notificationsChannel) {
+        console.log(
+          `[Discord] Notifications Channel Verified: #${notificationsChannel.name} (${process.env.DISCORD_NOTIFICATIONS_CHANNEL_ID}) ✅`
+        )
+      } else if (process.env.DISCORD_NOTIFICATIONS_CHANNEL_ID) {
+        console.error(
+          '[Discord] Notifications Channel NOT FOUND ❌ (Check DISCORD_NOTIFICATIONS_CHANNEL_ID in .env)'
+        )
+      } else {
+        console.log('[Discord] Notifications Channel: Not Configured (Optional) ⚠️')
       }
     } else {
       console.error('[Discord] Bot Token is INVALID ❌ (Received 401/Unauthorized)')

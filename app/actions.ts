@@ -65,6 +65,57 @@ export async function registerForRace(prevState: State, formData: FormData) {
       },
     })
 
+    // Send Discord notification (non-blocking)
+    try {
+      const registrationData = await prisma.registration.findFirst({
+        where: {
+          userId: session.user.id,
+          raceId,
+        },
+        include: {
+          user: {
+            select: {
+              name: true,
+              image: true,
+            },
+          },
+          race: {
+            select: {
+              startTime: true,
+              event: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
+          carClass: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      })
+
+      if (registrationData) {
+        const { sendRegistrationNotification } = await import('@/lib/discord')
+        const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+
+        await sendRegistrationNotification({
+          userName: registrationData.user.name || 'Unknown User',
+          userAvatarUrl: registrationData.user.image || undefined,
+          eventName: registrationData.race.event.name,
+          raceStartTime: registrationData.race.startTime,
+          carClassName: registrationData.carClass.name,
+          eventUrl: `${baseUrl}/events/${registrationData.race.event.id}`,
+        })
+      }
+    } catch (notificationError) {
+      // Log but don't fail the registration if notification fails
+      console.error('Failed to send Discord notification:', notificationError)
+    }
+
     revalidatePath(`/events/${race.eventId}`)
     return { message: 'Success' }
   } catch (e) {

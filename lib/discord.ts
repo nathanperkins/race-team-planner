@@ -156,3 +156,138 @@ export async function verifyAdminRoles(): Promise<string[]> {
     return []
   }
 }
+
+/**
+ * Diagnostic function to verify the notifications channel is accessible.
+ */
+export async function verifyNotificationsChannel(): Promise<{ name: string } | null> {
+  const botToken = process.env.DISCORD_BOT_TOKEN
+  const channelId = process.env.DISCORD_NOTIFICATIONS_CHANNEL_ID
+
+  if (!botToken || !channelId) return null
+
+  try {
+    const response = await fetch(`${DISCORD_API_BASE}/channels/${channelId}`, {
+      headers: {
+        Authorization: `Bot ${botToken}`,
+      },
+    })
+
+    if (response.ok) {
+      const data = await response.json()
+      return { name: data.name }
+    } else {
+      const text = await response.text()
+      console.error(
+        `❌ Discord Notifications Channel Access Failed: ${response.status} ${response.statusText}`,
+        text
+      )
+      return null
+    }
+  } catch (error) {
+    console.error('❌ Failed to connect to Discord API during channel verification:', error)
+    return null
+  }
+}
+
+interface RegistrationNotificationData {
+  userName: string
+  userAvatarUrl?: string
+  eventName: string
+  raceStartTime: Date
+  carClassName: string
+  eventUrl: string
+}
+
+/**
+ * Sends a Discord notification when a user registers for a race.
+ * Uses the bot token to send messages to a configured channel.
+ * Requires DISCORD_BOT_TOKEN and DISCORD_NOTIFICATIONS_CHANNEL_ID to be set.
+ */
+export async function sendRegistrationNotification(
+  data: RegistrationNotificationData
+): Promise<boolean> {
+  const botToken = process.env.DISCORD_BOT_TOKEN
+  const channelId = process.env.DISCORD_NOTIFICATIONS_CHANNEL_ID
+
+  if (!botToken || !channelId) {
+    console.warn(
+      '⚠️ Discord registration notification skipped: DISCORD_BOT_TOKEN or DISCORD_NOTIFICATIONS_CHANNEL_ID not configured'
+    )
+    return false
+  }
+
+  try {
+    const raceTimeFormatted = data.raceStartTime.toLocaleString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      timeZoneName: 'short',
+    })
+
+    const embed: {
+      title: string
+      description: string
+      color: number
+      fields: Array<{ name: string; value: string; inline: boolean }>
+      url: string
+      timestamp: string
+      footer: { text: string }
+      thumbnail?: { url: string }
+    } = {
+      title: '🏁 New Race Registration',
+      description: `**${data.userName}** has registered for **${data.eventName}**`,
+      color: 0x5865f2, // Discord blurple color
+      fields: [
+        {
+          name: '🏎️ Car Class',
+          value: data.carClassName,
+          inline: true,
+        },
+        {
+          name: '🕐 Race Time',
+          value: raceTimeFormatted,
+          inline: true,
+        },
+      ],
+      url: data.eventUrl,
+      timestamp: new Date().toISOString(),
+      footer: {
+        text: 'iRacing Team Planner',
+      },
+    }
+
+    if (data.userAvatarUrl) {
+      embed.thumbnail = {
+        url: data.userAvatarUrl,
+      }
+    }
+
+    const response = await fetch(`${DISCORD_API_BASE}/channels/${channelId}/messages`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bot ${botToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        embeds: [embed],
+      }),
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error(
+        `Failed to send Discord registration notification: ${response.status} ${response.statusText}`,
+        errorText
+      )
+      return false
+    }
+
+    return true
+  } catch (error) {
+    console.error('Error sending Discord registration notification:', error)
+    return false
+  }
+}
