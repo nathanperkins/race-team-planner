@@ -132,3 +132,9 @@ variable "backup_encryption_key" {
   sensitive   = true
   default     = ""
 }
+
+variable "domain_name" {
+  description = "Custom domain name (e.g. planner.example.com)"
+  type        = string
+  default     = ""
+}

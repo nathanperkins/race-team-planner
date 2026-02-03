@@ -18,11 +18,11 @@ resource "google_cloud_run_v2_service" "default" {
 
       env {
         name  = "NEXTAUTH_URL"
-        value = var.nextauth_url != "" ? var.nextauth_url : "https://${var.app_name}-${data.google_project.project.number}.${var.region}.run.app"
+        value = var.nextauth_url != "" ? var.nextauth_url : (var.domain_name != "" ? "https://${var.domain_name}" : "https://${var.app_name}-${data.google_project.project.number}.${var.region}.run.app")
       }
       env {
         name  = "AUTH_URL"
-        value = var.nextauth_url != "" ? var.nextauth_url : "https://${var.app_name}-${data.google_project.project.number}.${var.region}.run.app"
+        value = var.nextauth_url != "" ? var.nextauth_url : (var.domain_name != "" ? "https://${var.domain_name}" : "https://${var.app_name}-${data.google_project.project.number}.${var.region}.run.app")
       }
       env {
         name  = "AUTH_TRUST_HOST"
@@ -67,4 +67,19 @@ resource "google_cloud_run_service_iam_member" "public_access" {
   location = google_cloud_run_v2_service.default.location
   role     = "roles/run.invoker"
   member   = "allUsers"
+}
+
+# Custom Domain Mapping (Native)
+resource "google_cloud_run_domain_mapping" "custom_domain" {
+  count    = var.domain_name != "" ? 1 : 0
+  location = var.region
+  name     = var.domain_name
+
+  metadata {
+    namespace = var.project_id
+  }
+
+  spec {
+    route_name = google_cloud_run_v2_service.default.name
+  }
 }

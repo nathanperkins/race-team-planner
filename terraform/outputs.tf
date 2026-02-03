@@ -15,3 +15,8 @@ output "supabase_project_ref" {
 output "sync_scheduler_job" {
   value = google_cloud_scheduler_job.sync_job.name
 }
+
+output "domain_mapping_records" {
+  description = "DNS records to create for the custom domain"
+  value       = length(google_cloud_run_domain_mapping.custom_domain) > 0 ? google_cloud_run_domain_mapping.custom_domain[0].status[0].resource_records : null
+}

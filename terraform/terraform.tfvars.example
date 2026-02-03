@@ -30,3 +30,4 @@ discord_notifications_channel_id = "your-discord-channel-id"
  # Backups
  cron_secret              = ""  # Secret for authenticating cron jobs
  backup_encryption_key    = ""  # GPG passphrase for encrypting backups (generate a strong random string)
+ domain_name              = ""  # e.g. planner.example.com (optional)
