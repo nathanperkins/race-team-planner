@@ -17,6 +17,8 @@ export enum GuildMembershipStatus {
 export async function checkGuildMembership(userId: string): Promise<{
   status: GuildMembershipStatus
   roles?: string[]
+  nick?: string | null
+  user?: { id: string; username: string; discriminator?: string; avatar?: string } | null
 }> {
   const botToken = process.env.DISCORD_BOT_TOKEN
   const guildId = process.env.DISCORD_GUILD_ID
@@ -40,6 +42,8 @@ export async function checkGuildMembership(userId: string): Promise<{
       return {
         status: GuildMembershipStatus.MEMBER,
         roles: data.roles || [],
+        nick: data.nick || null,
+        user: data.user || null,
       }
     } else if (response.status === 404) {
       return { status: GuildMembershipStatus.NOT_MEMBER }

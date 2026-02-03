@@ -112,7 +112,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         try {
           // Check guild roles to determine admin status
           const { checkGuildMembership } = await import('@/lib/discord')
-          const { roles } = await checkGuildMembership(profile.id as string)
+          const { roles, nick } = await checkGuildMembership(profile.id as string)
 
           const adminRoleIdsStr = process.env.DISCORD_ADMIN_ROLE_IDS || ''
           const adminRoleIds = adminRoleIdsStr.split(',').map((id) => id.trim())
@@ -124,7 +124,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             where: { id: user.id },
             data: {
               role: targetRole,
-              name: profile.name || profile.username || user.name,
+              name: nick || profile.name || profile.username || user.name,
               image: profile.image_url || profile.avatar || user.image,
             },
           })
