@@ -8,7 +8,7 @@ interface EventFiltersProps {
   carClasses: { id: string; name: string; shortName: string }[]
   racers: { id: string; name: string | null }[]
   currentFilters: {
-    signups?: string
+    registrations?: string
     carClass?: string
     racer?: string
     from?: string
@@ -92,22 +92,22 @@ export default function EventFilters({ carClasses, racers, currentFilters }: Eve
 
       <div className={styles.filterGroup}>
         <label
-          htmlFor="signups"
+          htmlFor="registrations"
           className={styles.filterLabel}
-          data-tooltip="Show only events with or without active signups."
+          data-tooltip="Show only events with or without active registrations."
         >
-          Signups
+          Registrations
         </label>
         <select
-          id="signups"
+          id="registrations"
           className={styles.filterSelect}
-          value={currentFilters.signups || ''}
-          onChange={(e) => handleFilterChange('signups', e.target.value)}
+          value={currentFilters.registrations || ''}
+          onChange={(e) => handleFilterChange('registrations', e.target.value)}
         >
           <option value="">All Events</option>
-          <option value="any">Any Signups</option>
-          <option value="mine">My Signups</option>
-          <option value="none">No Signups</option>
+          <option value="any">Any Registrations</option>
+          <option value="mine">My Registrations</option>
+          <option value="none">No Registrations</option>
         </select>
       </div>
 
@@ -138,7 +138,7 @@ export default function EventFilters({ carClasses, racers, currentFilters }: Eve
         <label
           htmlFor="racer"
           className={styles.filterLabel}
-          data-tooltip="Shows events where ALL selected racers are signed up."
+          data-tooltip="Shows events where ALL selected racers are registered."
         >
           Racers
         </label>
@@ -243,11 +243,11 @@ export default function EventFilters({ carClasses, racers, currentFilters }: Eve
           <option value="date">Date (Earliest)</option>
           <option value="dateDesc">Date (Latest)</option>
           <option value="name">Name (A-Z)</option>
-          <option value="signups">Most Signups</option>
+          <option value="registrations">Most Registrations</option>
         </select>
       </div>
 
-      {(currentFilters.signups ||
+      {(currentFilters.registrations ||
         currentFilters.carClass ||
         currentFilters.racer ||
         currentFilters.from ||

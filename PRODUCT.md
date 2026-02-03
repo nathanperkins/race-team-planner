@@ -12,10 +12,10 @@ One of our community members used ChatGPT to vibe code a simple app so far:
 
 - Data is stored in Google Sheets.
 - Views are implemented using Apps Script.
-- The Team View shows details on upcoming races, and the drivers that have signed up by car/class and timeslot.
-- The Signup View allows a driver to sign-up with Name, Weekend, Event, and Car/Class.
+- The Team View shows details on upcoming races, and the drivers that have registered by car/class and timeslot.
+- The Registration View allows a driver to register with Name, Weekend, Event, and Car/Class.
   - Weekend, Event and Car/Class are auto-filled based on existing data.
-- Clicking on a timeslot to open a sign-up view that is already auto-filled.
+- Clicking on a timeslot to open a registration view that is already auto-filled.
 - iRacing data is synchronized using an API.
 
 ## Enhancement
@@ -107,21 +107,21 @@ A user's expression of interest for a specific race.
 ### Phase 3a: Core Features
 
 - [x] **Event List**: View upcoming events (Home Page).
-- [x] **Event Detail**: View details and existing signups for an event.
-- [x] **Signup Flow**: Authenticated users can register for an event (pick car/time).
-- [x] **My Signups**: View a list of races I have signed up for.
+- [x] **Event Detail**: View details and existing registrations for an event.
+- [x] **Registration Flow**: Authenticated users can register for an event (pick car/time).
+- [x] **My Registrations**: View a list of races I have registered for.
 - [x] **Separate Styles from Logic**: Move styles to a separate file.
-- [x] **Support dropping signups**: Allow users to drop signups from the details page or from "My Signups".
+- [x] **Support dropping registrations**: Allow users to drop registrations from the details page or from "My Registrations".
 - [x] **Navigation**: Add a navigation sidebar to the left of the page.
-- [x] **Fix undefined user issue**: The user ID is undefined when accessing the signup page.
-- [x] **Fix unauthorized issue**: Signups fail with unauthorized.
+- [x] **Fix undefined user issue**: The user ID is undefined when accessing the registration page.
+- [x] **Fix unauthorized issue**: Registrations fail with unauthorized.
 - [x] **Sync Events from iRacing**: Use the iRacing API to sync events to the database.
 - [x] Use icons to denote synced vs manual events.
 - [x] Add filters for events.
 - [x] Encrypt sensitive fields like tokens in the database using the `prisma-field-encryption` extension
 - [x] Fix issue where user and signout are shown in the middle of the sidebar when scrolled down. They should not be affected by scrolling.
 - [x] Fix prisma-field-encryption warnings.
-- [x] Add a badge to events in the list to show the number of signups.
+- [x] Add a badge to events in the list to show the number of registrations.
 - [x] Add a filter looking for specific racers.
 - [x] Add a roster page.
 - [x] Don't allow user to register for completed races.
@@ -137,12 +137,12 @@ A user's expression of interest for a specific race.
 - [x] Show sync status and messages in a pop-up instead of alongside the button.
 - [x] Add sync support for car classes.
 - [x] Sync weather data and display in events list and details.
-- [x] Display signup numbers per car class in the events list view.
+- [x] Display registration numbers per car class in the events list view.
 - [x] Add sync support for racer info.
 - [x] Sync and display race duration.
 - [x] Fix syncing fails with success message.
 - [x] **Check Membership in SRG Discord**: Use the Discord API to check if a user is a member of the SRG Discord.
-- [x] **Implement roles**: Admins can modify all signups, users can only modify their own signups.
+- [x] **Implement roles**: Admins can modify all registrations, users can only modify their own registrations.
 - [x] **Automated iRacing Sync**: Background synchronization for events and driver stats.
 
 ### Phase 3c: Onboarding & User Flow

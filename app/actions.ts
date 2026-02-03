@@ -173,7 +173,7 @@ export async function deleteRegistration(registrationId: string): Promise<void> 
     if (registration.race?.eventId) {
       revalidatePath(`/events/${registration.race.eventId}`)
     }
-    revalidatePath(`/users/${session.user.id}/signups`)
+    revalidatePath(`/users/${session.user.id}/registrations`)
   } catch (e) {
     console.error('Delete registration error:', e)
     throw new Error('Failed to delete registration')

@@ -86,7 +86,7 @@ export default function RaceRegistrationForm({
       </div>
 
       <button type="submit" disabled={isPending} className={styles.button}>
-        {isPending ? 'Signing up...' : 'Sign Up'}
+        {isPending ? 'Registering...' : 'Register'}
       </button>
 
       {state?.message && state.message !== 'Success' && (

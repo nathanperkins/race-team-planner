@@ -131,7 +131,7 @@ export default async function RosterPage({ searchParams }: Props) {
               </div>
             )}
 
-            <Link href={`/users/${user.id}/signups`} className={styles.viewButton}>
+            <Link href={`/users/${user.id}/registrations`} className={styles.viewButton}>
               View Schedule
             </Link>
           </div>

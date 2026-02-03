@@ -41,11 +41,11 @@ export default function Sidebar({ onLinkClick }: SidebarProps) {
         </Link>
 
         <Link
-          href={`/users/${session.user?.id}/signups`}
+          href={`/users/${session.user?.id}/registrations`}
           className={`${styles.link} ${isActive(`/users/${session.user?.id}`) ? styles.activeLink : ''} ${!isSetupComplete ? styles.disabledLink : ''}`}
           onClick={onLinkClick}
         >
-          My Signups
+          My Registrations
         </Link>
 
         <Link

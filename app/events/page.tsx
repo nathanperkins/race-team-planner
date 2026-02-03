@@ -14,7 +14,7 @@ import styles from './events.module.css'
 
 interface PageProps {
   searchParams: Promise<{
-    signups?: string
+    registrations?: string
     carClass?: string
     racer?: string
     from?: string
@@ -86,11 +86,11 @@ export default async function EventsPage({ searchParams }: PageProps) {
   // Build Prisma filter object (similar to dashboard)
   const where: Prisma.EventWhereInput = {}
 
-  if (params.signups === 'any') {
+  if (params.registrations === 'any') {
     where.races = { some: { registrations: { some: {} } } }
-  } else if (params.signups === 'none') {
+  } else if (params.registrations === 'none') {
     where.races = { every: { registrations: { none: {} } } }
-  } else if (params.signups === 'mine' && session.user?.id) {
+  } else if (params.registrations === 'mine' && session.user?.id) {
     where.races = {
       some: {
         registrations: {
@@ -349,7 +349,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
 
             <div className={styles.weekBody}>
               {week.events.map((event) => {
-                const totalSignups = event.races.reduce(
+                const totalRegistrations = event.races.reduce(
                   (sum: number, race: RaceWithRegistrations) => sum + race.registrations.length,
                   0
                 )
@@ -435,8 +435,8 @@ export default async function EventsPage({ searchParams }: PageProps) {
 
                     <div className={styles.eventRight}>
                       <div className={styles.driverPillContainer}>
-                        <div className={styles.driverPill}>👤 {totalSignups}</div>
-                        {totalSignups > 0 && (
+                        <div className={styles.driverPill}>👤 {totalRegistrations}</div>
+                        {totalRegistrations > 0 && (
                           <div className={styles.signupTooltip}>
                             {Array.from(
                               event.races
