@@ -53,7 +53,6 @@ type EventWithRaces = Prisma.EventGetPayload<{
 }>
 
 type RaceWithRegistrations = EventWithRaces['races'][number]
-type RegistrationWithUser = RaceWithRegistrations['registrations'][number]
 
 type LicenseStyle = CSSProperties & {
   ['--licColor']?: string
@@ -281,6 +280,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
           updatedAt: now,
         },
       ],
+      carClasses: [],
       licenseGroup: 3,
       durationMins: null,
       tempValue: null,
@@ -409,14 +409,14 @@ export default async function EventsPage({ searchParams }: PageProps) {
                         <div className={styles.eventTimes}>
                           {event.races.map((race, raceIdx) => (
                             <span key={race.id}>
-                              <FormattedDate 
-                                date={race.startTime} 
+                              <FormattedDate
+                                date={race.startTime}
                                 format={{ month: 'numeric', day: 'numeric' }}
                                 hideTimezone
                               />
                               {' • '}
-                              <FormattedDate 
-                                date={race.startTime} 
+                              <FormattedDate
+                                date={race.startTime}
                                 format={{ hour: 'numeric', minute: '2-digit' }}
                               />
                               {raceIdx < event.races.length - 1 && ', '}

@@ -44,7 +44,7 @@ export async function createCustomEvent(prevState: State, formData: FormData): P
     const endDate = new Date(startDate.getTime() + duration * 60000)
 
     // Create the event with a single race
-    const event = await prisma.event.create({
+    await prisma.event.create({
       data: {
         name,
         track,
