@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import styles from './roster.module.css'
 import UserRoleBadge from '@/components/UserRoleBadge'
+import { getLicenseForId, getLicenseColor } from '@/lib/utils'
 
 import RosterSortControls from './RosterSortControls'
 
@@ -101,11 +102,13 @@ export default async function RosterPage({ searchParams }: Props) {
                   if (!stats) return null
 
                   // Format license: "A 2.45"
-                  const licText = `${stats.groupName.replace('Class ', '').substring(0, 1)} ${stats.safetyRating.toFixed(2)}`
+                  const licenseLabel = stats.groupName.replace('Class ', '').substring(0, 1)
+                  const licText = `${licenseLabel} ${stats.safetyRating.toFixed(2)}`
+                  const licenseColor = getLicenseColor(stats.groupName)
 
                   return (
                     <>
-                      <div className={styles.paramItem} style={{ borderColor: '#' + stats.color }}>
+                      <div className={styles.paramItem} style={{ borderColor: licenseColor }}>
                         <span className={styles.paramValue}>{stats.irating}</span>
                         <span className={styles.paramLabel}>
                           {stats.category === 'sports_car'
@@ -121,7 +124,7 @@ export default async function RosterPage({ searchParams }: Props) {
                                     : 'iRating'}
                         </span>
                       </div>
-                      <div className={styles.paramItem} style={{ borderColor: '#' + stats.color }}>
+                      <div className={styles.paramItem} style={{ borderColor: licenseColor }}>
                         <span className={styles.paramValue}>{licText}</span>
                         <span className={styles.paramLabel}>License</span>
                       </div>

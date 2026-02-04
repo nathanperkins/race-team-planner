@@ -298,6 +298,305 @@ async function main() {
     },
   })
 
+  // David (Veteran Expert)
+  const david = await prisma.user.upsert({
+    where: { id: 'user_david' },
+    update: {
+      name: 'Mock David (Expert)',
+    },
+    create: {
+      id: 'user_david',
+      email: 'david@example.com',
+      name: 'Mock David (Expert)',
+      image: 'https://api.dicebear.com/9.x/avataaars/png?seed=David',
+    },
+  })
+
+  await prisma.racerStats.upsert({
+    where: { userId_categoryId: { userId: david.id, categoryId: 5 } },
+    update: {
+      irating: 4200,
+      licenseLevel: 30,
+      licenseGroup: 5,
+      safetyRating: 4.85,
+      cpi: 95.0,
+      ttRating: 2100,
+      mprNumRaces: 47,
+      color: '00ff00',
+      groupName: 'Class A',
+    },
+    create: {
+      userId: david.id,
+      categoryId: 5,
+      category: 'sports_car',
+      irating: 4200,
+      licenseLevel: 30, // A 4.xx Pro
+      licenseGroup: 5, // A
+      safetyRating: 4.85,
+      cpi: 95.0,
+      ttRating: 2100,
+      mprNumRaces: 47,
+      color: '00ff00', // Green
+      groupName: 'Class A',
+    },
+  })
+
+  const davidRegistration = await prisma.registration.upsert({
+    where: {
+      userId_raceId: {
+        userId: david.id,
+        raceId: daytonaRace1.id,
+      },
+    },
+    update: {
+      carClassId: gt3.id,
+      notes: 'Aiming for podium.',
+    },
+    create: {
+      userId: david.id,
+      raceId: daytonaRace1.id,
+      carClassId: gt3.id,
+      notes: 'Aiming for podium.',
+    },
+  })
+
+  const davidSebringRegistration = await prisma.registration.upsert({
+    where: {
+      userId_raceId: {
+        userId: david.id,
+        raceId: sebringRace1.id,
+      },
+    },
+    update: {
+      carClassId: gt3.id,
+      notes: 'Consistent pace wins races.',
+    },
+    create: {
+      userId: david.id,
+      raceId: sebringRace1.id,
+      carClassId: gt3.id,
+      notes: 'Consistent pace wins races.',
+    },
+  })
+
+  // Emma (Intermediate Consistent)
+  const emma = await prisma.user.upsert({
+    where: { id: 'user_emma' },
+    update: {
+      name: 'Mock Emma (Steady)',
+    },
+    create: {
+      id: 'user_emma',
+      email: 'emma@example.com',
+      name: 'Mock Emma (Steady)',
+      image: 'https://api.dicebear.com/9.x/avataaars/png?seed=Emma',
+    },
+  })
+
+  await prisma.racerStats.upsert({
+    where: { userId_categoryId: { userId: emma.id, categoryId: 5 } },
+    update: {},
+    create: {
+      userId: emma.id,
+      categoryId: 5,
+      category: 'sports_car',
+      irating: 2100,
+      licenseLevel: 16, // B 2.xx
+      licenseGroup: 4, // B
+      safetyRating: 3.85,
+      cpi: 65.0,
+      ttRating: 1600,
+      mprNumRaces: 22,
+      color: 'ff6b00', // Orange
+      groupName: 'Class B',
+    },
+  })
+
+  const emmaRegistration = await prisma.registration.upsert({
+    where: {
+      userId_raceId: {
+        userId: emma.id,
+        raceId: daytonaRace2.id,
+      },
+    },
+    update: {
+      carClassId: lmp2.id,
+      notes: 'Prefer the night stint.',
+    },
+    create: {
+      userId: emma.id,
+      raceId: daytonaRace2.id,
+      carClassId: lmp2.id,
+      notes: 'Prefer the night stint.',
+    },
+  })
+
+  // Frank (Rookie Rising)
+  const frank = await prisma.user.upsert({
+    where: { id: 'user_frank' },
+    update: {
+      name: 'Mock Frank (Rookie)',
+    },
+    create: {
+      id: 'user_frank',
+      email: 'frank@example.com',
+      name: 'Mock Frank (Rookie)',
+      image: 'https://api.dicebear.com/9.x/avataaars/png?seed=Frank',
+    },
+  })
+
+  await prisma.racerStats.upsert({
+    where: { userId_categoryId: { userId: frank.id, categoryId: 1 } },
+    update: {},
+    create: {
+      userId: frank.id,
+      categoryId: 1,
+      category: 'road_touring',
+      irating: 1050,
+      licenseLevel: 6, // D 3.xx
+      licenseGroup: 2, // D
+      safetyRating: 1.95,
+      cpi: 35.0,
+      ttRating: 1200,
+      mprNumRaces: 3,
+      color: 'ff0000', // Red
+      groupName: 'Class D',
+    },
+  })
+
+  const frankRegistration = await prisma.registration.upsert({
+    where: {
+      userId_raceId: {
+        userId: frank.id,
+        raceId: sebringRace1.id,
+      },
+    },
+    update: {
+      carClassId: lmp2.id,
+      notes: 'First endurance race!',
+    },
+    create: {
+      userId: frank.id,
+      raceId: sebringRace1.id,
+      carClassId: lmp2.id,
+      notes: 'First endurance race!',
+    },
+  })
+
+  // Grace (Advanced Aggressive)
+  const grace = await prisma.user.upsert({
+    where: { id: 'user_grace' },
+    update: {
+      name: 'Mock Grace (Racer)',
+    },
+    create: {
+      id: 'user_grace',
+      email: 'grace@example.com',
+      name: 'Mock Grace (Racer)',
+      image: 'https://api.dicebear.com/9.x/avataaars/png?seed=Grace',
+    },
+  })
+
+  await prisma.racerStats.upsert({
+    where: { userId_categoryId: { userId: grace.id, categoryId: 6 } },
+    update: {},
+    create: {
+      userId: grace.id,
+      categoryId: 6,
+      category: 'formula_car',
+      irating: 3200,
+      licenseLevel: 22, // A 2.xx
+      licenseGroup: 5, // A
+      safetyRating: 3.15,
+      cpi: 80.0,
+      ttRating: 1850,
+      mprNumRaces: 35,
+      color: 'ff00ff', // Magenta
+      groupName: 'Class A',
+    },
+  })
+
+  const graceRegistration = await prisma.registration.upsert({
+    where: {
+      userId_raceId: {
+        userId: grace.id,
+        raceId: daytonaRace1.id,
+      },
+    },
+    update: {
+      carClassId: gtp.id,
+      notes: 'Attack mode enabled.',
+    },
+    create: {
+      userId: grace.id,
+      raceId: daytonaRace1.id,
+      carClassId: gtp.id,
+      notes: 'Attack mode enabled.',
+    },
+  })
+
+  // Henry (Casual Weekend Warrior)
+  const henry = await prisma.user.upsert({
+    where: { id: 'user_henry' },
+    update: {
+      name: 'Mock Henry (Casual)',
+    },
+    create: {
+      id: 'user_henry',
+      email: 'henry@example.com',
+      name: 'Mock Henry (Casual)',
+      image: 'https://api.dicebear.com/9.x/avataaars/png?seed=Henry',
+    },
+  })
+
+  await prisma.racerStats.upsert({
+    where: { userId_categoryId: { userId: henry.id, categoryId: 2 } },
+    update: {
+      irating: 1300,
+      licenseLevel: 8,
+      licenseGroup: 2,
+      safetyRating: 2.45,
+      cpi: 40.0,
+      ttRating: 1250,
+      mprNumRaces: 8,
+      color: '00ccff',
+      groupName: 'Class D',
+    },
+    create: {
+      userId: henry.id,
+      categoryId: 2,
+      category: 'oval_touring',
+      irating: 1300,
+      licenseLevel: 8, // D 1.xx
+      licenseGroup: 2, // D
+      safetyRating: 2.45,
+      cpi: 40.0,
+      ttRating: 1250,
+      mprNumRaces: 8,
+      color: '00ccff', // Cyan
+      groupName: 'Class D',
+    },
+  })
+
+  const henryRegistration = await prisma.registration.upsert({
+    where: {
+      userId_raceId: {
+        userId: henry.id,
+        raceId: sebringRace1.id,
+      },
+    },
+    update: {
+      carClassId: gtp.id,
+      notes: 'Just here for fun!',
+    },
+    create: {
+      userId: henry.id,
+      raceId: sebringRace1.id,
+      carClassId: gtp.id,
+      notes: 'Just here for fun!',
+    },
+  })
+
   const pastSebringId = 'past_sebring_2025'
   const pastSebring = await prisma.event.upsert({
     where: { id: pastSebringId },
@@ -344,21 +643,16 @@ async function main() {
     create: { userId: charlie.id, raceId: pastSebringRace.id, carClassId: gt3.id },
   })
 
-  console.log(
-    sebring,
-    daytona,
-    pastSebring,
+  console.log('Mock drivers seeded:', {
     alice,
     bob,
     charlie,
-    bobRegistration,
-    charlieRegistration,
-    charlieRegistrationRace2,
-    charlieRegistrationSebring,
-    pastAliceRegistration,
-    pastBobRegistration,
-    pastCharlieRegistration
-  )
+    david,
+    emma,
+    frank,
+    grace,
+    henry,
+  })
 }
 
 main()
