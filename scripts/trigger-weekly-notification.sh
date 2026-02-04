@@ -1,7 +1,7 @@
 #!/bin/bash
 # Trigger the weekly notification endpoint on localhost for testing
 
-set -e
+set -eo pipefail
 
 # Load CRON_SECRET from .env file
 if [ -f .env ]; then

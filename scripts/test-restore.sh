@@ -6,7 +6,7 @@
 # 3. Calling the restore script to restore to the temp database
 # 4. Reporting success/failure
 
-set -e
+set -eo pipefail
 
 # Load environment variables from mounted secrets (Cloud Run) or local .env
 if [ -f /secrets/.env ]; then

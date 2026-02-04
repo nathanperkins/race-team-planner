@@ -1,5 +1,5 @@
 #!/bin/sh
-set -e
+set -eo pipefail
 
 # Load secrets from mounted file if it exists
 if [ -f /secrets/.env ]; then

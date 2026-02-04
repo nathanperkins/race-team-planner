@@ -7,7 +7,7 @@
 #   BACKUP_ENCRYPTION_KEY - GPG passphrase for decryption
 #   DATABASE_URL or DIRECT_URL - Database connection string
 
-set -e
+set -eo pipefail
 
 # Load environment variables from mounted secrets (Cloud Run) or local .env
 if [ -f /secrets/.env ]; then

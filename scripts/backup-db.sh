@@ -2,7 +2,7 @@
 # Database backup script for Supabase PostgreSQL
 # This script creates an encrypted pg_dump backup and uploads it to GCS
 
-set -e
+set -eo pipefail
 
 # Load environment variables from mounted secrets (Cloud Run) or local .env
 if [ -f /secrets/.env ]; then
