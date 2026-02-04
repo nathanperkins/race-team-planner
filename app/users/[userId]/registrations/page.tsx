@@ -79,12 +79,15 @@ export default async function UserRegistrationsPage({ params }: Props) {
               <tbody>
                 {registrations.map((reg) => (
                   <tr key={reg.id} className={styles.tr}>
-                    <td className={styles.td}>
-                      <Link href={`/events/${reg.race.eventId}`} className={styles.eventName}>
+                    <td className={`${styles.td} ${styles.eventCell}`} data-label="Event">
+                      <Link
+                        href={`/events?eventId=${reg.race.eventId}`}
+                        className={styles.eventName}
+                      >
                         {reg.race.event.name}
                       </Link>
                     </td>
-                    <td className={styles.td}>
+                    <td className={styles.td} data-label="Race Time">
                       <EditableRaceTime
                         registrationId={reg.id}
                         currentRaceId={reg.raceId}
@@ -98,8 +101,10 @@ export default async function UserRegistrationsPage({ params }: Props) {
                         }
                       />
                     </td>
-                    <td className={styles.td}>{reg.race.event.track}</td>
-                    <td className={styles.td}>
+                    <td className={styles.td} data-label="Track">
+                      {reg.race.event.track}
+                    </td>
+                    <td className={styles.td} data-label="Car Class">
                       <EditableCarClass
                         registrationId={reg.id}
                         currentCarClassId={reg.carClassId}
@@ -113,7 +118,7 @@ export default async function UserRegistrationsPage({ params }: Props) {
                       />
                     </td>
                     {(userId === session.user?.id || session.user?.role === 'ADMIN') && (
-                      <td className={styles.td}>
+                      <td className={styles.td} data-label="Actions">
                         {new Date() > reg.race.endTime ? (
                           <span className={styles.completedText}>Completed</span>
                         ) : (

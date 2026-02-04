@@ -34,6 +34,15 @@ export default function EditableRaceTime({
   readOnly = false,
   variant = 'table', // Default to table since it was the original use case
 }: Props) {
+  const dateOnlyFormat: Intl.DateTimeFormatOptions = {
+    month: 'numeric',
+    day: 'numeric',
+  }
+
+  const timeOnlyFormat: Intl.DateTimeFormatOptions = {
+    hour: 'numeric',
+    minute: '2-digit',
+  }
   const [isOpen, setIsOpen] = useState(false)
   const [pendingLabel, setPendingLabel] = useState<string | null>(null)
   const [state, formAction, isPending] = useActionState(updateRegistrationRaceTime, initialState)
@@ -82,15 +91,14 @@ export default function EditableRaceTime({
     if (!registrationId) return
 
     // Create a readable label for the alert
-    const label = startTime.toLocaleString(undefined, {
-      month: 'numeric',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-      timeZoneName: 'short',
-    })
+    const label = `${startTime.toLocaleDateString(undefined, dateOnlyFormat)} • ${startTime.toLocaleTimeString(
+      undefined,
+      {
+        ...timeOnlyFormat,
+        hour12: true,
+        timeZoneName: 'short',
+      }
+    )}`
     setPendingLabel(label)
 
     const formData = new FormData()
@@ -106,7 +114,10 @@ export default function EditableRaceTime({
   if (readOnly || !registrationId || !availableRaces || availableRaces.length <= 1) {
     return (
       <div className={containerClassName}>
-        <FormattedDate date={currentRaceStartTime} className={styles.displayOnly} />
+        <span className={styles.displayOnly}>
+          <FormattedDate date={currentRaceStartTime} format={dateOnlyFormat} hideTimezone /> •{' '}
+          <FormattedDate date={currentRaceStartTime} format={timeOnlyFormat} />
+        </span>
       </div>
     )
   }
@@ -119,7 +130,8 @@ export default function EditableRaceTime({
         onClick={() => setIsOpen(!isOpen)}
         disabled={isPending}
       >
-        <FormattedDate date={currentRaceStartTime} />{' '}
+        <FormattedDate date={currentRaceStartTime} format={dateOnlyFormat} hideTimezone /> •{' '}
+        <FormattedDate date={currentRaceStartTime} format={timeOnlyFormat} />{' '}
         <ChevronDown size={12} className={styles.chevron} />
       </button>
 
@@ -133,7 +145,8 @@ export default function EditableRaceTime({
               onClick={() => handleSelect(race.id, race.startTime)}
               disabled={isPending}
             >
-              <FormattedDate date={race.startTime} />
+              <FormattedDate date={race.startTime} format={dateOnlyFormat} hideTimezone /> •{' '}
+              <FormattedDate date={race.startTime} format={timeOnlyFormat} />
             </button>
           ))}
         </div>
