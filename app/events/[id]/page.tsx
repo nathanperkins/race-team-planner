@@ -17,6 +17,7 @@ import {
   Car,
 } from 'lucide-react'
 import { getLicenseForId, getLicenseColor, formatDuration } from '@/lib/utils'
+import EditEventButton from '@/app/admin/EditEventButton'
 
 import styles from './event.module.css'
 
@@ -78,6 +79,26 @@ export default async function EventPage({ params }: Props) {
               <ShieldCheck size={16} />
               {license}
             </div>
+            {session.user.role === 'ADMIN' && !event.externalId && (
+              <EditEventButton
+                event={{
+                  id: event.id,
+                  name: event.name,
+                  track: event.track,
+                  trackConfig: event.trackConfig,
+                  description: event.description,
+                  startTime: event.startTime,
+                  endTime: event.endTime,
+                  durationMins: event.durationMins,
+                  licenseGroup: event.licenseGroup,
+                  tempValue: event.tempValue,
+                  tempUnits: event.tempUnits,
+                  relHumidity: event.relHumidity,
+                  skies: event.skies,
+                  precipChance: event.precipChance,
+                }}
+              />
+            )}
           </div>
           <h1 className={styles.eventTitle}>{event.name}</h1>
           <div className={styles.eventSubHeader}>
