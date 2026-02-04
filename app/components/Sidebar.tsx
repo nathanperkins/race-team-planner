@@ -4,17 +4,20 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import styles from './sidebar.module.css'
 import { signOut, useSession } from 'next-auth/react'
+import { Session } from 'next-auth'
 import Image from 'next/image'
 
 import { CURRENT_EXPECTATIONS_VERSION } from '@/lib/config'
 
 interface SidebarProps {
   onLinkClick?: () => void
+  session?: Session | null
 }
 
-export default function Sidebar({ onLinkClick }: SidebarProps) {
+export default function Sidebar({ onLinkClick, session: propSession }: SidebarProps) {
   const pathname = usePathname()
-  const { data: session } = useSession()
+  const { data: hookSession } = useSession()
+  const session = propSession || hookSession
 
   const isActive = (path: string) => {
     if (path === '/' && pathname === '/') return true

@@ -34,7 +34,7 @@ export default function LayoutWrapper({ children, session, appTitle }: LayoutWra
                   <X size={24} />
                 </button>
               </div>
-              <Sidebar onLinkClick={() => setIsSidebarOpen(false)} />
+              <Sidebar onLinkClick={() => setIsSidebarOpen(false)} session={session} />
             </aside>
 
             {/* Mobile Header */}
