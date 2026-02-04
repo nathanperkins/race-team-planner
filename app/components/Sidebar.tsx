@@ -71,6 +71,16 @@ export default function Sidebar({ onLinkClick }: SidebarProps) {
         >
           My Profile
         </Link>
+
+        {session.user.role === 'ADMIN' && (
+          <Link
+            href="/admin"
+            className={`${styles.link} ${isActive('/admin') ? styles.activeLink : ''}`}
+            onClick={onLinkClick}
+          >
+            Admin Panel
+          </Link>
+        )}
       </nav>
 
       <div className={styles.footer}>

@@ -1,0 +1,45 @@
+.container {
+  min-height: 100vh;
+  padding: 2rem;
+  font-family: var(--font-geist-sans), sans-serif;
+  color: white;
+  background-color: #111827;
+}
+
+.header {
+  margin-bottom: 3rem;
+}
+
+.title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: white;
+  margin: 0;
+}
+
+.section {
+  background: #1f2937;
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.sectionTitle {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: white;
+  margin: 0;
+}
+
+.description {
+  color: #9ca3af;
+  font-size: 0.95rem;
+  margin: 0;
+}
