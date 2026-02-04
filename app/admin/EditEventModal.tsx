@@ -1,8 +1,8 @@
 'use client'
 
-import { X } from 'lucide-react'
-import { useActionState, useEffect, useRef } from 'react'
-import { updateCustomEvent } from './actions'
+import { X, Trash2 } from 'lucide-react'
+import { useActionState, useEffect, useRef, useState } from 'react'
+import { updateCustomEvent, deleteCustomEvent } from './actions'
 import styles from './AddEventModal.module.css'
 
 interface EventData {
@@ -20,6 +20,7 @@ interface EventData {
   relHumidity?: number | null
   skies?: number | null
   precipChance?: number | null
+  carClasses?: Array<{ shortName: string }>
 }
 
 interface EditEventModalProps {
@@ -29,6 +30,8 @@ interface EditEventModalProps {
 
 export default function EditEventModal({ onClose, event }: EditEventModalProps) {
   const [state, formAction, pending] = useActionState(updateCustomEvent, { message: '' })
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
   const modalRef = useRef<HTMLDivElement>(null)
 
   // Close on successful submission
@@ -54,6 +57,24 @@ export default function EditEventModal({ onClose, event }: EditEventModalProps) 
     const offset = d.getTimezoneOffset()
     const local = new Date(d.getTime() - offset * 60 * 1000)
     return local.toISOString().slice(0, 16)
+  }
+
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
+      return
+    }
+
+    setIsDeleting(true)
+    setDeleteError('')
+
+    const result = await deleteCustomEvent(event.id)
+
+    if (result.success) {
+      onClose()
+    } else {
+      setDeleteError(result.message)
+      setIsDeleting(false)
+    }
   }
 
   return (
@@ -110,6 +131,24 @@ export default function EditEventModal({ onClose, event }: EditEventModalProps) 
               className={styles.input}
               placeholder="e.g., Grand Prix, Road Course (optional)"
               defaultValue={event.trackConfig || ''}
+            />
+          </div>
+
+          <div className={styles.field}>
+            <label htmlFor="carClassesInput" className={styles.label}>
+              Car Classes
+            </label>
+            <input
+              type="text"
+              id="carClassesInput"
+              name="carClassesInput"
+              className={styles.input}
+              placeholder="e.g., GTP, LMP2, GT3 (comma-separated, optional)"
+              defaultValue={
+                event.carClasses && event.carClasses.length > 0
+                  ? event.carClasses.map((cc) => cc.shortName).join(', ')
+                  : ''
+              }
             />
           </div>
 
@@ -270,15 +309,27 @@ export default function EditEventModal({ onClose, event }: EditEventModalProps) 
             <div className={styles.error}>{state.message}</div>
           )}
 
+          {deleteError && <div className={styles.error}>{deleteError}</div>}
+
           {state.message === 'Success' && (
             <div className={styles.success}>Event updated successfully!</div>
           )}
 
           <div className={styles.actions}>
+            <button
+              type="button"
+              className={styles.deleteButton}
+              onClick={handleDelete}
+              disabled={isDeleting || pending}
+            >
+              <Trash2 size={16} />
+              {isDeleting ? 'Deleting...' : 'Delete Event'}
+            </button>
+            <div style={{ flex: 1 }} />
             <button type="button" className={styles.cancelButton} onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" className={styles.submitButton} disabled={pending}>
+            <button type="submit" className={styles.submitButton} disabled={pending || isDeleting}>
               {pending ? 'Updating...' : 'Update Event'}
             </button>
           </div>

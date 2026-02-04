@@ -20,6 +20,7 @@ interface EventData {
   relHumidity?: number | null
   skies?: number | null
   precipChance?: number | null
+  carClasses?: Array<{ shortName: string }>
 }
 
 interface EditEventButtonProps {

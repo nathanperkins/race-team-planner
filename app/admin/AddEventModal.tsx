@@ -12,10 +12,14 @@ interface AddEventModalProps {
 export default function AddEventModal({ onClose }: AddEventModalProps) {
   const [state, formAction, pending] = useActionState(createCustomEvent, { message: '' })
   const modalRef = useRef<HTMLDivElement>(null)
+  const formRef = useRef<HTMLFormElement>(null)
 
   // Close on successful submission
   useEffect(() => {
     if (state.message === 'Success') {
+      if (formRef.current) {
+        formRef.current.reset()
+      }
       setTimeout(() => onClose(), 500)
     }
   }, [state.message, onClose])
@@ -37,7 +41,7 @@ export default function AddEventModal({ onClose }: AddEventModalProps) {
           </button>
         </div>
 
-        <form action={formAction} className={styles.form}>
+        <form action={formAction} className={styles.form} ref={formRef}>
           <div className={styles.field}>
             <label htmlFor="name" className={styles.label}>
               Event Name *
@@ -209,6 +213,19 @@ export default function AddEventModal({ onClose }: AddEventModalProps) {
                 max="100"
               />
             </div>
+          </div>
+
+          <div className={styles.field}>
+            <label htmlFor="carClassesInput" className={styles.label}>
+              Car Classes
+            </label>
+            <input
+              type="text"
+              id="carClassesInput"
+              name="carClassesInput"
+              className={styles.input}
+              placeholder="e.g., GTP, LMP2, GT3 (comma-separated, optional)"
+            />
           </div>
 
           {state.message && state.message !== 'Success' && (

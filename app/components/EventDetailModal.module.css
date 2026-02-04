@@ -1,0 +1,323 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.modal {
+  background: linear-gradient(180deg, rgba(19, 36, 58, 0.96), rgba(15, 27, 46, 0.96));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 900px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+  position: relative;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent);
+}
+
+.headerTop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: rgba(147, 197, 253, 0.9);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.eventMetaHeader {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+  font-size: 24px;
+  color: rgba(234, 240, 255, 0.5);
+  font-weight: 600;
+}
+
+.licenseBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 13px;
+  border: 2px solid;
+}
+
+.closeButton {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: rgba(234, 240, 255, 0.7);
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  transition: all 0.2s;
+}
+
+.closeButton:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.content {
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.eventTitle {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: white;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.trackName {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.25rem;
+  font-weight: 650;
+  color: rgba(234, 240, 255, 0.95);
+  margin-top: 0.5rem;
+}
+
+.eventMeta {
+  font-size: 0.875rem;
+  color: rgba(234, 240, 255, 0.5);
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+
+.titleWithLicense {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.titleRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.titleWithBadge {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.licenseBadgeInline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 13px;
+  border: 2px solid;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.pillsContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(8, 14, 24, 0.4);
+  color: rgba(234, 240, 255, 0.78);
+  font-weight: 650;
+  font-size: 12px;
+}
+
+.eventSubHeader {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  color: rgba(234, 240, 255, 0.8);
+  font-size: 14px;
+}
+
+.headerItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.carClassSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sectionLabel {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: rgba(234, 240, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0;
+}
+
+.carClassList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.carClassTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(234, 240, 255, 0.9);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.description {
+  color: rgba(234, 240, 255, 0.75);
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.statsBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.statsItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.statsIcon {
+  color: rgba(147, 197, 253, 0.8);
+  flex-shrink: 0;
+}
+
+.statsLabel {
+  display: block;
+  font-size: 11px;
+  color: rgba(234, 240, 255, 0.5);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.statsValue {
+  display: block;
+  font-size: 15px;
+  color: white;
+  font-weight: 650;
+}
+
+.racesSection {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.sectionTitle {
+  font-size: 1.25rem;
+  font-weight: 650;
+  color: white;
+  margin: 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Scrollbar Styling */
+.modal::-webkit-scrollbar {
+  width: 10px;
+}
+
+.modal::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.modal::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@media (max-width: 768px) {
+  .backdrop {
+    align-items: flex-start;
+    padding-top: 50px;
+  }
+
+  .modal {
+    max-width: 100%;
+    max-height: calc(100vh - 50px);
+    border-radius: 0;
+  }
+
+  .content {
+    padding: 1.5rem;
+  }
+
+  .eventTitle {
+    font-size: 1.5rem;
+  }
+
+  .statsBar {
+    flex-direction: column;
+    gap: 1rem;
+  }
+}

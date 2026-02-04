@@ -29,9 +29,16 @@ interface Props {
   userId: string
   isAdmin?: boolean
   carClasses: { id: string; name: string; shortName: string }[]
+  dateFormat?: Intl.DateTimeFormatOptions
 }
 
-export default function RaceDetails({ race, userId, isAdmin = false, carClasses }: Props) {
+export default function RaceDetails({
+  race,
+  userId,
+  isAdmin = false,
+  carClasses,
+  dateFormat,
+}: Props) {
   const now = new Date()
   const isRaceCompleted = now > new Date(race.endTime)
   const isRaceLive = now >= new Date(race.startTime) && now <= new Date(race.endTime)
@@ -42,7 +49,19 @@ export default function RaceDetails({ race, userId, isAdmin = false, carClasses 
     <div className={styles.raceCard}>
       <div className={styles.raceHeader}>
         <h4 className={styles.raceTitle}>
-          Race: <FormattedDate date={race.startTime} />
+          Race:{' '}
+          <FormattedDate
+            date={race.startTime}
+            format={
+              dateFormat || {
+                month: 'numeric',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                timeZoneName: 'short',
+              }
+            }
+          />
         </h4>
         {isRaceLive && (
           <span className={styles.liveBadge}>

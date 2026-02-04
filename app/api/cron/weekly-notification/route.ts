@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
         precipChance: event.precipChance,
         carClasses: Array.from(registeredClasses).sort(),
         registeredUsers: Array.from(registeredUserMap.values()),
-        eventUrl: `${baseUrl}/events/${event.id}`,
+        eventUrl: `${baseUrl}/events?eventId=${event.id}`,
       }
     })
 

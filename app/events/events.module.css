@@ -48,6 +48,13 @@
   align-items: start;
 }
 
+/* When viewport is wide enough for 2+ columns, increase minimum width */
+@media (min-width: 920px) {
+  .weekGrid {
+    grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+  }
+}
+
 @media (max-width: 840px) {
   .eventRow {
     min-height: auto;
@@ -73,19 +80,6 @@
 
 .weekTile.alt {
   background: linear-gradient(180deg, rgba(16, 31, 51, 0.92), rgba(12, 23, 39, 0.9));
-}
-
-.weekTile::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 5px;
-  background: var(--accent, #2d6cdf);
-  opacity: 0.95;
-  border-top-left-radius: 18px;
-  border-bottom-left-radius: 18px;
 }
 
 .weekHeader {
@@ -134,6 +128,7 @@
   font-weight: 600;
   font-size: 11px;
   margin-top: 2px;
+  padding-left: 18px;
 }
 
 .weekBadge {
@@ -198,6 +193,10 @@
   height: var(--event-row-h);
   min-width: 300px;
   max-width: 650px;
+  width: 100%;
+  font-family: inherit;
+  font-size: inherit;
+  text-align: left;
 }
 
 .eventRow:hover {
@@ -356,6 +355,25 @@
   text-overflow: ellipsis;
   flex: 1;
   max-width: 100%;
+}
+
+.racePills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.racePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(234, 240, 255, 0.9);
+  font-weight: 600;
+  font-size: 11px;
 }
 
 .classPill {

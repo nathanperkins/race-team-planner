@@ -83,6 +83,7 @@ model Event {
   track       String
   trackConfig String?    /// e.g., "Grand Prix", "Road Course"
   description String?
+  customCarClasses String[] /// For custom events, user-typed car class names
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
   externalId  String?    @unique

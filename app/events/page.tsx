@@ -1,13 +1,10 @@
 import { auth } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
 import EventFilters from '../components/EventFilters'
 import LastSyncStatus from '@/components/LastSyncStatus'
-import FormattedDate from '@/components/FormattedDate'
+import EventsClient from '../components/EventsClient'
 import { Prisma } from '@prisma/client'
-import type { CSSProperties } from 'react'
-import { getLicenseForId, getLicenseColor, formatDuration, getSeriesNameOnly } from '@/lib/utils'
 
 import styles from './events.module.css'
 
@@ -20,6 +17,7 @@ interface PageProps {
     to?: string
     sort?: string
     name?: string
+    eventId?: string
   }>
 }
 
@@ -42,7 +40,7 @@ type EventWithRaces = Prisma.EventGetPayload<{
       include: {
         registrations: {
           include: {
-            user: { select: { name: true } }
+            user: { select: { name: true; id: true; image: true } }
             carClass: true
           }
         }
@@ -50,15 +48,6 @@ type EventWithRaces = Prisma.EventGetPayload<{
     }
   }
 }>
-
-type RaceWithRegistrations = EventWithRaces['races'][number]
-
-type LicenseStyle = CSSProperties & {
-  ['--licColor']?: string
-  ['--licBorder']?: string
-  ['--licText']?: string
-  ['--licFill']?: string
-}
 
 export default async function EventsPage({ searchParams }: PageProps) {
   const session = await auth()
@@ -174,7 +163,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
           registrations: {
             include: {
               user: {
-                select: { name: true },
+                select: { name: true, id: true, image: true },
               },
               carClass: true,
             },
@@ -267,6 +256,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
       startTime: new Date('2026-01-17T19:00:00Z'),
       endTime: new Date('2026-01-17T21:00:00Z'),
       description: null,
+      customCarClasses: [],
       carClasses: [],
       races: [
         {
@@ -306,182 +296,39 @@ export default async function EventsPage({ searchParams }: PageProps) {
     }
   } catch {}
 
+  // Serialize weeks data for client component (convert Sets to arrays)
+  const serializedWeeks = weeks.map((week) => ({
+    ...week,
+    meta: {
+      events: week.meta.events,
+      tracks: Array.from(week.meta.tracks),
+      classes: Array.from(week.meta.classes),
+    },
+  }))
+
   return (
     <main className={styles.main}>
       <div className={styles.topRow}>
         <div className={styles.titleGroup}>
           <h1>Upcoming Events</h1>
+          <p
+            style={{ margin: '4px 0 0 0', fontSize: '0.875rem', color: 'rgba(234, 240, 255, 0.6)' }}
+          >
+            Times shown in{' '}
+            {new Date().toLocaleString('en-US', { timeZoneName: 'short' }).split(' ').pop()}
+          </p>
           <LastSyncStatus />
         </div>
       </div>
 
       <EventFilters carClasses={carClasses} racers={racers} currentFilters={params} />
 
-      <section className={styles.weekGrid}>
-        {weeks.map((week, idx) => (
-          <div
-            key={week.weekStart.toISOString()}
-            className={`${styles.weekTile} ${idx % 2 ? styles.alt : ''}`}
-          >
-            <div className={styles.weekHeader}>
-              <div className={styles.weekTitle}>
-                <div className={styles.wk}>Week {week.weekNumber}</div>
-                <div className={styles.range}>
-                  <FormattedDate
-                    date={week.weekStart}
-                    format={{ month: 'short', day: 'numeric' }}
-                    hideTimezone
-                  />{' '}
-                  –{' '}
-                  <FormattedDate
-                    date={week.weekEnd}
-                    format={{ month: 'short', day: 'numeric', year: 'numeric' }}
-                    hideTimezone
-                  />
-                </div>
-                <div className={styles.meta}>
-                  {week.meta.events} events • {week.meta.tracks.size} tracks
-                </div>
-              </div>
-              <div className={styles.weekBadge}>
-                <div className={styles.pill}>W{week.weekNumber}</div>
-              </div>
-            </div>
-
-            <div className={styles.weekBody}>
-              {week.events.map((event) => {
-                const totalRegistrations = event.races.reduce(
-                  (sum: number, race: RaceWithRegistrations) => sum + race.registrations.length,
-                  0
-                )
-                const license = getLicenseForId(event.id, event.licenseGroup)
-                const licenseStyle: LicenseStyle = {
-                  ['--licColor']: getLicenseColor(license),
-                }
-
-                return (
-                  <Link
-                    key={event.id}
-                    href={`/events/${event.id}`}
-                    className={styles.eventRow}
-                    style={licenseStyle}
-                  >
-                    <div className={styles.eventLeft}>
-                      <div className={styles.eventTopLine}>
-                        <div className={styles.eventName} title={event.name}>
-                          {getSeriesNameOnly(event.name)}
-                        </div>
-                        {event.durationMins && (
-                          <span className={styles.durationPill}>
-                            ⏱️ {formatDuration(event.durationMins)}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className={styles.eventTrack}>
-                        <span className={styles.trackDot}></span>
-                        <span>{event.track}</span>
-                        <div className={styles.weatherList}>
-                          {event.tempValue !== null && (
-                            <div className={styles.weatherBadge} title="Temperature">
-                              <span className={styles.weatherIcon}>
-                                {event.tempUnits === 1 ? '🌡️' : '☀️'}
-                              </span>
-                              {event.tempValue}°{event.tempUnits === 0 ? 'F' : 'C'}
-                            </div>
-                          )}
-                          {event.precipChance !== null && (
-                            <div className={styles.weatherBadge} title="Rain Chance">
-                              <span className={styles.weatherIcon}>🌧️</span>
-                              {event.precipChance}%
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className={styles.trackConfig}>
-                        {event.trackConfig ? `- ${event.trackConfig}` : '\u00A0'}
-                      </div>
-
-                      <div className={styles.subRow}>
-                        <div className={styles.eventTimes}>
-                          {event.races.map((race, raceIdx) => (
-                            <span key={race.id}>
-                              <FormattedDate
-                                date={race.startTime}
-                                format={{ month: 'numeric', day: 'numeric' }}
-                                hideTimezone
-                              />
-                              {' • '}
-                              <FormattedDate
-                                date={race.startTime}
-                                format={{ hour: 'numeric', minute: '2-digit' }}
-                              />
-                              {raceIdx < event.races.length - 1 && ', '}
-                            </span>
-                          ))}
-                        </div>
-                        <div className={styles.classPills}>
-                          {event.carClasses
-                            .map((carClass) => carClass.shortName)
-                            .filter(Boolean)
-                            .slice(0, 3)
-                            .map((carClass) => (
-                              <div key={carClass} className={styles.classPill}>
-                                {carClass}
-                              </div>
-                            ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className={styles.eventRight}>
-                      <div
-                        className={styles.licenseBadge}
-                        title={`License ${license}`}
-                        style={{
-                          borderColor: getLicenseColor(license),
-                          color: getLicenseColor(license),
-                          backgroundColor: `${getLicenseColor(license)}30`,
-                        }}
-                      >
-                        {license}
-                      </div>
-                      <div className={styles.driverPillContainer}>
-                        <div className={styles.driverPill}>👤 {totalRegistrations}</div>
-                        {totalRegistrations > 0 && (
-                          <div className={styles.signupTooltip}>
-                            {Array.from(
-                              event.races
-                                .flatMap((r: RaceWithRegistrations) => r.registrations)
-                                .reduce((map, reg) => {
-                                  const className = reg.carClass.name
-                                  if (!map.has(className)) map.set(className, [])
-                                  map.get(className)!.push(reg.user.name || 'Anonymous')
-                                  return map
-                                }, new Map<string, string[]>())
-                                .entries()
-                            ).map(([className, drivers]) => (
-                              <div key={className} className={styles.tooltipClassGroup}>
-                                <div className={styles.tooltipClassName}>{className}</div>
-                                <div className={styles.tooltipDrivers}>{drivers.join(', ')}</div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </Link>
-                )
-              })}
-            </div>
-
-            <div className={styles.weekFooter}>
-              <span>Tip: click an event row to view details</span>
-            </div>
-          </div>
-        ))}
-      </section>
+      <EventsClient
+        weeks={serializedWeeks}
+        isAdmin={session.user.role === 'ADMIN'}
+        userId={session.user.id}
+        initialEventId={params.eventId}
+      />
     </main>
   )
 }

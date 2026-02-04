@@ -115,7 +115,7 @@ export async function registerForRace(prevState: State, formData: FormData) {
           eventName: registrationData.race.event.name,
           raceStartTime: registrationData.race.startTime,
           carClassName: registrationData.carClass.name,
-          eventUrl: `${baseUrl}/events/${registrationData.race.event.id}`,
+          eventUrl: `${baseUrl}/events?eventId=${registrationData.race.event.id}`,
           discordUser: discordAccount?.providerAccountId
             ? {
                 id: discordAccount.providerAccountId,

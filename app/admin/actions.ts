@@ -28,6 +28,7 @@ export async function createCustomEvent(prevState: State, formData: FormData): P
     const relHumidity = formData.get('relHumidity') as string
     const skies = formData.get('skies') as string
     const precipChance = formData.get('precipChance') as string
+    const carClassesInput = formData.get('carClassesInput') as string
 
     if (!name || !track || !startTime) {
       return { message: 'Name, track, and start time are required.' }
@@ -43,38 +44,103 @@ export async function createCustomEvent(prevState: State, formData: FormData): P
     const duration = durationMins ? parseInt(durationMins) : 60
     const endDate = new Date(startDate.getTime() + duration * 60000)
 
-    // Create the event with a single race
-    await prisma.event.create({
-      data: {
-        name,
-        track,
-        trackConfig: trackConfig || null,
-        description: description || null,
-        startTime: startDate,
-        endTime: endDate,
-        durationMins: durationMins ? parseInt(durationMins) : null,
-        licenseGroup: licenseGroup ? parseInt(licenseGroup) : null,
-        tempValue: tempValue ? parseInt(tempValue) : null,
-        tempUnits: tempUnits ? parseInt(tempUnits) : null,
-        relHumidity: relHumidity ? parseInt(relHumidity) : null,
-        skies: skies ? parseInt(skies) : null,
-        precipChance: precipChance ? parseInt(precipChance) : null,
-        races: {
-          create: {
-            startTime: startDate,
-            endTime: endDate,
-          },
+    // Parse car classes from comma-separated input
+    const customCarClasses = carClassesInput
+      ? carClassesInput
+          .split(',')
+          .map((cc) => cc.trim())
+          .filter((cc) => cc.length > 0)
+      : []
+
+    // Create or find car class records for custom classes
+    const carClassConnections: { id: string }[] = []
+
+    // Use a transaction to handle car class creation atomically
+    await prisma.$transaction(async (tx) => {
+      for (const className of customCarClasses) {
+        // Try to find existing car class with this shortName
+        let carClass = await tx.carClass.findFirst({
+          where: { shortName: className },
+        })
+
+        // If not found, create a new one
+        if (!carClass) {
+          try {
+            // Find the next available negative externalId for custom classes
+            const lastCustomClass = await tx.carClass.findFirst({
+              where: { externalId: { lt: 0 } },
+              orderBy: { externalId: 'asc' },
+            })
+            const nextExternalId = lastCustomClass ? lastCustomClass.externalId - 1 : -1
+
+            carClass = await tx.carClass.create({
+              data: {
+                name: className,
+                shortName: className,
+                externalId: nextExternalId,
+              },
+            })
+          } catch (error: unknown) {
+            // If there's a unique constraint error, try to find the class again
+            const dbError = error as { code?: string }
+            if (dbError.code === 'P2002') {
+              carClass = await tx.carClass.findFirst({
+                where: { shortName: className },
+              })
+              if (!carClass) throw error
+            } else {
+              throw error
+            }
+          }
+        }
+        if (carClass) {
+          carClassConnections.push({ id: carClass.id })
+        }
+      }
+    })
+
+    // Create the event with a single race and custom car classes
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const eventData: any = {
+      name,
+      track,
+      trackConfig: trackConfig || null,
+      description: description || null,
+      startTime: startDate,
+      endTime: endDate,
+      durationMins: durationMins ? parseInt(durationMins) : null,
+      licenseGroup: licenseGroup ? parseInt(licenseGroup) : null,
+      tempValue: tempValue ? parseInt(tempValue) : null,
+      tempUnits: tempUnits ? parseInt(tempUnits) : null,
+      relHumidity: relHumidity ? parseInt(relHumidity) : null,
+      skies: skies ? parseInt(skies) : null,
+      precipChance: precipChance ? parseInt(precipChance) : null,
+      races: {
+        create: {
+          startTime: startDate,
+          endTime: endDate,
         },
       },
-    })
+    }
+
+    // Only add carClasses connection if there are classes to connect
+    if (carClassConnections.length > 0) {
+      eventData.carClasses = {
+        connect: carClassConnections,
+      }
+    }
+
+    await prisma.event.create({ data: eventData })
 
     revalidatePath('/events')
     revalidatePath('/admin')
 
     return { message: 'Success' }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error creating custom event:', error)
-    return { message: 'Failed to create event. Please try again.' }
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to create event. Please try again.'
+    return { message: `Error: ${errorMessage}` }
   }
 }
 
@@ -101,6 +167,7 @@ export async function updateCustomEvent(prevState: State, formData: FormData): P
     const relHumidity = formData.get('relHumidity') as string
     const skies = formData.get('skies') as string
     const precipChance = formData.get('precipChance') as string
+    const carClassesInput = formData.get('carClassesInput') as string
 
     if (!name || !track || !startTime) {
       return { message: 'Name, track, and start time are required.' }
@@ -127,6 +194,59 @@ export async function updateCustomEvent(prevState: State, formData: FormData): P
     const duration = durationMins ? parseInt(durationMins) : 60
     const endDate = new Date(startDate.getTime() + duration * 60000)
 
+    // Parse car classes from comma-separated input
+    const customCarClasses = carClassesInput
+      ? carClassesInput
+          .split(',')
+          .map((cc) => cc.trim())
+          .filter((cc) => cc.length > 0)
+      : []
+
+    // Create or find car class records for custom classes
+    const carClassConnections: { id: string }[] = []
+
+    // Handle car classes before the main update
+    for (const className of customCarClasses) {
+      // Try to find existing car class with this shortName
+      let carClass = await prisma.carClass.findFirst({
+        where: { shortName: className },
+      })
+
+      // If not found, create a new one
+      if (!carClass) {
+        try {
+          // Find the next available negative externalId for custom classes
+          const lastCustomClass = await prisma.carClass.findFirst({
+            where: { externalId: { lt: 0 } },
+            orderBy: { externalId: 'asc' },
+          })
+          const nextExternalId = lastCustomClass ? lastCustomClass.externalId - 1 : -1
+
+          carClass = await prisma.carClass.create({
+            data: {
+              name: className,
+              shortName: className,
+              externalId: nextExternalId,
+            },
+          })
+        } catch (error: unknown) {
+          // If there's a unique constraint error, try to find the class again
+          const dbError = error as { code?: string }
+          if (dbError.code === 'P2002') {
+            carClass = await prisma.carClass.findFirst({
+              where: { shortName: className },
+            })
+            if (!carClass) throw error
+          } else {
+            throw error
+          }
+        }
+      }
+      if (carClass) {
+        carClassConnections.push({ id: carClass.id })
+      }
+    }
+
     // Update the event
     // Note: We are currently NOT updating the child races automatically to match tricky logic.
     // If the event time changes, the Races might need adjustment.
@@ -134,24 +254,40 @@ export async function updateCustomEvent(prevState: State, formData: FormData): P
     // Let's safe-update: update the event properties.
     // If it's a simple custom event, we probably want to update the single race wrapper too.
 
-    await prisma.$transaction(async (tx) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await prisma.$transaction(async (tx: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const updateData: any = {
+        name,
+        track,
+        trackConfig: trackConfig || null,
+        description: description || null,
+        startTime: startDate,
+        endTime: endDate,
+        durationMins: durationMins ? parseInt(durationMins) : null,
+        licenseGroup: licenseGroup ? parseInt(licenseGroup) : null,
+        tempValue: tempValue ? parseInt(tempValue) : null,
+        tempUnits: tempUnits ? parseInt(tempUnits) : null,
+        relHumidity: relHumidity ? parseInt(relHumidity) : null,
+        skies: skies ? parseInt(skies) : null,
+        precipChance: precipChance ? parseInt(precipChance) : null,
+      }
+
+      // Only update carClasses if there are classes to set
+      if (carClassConnections.length > 0) {
+        updateData.carClasses = {
+          set: carClassConnections,
+        }
+      } else {
+        // If no car classes, disconnect all
+        updateData.carClasses = {
+          set: [],
+        }
+      }
+
       await tx.event.update({
         where: { id: eventId },
-        data: {
-          name,
-          track,
-          trackConfig: trackConfig || null,
-          description: description || null,
-          startTime: startDate,
-          endTime: endDate,
-          durationMins: durationMins ? parseInt(durationMins) : null,
-          licenseGroup: licenseGroup ? parseInt(licenseGroup) : null,
-          tempValue: tempValue ? parseInt(tempValue) : null,
-          tempUnits: tempUnits ? parseInt(tempUnits) : null,
-          relHumidity: relHumidity ? parseInt(relHumidity) : null,
-          skies: skies ? parseInt(skies) : null,
-          precipChance: precipChance ? parseInt(precipChance) : null,
-        },
+        data: updateData,
       })
 
       // Optional: Update associated races if they matched the old event window strictly?
@@ -172,9 +308,50 @@ export async function updateCustomEvent(prevState: State, formData: FormData): P
     revalidatePath('/admin')
 
     return { message: 'Success' }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error updating custom event:', error)
-    return { message: 'Failed to update event. Please try again.' }
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to update event. Please try again.'
+    return { message: `Error: ${errorMessage}` }
+  }
+}
+
+export async function deleteCustomEvent(
+  eventId: string
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const session = await auth()
+
+    if (!session?.user || session.user.role !== 'ADMIN') {
+      return { success: false, message: 'Unauthorized. Admin access required.' }
+    }
+
+    // Verify event is editable (not synced)
+    const existingEvent = await prisma.event.findUnique({
+      where: { id: eventId },
+      select: { externalId: true },
+    })
+
+    if (!existingEvent) return { success: false, message: 'Event not found.' }
+    if (existingEvent.externalId) {
+      return {
+        success: false,
+        message: 'Cannot delete synced events. These are managed automatically.',
+      }
+    }
+
+    // Delete the event (cascade will delete races and registrations)
+    await prisma.event.delete({
+      where: { id: eventId },
+    })
+
+    revalidatePath('/events')
+    revalidatePath('/admin')
+
+    return { success: true, message: 'Event deleted successfully.' }
+  } catch (error) {
+    console.error('Error deleting custom event:', error)
+    return { success: false, message: 'Failed to delete event. Please try again.' }
   }
 }
 
@@ -256,7 +433,7 @@ export async function triggerWeeklyReportAction() {
         precipChance: event.precipChance,
         carClasses: Array.from(registeredClasses).sort(),
         registeredUsers: Array.from(registeredUserMap.values()),
-        eventUrl: `${baseUrl}/events/${event.id}`,
+        eventUrl: `${baseUrl}/events?eventId=${event.id}`,
       }
     })
 
