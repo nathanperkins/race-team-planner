@@ -78,6 +78,10 @@ export async function registerForRace(prevState: State, formData: FormData) {
             select: {
               name: true,
               image: true,
+              accounts: {
+                where: { provider: 'discord' },
+                select: { providerAccountId: true },
+              },
             },
           },
           race: {
@@ -103,6 +107,8 @@ export async function registerForRace(prevState: State, formData: FormData) {
         const { sendRegistrationNotification } = await import('@/lib/discord')
         const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
 
+        const discordAccount = registrationData.user.accounts[0]
+
         await sendRegistrationNotification({
           userName: registrationData.user.name || 'Unknown User',
           userAvatarUrl: registrationData.user.image || undefined,
@@ -110,6 +116,12 @@ export async function registerForRace(prevState: State, formData: FormData) {
           raceStartTime: registrationData.race.startTime,
           carClassName: registrationData.carClass.name,
           eventUrl: `${baseUrl}/events/${registrationData.race.event.id}`,
+          discordUser: discordAccount?.providerAccountId
+            ? {
+                id: discordAccount.providerAccountId,
+                name: registrationData.user.name || 'Unknown',
+              }
+            : undefined,
         })
       }
     } catch (notificationError) {

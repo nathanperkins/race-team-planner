@@ -33,7 +33,15 @@ export async function GET(request: NextRequest) {
           include: {
             registrations: {
               include: {
-                user: { select: { name: true } },
+                user: {
+                  select: {
+                    name: true,
+                    accounts: {
+                      where: { provider: 'discord' },
+                      select: { providerAccountId: true },
+                    },
+                  },
+                },
                 carClass: { select: { name: true } },
               },
             },
@@ -61,14 +69,18 @@ export async function GET(request: NextRequest) {
       // Let's prefer Event.carClasses if available, or fall back to registered classes.
 
       const registeredClasses = new Set<string>()
-      const registeredUsers = new Set<string>()
+      // Map user name to object to deduplicate by name but keep info
+      const registeredUserMap = new Map<string, { name: string; discordId?: string }>()
       const raceTimes: Date[] = []
 
       event.races.forEach((race) => {
         raceTimes.push(race.startTime)
         race.registrations.forEach((reg) => {
           registeredClasses.add(reg.carClass.name)
-          if (reg.user.name) registeredUsers.add(reg.user.name)
+          if (reg.user.name) {
+            const discordId = reg.user.accounts[0]?.providerAccountId
+            registeredUserMap.set(reg.user.name, { name: reg.user.name, discordId })
+          }
         })
       })
 
@@ -84,7 +96,7 @@ export async function GET(request: NextRequest) {
         tempValue: event.tempValue,
         precipChance: event.precipChance,
         carClasses: Array.from(registeredClasses).sort(),
-        registeredUsers: Array.from(registeredUsers).sort(),
+        registeredUsers: Array.from(registeredUserMap.values()),
         eventUrl: `${baseUrl}/events/${event.id}`,
       }
     })

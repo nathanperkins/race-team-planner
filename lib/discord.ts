@@ -201,6 +201,7 @@ interface RegistrationNotificationData {
   raceStartTime: Date
   carClassName: string
   eventUrl: string
+  discordUser?: { id: string; name: string }
 }
 
 interface OnboardingNotificationData {
@@ -209,6 +210,7 @@ interface OnboardingNotificationData {
   iracingCustomerId: string
   iracingName?: string
   profileUrl: string
+  discordUser?: { id: string; name: string }
 }
 
 /**
@@ -244,7 +246,9 @@ export async function sendRegistrationNotification(
       thumbnail?: { url: string }
     } = {
       title: '🏁 New Race Registration',
-      description: `**${data.userName}** has registered for **${data.eventName}**`,
+      description: data.discordUser
+        ? `<@${data.discordUser.id}> has registered for **${data.eventName}**`
+        : `**${data.userName}** has registered for **${data.eventName}**`,
       color: 0x5865f2, // Discord blurple color
       fields: [
         {
@@ -279,6 +283,7 @@ export async function sendRegistrationNotification(
       },
       body: JSON.stringify({
         embeds: [embed],
+        flags: 4096, // Suppress notifications (silent)
       }),
     })
 
@@ -327,7 +332,9 @@ export async function sendOnboardingNotification(
       thumbnail?: { url: string }
     } = {
       title: '👋 New User Onboarded',
-      description: `**${data.userName}** has completed the onboarding process.`,
+      description: data.discordUser
+        ? `<@${data.discordUser.id}> has completed the onboarding process.`
+        : `**${data.userName}** has completed the onboarding process.`,
       color: 0x00ff00, // Green
       fields: [
         {
@@ -365,6 +372,7 @@ export async function sendOnboardingNotification(
       },
       body: JSON.stringify({
         embeds: [embed],
+        flags: 4096, // Suppress notifications (silent)
       }),
     })
 
@@ -393,7 +401,7 @@ interface WeeklyScheduleEvent {
   tempValue?: number | null
   precipChance?: number | null
   carClasses: string[]
-  registeredUsers: string[]
+  registeredUsers: { name: string; discordId?: string }[]
   eventUrl: string
 }
 
@@ -445,8 +453,8 @@ export async function sendWeeklyScheduleNotification(
       const usersList =
         event.registeredUsers.length > 0
           ? event.registeredUsers
-              .sort()
-              .map((u) => `• ${u}`)
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((u) => (u.discordId ? `• <@${u.discordId}>` : `• ${u.name}`))
               .join('\n')
           : '• 👻 _No registrations yet — be the first!_'
 
@@ -488,6 +496,7 @@ export async function sendWeeklyScheduleNotification(
         body: JSON.stringify({
           content: chunk === chunks[0] ? '**Upcoming Races for this Weekend** 🏁' : undefined,
           embeds: chunk,
+          flags: 4096, // Suppress notifications (silent)
         }),
       })
     }

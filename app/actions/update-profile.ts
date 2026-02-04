@@ -41,6 +41,10 @@ export async function updateProfile(formData: FormData) {
         iracingName: true,
         expectationsVersion: true,
         onboardedAnnounced: true,
+        accounts: {
+          where: { provider: 'discord' },
+          select: { providerAccountId: true },
+        },
       },
     })
 
@@ -66,6 +70,12 @@ export async function updateProfile(formData: FormData) {
             iracingCustomerId: updatedUser.iracingCustomerId,
             iracingName: updatedUser.iracingName || undefined,
             profileUrl: `${baseUrl}/roster`,
+            discordUser: updatedUser.accounts[0]?.providerAccountId
+              ? {
+                  id: updatedUser.accounts[0].providerAccountId,
+                  name: updatedUser.name || 'Unknown',
+                }
+              : undefined,
           })
         }
       } catch (notifyError) {
