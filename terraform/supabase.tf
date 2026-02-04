@@ -1,6 +1,6 @@
 resource "supabase_project" "main" {
   organization_id   = var.supabase_organization_id
-  name              = "${var.app_name}"
+  name              = "${var.app_name}-${var.environment}"
   database_password = var.supabase_db_password
   region            = var.supabase_region
 

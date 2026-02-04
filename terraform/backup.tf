@@ -52,6 +52,7 @@ resource "google_storage_bucket_iam_member" "backup_writer" {
 resource "google_cloud_run_v2_job" "db_backup" {
   name     = "${var.app_name}-db-backup"
   location = var.region
+  deletion_protection = false
 
   template {
     task_count = 1
@@ -142,6 +143,7 @@ resource "google_cloud_run_v2_job_iam_member" "db_backup_invoker" {
 resource "google_cloud_run_v2_job" "db_restore" {
   name     = "${var.app_name}-db-restore"
   location = var.region
+  deletion_protection = false
 
   template {
     task_count = 1
@@ -200,6 +202,7 @@ resource "google_cloud_run_v2_job" "db_restore" {
 resource "google_cloud_run_v2_job" "db_restore_test" {
   name     = "${var.app_name}-db-restore-test"
   location = var.region
+  deletion_protection = false
 
   template {
     task_count = 1

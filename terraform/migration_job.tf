@@ -1,6 +1,7 @@
 resource "google_cloud_run_v2_job" "migrate" {
   name     = "${var.app_name}-migrate"
   location = var.region
+  deletion_protection = false
 
   template {
     task_count  = 1
@@ -39,4 +40,6 @@ resource "google_cloud_run_v2_job" "migrate" {
       client_version
     ]
   }
+
+  depends_on = [google_project_service.apis]
 }

@@ -113,6 +113,11 @@ variable "app_name" {
   default     = "iracing-team-planner"
 }
 
+variable "environment" {
+  description = "The environment name (e.g., staging, prod)"
+  type        = string
+}
+
 variable "supabase_region" {
   description = "Supabase Region (e.g. us-west-2)"
   type        = string

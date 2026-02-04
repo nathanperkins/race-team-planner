@@ -269,6 +269,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
       startTime: new Date('2026-01-17T19:00:00Z'),
       endTime: new Date('2026-01-17T21:00:00Z'),
       description: null,
+      carClasses: [],
       races: [
         {
           id: 'mock-race-1',
@@ -409,14 +410,14 @@ export default async function EventsPage({ searchParams }: PageProps) {
                         <div className={styles.eventTimes}>
                           {event.races.map((race, raceIdx) => (
                             <span key={race.id}>
-                              <FormattedDate 
-                                date={race.startTime} 
+                              <FormattedDate
+                                date={race.startTime}
                                 format={{ month: 'numeric', day: 'numeric' }}
                                 hideTimezone
                               />
                               {' • '}
-                              <FormattedDate 
-                                date={race.startTime} 
+                              <FormattedDate
+                                date={race.startTime}
                                 format={{ hour: 'numeric', minute: '2-digit' }}
                               />
                               {raceIdx < event.races.length - 1 && ', '}
