@@ -1,14 +1,19 @@
 # Dockerfile for database tools (backup, restore, test-restore)
 FROM google/cloud-sdk:slim
 
-# Install PostgreSQL (full server for restore testing), client, and gnupg
-RUN apt-get update && apt-get install -y postgresql postgresql-client gnupg && rm -rf /var/lib/apt/lists/*
+# Install PostgreSQL 17 from official repository
+RUN apt-get update && \
+    apt-get install -y curl gnupg lsb-release && \
+    # Add PostgreSQL repository for version 17
+    echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
+    curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg && \
+    # Install PostgreSQL 17 (full server for restore testing) and client
+    apt-get update && \
+    apt-get install -y postgresql-17 postgresql-client-17 && \
+    rm -rf /var/lib/apt/lists/*
 
-# Add PostgreSQL bin to PATH (for initdb, pg_ctl, pg_isready)
-# Find the installed version dynamically
-RUN PG_VERSION=$(ls /usr/lib/postgresql/ | head -1) && \
-    echo "export PATH=/usr/lib/postgresql/${PG_VERSION}/bin:\$PATH" >> /etc/profile.d/postgres.sh
-ENV PATH="/usr/lib/postgresql/15/bin:/usr/lib/postgresql/16/bin:/usr/lib/postgresql/17/bin:$PATH"
+# Add PostgreSQL 17 bin to PATH
+ENV PATH="/usr/lib/postgresql/17/bin:$PATH"
 
 # Copy all database scripts (keep original names)
 COPY scripts/backup-db.sh /scripts/backup-db.sh
