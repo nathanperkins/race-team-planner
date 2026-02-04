@@ -2,6 +2,7 @@
 
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useCallback, useState, useRef, useEffect } from 'react'
+import { Filter, ChevronDown, ChevronUp, X } from 'lucide-react'
 import styles from './EventFilters.module.css'
 
 interface EventFiltersProps {
@@ -23,6 +24,7 @@ export default function EventFilters({ carClasses, racers, currentFilters }: Eve
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const [nameFilter, setNameFilter] = useState(currentFilters.name || '')
+  const [isExpanded, setIsExpanded] = useState(false)
 
   const createQueryString = useCallback(
     (name: string, value: string) => {
@@ -70,200 +72,215 @@ export default function EventFilters({ carClasses, racers, currentFilters }: Eve
     }
   }, [dropdownRef])
 
+  const activeFilterCount = [
+    currentFilters.registrations,
+    currentFilters.carClass,
+    currentFilters.racer,
+    currentFilters.from,
+    currentFilters.to,
+    currentFilters.sort && currentFilters.sort !== 'date' ? currentFilters.sort : null,
+    currentFilters.name,
+  ].filter(Boolean).length
+
   return (
     <div className={styles.filterBar}>
-      <div className={styles.filterGroup}>
-        <label
-          htmlFor="name"
-          className={styles.filterLabel}
-          data-tooltip="Filter by event name or track."
-        >
-          Event / Track
-        </label>
-        <input
-          id="name"
-          type="text"
-          className={styles.filterInput}
-          placeholder="Search events or tracks..."
-          value={nameFilter}
-          onChange={(e) => setNameFilter(e.target.value)}
-        />
-      </div>
+      <button className={styles.mobileToggleButton} onClick={() => setIsExpanded(!isExpanded)}>
+        <div className={styles.mobileToggleButtonLabel}>
+          <Filter size={18} />
+          <span>Filters</span>
+          {activeFilterCount > 0 && <span className={styles.filterBadge}>{activeFilterCount}</span>}
+        </div>
+        {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+      </button>
 
-      <div className={styles.filterGroup}>
-        <label
-          htmlFor="registrations"
-          className={styles.filterLabel}
-          data-tooltip="Show only events with or without active registrations."
-        >
-          Registrations
-        </label>
-        <select
-          id="registrations"
-          className={styles.filterSelect}
-          value={currentFilters.registrations || ''}
-          onChange={(e) => handleFilterChange('registrations', e.target.value)}
-        >
-          <option value="">All Events</option>
-          <option value="any">Any Registrations</option>
-          <option value="mine">My Registrations</option>
-          <option value="none">No Registrations</option>
-        </select>
-      </div>
+      <div className={`${styles.filterContent} ${isExpanded ? styles.isExpanded : ''}`}>
+        <div className={styles.filterGroup}>
+          <label
+            htmlFor="name"
+            className={styles.filterLabel}
+            data-tooltip="Filter by event name or track."
+          >
+            Event / Track
+          </label>
+          <input
+            id="name"
+            type="text"
+            className={styles.filterInput}
+            placeholder="Search events or tracks..."
+            value={nameFilter}
+            onChange={(e) => setNameFilter(e.target.value)}
+          />
+        </div>
 
-      <div className={styles.filterGroup}>
-        <label
-          htmlFor="carClass"
-          className={styles.filterLabel}
-          data-tooltip="Filter by car class (e.g., GT3, LMP2)."
-        >
-          Car Class
-        </label>
-        <select
-          id="carClass"
-          className={styles.filterSelect}
-          value={currentFilters.carClass || ''}
-          onChange={(e) => handleFilterChange('carClass', e.target.value)}
-        >
-          <option value="">All Classes</option>
-          {carClasses.map((cc) => (
-            <option key={cc.id} value={cc.id}>
-              {cc.shortName || cc.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className={styles.filterGroup}>
-        <label
-          htmlFor="racer"
-          className={styles.filterLabel}
-          data-tooltip="Shows events where ALL selected racers are registered."
-        >
-          Racers
-        </label>
-        <div className={styles.relative} ref={dropdownRef}>
-          <button
-            id="racer"
+        <div className={styles.filterGroup}>
+          <label
+            htmlFor="registrations"
+            className={styles.filterLabel}
+            data-tooltip="Show only events with or without active registrations."
+          >
+            Registrations
+          </label>
+          <select
+            id="registrations"
             className={styles.filterSelect}
-            onClick={() => setIsRacerDropdownOpen(!isRacerDropdownOpen)}
-            style={{
-              minWidth: '150px',
-              textAlign: 'left',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
+            value={currentFilters.registrations || ''}
+            onChange={(e) => handleFilterChange('registrations', e.target.value)}
+          >
+            <option value="">All Events</option>
+            <option value="any">Any Registrations</option>
+            <option value="mine">My Registrations</option>
+            <option value="none">No Registrations</option>
+          </select>
+        </div>
+
+        <div className={styles.filterGroup}>
+          <label
+            htmlFor="carClass"
+            className={styles.filterLabel}
+            data-tooltip="Filter by car class (e.g., GT3, LMP2)."
+          >
+            Car Class
+          </label>
+          <select
+            id="carClass"
+            className={styles.filterSelect}
+            value={currentFilters.carClass || ''}
+            onChange={(e) => handleFilterChange('carClass', e.target.value)}
+          >
+            <option value="">All Classes</option>
+            {carClasses.map((cc) => (
+              <option key={cc.id} value={cc.id}>
+                {cc.shortName || cc.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className={styles.filterGroup}>
+          <label
+            htmlFor="racer"
+            className={styles.filterLabel}
+            data-tooltip="Shows events where ALL selected racers are registered."
+          >
+            Racers
+          </label>
+          <div className={styles.relative} ref={dropdownRef}>
+            <button
+              id="racer"
+              className={styles.filterSelect}
+              onClick={() => setIsRacerDropdownOpen(!isRacerDropdownOpen)}
+              style={{
+                minWidth: '150px',
+                textAlign: 'left',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              {currentFilters.racer
+                ? `${currentFilters.racer.split(',').length} Selected`
+                : 'All Racers'}
+              <ChevronDown size={14} style={{ opacity: 0.5 }} />
+            </button>
+
+            {isRacerDropdownOpen && (
+              <div className={styles.multiSelectDropdown}>
+                {racers.map((racer) => {
+                  const selectedRacers = currentFilters.racer ? currentFilters.racer.split(',') : []
+                  const isSelected = selectedRacers.includes(racer.id)
+
+                  return (
+                    <label key={racer.id} className={styles.multiSelectItem}>
+                      <input
+                        type="checkbox"
+                        className={styles.checkbox}
+                        checked={isSelected}
+                        onChange={() => {
+                          let newSelected = [...selectedRacers]
+                          if (isSelected) {
+                            newSelected = newSelected.filter((id) => id !== racer.id)
+                          } else {
+                            newSelected.push(racer.id)
+                          }
+                          handleFilterChange('racer', newSelected.join(','))
+                        }}
+                      />
+                      {racer.name || 'Unknown'}
+                    </label>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className={styles.filterGroup}>
+          <label
+            htmlFor="from"
+            className={styles.filterLabel}
+            data-tooltip="Show events starting on or after this date."
+          >
+            From
+          </label>
+          <input
+            id="from"
+            type="date"
+            className={styles.filterInput}
+            value={currentFilters.from || ''}
+            onChange={(e) => handleFilterChange('from', e.target.value)}
+          />
+        </div>
+
+        <div className={styles.filterGroup}>
+          <label
+            htmlFor="to"
+            className={styles.filterLabel}
+            data-tooltip="Show events starting on or before this date."
+          >
+            To
+          </label>
+          <input
+            id="to"
+            type="date"
+            className={styles.filterInput}
+            value={currentFilters.to || ''}
+            onChange={(e) => handleFilterChange('to', e.target.value)}
+          />
+        </div>
+
+        <div className={styles.filterGroup}>
+          <label
+            htmlFor="sort"
+            className={styles.filterLabel}
+            data-tooltip="Sort events by date, name, or popularity."
+          >
+            Sort By
+          </label>
+          <select
+            id="sort"
+            className={styles.filterSelect}
+            value={currentFilters.sort || 'date'}
+            onChange={(e) => handleFilterChange('sort', e.target.value)}
+          >
+            <option value="date">Date (Earliest)</option>
+            <option value="dateDesc">Date (Latest)</option>
+            <option value="name">Name (A-Z)</option>
+            <option value="registrations">Most Registrations</option>
+          </select>
+        </div>
+
+        {activeFilterCount > 0 && (
+          <button
+            className={styles.clearButton}
+            onClick={() => {
+              setNameFilter('')
+              router.push(pathname)
             }}
           >
-            {currentFilters.racer
-              ? `${currentFilters.racer.split(',').length} Selected`
-              : 'All Racers'}
-            <span style={{ fontSize: '0.75em', marginLeft: '0.5rem' }}>▼</span>
+            <X size={14} /> Clear Filters
           </button>
-
-          {isRacerDropdownOpen && (
-            <div className={styles.multiSelectDropdown}>
-              {racers.map((racer) => {
-                const selectedRacers = currentFilters.racer ? currentFilters.racer.split(',') : []
-                const isSelected = selectedRacers.includes(racer.id)
-
-                return (
-                  <label key={racer.id} className={styles.multiSelectItem}>
-                    <input
-                      type="checkbox"
-                      className={styles.checkbox}
-                      checked={isSelected}
-                      onChange={() => {
-                        let newSelected = [...selectedRacers]
-                        if (isSelected) {
-                          newSelected = newSelected.filter((id) => id !== racer.id)
-                        } else {
-                          newSelected.push(racer.id)
-                        }
-                        handleFilterChange('racer', newSelected.join(','))
-                      }}
-                    />
-                    {racer.name || 'Unknown'}
-                  </label>
-                )
-              })}
-            </div>
-          )}
-        </div>
+        )}
       </div>
-
-      <div className={styles.filterGroup}>
-        <label
-          htmlFor="from"
-          className={styles.filterLabel}
-          data-tooltip="Show events starting on or after this date."
-        >
-          From
-        </label>
-        <input
-          id="from"
-          type="date"
-          className={styles.filterInput}
-          value={currentFilters.from || ''}
-          onChange={(e) => handleFilterChange('from', e.target.value)}
-        />
-      </div>
-
-      <div className={styles.filterGroup}>
-        <label
-          htmlFor="to"
-          className={styles.filterLabel}
-          data-tooltip="Show events starting on or before this date."
-        >
-          To
-        </label>
-        <input
-          id="to"
-          type="date"
-          className={styles.filterInput}
-          value={currentFilters.to || ''}
-          onChange={(e) => handleFilterChange('to', e.target.value)}
-        />
-      </div>
-
-      <div className={styles.filterGroup}>
-        <label
-          htmlFor="sort"
-          className={styles.filterLabel}
-          data-tooltip="Sort events by date, name, or popularity."
-        >
-          Sort By
-        </label>
-        <select
-          id="sort"
-          className={styles.filterSelect}
-          value={currentFilters.sort || 'date'}
-          onChange={(e) => handleFilterChange('sort', e.target.value)}
-        >
-          <option value="date">Date (Earliest)</option>
-          <option value="dateDesc">Date (Latest)</option>
-          <option value="name">Name (A-Z)</option>
-          <option value="registrations">Most Registrations</option>
-        </select>
-      </div>
-
-      {(currentFilters.registrations ||
-        currentFilters.carClass ||
-        currentFilters.racer ||
-        currentFilters.from ||
-        currentFilters.to ||
-        currentFilters.sort ||
-        currentFilters.name) && (
-        <button
-          className={styles.clearButton}
-          onClick={() => {
-            setNameFilter('')
-            router.push(pathname)
-          }}
-        >
-          Clear Filters
-        </button>
-      )}
     </div>
   )
 }
