@@ -7,4 +7,4 @@ export const features = {
   discordMembership: !!process.env.DISCORD_GUILD_ID && !!process.env.DISCORD_BOT_TOKEN,
 } as const
 
-export const appTitle = process.env.APP_TITLE || 'Race Team Planner'
+export const appTitle = process.env.APP_TITLE || 'iRacing Team Planner (dev)'
