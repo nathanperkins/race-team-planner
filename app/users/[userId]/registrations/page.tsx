@@ -2,8 +2,9 @@ import { auth } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
-import FormattedDate from '@/components/FormattedDate'
 import DropRegistrationButton from '@/components/DropRegistrationButton'
+import EditableCarClass from '@/components/EditableCarClass'
+import EditableRaceTime from '@/components/EditableRaceTime'
 
 import styles from './registrations.module.css'
 
@@ -16,6 +17,7 @@ export default async function UserRegistrationsPage({ params }: Props) {
   if (!session) redirect('/login')
 
   const { userId } = await params
+  const isAdmin = session.user?.role === 'ADMIN'
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -32,7 +34,12 @@ export default async function UserRegistrationsPage({ params }: Props) {
     include: {
       race: {
         include: {
-          event: true,
+          event: {
+            include: {
+              carClasses: true,
+              races: true,
+            },
+          },
         },
       },
       carClass: true,
@@ -78,11 +85,32 @@ export default async function UserRegistrationsPage({ params }: Props) {
                       </Link>
                     </td>
                     <td className={styles.td}>
-                      <FormattedDate date={reg.race.startTime} />
+                      <EditableRaceTime
+                        registrationId={reg.id}
+                        currentRaceId={reg.raceId}
+                        currentRaceStartTime={reg.race.startTime}
+                        availableRaces={reg.race.event.races.map((r) => ({
+                          id: r.id,
+                          startTime: r.startTime,
+                        }))}
+                        readOnly={
+                          (!isAdmin && userId !== session.user?.id) || new Date() > reg.race.endTime
+                        }
+                      />
                     </td>
                     <td className={styles.td}>{reg.race.event.track}</td>
                     <td className={styles.td}>
-                      <span className={styles.classBadge}>{reg.carClass.shortName}</span>
+                      <EditableCarClass
+                        registrationId={reg.id}
+                        currentCarClassId={reg.carClassId}
+                        currentCarClassShortName={reg.carClass.shortName}
+                        carClasses={reg.race.event.carClasses}
+                        readOnly={
+                          (!isAdmin && userId !== session.user?.id) || new Date() > reg.race.endTime
+                        }
+                        showLabel={false}
+                        variant="table"
+                      />
                     </td>
                     {(userId === session.user?.id || session.user?.role === 'ADMIN') && (
                       <td className={styles.td}>

@@ -3,6 +3,7 @@ import FormattedDate from './FormattedDate'
 import styles from './RaceDetails.module.css'
 import DropRegistrationButton from './DropRegistrationButton'
 import QuickRegistration from './QuickRegistration'
+import EditableCarClass from './EditableCarClass'
 
 interface RaceWithRegistrations {
   id: string
@@ -70,7 +71,13 @@ export default function RaceDetails({ race, userId, isAdmin = false, carClasses 
                 )}
                 <div>
                   <p className={styles.driverName}>{reg.user.name}</p>
-                  <p className={styles.driverClass}>Class: {reg.carClass.shortName}</p>
+                  <EditableCarClass
+                    registrationId={reg.id}
+                    currentCarClassId={reg.carClass.id}
+                    currentCarClassShortName={reg.carClass.shortName}
+                    carClasses={carClasses}
+                    readOnly={(!isAdmin && reg.userId !== userId) || isRaceCompleted}
+                  />
                 </div>
               </div>
               <div className={styles.driverTimeslot}>

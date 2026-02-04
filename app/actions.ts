@@ -14,6 +14,7 @@ const RegistrationSchema = z.object({
 type State = {
   message: string
   errors?: Record<string, string[]>
+  timestamp?: number
 }
 
 export async function registerForRace(prevState: State, formData: FormData) {
@@ -173,7 +174,7 @@ export async function deleteRegistration(registrationId: string): Promise<void> 
     if (registration.race?.eventId) {
       revalidatePath(`/events/${registration.race.eventId}`)
     }
-    revalidatePath(`/users/${session.user.id}/registrations`)
+    revalidatePath(`/users/${registration.userId}/registrations`)
   } catch (e) {
     console.error('Delete registration error:', e)
     throw new Error('Failed to delete registration')
@@ -182,6 +183,104 @@ export async function deleteRegistration(registrationId: string): Promise<void> 
   // Redirecting throws a NEXT_REDIRECT error which appears as a failure to the
   // client component so we rely on revalidatePath to update the UI on the
   // client.
+}
+
+export async function updateRegistrationCarClass(prevState: State, formData: FormData) {
+  const session = await auth()
+  if (!session || !session.user?.id) {
+    return { message: 'Unauthorized', timestamp: Date.now() }
+  }
+
+  const registrationId = formData.get('registrationId') as string
+  const carClassId = formData.get('carClassId') as string
+
+  if (!registrationId) {
+    return { message: 'Registration ID required', timestamp: Date.now() }
+  }
+
+  try {
+    const registration = await prisma.registration.findUnique({
+      where: { id: registrationId },
+      include: { race: true },
+    })
+
+    if (!registration) return { message: 'Registration not found', timestamp: Date.now() }
+
+    const isAdmin = session.user.role === 'ADMIN'
+    const isOwner = registration.userId === session.user.id
+
+    if (!isAdmin && !isOwner) {
+      return { message: 'Unauthorized', timestamp: Date.now() }
+    }
+
+    if (new Date() > registration.race.endTime) {
+      return { message: 'Cannot update a completed race', timestamp: Date.now() }
+    }
+
+    await prisma.registration.update({
+      where: { id: registrationId },
+      data: { carClassId },
+    })
+
+    revalidatePath(`/events/${registration.race.eventId}`)
+    revalidatePath(`/users/${registration.userId}/registrations`)
+
+    return { message: 'Success', timestamp: Date.now() }
+  } catch (e) {
+    console.error('Update registration error:', e)
+    return { message: 'Failed to update registration', timestamp: Date.now() }
+  }
+}
+
+export async function updateRegistrationRaceTime(prevState: State, formData: FormData) {
+  const session = await auth()
+  if (!session || !session.user?.id) {
+    return { message: 'Unauthorized', timestamp: Date.now() }
+  }
+
+  const registrationId = formData.get('registrationId') as string
+  const raceId = formData.get('raceId') as string
+
+  if (!registrationId || !raceId) {
+    return { message: 'Registration ID and Race ID required', timestamp: Date.now() }
+  }
+
+  try {
+    const registration = await prisma.registration.findUnique({
+      where: { id: registrationId },
+      include: { race: true },
+    })
+
+    if (!registration) return { message: 'Registration not found', timestamp: Date.now() }
+
+    const isAdmin = session.user.role === 'ADMIN'
+    const isOwner = registration.userId === session.user.id
+
+    if (!isAdmin && !isOwner) {
+      return { message: 'Unauthorized', timestamp: Date.now() }
+    }
+
+    if (new Date() > registration.race.endTime) {
+      return { message: 'Cannot update a completed race', timestamp: Date.now() }
+    }
+
+    await prisma.registration.update({
+      where: { id: registrationId },
+      data: { raceId },
+    })
+
+    revalidatePath(`/events/${registration.race.eventId}`)
+    revalidatePath(`/users/${registration.userId}/registrations`)
+
+    return { message: 'Success', timestamp: Date.now() }
+  } catch (e) {
+    console.error('Update race time error:', e)
+    // Handle unique constraint error
+    if (e && typeof e === 'object' && 'code' in e && (e as { code: string }).code === 'P2002') {
+      return { message: 'You are already registered for that race session.', timestamp: Date.now() }
+    }
+    return { message: 'Failed to update race session', timestamp: Date.now() }
+  }
 }
 
 export async function agreeToExpectations() {
