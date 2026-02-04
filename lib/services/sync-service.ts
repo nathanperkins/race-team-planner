@@ -162,7 +162,12 @@ export async function runIRacingSync(source: SyncSource = SyncSource.MANUAL) {
     revalidatePath('/events')
     revalidatePath('/roster')
 
-    return { success: true, count: externalEvents.length }
+    return {
+      success: true,
+      eventsCount: externalEvents.length,
+      carClassesCount: externalCarClasses.length,
+      usersCount: usersToSync.length,
+    }
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     console.error(`[SyncService][${source}] Failed to sync iRacing data:`, error)

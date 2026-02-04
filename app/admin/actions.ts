@@ -77,3 +77,113 @@ export async function createCustomEvent(prevState: State, formData: FormData): P
     return { message: 'Failed to create event. Please try again.' }
   }
 }
+
+export async function triggerWeeklyReportAction() {
+  try {
+    const session = await auth()
+    if (!session?.user || session.user.role !== 'ADMIN') {
+      return { success: false, message: 'Unauthorized' }
+    }
+
+    const startWindow = new Date()
+    const endWindow = new Date()
+    endWindow.setDate(endWindow.getDate() + 7)
+
+    const events = await prisma.event.findMany({
+      where: {
+        startTime: {
+          gte: startWindow,
+          lt: endWindow,
+        },
+      },
+      include: {
+        races: {
+          include: {
+            registrations: {
+              include: {
+                user: {
+                  select: {
+                    name: true,
+                    accounts: {
+                      where: { provider: 'discord' },
+                      select: { providerAccountId: true },
+                    },
+                  },
+                },
+                carClass: { select: { name: true } },
+              },
+            },
+          },
+        },
+        carClasses: true,
+      },
+      orderBy: {
+        startTime: 'asc',
+      },
+    })
+
+    if (events.length === 0) {
+      return { success: true, message: 'No events found for the upcoming 7 days.', count: 0 }
+    }
+
+    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+
+    const formattedEvents = events.map((event) => {
+      const registeredClasses = new Set<string>()
+      const registeredUserMap = new Map<string, { name: string; discordId?: string }>()
+      const raceTimes: Date[] = []
+
+      event.races.forEach((race) => {
+        raceTimes.push(race.startTime)
+        race.registrations.forEach((reg) => {
+          registeredClasses.add(reg.carClass.name)
+          if (reg.user.name) {
+            const discordId = reg.user.accounts[0]?.providerAccountId
+            registeredUserMap.set(reg.user.name, { name: reg.user.name, discordId })
+          }
+        })
+      })
+
+      event.carClasses.forEach((cc) => registeredClasses.add(cc.name))
+
+      return {
+        name: event.name,
+        track: event.track,
+        startTime: event.startTime,
+        endTime: event.endTime,
+        raceTimes: raceTimes,
+        tempValue: event.tempValue,
+        precipChance: event.precipChance,
+        carClasses: Array.from(registeredClasses).sort(),
+        registeredUsers: Array.from(registeredUserMap.values()),
+        eventUrl: `${baseUrl}/events/${event.id}`,
+      }
+    })
+
+    const { sendWeeklyScheduleNotification, verifyNotificationsChannel, verifyGuildAccess } =
+      await import('@/lib/discord')
+    const success = await sendWeeklyScheduleNotification(formattedEvents)
+
+    let locationInfo = ''
+    if (success) {
+      const [channel, guild] = await Promise.all([
+        verifyNotificationsChannel(),
+        verifyGuildAccess(),
+      ])
+      const channelName = channel?.name || 'Unknown Channel'
+      const guildName = guild?.name || 'Unknown Server'
+      locationInfo = `\nSent to #${channelName} in ${guildName}.`
+    }
+
+    return {
+      success,
+      count: events.length,
+      message: success
+        ? `Notification sent successfully!${locationInfo}`
+        : 'Failed to send notification via Discord API.',
+    }
+  } catch (error) {
+    console.error('Error triggering weekly report:', error)
+    return { success: false, message: 'Internal server error' }
+  }
+}

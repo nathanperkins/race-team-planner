@@ -2,6 +2,8 @@ import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import styles from './admin.module.css'
 import AddEventButton from './AddEventButton'
+import SyncButton from '@/app/components/SyncButton'
+import TriggerReportButton from './TriggerReportButton'
 
 export default async function AdminPage() {
   const session = await auth()
@@ -23,6 +25,20 @@ export default async function AdminPage() {
         </div>
         <p className={styles.description}>
           Add custom events to the database or manage existing events.
+        </p>
+      </section>
+
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <h2 className={styles.sectionTitle}>System Operations</h2>
+        </div>
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+          <SyncButton />
+          <TriggerReportButton />
+        </div>
+        <p className={styles.description}>
+          Manually trigger system tasks such as syncing with iRacing or sending Discord
+          notifications.
         </p>
       </section>
     </div>

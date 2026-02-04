@@ -1,43 +1,38 @@
 'use client'
 
 import { useState } from 'react'
-import { syncGlobalDataAction } from '@/app/actions/sync'
-import { Cloud, X } from 'lucide-react'
-import styles from './sync-button.module.css'
+import { triggerWeeklyReportAction } from './actions'
+import { Send, X } from 'lucide-react'
+import styles from './TriggerReportButton.module.css'
 
-export default function SyncButton() {
-  const [isSyncing, setIsSyncing] = useState(false)
+export default function TriggerReportButton() {
+  const [isSending, setIsSending] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [showPopup, setShowPopup] = useState(false)
-  const [status, setStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle')
+  const [status, setStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle')
 
-  const handleSync = async () => {
-    setIsSyncing(true)
+  const handleTrigger = async () => {
+    setIsSending(true)
     setShowPopup(true)
-    setStatus('syncing')
-    setMessage('Syncing events from iRacing...')
+    setStatus('sending')
+    setMessage('Generating and sending weekly report to Discord...')
 
     try {
-      const result = await syncGlobalDataAction()
+      const result = await triggerWeeklyReportAction()
 
       if (result.success) {
         setStatus('success')
-        const details = [
-          `• ${result.eventsCount} events`,
-          `• ${result.carClassesCount} car classes`,
-          `• ${result.usersCount} users`,
-        ].join('\n')
-        setMessage(`Successfully synced:\n${details}`)
+        setMessage(result.message)
       } else {
         setStatus('error')
-        setMessage(`Error: ${'error' in result ? result.error : 'Unknown error'}`)
+        setMessage(`Error: ${result.message}`)
       }
     } catch (error) {
       setStatus('error')
       setMessage(`An unexpected error occurred.`)
       console.error(error)
     } finally {
-      setIsSyncing(false)
+      setIsSending(false)
     }
   }
 
@@ -49,37 +44,37 @@ export default function SyncButton() {
 
   return (
     <>
-      <button onClick={handleSync} disabled={isSyncing} className={styles.syncButton}>
-        <Cloud size={16} />
-        Sync iRacing Events
+      <button onClick={handleTrigger} disabled={isSending} className={styles.triggerButton}>
+        <Send size={16} />
+        Send Weekly Report
       </button>
 
       {showPopup && (
         <div className={styles.overlay}>
           <div className={styles.modal}>
-            {!isSyncing && (
+            {!isSending && (
               <button onClick={closePopup} className={styles.closeButton} aria-label="Close">
                 <X size={20} />
               </button>
             )}
 
             <div className={styles.statusIcon}>
-              {status === 'syncing' && <div className={styles.spinner} />}
+              {status === 'sending' && <div className={styles.spinner} />}
               {status === 'success' && <div>✅</div>}
               {status === 'error' && <div>❌</div>}
             </div>
 
             <h3 className={styles.title}>
-              {status === 'syncing'
-                ? 'Syncing in Progress'
+              {status === 'sending'
+                ? 'Sending in Progress'
                 : status === 'success'
-                  ? 'Sync Complete'
-                  : 'Sync Failed'}
+                  ? 'Sent Successfully'
+                  : 'Sending Failed'}
             </h3>
 
             <p className={styles.message}>{message}</p>
 
-            {!isSyncing && (
+            {!isSending && (
               <button
                 onClick={closePopup}
                 className={`${styles.actionButton} ${

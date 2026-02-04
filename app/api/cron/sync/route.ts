@@ -16,7 +16,9 @@ export async function GET(request: NextRequest) {
   if (result.success) {
     return NextResponse.json({
       message: 'Synchronization successful',
-      count: result.count,
+      eventsCount: result.eventsCount,
+      carClassesCount: result.carClassesCount,
+      usersCount: result.usersCount,
     })
   } else {
     return NextResponse.json(
