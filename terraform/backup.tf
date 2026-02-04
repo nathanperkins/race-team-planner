@@ -36,6 +36,17 @@ resource "google_storage_bucket" "db_backups" {
     }
   }
 
+  # Delete noncurrent versions after 1 days
+  lifecycle_rule {
+    condition {
+      days_since_noncurrent_time = 1
+      with_state                 = "ARCHIVED"
+    }
+    action {
+      type = "Delete"
+    }
+  }
+
   uniform_bucket_level_access = true
 
   depends_on = [google_project_service.apis]
@@ -160,7 +171,7 @@ resource "google_cloud_run_v2_job" "db_restore" {
         # BACKUP_PATH must be provided when executing the job
         env {
           name  = "BACKUP_PATH"
-          value = ""  # Override this when executing
+          value = "OVERRIDE_ME"  # Override this when executing
         }
 
         # Mount secrets for DATABASE_URL and BACKUP_ENCRYPTION_KEY
