@@ -63,7 +63,8 @@ echo "⚠️  Starting database restore..."
 echo "   This will OVERWRITE existing data!"
 echo ""
 
-psql "$DB_URL" < "/tmp/restore.sql"
+# Exit immediately on any error to ensure restore validation works
+psql "$DB_URL" --set ON_ERROR_STOP=1 < "/tmp/restore.sql"
 
 # Show restored data counts for all tables
 echo ""
