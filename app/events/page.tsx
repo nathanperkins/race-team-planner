@@ -281,7 +281,6 @@ export default async function EventsPage({ searchParams }: PageProps) {
           updatedAt: now,
         },
       ],
-      carClasses: [],
       licenseGroup: 3,
       durationMins: null,
       tempValue: null,
