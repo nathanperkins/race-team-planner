@@ -8,14 +8,30 @@
 
 /* 1. Identity Header */
 .eventHeader {
-  padding: 4rem 2rem 2rem;
-  background: #1f2937;
+  padding: 3rem 2rem 1.5rem;
+  /* Reduced bottom padding */
+  background: linear-gradient(to bottom right, #1f2937, #111827);
   border-bottom: 1px solid #374151;
 }
 
-@media (min-width: 640px) {
+@media (min-width: 1024px) {
   .eventHeader {
-    padding: 6rem 5rem 3rem;
+    padding: 4rem 2rem 2rem;
+    /* Reduced bottom padding */
+  }
+}
+
+.headerContainer,
+.statsContainer {
+  max-width: 1000px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .headerContainer,
+  .statsContainer {
+    padding: 0 5rem;
   }
 }
 
@@ -53,19 +69,34 @@
 }
 
 .eventTitle {
-  font-size: 2.25rem;
-  font-weight: 800;
-  margin: 0;
-  line-height: 1.2;
+  font-size: 2.5rem;
+  font-weight: 850;
+  margin: 0.5rem 0;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: #f9fafb;
 }
 
 .eventSubHeader {
   display: flex;
   flex-wrap: wrap;
-  gap: 1.5rem;
+  gap: 1.25rem;
   margin-top: 1rem;
   color: #9ca3af;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.headerDescription {
+  margin-top: 1.25rem;
+  /* Reduced top margin from 2rem */
+  color: #9ca3af;
+  line-height: 1.6;
+  font-size: 1.05rem;
+  max-width: 750px;
+  white-space: pre-wrap;
+  font-style: italic;
+  opacity: 0.9;
 }
 
 .headerItem {
@@ -87,35 +118,39 @@
   gap: 0.5rem;
   background-color: #1f2937;
   color: #e5e7eb;
-  padding: 0.25rem 0.75rem;
-  border-radius: 6px;
-  font-size: 0.8125rem;
-  font-weight: 600;
+  padding: 0.35rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
   border: 1px solid #374151;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
 }
 
 .carClassTag:hover {
   background-color: #374151;
   border-color: #4b5563;
+  transform: translateY(-1px);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
 /* 2. Environment & Stats Bar */
 .statsBar {
-  padding: 1.5rem 2rem;
-  background: #1f2937;
-  border-bottom: 1px solid #374151;
+  padding: 0.875rem 2rem;
+  /* Reduced from 1.25rem */
+  background: #111827;
+  border-bottom: 1px solid #1f2937;
+}
+
+.statsContainer {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 2rem;
-}
-
-@media (min-width: 640px) {
-  .statsBar {
-    padding-left: 5rem;
-    padding-right: 5rem;
-  }
 }
 
 .statsItem {
@@ -153,7 +188,8 @@
 /* 3. Content Grid */
 .mainGrid {
   max-width: 1400px;
-  margin: 3rem auto;
+  margin: 2rem auto 3rem;
+  /* Reduced top margin from 3rem */
   padding: 0 2rem;
   display: grid;
   gap: 3rem;
@@ -161,8 +197,10 @@
 
 @media (min-width: 1024px) {
   .mainGrid {
-    grid-template-columns: 1fr 350px;
+    grid-template-columns: 1fr;
     padding: 0 5rem;
+    max-width: 1000px;
+    /* Reduced for better readability in single column */
   }
 }
 
@@ -172,24 +210,11 @@
   gap: 3rem;
 }
 
-.contentCard {
-  background: #1f2937;
-  padding: 2rem;
-  border-radius: 12px;
-  border: 1px solid #374151;
-}
-
 .cardHeading {
   font-size: 1.25rem;
   font-weight: 700;
   margin-bottom: 1rem;
   color: #f3f4f6;
-}
-
-.description {
-  color: #d1d5db;
-  line-height: 1.6;
-  white-space: pre-wrap;
 }
 
 .raceSection {
@@ -211,90 +236,4 @@
   border: 1px dashed #374151;
   border-radius: 12px;
   color: #6b7280;
-}
-
-/* Side Content */
-.sideContent {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.sideCard,
-.sideCardSecondary {
-  background: #1f2937;
-  padding: 1.5rem;
-  border-radius: 12px;
-  border: 1px solid #374151;
-}
-
-.sideCardSecondary {
-  background: transparent;
-  border: 1px solid #1f2937;
-}
-
-.cardTitle {
-  font-size: 1.125rem;
-  font-weight: 700;
-  margin-bottom: 1.25rem;
-}
-
-.cardTitleSmall {
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  color: #6b7280;
-  margin-bottom: 1rem;
-  font-weight: 700;
-}
-
-.eventClosed {
-  text-align: center;
-  padding: 2rem;
-  background: #374151;
-  border-radius: 8px;
-}
-
-.eventClosed p {
-  font-weight: 700;
-  margin-bottom: 0.5rem;
-}
-
-.eventClosed span {
-  font-size: 0.85rem;
-  color: #9ca3af;
-}
-
-.timeInfo {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.timeRow {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.85rem;
-}
-
-.timeRow span:first-child {
-  color: #6b7280;
-}
-
-.timeRow span:last-child {
-  color: #f3f4f6;
-  font-weight: 600;
-}
-
-.statusInfo {
-  background: rgba(255, 255, 255, 0.05);
-  padding: 1rem;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.statusInfo p {
-  margin: 0;
-  font-size: 0.875rem;
-  color: #d1d5db;
-  line-height: 1.5;
 }
