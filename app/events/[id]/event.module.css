@@ -74,6 +74,32 @@
   gap: 0.5rem;
 }
 
+.carClassList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.carClassTag {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: #1f2937;
+  color: #e5e7eb;
+  padding: 0.25rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border: 1px solid #374151;
+  transition: all 0.2s ease;
+}
+
+.carClassTag:hover {
+  background-color: #374151;
+  border-color: #4b5563;
+}
+
 /* 2. Environment & Stats Bar */
 .statsBar {
   padding: 1.5rem 2rem;

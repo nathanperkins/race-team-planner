@@ -14,6 +14,7 @@ import {
   CloudRain,
   MapPin,
   Calendar,
+  Car,
 } from 'lucide-react'
 import { getLicenseForId, getLicenseColor, formatDuration } from '@/lib/utils'
 
@@ -93,6 +94,16 @@ export default async function EventPage({ params }: Props) {
             <FormattedDate date={event.endTime} />
           </span>
         </div>
+
+        {event.carClasses.length > 0 && (
+          <div className={styles.carClassList}>
+            {event.carClasses.map((cc) => (
+              <span key={cc.id} className={styles.carClassTag}>
+                <Car size={14} /> {cc.name}
+              </span>
+            ))}
+          </div>
+        )}
       </header>
 
       {/* 2. Environment & Stats Bar */}
