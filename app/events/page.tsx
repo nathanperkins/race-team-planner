@@ -263,6 +263,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
       externalId: null,
       name: 'Mock Extra Event Week 3 (test)',
       track: 'Test Circuit',
+      trackConfig: null,
       startTime: new Date('2026-01-17T19:00:00Z'),
       endTime: new Date('2026-01-17T21:00:00Z'),
       description: null,
@@ -385,7 +386,10 @@ export default async function EventsPage({ searchParams }: PageProps) {
 
                       <div className={styles.eventTrack}>
                         <span className={styles.trackDot}></span>
-                        <span>{event.track}{event.trackConfig ? ` - ${event.trackConfig}` : ''}</span>
+                        <span>
+                          {event.track}
+                          {event.trackConfig ? ` - ${event.trackConfig}` : ''}
+                        </span>
                       </div>
 
                       <div className={styles.subRow}>

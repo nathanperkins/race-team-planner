@@ -14,19 +14,19 @@ You also need a **Supabase** project for the database.
 
 ## Initial Setup
 
-We have provided a helper script to set up your GCP project and remote state bucket.
+We have provided a helper script to set up your GCP project and remote state bucket for a specific environment (e.g., `staging` or `prod`).
 
 1.  **Run the Setup Script**:
 
     ```bash
-    ./scripts/setup-gcp.sh
+    ./scripts/setup-gcp.sh staging
     ```
 
     Follow the prompts to:
     - Login to Google Cloud.
-    - Select or create a GCP Project.
+    - Select or create a GCP Project for that environment.
     - Enable necessary initial APIs.
-    - Create a GCS bucket to store Terraform state.
+    - Create a GCS bucket to store Terraform state (e.g., `YOUR_PROJECT_ID-tf-state`).
 
     > **Important**: If you created a new project, make sure to [enable billing](https://console.cloud.google.com/billing) for it in the Google Cloud Console.
 
@@ -38,42 +38,41 @@ We have provided a helper script to set up your GCP project and remote state buc
     cd terraform
     ```
 
-2.  **Create your variables file**:
+2.  **Create your variables file for the environment**:
 
     ```bash
-    cp terraform.tfvars.example terraform.tfvars
+    cp terraform.tfvars.example staging.tfvars
     ```
 
-3.  **Update `terraform.tfvars`**:
+3.  **Update `staging.tfvars`**:
     Open the file and fill in the required values:
     - `project_id`: Your GCP Project ID (from step 1).
+    - `region`: The GCP region (defaults to `us-west1`).
     - `supabase_...`: Credentials from your Supabase project settings.
     - `nextauth_secret`: Generate one using `npm run generate-secret`.
     - `discord_...`: Your Discord OAuth credentials.
     - `iracing_...`: Credentials for iRacing Data API.
     - `cron_secret`: A secure random string to authorize automated sync jobs.
 
-4.  **Initialize Terraform**:
-    Use the bucket name created in the setup step (e.g., `YOUR_PROJECT_ID-tf-state`).
-    ```bash
-    terraform init -backend-config="bucket=YOUR_PROJECT_ID-tf-state" -backend-config="prefix=terraform/state"
-    ```
-
 ## Deploying
 
-We have a script that handles this entire pipeline:
+We have a script that handles the entire pipeline (Terraform, Docker build, Migration, and Cloud Run deployment) for a specific environment.
 
 ```bash
-./scripts/deploy.sh
+# Deploys to staging
+./scripts/deploy.sh staging
+
+# Deploys to production
+./scripts/deploy.sh prod
 ```
 
 ### What `deploy.sh` does:
 
-1.  **Builds** the application and migration Docker images.
-2.  **Pushes** these images to Google Artifact Registry.
-3.  **Applies** any pending Terraform infrastructure changes.
-4.  **Updates** the Cloud Run Migration Job with the new image.
-5.  **Executes** the database migration job to ensure your DB schema is up to date.
+1.  **Initializes Terraform** with a unique state prefix for the environment (`terraform/state/ENV`).
+2.  **Applies** Terraform infrastructure changes using the corresponding `.tfvars` file.
+3.  **Builds** the application, migration, and db-tools Docker images.
+4.  **Pushes** these images to Google Artifact Registry.
+5.  **Updates** and **Executes** the Cloud Run Migration Job.
 6.  **Deploys** the new application revision to Cloud Run.
 
 ## Troubleshooting

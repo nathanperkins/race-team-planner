@@ -105,7 +105,6 @@ variable "cron_secret" {
 variable "region" {
   description = "The GCP region to deploy to"
   type        = string
-  default     = "us-west1"
 }
 
 variable "app_name" {
@@ -117,7 +116,6 @@ variable "app_name" {
 variable "supabase_region" {
   description = "Supabase Region (e.g. us-west-2)"
   type        = string
-  default     = "us-west-2"
 }
 
 variable "nextauth_url" {
@@ -130,7 +128,6 @@ variable "backup_encryption_key" {
   description = "GPG passphrase for encrypting database backups"
   type        = string
   sensitive   = true
-  default     = ""
 }
 
 variable "domain_name" {
