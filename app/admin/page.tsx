@@ -23,9 +23,7 @@ export default async function AdminPage() {
           <h2 className={styles.sectionTitle}>Event Management</h2>
           <AddEventButton />
         </div>
-        <p className={styles.description}>
-          Add custom events to the database or manage existing events.
-        </p>
+        <p className={styles.description}>Add custom events to the database.</p>
       </section>
 
       <section className={styles.section}>
@@ -36,10 +34,7 @@ export default async function AdminPage() {
           <SyncButton />
           <TriggerReportButton />
         </div>
-        <p className={styles.description}>
-          Manually trigger system tasks such as syncing with iRacing or sending Discord
-          notifications.
-        </p>
+        <p className={styles.description}>Manually trigger system tasks.</p>
       </section>
     </div>
   )

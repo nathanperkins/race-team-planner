@@ -2,7 +2,6 @@ import { auth } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import SyncButton from '../components/SyncButton'
 import EventFilters from '../components/EventFilters'
 import LastSyncStatus from '@/components/LastSyncStatus'
 import FormattedDate from '@/components/FormattedDate'
@@ -314,7 +313,6 @@ export default async function EventsPage({ searchParams }: PageProps) {
           <h1>Upcoming Events</h1>
           <LastSyncStatus />
         </div>
-        {session?.user?.role === 'ADMIN' && <SyncButton />}
       </div>
 
       <EventFilters carClasses={carClasses} racers={racers} currentFilters={params} />

@@ -51,7 +51,7 @@ export default function SyncButton() {
     <>
       <button onClick={handleSync} disabled={isSyncing} className={styles.syncButton}>
         <Cloud size={16} />
-        Sync iRacing Events
+        Sync with iRacing
       </button>
 
       {showPopup && (
