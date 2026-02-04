@@ -69,63 +69,6 @@
   color: white;
 }
 
-.confirmWrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.confirmInfo {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background-color: rgba(31, 41, 55, 0.5);
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.375rem;
-  border: 1px solid #374151;
-}
-
-.selectedLabel {
-  font-size: 0.875rem;
-  color: #9ca3af;
-}
-
-.changeButton {
-  background: none;
-  border: none;
-  color: #60a5fa;
-  font-size: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 0;
-  text-decoration: underline;
-}
-
-.changeButton:hover {
-  color: #93c5fd;
-}
-
-.confirmButton {
-  width: 100%;
-  padding: 0.625rem 1rem;
-  background-color: #059669;
-  color: white;
-  border: none;
-  border-radius: 0.5rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.confirmButton:hover:not(:disabled) {
-  background-color: #047857;
-}
-
-.confirmButton:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 .errorMessage {
   margin-top: 0.5rem;
   color: #f87171;
