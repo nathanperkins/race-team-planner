@@ -1,5 +1,5 @@
 .main {
-  padding: 22px 22px 40px;
+  padding: 8px 8px 40px;
 }
 
 .topRow {
@@ -8,6 +8,14 @@
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 12px;
+}
+
+@media (max-width: 640px) {
+  .topRow {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
 }
 
 .topRow h1 {
@@ -23,10 +31,17 @@
   gap: 2px;
 }
 
+@media (max-width: 640px) {
+  .titleGroup {
+    align-items: center;
+    text-align: center;
+  }
+}
+
 /* week grid: fixed tile width, more tiles appear as window grows */
 .weekGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(430px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
   gap: 14px;
   justify-content: start;
   justify-items: stretch;
@@ -181,7 +196,7 @@
   min-height: var(--event-row-h);
   max-height: var(--event-row-h);
   height: var(--event-row-h);
-  min-width: 350px;
+  min-width: 300px;
   max-width: 650px;
 }
 
@@ -330,21 +345,32 @@
 
 .classPills {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex-wrap: nowrap;
+  gap: 0;
   min-width: 0;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  max-width: 100%;
 }
 
 .classPill {
-  display: inline-flex;
-  align-items: center;
-  padding: 5px 10px;
-  border-radius: 999px;
+  display: inline;
   font-weight: 600;
   font-size: 11px;
-  background: rgba(255, 255, 255, 0.12);
   color: rgba(234, 240, 255, 0.9);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.classPill:not(:last-child)::after {
+  content: ', ';
+  margin-right: 4px;
 }
 
 /* Right side: driver count pill + status text (not buttons) */
