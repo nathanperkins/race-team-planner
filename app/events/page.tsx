@@ -38,6 +38,7 @@ interface WeekGroup {
 
 type EventWithRaces = Prisma.EventGetPayload<{
   include: {
+    carClasses: true
     races: {
       include: {
         registrations: {
@@ -169,6 +170,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
   const events: EventWithRaces[] = await prisma.event.findMany({
     where,
     include: {
+      carClasses: true,
       races: {
         include: {
           registrations: {
@@ -422,17 +424,11 @@ export default async function EventsPage({ searchParams }: PageProps) {
                           ))}
                         </div>
                         <div className={styles.classPills}>
-                          {event.races
-                            .flatMap((r: RaceWithRegistrations) =>
-                              r.registrations.map(
-                                (reg: RegistrationWithUser) => reg.carClass.shortName
-                              )
-                            )
-                            .filter(
-                              (cls: string, i: number, arr: string[]) => arr.indexOf(cls) === i
-                            )
+                          {event.carClasses
+                            .map((carClass) => carClass.shortName)
+                            .filter(Boolean)
                             .slice(0, 3)
-                            .map((carClass: string) => (
+                            .map((carClass) => (
                               <div key={carClass} className={styles.classPill}>
                                 {carClass}
                               </div>
