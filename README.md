@@ -82,6 +82,12 @@ will use a mock data set suitable for local development.
     - It is automatically generated when you run `npm run setup-env`.
     - If setting up manually, you can generate one with `openssl rand -base64 32`.
 
+### Branding
+
+- **Application Title**:
+  - Set `APP_TITLE` to customize the application name displayed in the title bar, sidebar, and login page.
+  - Default: `Race Team Planner`
+
 ### Database Backups
 
 Automated encrypted backups are configured in production via Cloud Run Jobs and Cloud Scheduler.

@@ -53,6 +53,7 @@ We have provided a helper script to set up your GCP project and remote state buc
     - `discord_...`: Your Discord OAuth credentials.
     - `iracing_...`: Credentials for iRacing Data API.
     - `cron_secret`: A secure random string to authorize automated sync jobs.
+    - `app_title`: (Optional) Custom application title for branding.
 
 ## Deploying
 

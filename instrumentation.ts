@@ -1,7 +1,7 @@
-import { features } from '@/lib/config'
+import { features, appTitle } from '@/lib/config'
 
 export async function register() {
-  console.log('🚧 iRacing Team Planner Startup 🚧')
+  console.log(`🚧 ${appTitle} Startup 🚧`)
 
   console.log(`[Feature] Discord Auth: ${features.discordAuth ? 'Enabled ✅' : 'Disabled ❌'}`)
   console.log(

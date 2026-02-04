@@ -10,9 +10,10 @@ import styles from './sidebar.module.css'
 interface LayoutWrapperProps {
   children: React.ReactNode
   session: Session | null
+  appTitle: string
 }
 
-export default function LayoutWrapper({ children, session }: LayoutWrapperProps) {
+export default function LayoutWrapper({ children, session, appTitle }: LayoutWrapperProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen)
@@ -24,7 +25,7 @@ export default function LayoutWrapper({ children, session }: LayoutWrapperProps)
           <>
             <aside className={`${styles.sidebar} ${isSidebarOpen ? styles.sidebarOpen : ''}`}>
               <div className={styles.sidebarHeader}>
-                <div className={styles.title}>Race Team Planner</div>
+                <div className={styles.title}>{appTitle}</div>
                 <button
                   className={styles.closeButton}
                   onClick={toggleSidebar}
@@ -45,7 +46,7 @@ export default function LayoutWrapper({ children, session }: LayoutWrapperProps)
               >
                 <Menu size={24} />
               </button>
-              <div className={styles.mobileTitle}>Race Team Planner</div>
+              <div className={styles.mobileTitle}>{appTitle}</div>
             </header>
 
             {/* Overlay for mobile */}

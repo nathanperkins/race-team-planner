@@ -140,3 +140,9 @@ variable "domain_name" {
   type        = string
   default     = ""
 }
+
+variable "app_title" {
+  description = "The title of the application shown in the UI"
+  type        = string
+  default     = "Race Team Planner"
+}

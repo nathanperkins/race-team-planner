@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
 import { auth } from '@/lib/auth'
 import LayoutWrapper from './components/LayoutWrapper'
+import { appTitle } from '@/lib/config'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -15,7 +16,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Race Team Planner',
+  title: appTitle,
   description: 'Race team planning and event management',
 }
 
@@ -29,7 +30,9 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        <LayoutWrapper session={session}>{children}</LayoutWrapper>
+        <LayoutWrapper session={session} appTitle={appTitle}>
+          {children}
+        </LayoutWrapper>
       </body>
     </html>
   )

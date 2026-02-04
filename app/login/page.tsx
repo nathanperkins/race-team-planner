@@ -2,7 +2,7 @@ import DiscordLoginForm from './DiscordLoginForm'
 import MockLoginForm from './MockLoginForm'
 import styles from './login.module.css'
 
-import { features } from '@/lib/config'
+import { features, appTitle } from '@/lib/config'
 
 // Helper component for the separator
 function LoginSeparator() {
@@ -54,14 +54,13 @@ export default async function LoginPage() {
       <header className={styles.header}>
         <Image
           src="/logo.png"
-          alt="iRacing Team Planner Logo"
+          alt={`${appTitle} Logo`}
           width={120}
           height={120}
           className={styles.logo}
           priority
         />
-        <h1 className={styles.appName}>iRacing</h1>
-        <p className={styles.appSubtitle}>Team Planner</p>
+        <h1 className={styles.appName}>{appTitle}</h1>
       </header>
       <div className={styles.card}>
         <h2 className={styles.title}>Sign In</h2>

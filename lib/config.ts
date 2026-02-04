@@ -6,3 +6,5 @@ export const features = {
   iracingSync: !!process.env.IRACING_CLIENT_ID,
   discordMembership: !!process.env.DISCORD_GUILD_ID && !!process.env.DISCORD_BOT_TOKEN,
 } as const
+
+export const appTitle = process.env.APP_TITLE || 'Race Team Planner'

@@ -27,6 +27,7 @@ DISCORD_ADMIN_ROLE_IDS="${var.discord_admin_role_ids}"
 DISCORD_NOTIFICATIONS_CHANNEL_ID="${var.discord_notifications_channel_id}"
 CRON_SECRET="${var.cron_secret}"
 BACKUP_ENCRYPTION_KEY="${var.backup_encryption_key}"
+APP_TITLE="${var.app_title}"
 EOT
 }
 

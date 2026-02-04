@@ -1,4 +1,5 @@
 const DISCORD_API_BASE = 'https://discord.com/api/v10'
+import { appTitle } from './config'
 
 export enum GuildMembershipStatus {
   MEMBER = 'member',
@@ -265,7 +266,7 @@ export async function sendRegistrationNotification(
       url: data.eventUrl,
       timestamp: new Date().toISOString(),
       footer: {
-        text: 'iRacing Team Planner',
+        text: appTitle,
       },
     }
 
@@ -346,7 +347,7 @@ export async function sendOnboardingNotification(
       url: data.profileUrl,
       timestamp: new Date().toISOString(),
       footer: {
-        text: 'iRacing Team Planner',
+        text: appTitle,
       },
     }
 
