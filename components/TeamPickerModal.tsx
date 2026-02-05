@@ -37,6 +37,7 @@ interface Driver {
   originalClass?: string
   originalTime?: Date
   userId?: string
+  originalTeam?: string
 }
 
 interface TeamComposition {
@@ -110,6 +111,7 @@ export default function TeamPickerModal({
         originalClass: reg.carClass.name,
         originalTime: reg.raceStartTime,
         userId: reg.userId, // For deduplication
+        originalTeam: reg.team?.name,
       } as Driver
     })
 
@@ -740,8 +742,10 @@ export default function TeamPickerModal({
                                           weekday: 'short',
                                           hour: 'numeric',
                                           minute: '2-digit',
-                                        })}`
+                                        })}\n`
                                       : ''
+                                  }${
+                                    d.originalTeam ? `⚠️ Will leave team: ${d.originalTeam}` : ''
                                   }`}
                                 >
                                   <AlertTriangle size={12} color="#f59e0b" />
