@@ -75,10 +75,39 @@ export default function TeamPickerModal({
     })
   }, [initialRegistrations])
 
-  // Initialize selection when roster is loaded
+  // Initialize selection and load existing teams
   useEffect(() => {
-    setSelectedDriverIds(new Set(rosterDrivers.map((d) => d.id)))
-  }, [rosterDrivers])
+    // Select all drivers by default
+    const allIds = new Set(rosterDrivers.map((d) => d.id))
+    setSelectedDriverIds(allIds)
+
+    // Group existing assignments into locked teams
+    const existingTeamsMap = new Map<string, TeamComposition>()
+
+    initialRegistrations.forEach((reg) => {
+      if (reg.team?.id) {
+        if (!existingTeamsMap.has(reg.team.id)) {
+          existingTeamsMap.set(reg.team.id, {
+            teamId: reg.team.id,
+            teamName: reg.team.name,
+            drivers: [],
+            locked: true,
+            isGeneric: false,
+          })
+        }
+
+        // Find the driver object from rosterDrivers to ensure consistency
+        const driver = rosterDrivers.find((d) => d.id === reg.id)
+        if (driver) {
+          existingTeamsMap.get(reg.team.id)!.drivers.push(driver)
+        }
+      }
+    })
+
+    if (existingTeamsMap.size > 0) {
+      setResults(Array.from(existingTeamsMap.values()))
+    }
+  }, [rosterDrivers, initialRegistrations])
 
   const allAvailableDrivers = useMemo(
     () => [...rosterDrivers, ...manualDrivers],
