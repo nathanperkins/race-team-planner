@@ -77,6 +77,33 @@ export async function assignRegistrationToTeam(registrationId: string, teamId: s
     throw new Error('Unauthorized')
   }
 
+  // If assigning to a team, verify car class consistency
+  if (teamId) {
+    const currentReg = await prisma.registration.findUnique({
+      where: { id: registrationId },
+      include: { carClass: true },
+    })
+
+    if (!currentReg) throw new Error('Registration not found')
+
+    // Find if anyone else on this team in this race has a different car class
+    const conflictReg = await prisma.registration.findFirst({
+      where: {
+        raceId: currentReg.raceId,
+        teamId: teamId,
+        id: { not: registrationId },
+        carClassId: { not: currentReg.carClassId },
+      },
+      include: { carClass: true },
+    })
+
+    if (conflictReg) {
+      throw new Error(
+        `Team Class Conflict: This team is already running the ${conflictReg.carClass.name} class in this race. All team members must use the same car class.`
+      )
+    }
+  }
+
   const registration = await prisma.registration.update({
     where: { id: registrationId },
     data: { teamId },

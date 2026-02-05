@@ -33,7 +33,7 @@ export default function EditableTeamAssignment({
       await assignRegistrationToTeam(registrationId, newTeamId === 'unassigned' ? null : newTeamId)
     } catch (err) {
       console.error('Failed to assign team:', err)
-      alert('Failed to assign team')
+      alert(err instanceof Error ? err.message : 'Failed to assign team')
     } finally {
       setLoading(false)
     }

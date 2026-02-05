@@ -229,6 +229,26 @@ export async function updateRegistrationCarClass(prevState: State, formData: For
       return { message: 'Cannot update a completed race', timestamp: Date.now() }
     }
 
+    // Verify team car class consistency if assigned to a team
+    if (registration.teamId) {
+      const conflictReg = await prisma.registration.findFirst({
+        where: {
+          raceId: registration.raceId,
+          teamId: registration.teamId,
+          id: { not: registrationId },
+          carClassId: { not: carClassId },
+        },
+        include: { carClass: true },
+      })
+
+      if (conflictReg) {
+        return {
+          message: `Team Class Conflict: Your team is already running the ${conflictReg.carClass.name} class in this race. All team members must use the same car class.`,
+          timestamp: Date.now(),
+        }
+      }
+    }
+
     await prisma.registration.update({
       where: { id: registrationId },
       data: { carClassId },
@@ -260,7 +280,7 @@ export async function updateRegistrationRaceTime(prevState: State, formData: For
   try {
     const registration = await prisma.registration.findUnique({
       where: { id: registrationId },
-      include: { race: true },
+      include: { race: true, carClass: true },
     })
 
     if (!registration) return { message: 'Registration not found', timestamp: Date.now() }
@@ -274,6 +294,26 @@ export async function updateRegistrationRaceTime(prevState: State, formData: For
 
     if (new Date() > registration.race.endTime) {
       return { message: 'Cannot update a completed race', timestamp: Date.now() }
+    }
+
+    // Verify team car class consistency if moving to a new race and assigned to a team
+    if (registration.teamId) {
+      const conflictReg = await prisma.registration.findFirst({
+        where: {
+          raceId: raceId, // the NEW race session
+          teamId: registration.teamId,
+          id: { not: registrationId },
+          carClassId: { not: registration.carClassId },
+        },
+        include: { carClass: true },
+      })
+
+      if (conflictReg) {
+        return {
+          message: `Team Class Conflict: Your team already has drivers in this session running the ${conflictReg.carClass.name} class. You are registered for the ${registration.carClass.name} class.`,
+          timestamp: Date.now(),
+        }
+      }
     }
 
     await prisma.registration.update({
