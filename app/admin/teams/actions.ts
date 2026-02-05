@@ -276,6 +276,33 @@ export async function createTeam(iracingTeamId: number) {
     'Type:',
     typeof teamInfo.teamId
   )
+
+  // Create or connect TeamMembers and their roles
+  const teamMemberOperations = []
+  const roleOperations = []
+
+  for (const member of teamMembers) {
+    // Find or create the TeamMember
+    const teamMember = await prisma.teamMember.upsert({
+      where: { custId: member.custId },
+      create: {
+        custId: member.custId,
+        displayName: member.displayName,
+      },
+      update: {
+        displayName: member.displayName,
+      },
+    })
+
+    teamMemberOperations.push({ id: teamMember.id })
+    roleOperations.push({
+      teamMemberId: teamMember.id,
+      isOwner: member.owner || false,
+      isAdmin: member.admin || false,
+    })
+  }
+
+  // Create the team with team members and roles
   const team = await prisma.team.create({
     data: {
       name: teamInfo.teamName,
@@ -284,12 +311,10 @@ export async function createTeam(iracingTeamId: number) {
         connect: matchingUserIds,
       },
       teamMembers: {
-        create: teamMembers.map((member) => ({
-          custId: member.custId,
-          displayName: member.displayName,
-          isOwner: member.owner || false,
-          isAdmin: member.admin || false,
-        })),
+        connect: teamMemberOperations,
+      },
+      roles: {
+        create: roleOperations,
       },
     },
   })
