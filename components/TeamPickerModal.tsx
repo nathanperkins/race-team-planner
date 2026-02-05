@@ -36,6 +36,7 @@ interface Driver {
     | 'Different Time and Class'
   originalClass?: string
   originalTime?: Date
+  userId?: string
 }
 
 interface TeamComposition {
@@ -82,7 +83,7 @@ export default function TeamPickerModal({
       eventRegistrations ||
       initialRegistrations.map((r) => ({ ...r, raceId: raceId || '', raceStartTime }))
 
-    return source.map((reg) => {
+    const rawDrivers = source.map((reg) => {
       const stats = reg.user.racerStats?.find((s) => s.categoryId === 5) || reg.user.racerStats?.[0]
 
       let category: Driver['category'] = 'Unassigned'
@@ -108,8 +109,44 @@ export default function TeamPickerModal({
         category,
         originalClass: reg.carClass.name,
         originalTime: reg.raceStartTime,
+        userId: reg.userId, // For deduplication
       } as Driver
     })
+
+    // Deduplicate by userId, keeping higher priority category
+    // Priority: Assigned > Unassigned > Different Class > Different Time > Different Time and Class
+    // Actually Assigned/Unassigned are equal top priority (current context)
+    const priorityMap: Record<string, number> = {
+      Assigned: 0,
+      Unassigned: 0,
+      'Different Class': 1,
+      'Different Time': 2,
+      'Different Time and Class': 3,
+    }
+
+    const uniqueDrivers = new Map<string, Driver>()
+
+    rawDrivers.forEach((d) => {
+      // If no userId, can't dedup (shouldn't happen for real users), just add
+      if (!d.userId) {
+        uniqueDrivers.set(d.id, d)
+        return
+      }
+
+      if (!uniqueDrivers.has(d.userId)) {
+        uniqueDrivers.set(d.userId, d)
+      } else {
+        const current = uniqueDrivers.get(d.userId)!
+        const currentPriority = priorityMap[current.category || 'Unassigned']
+        const newPriority = priorityMap[d.category || 'Unassigned']
+
+        if (newPriority < currentPriority) {
+          uniqueDrivers.set(d.userId, d)
+        }
+      }
+    })
+
+    return Array.from(uniqueDrivers.values())
   }, [initialRegistrations, eventRegistrations, raceId, carClassId, raceStartTime])
 
   // Initialize selection and load existing teams
