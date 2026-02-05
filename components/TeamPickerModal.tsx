@@ -56,7 +56,7 @@ export default function TeamPickerModal({
   const [maxDriversPerTeam, setMaxDriversPerTeam] = useState<number>(3)
   const [manualDrivers, setManualDrivers] = useState<Driver[]>([])
   const [newManualName, setNewManualName] = useState('')
-  const [newManualIR, setNewManualIR] = useState('1')
+  const [newManualIR, setNewManualIR] = useState('')
   const [selectedDriverIds, setSelectedDriverIds] = useState<Set<string>>(new Set())
   const [results, setResults] = useState<TeamComposition[]>([])
   const [saving, setSaving] = useState(false)
@@ -133,14 +133,14 @@ export default function TeamPickerModal({
     const newDriver = {
       id,
       name: newManualName.trim(),
-      irating: parseInt(newManualIR) || 1,
+      irating: parseInt(newManualIR) || 1350,
       license: '',
       isManual: true,
     }
     setManualDrivers([...manualDrivers, newDriver])
     setSelectedDriverIds((prev) => new Set([...Array.from(prev), id]))
     setNewManualName('')
-    setNewManualIR('1')
+    setNewManualIR('')
   }
 
   const removeManual = (id: string) => {
@@ -399,7 +399,7 @@ export default function TeamPickerModal({
                 <div className={styles.row}>
                   <input
                     type="number"
-                    placeholder="iR (default 1)"
+                    placeholder="iR (default 1350)"
                     value={newManualIR}
                     onChange={(e) => setNewManualIR(e.target.value)}
                     className={styles.input}
@@ -407,7 +407,7 @@ export default function TeamPickerModal({
                 </div>
                 <button onClick={handleAddManual} className={styles.addButton}>
                   <Plus size={16} />
-                  Add + Select
+                  Add
                 </button>
               </div>
             </div>
