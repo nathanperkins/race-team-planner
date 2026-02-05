@@ -53,7 +53,6 @@ export default function TeamPickerModal({
   onClose,
 }: Props) {
   const [searchQuery, setSearchQuery] = useState('')
-  const [maxDriversPerTeam, setMaxDriversPerTeam] = useState<number>(3)
   const [manualDrivers, setManualDrivers] = useState<Driver[]>([])
   const [newManualName, setNewManualName] = useState('')
   const [newManualIR, setNewManualIR] = useState('')
@@ -153,83 +152,96 @@ export default function TeamPickerModal({
   }
 
   const handleClearResults = () => {
-    setResults([])
+    // Only clear generic/unlocked teams? Or all?
+    // Usually "Clear Results" implies resetting to initial state.
+    // Existing teams were loaded from Props.
+    // Let's reset to just the locked teams?
+    // For now, let's just clear unlocked ones.
+    setResults((prev) => prev.filter((r) => r.locked))
+  }
+
+  const handleAddTeam = () => {
+    const nextNum = results.length + 1
+    const newTeam: TeamComposition = {
+      teamId: `GENERIC-${Date.now()}`,
+      teamName: `Team ${nextNum}`,
+      drivers: [],
+      locked: false,
+      isGeneric: true,
+    }
+    setResults((prev) => [...prev, newTeam])
+  }
+
+  const handleDeleteTeam = (teamId: string) => {
+    setResults((prev) => prev.filter((t) => t.teamId !== teamId))
   }
 
   const calculateBalances = (strategy: 'balanced' | 'random' | 'seeded') => {
-    const drivers = allAvailableDrivers.filter((d) => selectedDriverIds.has(d.id))
-    if (drivers.length === 0) return
+    // 1. Identify Target Teams (Open/Unlocked)
+    const openTeams = results.filter((r) => !r.locked)
 
-    const count = Math.min(teams.length, Math.max(1, Math.ceil(drivers.length / maxDriversPerTeam)))
+    if (openTeams.length === 0) {
+      alert('No open teams available. Please add a team first or unlock an existing one.')
+      return
+    }
 
-    // Get current locked teams and their drivers
-    const lockedComps = results.filter((r) => r.locked)
-    const lockedDriverIds = new Set(lockedComps.flatMap((c) => c.drivers.map((d) => d.id)))
+    // 2. Identify Assignable Drivers
+    // Pool includes:
+    // a) Drivers currently in open teams (since we are re-balancing them)
+    // b) New unassigned drivers who are selected
+    // Effectively: All selected drivers MINUS drivers in locked teams
+    const lockedDriverIds = new Set(
+      results.filter((r) => r.locked).flatMap((r) => r.drivers.map((d) => d.id))
+    )
 
-    // Filter out drivers already in locked teams
-    const assignableDrivers = drivers.filter((d) => !lockedDriverIds.has(d.id))
+    const pool = allAvailableDrivers.filter(
+      (d) => selectedDriverIds.has(d.id) && !lockedDriverIds.has(d.id)
+    )
 
-    // Create compositions list
-    const compositions: TeamComposition[] = []
+    if (pool.length === 0) {
+      alert('No available drivers to balance (check selection or unlock teams).')
+      return
+    }
 
-    // Fill with teams
-    for (let i = 0; i < count; i++) {
-      const existing = results[i]
-      if (existing?.locked && !existing.isGeneric) {
-        compositions.push(existing)
-      } else {
-        compositions.push({
-          teamId: `GENERIC-${i + 1}`,
-          teamName: `Team ${i + 1}`,
-          drivers: [],
-          locked: false,
-          isGeneric: true,
-        })
+    // Clear open teams
+    const newResults = results.map((r) => {
+      if (!r.locked) {
+        return { ...r, drivers: [] }
       }
-    }
+      return r
+    })
 
-    if (compositions.length === 0) {
-      alert('No teams available. Please create teams in the Admin panel first.')
-      return
-    }
-
-    const targetComps = compositions.filter((c) => !c.locked)
-    const targetCount = targetComps.length
-
-    if (targetCount === 0 && assignableDrivers.length > 0) {
-      alert('All teams are locked. Unlock at least one team to redistribute drivers.')
-      return
-    }
+    const targets = newResults.filter((r) => !r.locked)
+    const targetCount = targets.length
 
     if (strategy === 'balanced') {
       // Sort by iRating descending
-      assignableDrivers.sort((a, b) => b.irating - a.irating)
+      pool.sort((a, b) => b.irating - a.irating)
 
       // Snake distribution
-      assignableDrivers.forEach((driver, index) => {
+      pool.forEach((driver, index) => {
         const cycle = Math.floor(index / targetCount)
         const isReversed = cycle % 2 !== 0
         const teamIndex = isReversed ? targetCount - 1 - (index % targetCount) : index % targetCount
-
-        targetComps[teamIndex].drivers.push(driver)
+        targets[teamIndex].drivers.push(driver)
       })
     } else if (strategy === 'random') {
       // Shuffle
-      for (let i = assignableDrivers.length - 1; i > 0; i--) {
+      for (let i = pool.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1))
-        ;[assignableDrivers[i], assignableDrivers[j]] = [assignableDrivers[j], assignableDrivers[i]]
+        ;[pool[i], pool[j]] = [pool[j], pool[i]]
       }
-      assignableDrivers.forEach((driver, index) => {
-        targetComps[index % targetCount].drivers.push(driver)
+      pool.forEach((driver, index) => {
+        targets[index % targetCount].drivers.push(driver)
       })
     } else if (strategy === 'seeded') {
-      assignableDrivers.sort((a, b) => b.irating - a.irating)
-      assignableDrivers.forEach((driver, index) => {
-        targetComps[index % targetCount].drivers.push(driver)
+      pool.sort((a, b) => b.irating - a.irating)
+      pool.forEach((driver, index) => {
+        targets[index % targetCount].drivers.push(driver)
       })
     }
 
-    setResults(compositions)
+    setResults(newResults)
   }
 
   const handleSave = async () => {
@@ -338,14 +350,10 @@ export default function TeamPickerModal({
           </div>
 
           <div className={styles.teamCount}>
-            <span>Max Drivers:</span>
-            <input
-              type="number"
-              min="1"
-              value={maxDriversPerTeam}
-              onChange={(e) => setMaxDriversPerTeam(parseInt(e.target.value) || 1)}
-              className={styles.smallInput}
-            />
+            <button onClick={handleAddTeam} className={styles.secondaryButton}>
+              <Plus size={16} />
+              Add Team
+            </button>
           </div>
 
           <div className={styles.buttonGroup}>
@@ -474,6 +482,17 @@ export default function TeamPickerModal({
                         )}
                         <span className={styles.teamTitle}>{comp.teamName}</span>
                       </div>
+                      <div className={styles.teamActions}>
+                        <button
+                          onClick={() => handleDeleteTeam(comp.teamId)}
+                          className={styles.deleteTeamButton}
+                          title="Delete Team"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                    <div className={styles.teamHeaderStats}>
                       <span className={styles.avgIR}>Avg iR: {getTeamAvgIR(comp.drivers)}</span>
                     </div>
 
