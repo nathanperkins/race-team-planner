@@ -13,6 +13,8 @@ import {
   RefreshCw,
   Users,
   Check,
+  Lock,
+  Unlock,
 } from 'lucide-react'
 import { batchAssignTeams } from '@/app/admin/teams/actions'
 import FormattedDate from './FormattedDate'
@@ -31,6 +33,7 @@ interface TeamComposition {
   teamId: string
   teamName: string
   drivers: Driver[]
+  locked?: boolean
 }
 
 interface Props {
@@ -129,49 +132,69 @@ export default function TeamPickerModal({
 
     const count = Math.min(teams.length, Math.max(1, Math.ceil(drivers.length / maxDriversPerTeam)))
 
-    // Create empty compositions
-    const compositions: TeamComposition[] = teams.slice(0, count).map((t) => ({
-      teamId: t.id,
-      teamName: t.name,
-      drivers: [],
-    }))
+    // Get current locked teams and their drivers
+    const lockedComps = results.filter((r) => r.locked)
+    const lockedDriverIds = new Set(lockedComps.flatMap((c) => c.drivers.map((d) => d.id)))
+
+    // Filter out drivers already in locked teams
+    const assignableDrivers = drivers.filter((d) => !lockedDriverIds.has(d.id))
+
+    // Create compositions list
+    const compositions: TeamComposition[] = []
+
+    // Fill with teams
+    teams.slice(0, count).forEach((t) => {
+      const existing = results.find((r) => r.teamId === t.id)
+      if (existing?.locked) {
+        compositions.push(existing)
+      } else {
+        compositions.push({
+          teamId: t.id,
+          teamName: t.name,
+          drivers: [],
+          locked: false,
+        })
+      }
+    })
 
     if (compositions.length === 0) {
       alert('No teams available. Please create teams in the Admin panel first.')
       return
     }
 
+    const targetComps = compositions.filter((c) => !c.locked)
+    const targetCount = targetComps.length
+
+    if (targetCount === 0 && assignableDrivers.length > 0) {
+      alert('All teams are locked. Unlock at least one team to redistribute drivers.')
+      return
+    }
+
     if (strategy === 'balanced') {
       // Sort by iRating descending
-      drivers.sort((a, b) => b.irating - a.irating)
+      assignableDrivers.sort((a, b) => b.irating - a.irating)
 
       // Snake distribution
-      drivers.forEach((driver, index) => {
-        const cycle = Math.floor(index / count)
+      assignableDrivers.forEach((driver, index) => {
+        const cycle = Math.floor(index / targetCount)
         const isReversed = cycle % 2 !== 0
-        const teamIndex = isReversed ? count - 1 - (index % count) : index % count
+        const teamIndex = isReversed ? targetCount - 1 - (index % targetCount) : index % targetCount
 
-        // Final safety check
-        if (compositions[teamIndex]) {
-          compositions[teamIndex].drivers.push(driver)
-        } else {
-          compositions[index % count].drivers.push(driver)
-        }
+        targetComps[teamIndex].drivers.push(driver)
       })
     } else if (strategy === 'random') {
       // Shuffle
-      for (let i = drivers.length - 1; i > 0; i--) {
+      for (let i = assignableDrivers.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1))
-        ;[drivers[i], drivers[j]] = [drivers[j], drivers[i]]
+        ;[assignableDrivers[i], assignableDrivers[j]] = [assignableDrivers[j], assignableDrivers[i]]
       }
-      drivers.forEach((driver, index) => {
-        compositions[index % count].drivers.push(driver)
+      assignableDrivers.forEach((driver, index) => {
+        targetComps[index % targetCount].drivers.push(driver)
       })
     } else if (strategy === 'seeded') {
-      // ranked distribution: 1,2,3 into A,B,C then 4,5,6 into A,B,C
-      drivers.sort((a, b) => b.irating - a.irating)
-      drivers.forEach((driver, index) => {
-        compositions[index % count].drivers.push(driver)
+      assignableDrivers.sort((a, b) => b.irating - a.irating)
+      assignableDrivers.forEach((driver, index) => {
+        targetComps[index % targetCount].drivers.push(driver)
       })
     }
 
@@ -226,6 +249,12 @@ export default function TeamPickerModal({
 
       return newResults
     })
+  }
+
+  const toggleTeamLock = (teamId: string) => {
+    setResults((prev) =>
+      prev.map((comp) => (comp.teamId === teamId ? { ...comp, locked: !comp.locked } : comp))
+    )
   }
 
   return (
@@ -379,9 +408,21 @@ export default function TeamPickerModal({
             {results.length > 0 ? (
               <div className={styles.resultsGrid}>
                 {results.map((comp) => (
-                  <div key={comp.teamId} className={styles.teamColumn}>
+                  <div
+                    key={comp.teamId}
+                    className={`${styles.teamColumn} ${comp.locked ? styles.locked : ''}`}
+                  >
                     <div className={styles.teamHeader}>
-                      <span className={styles.teamTitle}>{comp.teamName}</span>
+                      <div className={styles.teamMainInfo}>
+                        <button
+                          onClick={() => toggleTeamLock(comp.teamId)}
+                          className={`${styles.lockButton} ${comp.locked ? styles.isLocked : ''}`}
+                          title={comp.locked ? 'Unlock Team' : 'Lock Team'}
+                        >
+                          {comp.locked ? <Lock size={14} /> : <Unlock size={14} />}
+                        </button>
+                        <span className={styles.teamTitle}>{comp.teamName}</span>
+                      </div>
                       <span className={styles.avgIR}>Avg iR: {getTeamAvgIR(comp.drivers)}</span>
                     </div>
                     <div className={styles.teamDrivers}>
@@ -391,25 +432,27 @@ export default function TeamPickerModal({
                             <span>{d.name}</span>
                             <span className={styles.memberIR}>{d.irating}</span>
                           </div>
-                          <select
-                            className={styles.moveSelect}
-                            onChange={(e) => moveDriver(d.id, e.target.value)}
-                            value={comp.teamId}
-                          >
-                            <option value={comp.teamId} disabled>
-                              Move to...
-                            </option>
-                            <option value="pool">Remove</option>
-                            {results.map((target) => (
-                              <option
-                                key={target.teamId}
-                                value={target.teamId}
-                                disabled={target.teamId === comp.teamId}
-                              >
-                                {target.teamName}
+                          {!comp.locked && (
+                            <select
+                              className={styles.moveSelect}
+                              onChange={(e) => moveDriver(d.id, e.target.value)}
+                              value={comp.teamId}
+                            >
+                              <option value={comp.teamId} disabled>
+                                Move to...
                               </option>
-                            ))}
-                          </select>
+                              <option value="pool">Remove</option>
+                              {results.map((target) => (
+                                <option
+                                  key={target.teamId}
+                                  value={target.teamId}
+                                  disabled={target.teamId === comp.teamId}
+                                >
+                                  {target.teamName}
+                                </option>
+                              ))}
+                            </select>
+                          )}
                         </div>
                       ))}
                       {comp.drivers.length === 0 && (

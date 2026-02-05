@@ -399,6 +399,39 @@
   align-items: center;
 }
 
+.teamMainInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.lockButton {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.lockButton:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
+}
+
+.lockButton.isLocked {
+  color: #3b82f6;
+}
+
+.teamColumn.locked {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.02);
+}
+
 .teamTitle {
   font-weight: 700;
   color: #f1f5f9;
