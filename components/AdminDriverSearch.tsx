@@ -1,7 +1,7 @@
 'use client'
 
+import Image from 'next/image'
 import { useEffect, useRef, useState } from 'react'
-import { useFormStatus } from 'react-dom'
 import { Search, Plus } from 'lucide-react'
 import { adminRegisterDriver } from '@/app/actions'
 import styles from './AdminDriverSearch.module.css'
@@ -68,7 +68,7 @@ export default function AdminDriverSearch({
         setErrorMessage(result.message)
         setTimeout(() => setErrorMessage(''), 3000)
       }
-    } catch (error) {
+    } catch {
       setErrorMessage('Failed to register driver')
       setTimeout(() => setErrorMessage(''), 3000)
     }
@@ -117,7 +117,13 @@ export default function AdminDriverSearch({
                   onClick={() => handleSelectDriver(driver)}
                 >
                   {driver.image && (
-                    <img src={driver.image} alt={driver.name || 'User'} className={styles.avatar} />
+                    <Image
+                      src={driver.image}
+                      alt={driver.name || 'User'}
+                      className={styles.avatar}
+                      width={32}
+                      height={32}
+                    />
                   )}
                   <span className={styles.driverName}>{driver.name}</span>
                 </button>

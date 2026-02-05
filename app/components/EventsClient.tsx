@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import EventDetailModal from './EventDetailModal'
 import { Prisma } from '@prisma/client'
@@ -56,26 +56,22 @@ export default function EventsClient({
   initialEventId,
 }: EventsClientProps) {
   const router = useRouter()
-  const [selectedEvent, setSelectedEvent] = useState<EventWithRaces | null>(null)
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(initialEventId ?? null)
 
-  // Handle initial event load from URL parameter
-  useEffect(() => {
-    if (!initialEventId) return
-
-    const event = weeks.flatMap((week) => week.events).find((evt) => evt.id === initialEventId)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    setSelectedEvent(event || null)
-  }, [initialEventId, weeks])
+  const selectedEvent = useMemo(() => {
+    if (!selectedEventId) return null
+    return weeks.flatMap((week) => week.events).find((evt) => evt.id === selectedEventId) || null
+  }, [selectedEventId, weeks])
 
   // Update URL when event is selected
   const handleSelectEvent = (event: EventWithRaces) => {
-    setSelectedEvent(event)
+    setSelectedEventId(event.id)
     router.push(`?eventId=${event.id}`, { scroll: false })
   }
 
   // Clear URL when modal is closed
   const handleCloseModal = () => {
-    setSelectedEvent(null)
+    setSelectedEventId(null)
     router.push('?', { scroll: false })
   }
 
