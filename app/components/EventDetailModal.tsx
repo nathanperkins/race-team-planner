@@ -49,6 +49,7 @@ interface EventDetailModalProps {
   onClose: () => void
   isAdmin: boolean
   userId: string
+  teams: Array<{ id: string; name: string }>
 }
 
 export default function EventDetailModal({
@@ -56,6 +57,7 @@ export default function EventDetailModal({
   onClose,
   isAdmin,
   userId,
+  teams,
 }: EventDetailModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
   const [allDrivers, setAllDrivers] = useState<Driver[]>([])
@@ -230,6 +232,7 @@ export default function EventDetailModal({
                 userId={userId}
                 isAdmin={isAdmin}
                 allDrivers={allDrivers}
+                teams={teams}
                 carClasses={event.carClasses.map((cc) => ({
                   id: cc.id,
                   name: cc.name,

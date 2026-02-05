@@ -1,0 +1,208 @@
+.wrapper {
+  margin-top: 1rem;
+}
+
+.addForm {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.input {
+  flex: 1;
+  padding: 0.6rem 0.8rem;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  background: white;
+  color: #333;
+}
+
+@media (prefers-color-scheme: dark) {
+  .input {
+    background: #1a1a1a;
+    border-color: #333;
+    color: #fff;
+  }
+}
+
+.addButton {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #3b82f6;
+  color: white;
+  padding: 0.6rem 1rem;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.addButton:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.addButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.error {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  padding: 0.5rem 0.8rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+}
+
+.teamList {
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 8px;
+  min-height: 100px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .teamList {
+    background: rgba(255, 255, 255, 0.02);
+  }
+}
+
+.loading,
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100px;
+  gap: 0.5rem;
+  color: #666;
+  font-size: 0.875rem;
+}
+
+.grid {
+  display: flex;
+  flex-direction: column;
+}
+
+.teamRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+@media (prefers-color-scheme: dark) {
+  .teamRow {
+    border-color: rgba(255, 255, 255, 0.05);
+  }
+}
+
+.teamRow:last-child {
+  border-bottom: none;
+}
+
+.teamName {
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.editInput {
+  flex: 1;
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+  border: 1px solid #3b82f6;
+  background: white;
+  color: #333;
+  margin-right: 0.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .editInput {
+    background: #1a1a1a;
+    color: #fff;
+  }
+}
+
+.actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.actions button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.4rem;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.editBtn {
+  color: #666;
+}
+
+.editBtn:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.deleteBtn {
+  color: #ef4444;
+}
+
+.deleteBtn:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.saveBtn {
+  color: #10b981;
+}
+
+.saveBtn:hover {
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.cancelBtn {
+  color: #666;
+}
+
+.cancelBtn:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+@media (prefers-color-scheme: dark) {
+  .editBtn {
+    color: #aaa;
+  }
+
+  .editBtn:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .cancelBtn {
+    color: #aaa;
+  }
+
+  .cancelBtn:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}

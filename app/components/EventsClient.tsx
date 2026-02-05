@@ -47,6 +47,7 @@ interface EventsClientProps {
   isAdmin: boolean
   userId: string
   initialEventId?: string
+  teams: Array<{ id: string; name: string }>
 }
 
 export default function EventsClient({
@@ -54,6 +55,7 @@ export default function EventsClient({
   isAdmin,
   userId,
   initialEventId,
+  teams,
 }: EventsClientProps) {
   const router = useRouter()
   const [selectedEventId, setSelectedEventId] = useState<string | null>(initialEventId ?? null)
@@ -199,6 +201,7 @@ export default function EventsClient({
           onClose={handleCloseModal}
           isAdmin={isAdmin}
           userId={userId}
+          teams={teams}
         />
       )}
     </>

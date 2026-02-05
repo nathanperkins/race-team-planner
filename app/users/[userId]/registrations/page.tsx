@@ -43,6 +43,7 @@ export default async function UserRegistrationsPage({ params }: Props) {
         },
       },
       carClass: true,
+      team: true,
     },
     orderBy: {
       race: {
@@ -71,6 +72,7 @@ export default async function UserRegistrationsPage({ params }: Props) {
                   <th className={styles.th}>Race Time</th>
                   <th className={styles.th}>Track</th>
                   <th className={styles.th}>Car Class</th>
+                  <th className={styles.th}>Team</th>
                   {(userId === session.user?.id || session.user?.role === 'ADMIN') && (
                     <th className={styles.th}>Actions</th>
                   )}
@@ -116,6 +118,11 @@ export default async function UserRegistrationsPage({ params }: Props) {
                         showLabel={false}
                         variant="table"
                       />
+                    </td>
+                    <td className={styles.td} data-label="Team">
+                      <span className={reg.team ? styles.teamNameDecorated : styles.unassignedText}>
+                        {reg.team?.name || 'Unassigned'}
+                      </span>
                     </td>
                     {(userId === session.user?.id || session.user?.role === 'ADMIN') && (
                       <td className={styles.td} data-label="Actions">

@@ -242,3 +242,17 @@
   border: 1px solid rgba(55, 65, 81, 0.5);
   cursor: default;
 }
+
+.teamNameDecorated {
+  font-weight: 600;
+  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.1);
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+}
+
+.unassignedText {
+  color: #6b7280;
+  font-style: italic;
+  font-size: 0.875rem;
+}

@@ -125,6 +125,8 @@ model Registration {
   carClass   CarClass @relation(fields: [carClassId], references: [id])
   race       Race     @relation(fields: [raceId], references: [id], onDelete: Cascade)
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teamId     String?
+  team       Team?    @relation(fields: [teamId], references: [id], onDelete: SetNull)
 
   @@unique([userId, raceId])
 }
@@ -159,4 +161,12 @@ enum SyncStatus {
 enum SyncSource {
   MANUAL
   CRON
+}
+
+model Team {
+  id            String         @id @default(cuid())
+  name          String         @unique
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  registrations Registration[]
 }

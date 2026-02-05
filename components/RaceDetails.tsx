@@ -1,3 +1,4 @@
+import { Users } from 'lucide-react'
 import Image from 'next/image'
 import FormattedDate from './FormattedDate'
 import styles from './RaceDetails.module.css'
@@ -5,6 +6,7 @@ import DropRegistrationButton from './DropRegistrationButton'
 import QuickRegistration from './QuickRegistration'
 import EditableCarClass from './EditableCarClass'
 import AdminDriverSearch from './AdminDriverSearch'
+import EditableTeamAssignment from './EditableTeamAssignment'
 
 interface RaceWithRegistrations {
   id: string
@@ -18,6 +20,10 @@ interface RaceWithRegistrations {
       shortName: string
     }
     userId: string
+    team?: {
+      id: string
+      name: string
+    } | null
     user: {
       name: string | null
       image: string | null
@@ -42,6 +48,7 @@ interface Props {
   userId: string
   isAdmin?: boolean
   carClasses: { id: string; name: string; shortName: string }[]
+  teams: Array<{ id: string; name: string }>
   allDrivers?: Driver[]
   dateFormat?: Intl.DateTimeFormatOptions
 }
@@ -51,6 +58,7 @@ export default function RaceDetails({
   userId,
   isAdmin = false,
   carClasses,
+  teams,
   allDrivers = [],
   dateFormat,
 }: Props) {
@@ -98,53 +106,96 @@ export default function RaceDetails({
         <p className="text-sm text-gray-500 mt-2">No drivers registered for this race.</p>
       ) : (
         <div className={styles.driverList}>
-          {race.registrations.map((reg) => (
-            <div key={reg.id} className={styles.driverRow}>
-              <div className={styles.driverInfo}>
-                {reg.user.image && (
-                  <Image
-                    src={reg.user.image}
-                    alt={reg.user.name || 'User'}
-                    width={32}
-                    height={32}
-                    className={styles.avatar}
-                  />
-                )}
-                <div>
-                  <p className={styles.driverName}>{reg.user.name}</p>
-                  {reg.user.racerStats && reg.user.racerStats.length > 0 && (
-                    <p className={styles.driverStats}>
-                      {(
-                        reg.user.racerStats.find(
-                          (s) => s.categoryId === 5 || s.category?.toLowerCase() === 'sports car'
-                        ) || reg.user.racerStats[0]
-                      ).irating.toLocaleString()}{' '}
-                      iR •{' '}
-                      {
-                        (
-                          reg.user.racerStats.find(
-                            (s) => s.categoryId === 5 || s.category?.toLowerCase() === 'sports car'
-                          ) || reg.user.racerStats[0]
-                        ).groupName
-                      }
-                    </p>
-                  )}
-                  <EditableCarClass
-                    registrationId={reg.id}
-                    currentCarClassId={reg.carClass.id}
-                    currentCarClassShortName={reg.carClass.shortName}
-                    carClasses={carClasses}
-                    readOnly={(!isAdmin && reg.userId !== userId) || isRaceCompleted}
-                  />
+          {(() => {
+            // Group registrations by team
+            const grouped = race.registrations.reduce(
+              (acc, reg) => {
+                const teamName = reg.team?.name || 'Unassigned'
+                if (!acc[teamName]) acc[teamName] = []
+                acc[teamName].push(reg)
+                return acc
+              },
+              {} as Record<string, typeof race.registrations>
+            )
+
+            // Sort teams: Unassigned last, others alphabetical
+            const sortedTeams = Object.keys(grouped).sort((a, b) => {
+              if (a === 'Unassigned') return 1
+              if (b === 'Unassigned') return -1
+              return a.localeCompare(b)
+            })
+
+            return sortedTeams.map((teamName) => (
+              <div key={teamName} className={styles.teamGroup}>
+                <div className={styles.teamGroupHeader}>
+                  <Users size={14} />
+                  <span>{teamName}</span>
+                  <span className={styles.teamCount}>({grouped[teamName].length})</span>
                 </div>
+                {grouped[teamName].map((reg) => (
+                  <div key={reg.id} className={styles.driverRow}>
+                    <div className={styles.driverInfo}>
+                      {reg.user.image && (
+                        <Image
+                          src={reg.user.image}
+                          alt={reg.user.name || 'User'}
+                          width={32}
+                          height={32}
+                          className={styles.avatar}
+                        />
+                      )}
+                      <div>
+                        <p className={styles.driverName}>{reg.user.name}</p>
+                        {reg.user.racerStats && reg.user.racerStats.length > 0 && (
+                          <p className={styles.driverStats}>
+                            {(
+                              reg.user.racerStats.find(
+                                (s) =>
+                                  s.categoryId === 5 || s.category?.toLowerCase() === 'sports car'
+                              ) || reg.user.racerStats[0]
+                            ).irating.toLocaleString()}{' '}
+                            iR •{' '}
+                            {
+                              (
+                                reg.user.racerStats.find(
+                                  (s) =>
+                                    s.categoryId === 5 || s.category?.toLowerCase() === 'sports car'
+                                ) || reg.user.racerStats[0]
+                              ).groupName
+                            }
+                          </p>
+                        )}
+                        <div className={styles.editableContainer}>
+                          <EditableCarClass
+                            registrationId={reg.id}
+                            currentCarClassId={reg.carClass.id}
+                            currentCarClassShortName={reg.carClass.shortName}
+                            carClasses={carClasses}
+                            readOnly={(!isAdmin && reg.userId !== userId) || isRaceCompleted}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div className={styles.driverTimeslot}>
+                      {(reg.userId === userId || isAdmin) && !isRaceCompleted && (
+                        <div className={styles.actionRow}>
+                          {isAdmin && (
+                            <EditableTeamAssignment
+                              registrationId={reg.id}
+                              currentTeamId={reg.team?.id || null}
+                              teams={teams}
+                              isAdmin={isAdmin}
+                            />
+                          )}
+                          <DropRegistrationButton registrationId={reg.id} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className={styles.driverTimeslot}>
-                {(reg.userId === userId || isAdmin) && !isRaceCompleted && (
-                  <DropRegistrationButton registrationId={reg.id} />
-                )}
-              </div>
-            </div>
-          ))}
+            ))
+          })()}
         </div>
       )}
 

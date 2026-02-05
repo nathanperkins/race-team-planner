@@ -4,6 +4,7 @@ import styles from './admin.module.css'
 import AddEventButton from './AddEventButton'
 import SyncButton from '@/app/components/SyncButton'
 import TriggerReportButton from './TriggerReportButton'
+import TeamManagement from './TeamManagement'
 
 export default async function AdminPage() {
   const session = await auth()
@@ -24,6 +25,14 @@ export default async function AdminPage() {
           <AddEventButton />
         </div>
         <p className={styles.description}>Add custom events to the database.</p>
+      </section>
+
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <h2 className={styles.sectionTitle}>Global Team Management</h2>
+        </div>
+        <p className={styles.description}>Create and manage teams (e.g. SRG Cobalt, SRG Carbon).</p>
+        <TeamManagement />
       </section>
 
       <section className={styles.section}>

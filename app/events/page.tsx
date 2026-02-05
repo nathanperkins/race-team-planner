@@ -42,6 +42,7 @@ type EventWithRaces = Prisma.EventGetPayload<{
           include: {
             user: { select: { name: true; id: true; image: true } }
             carClass: true
+            team: true
           }
         }
       }
@@ -168,6 +169,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
                 },
               },
               carClass: true,
+              team: true,
             },
           },
         },
@@ -308,6 +310,10 @@ export default async function EventsPage({ searchParams }: PageProps) {
     },
   }))
 
+  const teams = await prisma.team.findMany({
+    orderBy: { name: 'asc' },
+  })
+
   return (
     <main className={styles.main}>
       <div className={styles.topRow}>
@@ -330,6 +336,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
         isAdmin={session.user.role === 'ADMIN'}
         userId={session.user.id}
         initialEventId={params.eventId}
+        teams={teams}
       />
     </main>
   )
