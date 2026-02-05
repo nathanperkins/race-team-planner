@@ -18,6 +18,18 @@ export default function LayoutWrapper({ children, session, appTitle }: LayoutWra
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen)
 
+  // Prevent background scrolling when mobile sidebar is open
+  React.useEffect(() => {
+    if (isSidebarOpen) {
+      document.body.classList.add('sidebar-open')
+    } else {
+      document.body.classList.remove('sidebar-open')
+    }
+    return () => {
+      document.body.classList.remove('sidebar-open')
+    }
+  }, [isSidebarOpen])
+
   return (
     <SessionProvider session={session}>
       <div className={styles.layoutContainer}>
@@ -38,7 +50,10 @@ export default function LayoutWrapper({ children, session, appTitle }: LayoutWra
             </aside>
 
             {/* Mobile Header */}
-            <header className={styles.mobileHeader}>
+            <header
+              className={`${styles.mobileHeader} ${isSidebarOpen ? styles.bgBlocked : ''}`}
+              aria-hidden={isSidebarOpen}
+            >
               <button
                 className={styles.menuButton}
                 onClick={toggleSidebar}
@@ -54,7 +69,10 @@ export default function LayoutWrapper({ children, session, appTitle }: LayoutWra
           </>
         )}
 
-        <main className={`${styles.mainContent} ${session ? styles.withSidebar : ''}`}>
+        <main
+          className={`${styles.mainContent} ${session ? styles.withSidebar : ''} ${isSidebarOpen ? styles.bgBlocked : ''}`}
+          aria-hidden={isSidebarOpen}
+        >
           {children}
         </main>
       </div>

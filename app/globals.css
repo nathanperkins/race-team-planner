@@ -25,6 +25,12 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+body.sidebar-open,
+html:has(body.sidebar-open) {
+  overflow: hidden;
+  height: 100vh;
+}
+
 * {
   box-sizing: border-box;
   padding: 0;

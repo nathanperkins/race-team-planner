@@ -19,6 +19,7 @@
   flex-shrink: 0;
   z-index: 50;
   transition: transform 0.3s ease;
+  overscroll-behavior: contain;
 }
 
 .navWrapper {
@@ -145,6 +146,7 @@
   gap: 0.5rem;
   flex: 1;
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .link {
@@ -259,4 +261,9 @@
   .signOutButton:hover {
     color: var(--foreground);
   }
+}
+
+.bgBlocked {
+  pointer-events: none !important;
+  user-select: none !important;
 }
