@@ -18,36 +18,32 @@ model User {
   updatedAt           DateTime       @updatedAt
   expectationsVersion Int            @default(0)
   iracingCustomerId   String?
-  iracingName         String?
+  iracingId           Int?           @unique
   role                UserRole       @default(USER)
+  iracingName         String?
   onboardedAnnounced  Boolean        @default(false)
   accounts            Account[]
-  registrations       Registration[]
   racerStats          RacerStats[]
-}
-
-enum UserRole {
-  USER
-  ADMIN
+  registrations       Registration[]
+  teams               Team[]         @relation("UserTeams")
 }
 
 model RacerStats {
-  id            String   @id @default(cuid())
-  userId        String
-  categoryId    Int
-  category      String
-  irating       Int
-  licenseLevel  Int
-  licenseGroup  Int
-  safetyRating  Float
-  cpi           Float
-  ttRating      Int
-  mprNumRaces   Int
-  color         String
-  groupName     String
-  updatedAt     DateTime @updatedAt
-
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String   @id @default(cuid())
+  userId       String
+  categoryId   Int
+  category     String
+  irating      Int
+  licenseLevel Int
+  licenseGroup Int
+  safetyRating Float
+  cpi          Float
+  ttRating     Int
+  mprNumRaces  Int
+  color        String
+  groupName    String
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, categoryId])
 }
@@ -76,28 +72,31 @@ model Account {
 }
 
 model Event {
-  id          String     @id @default(cuid())
-  name        String
+  id               String     @id @default(cuid())
+  name             String
   /// Derived from the earliest Race
-  startTime   DateTime
-  track       String
-  trackConfig String?    /// e.g., "Grand Prix", "Road Course"
-  description String?
-  customCarClasses String[] /// For custom events, user-typed car class names
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  externalId  String?    @unique
+  startTime        DateTime
+  track            String
+  description      String?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  externalId       String?    @unique
   /// Derived from the latest Race
-  endTime     DateTime
-  licenseGroup Int?
-  tempValue     Int?
-  tempUnits     Int?
-  relHumidity   Int?
-  skies         Int?
-  precipChance  Int?
-  durationMins  Int?       /// In minutes
-  races       Race[]
-  carClasses  CarClass[] @relation("CarClassToEvent")
+  endTime          DateTime
+  licenseGroup     Int?
+  relHumidity      Int?
+  skies            Int?
+  tempUnits        Int?
+  tempValue        Int?
+  /// In minutes
+  durationMins     Int?
+  precipChance     Int?
+  /// e.g., "Grand Prix", "Road Course"
+  trackConfig      String?
+  /// For custom events, user-typed car class names
+  customCarClasses String[]
+  races            Race[]
+  carClasses       CarClass[] @relation("CarClassToEvent")
 }
 
 model Race {
@@ -122,11 +121,11 @@ model Registration {
   updatedAt  DateTime @updatedAt
   raceId     String
   carClassId String
+  teamId     String?
   carClass   CarClass @relation(fields: [carClassId], references: [id])
   race       Race     @relation(fields: [raceId], references: [id], onDelete: Cascade)
+  team       Team?    @relation(fields: [teamId], references: [id])
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  teamId     String?
-  team       Team?    @relation(fields: [teamId], references: [id], onDelete: SetNull)
 
   @@unique([userId, raceId])
 }
@@ -149,7 +148,51 @@ model SyncLog {
   status    SyncStatus
   error     String?
   source    SyncSource @default(MANUAL)
-  count     Int?       // Number of events synced
+  count     Int?
+}
+
+model Team {
+  id            String           @id @default(cuid())
+  name          String           @unique
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  iracingTeamId Int              @unique
+  registrations Registration[]
+  members       User[]           @relation("UserTeams")
+  teamMembers   TeamMember[]     @relation("TeamToTeamMember")
+  roles         TeamMemberRole[]
+}
+
+model TeamMember {
+  id          String           @id @default(cuid())
+  custId      Int              @unique
+  displayName String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  teams       Team[]           @relation("TeamToTeamMember")
+  roles       TeamMemberRole[]
+
+  @@index([custId])
+}
+
+model TeamMemberRole {
+  id           String     @id @default(cuid())
+  teamMemberId String
+  teamId       String
+  isOwner      Boolean    @default(false)
+  isAdmin      Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  teamMember   TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+  team         Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([teamMemberId, teamId])
+  @@index([teamId])
+}
+
+enum UserRole {
+  USER
+  ADMIN
 }
 
 enum SyncStatus {
@@ -161,12 +204,4 @@ enum SyncStatus {
 enum SyncSource {
   MANUAL
   CRON
-}
-
-model Team {
-  id            String         @id @default(cuid())
-  name          String         @unique
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  registrations Registration[]
 }

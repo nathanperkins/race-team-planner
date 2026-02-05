@@ -1,23 +1,67 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Plus, Trash2, Edit2, Check, X, Loader2 } from 'lucide-react'
-import { getTeams, createTeam, updateTeam, deleteTeam } from './teams/actions'
+import {
+  Plus,
+  Trash2,
+  Edit2,
+  Check,
+  X,
+  Loader2,
+  Users,
+  Eye,
+  CheckCircle,
+  XCircle,
+  RefreshCw,
+} from 'lucide-react'
+import {
+  getTeams,
+  createTeam,
+  updateTeam,
+  deleteTeam,
+  getTeamMembers,
+  syncTeamMembers,
+} from './teams/actions'
 import styles from './TeamManagement.module.css'
 
 interface Team {
   id: string
   name: string
+  iracingTeamId: number
+  memberCount?: number
+}
+
+interface TeamMember {
+  custId: number
+  displayName: string
+  isOwner?: boolean
+  isAdmin?: boolean
+  teamName?: string
+  ownerName?: string
+  isEnrolled?: boolean
+  userId?: string
+  appName?: string | null
+  appEmail?: string
+}
+
+interface TeamMembersData {
+  teamName: string
+  iracingTeamId: number
+  members: TeamMember[]
+  enrolledCount: number
+  totalCount: number
 }
 
 export default function TeamManagement() {
   const [teams, setTeams] = useState<Team[]>([])
   const [loading, setLoading] = useState(true)
-  const [newTeamName, setNewTeamName] = useState('')
+  const [newTeamIracingId, setNewTeamIracingId] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [editName, setEditName] = useState('')
+  const [editIracingId, setEditIracingId] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [processing, setProcessing] = useState<string | null>(null)
+  const [inspectingTeam, setInspectingTeam] = useState<TeamMembersData | null>(null)
+  const [loadingMembers, setLoadingMembers] = useState(false)
 
   useEffect(() => {
     fetchTeams()
@@ -37,12 +81,18 @@ export default function TeamManagement() {
   }
 
   async function handleAddTeam() {
-    if (!newTeamName.trim()) return
+    if (!newTeamIracingId.trim()) return
     setError(null)
     setProcessing('adding')
     try {
-      await createTeam(newTeamName)
-      setNewTeamName('')
+      const iracingId = parseInt(newTeamIracingId)
+      if (isNaN(iracingId)) {
+        setError('Please enter a valid team ID number')
+        setProcessing(null)
+        return
+      }
+      await createTeam(iracingId)
+      setNewTeamIracingId('')
       await fetchTeams()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add team')
@@ -52,11 +102,17 @@ export default function TeamManagement() {
   }
 
   async function handleUpdateTeam(id: string) {
-    if (!editName.trim()) return
+    if (!editIracingId.trim()) return
     setError(null)
     setProcessing(id)
     try {
-      await updateTeam(id, editName)
+      const iracingId = parseInt(editIracingId)
+      if (isNaN(iracingId)) {
+        setError('Please enter a valid team ID number')
+        setProcessing(null)
+        return
+      }
+      await updateTeam(id, iracingId)
       setEditingId(null)
       await fetchTeams()
     } catch (err) {
@@ -82,25 +138,55 @@ export default function TeamManagement() {
 
   const startEditing = (team: Team) => {
     setEditingId(team.id)
-    setEditName(team.name)
+    setEditIracingId(Math.abs(team.iracingTeamId).toString())
     setError(null)
+  }
+
+  async function handleInspectTeam(team: Team) {
+    setLoadingMembers(true)
+    setError(null)
+    try {
+      const data = await getTeamMembers(team.id)
+      setInspectingTeam(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load team members')
+    } finally {
+      setLoadingMembers(false)
+    }
+  }
+
+  async function handleSyncTeam(teamId: string) {
+    setProcessing(teamId)
+    setError(null)
+    try {
+      await syncTeamMembers(teamId)
+      await fetchTeams()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to sync team members')
+    } finally {
+      setProcessing(null)
+    }
+  }
+
+  function closeInspectModal() {
+    setInspectingTeam(null)
   }
 
   return (
     <div className={styles.wrapper}>
       <div className={styles.addForm}>
         <input
-          type="text"
-          value={newTeamName}
-          onChange={(e) => setNewTeamName(e.target.value)}
-          placeholder="New team name (e.g. Cobalt)"
+          type="number"
+          value={newTeamIracingId}
+          onChange={(e) => setNewTeamIracingId(e.target.value)}
+          placeholder="Enter iRacing Team ID"
           className={styles.input}
           disabled={processing === 'adding'}
           onKeyDown={(e) => e.key === 'Enter' && handleAddTeam()}
         />
         <button
           onClick={handleAddTeam}
-          disabled={!newTeamName.trim() || processing === 'adding'}
+          disabled={!newTeamIracingId.trim() || processing === 'adding'}
           className={styles.addButton}
         >
           {processing === 'adding' ? (
@@ -129,10 +215,11 @@ export default function TeamManagement() {
                 {editingId === team.id ? (
                   <>
                     <input
-                      type="text"
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
+                      type="number"
+                      value={editIracingId}
+                      onChange={(e) => setEditIracingId(e.target.value)}
                       className={styles.editInput}
+                      placeholder="iRacing Team ID"
                       autoFocus
                       disabled={processing === team.id}
                       onKeyDown={(e) => e.key === 'Enter' && handleUpdateTeam(team.id)}
@@ -158,13 +245,50 @@ export default function TeamManagement() {
                   </>
                 ) : (
                   <>
-                    <span className={styles.teamName}>{team.name}</span>
+                    <div className={styles.teamInfo}>
+                      <div className={styles.teamHeader}>
+                        <span className={styles.teamName}>{team.name}</span>
+                        {team.memberCount !== undefined && (
+                          <span className={styles.memberCount}>
+                            <Users size={14} />
+                            {team.memberCount} member{team.memberCount !== 1 ? 's' : ''}
+                          </span>
+                        )}
+                      </div>
+                      <span className={styles.teamId}>
+                        iRacing ID: {Math.abs(team.iracingTeamId)}
+                      </span>
+                    </div>
                     <div className={styles.actions}>
+                      <button
+                        onClick={() => handleSyncTeam(team.id)}
+                        className={styles.syncBtn}
+                        disabled={!!processing}
+                        title="Sync members from iRacing"
+                      >
+                        {processing === team.id ? (
+                          <Loader2 className={styles.spin} size={16} />
+                        ) : (
+                          <RefreshCw size={16} />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleInspectTeam(team)}
+                        className={styles.inspectBtn}
+                        disabled={!!processing || loadingMembers}
+                        title="View team members"
+                      >
+                        {loadingMembers ? (
+                          <Loader2 className={styles.spin} size={16} />
+                        ) : (
+                          <Eye size={16} />
+                        )}
+                      </button>
                       <button
                         onClick={() => startEditing(team)}
                         className={styles.editBtn}
                         disabled={!!processing}
-                        title="Edit name"
+                        title="Edit team"
                       >
                         <Edit2 size={16} />
                       </button>
@@ -188,6 +312,61 @@ export default function TeamManagement() {
           </div>
         )}
       </div>
+
+      {/* Team Members Modal */}
+      {inspectingTeam && (
+        <div className={styles.modalOverlay} onClick={closeInspectModal}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <div>
+                <h3 className={styles.modalTitle}>{inspectingTeam.teamName}</h3>
+                <p className={styles.modalSubtitle}>
+                  iRacing ID: {Math.abs(inspectingTeam.iracingTeamId)} • {inspectingTeam.totalCount}{' '}
+                  member{inspectingTeam.totalCount !== 1 ? 's' : ''} •{' '}
+                  {inspectingTeam.enrolledCount} enrolled in app
+                </p>
+              </div>
+              <button onClick={closeInspectModal} className={styles.closeBtn}>
+                <X size={24} />
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              {inspectingTeam.members.length === 0 ? (
+                <div className={styles.empty}>No members found</div>
+              ) : (
+                <div className={styles.memberList}>
+                  {inspectingTeam.members.map((member) => (
+                    <div
+                      key={member.custId}
+                      className={`${styles.memberRow} ${member.isEnrolled ? styles.enrolled : styles.notEnrolled}`}
+                    >
+                      <div className={styles.memberIcon}>
+                        {member.isEnrolled ? (
+                          <CheckCircle size={20} className={styles.enrolledIcon} />
+                        ) : (
+                          <XCircle size={20} className={styles.notEnrolledIcon} />
+                        )}
+                      </div>
+                      <div className={styles.memberInfo}>
+                        <div className={styles.memberNameRow}>
+                          <span className={styles.memberName}>{member.displayName}</span>
+                          {member.isEnrolled && (
+                            <span className={styles.enrolledBadge}>Enrolled</span>
+                          )}
+                        </div>
+                        <span className={styles.memberId}>iRacing ID: {member.custId}</span>
+                        {member.isEnrolled && member.appName && (
+                          <span className={styles.appInfo}>App: {member.appName}</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

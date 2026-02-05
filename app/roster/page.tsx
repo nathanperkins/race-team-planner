@@ -31,6 +31,13 @@ export default async function RosterPage({ searchParams }: Props) {
           },
         },
       },
+      teams: {
+        select: {
+          id: true,
+          name: true,
+          iracingTeamId: true,
+        },
+      },
     },
   })
 
@@ -39,6 +46,7 @@ export default async function RosterPage({ searchParams }: Props) {
   const users = usersData.map((user) => {
     const upcoming = user.registrations.filter((r) => r.race.endTime > now).length
     const completed = user.registrations.filter((r) => r.race.endTime <= now).length
+
     return { ...user, upcoming, completed }
   })
 
@@ -65,17 +73,47 @@ export default async function RosterPage({ searchParams }: Props) {
       <div className={styles.grid}>
         {users.map((user) => (
           <div key={user.id} className={styles.card}>
-            <Image
-              src={user.image || `https://api.dicebear.com/9.x/avataaars/svg?seed=${user.name}`}
-              alt={user.name || 'User'}
-              className={styles.avatar}
-              width={80}
-              height={80}
-            />
-            <h2 className={styles.name}>{user.name || 'Unknown Driver'}</h2>
-            <p className={styles.email}>{user.email}</p>
+            <div className={styles.header}>
+              <Image
+                src={user.image || `https://api.dicebear.com/9.x/avataaars/svg?seed=${user.name}`}
+                alt={user.name || 'User'}
+                className={styles.avatar}
+                width={40}
+                height={40}
+              />
+              <h2 className={styles.name}>{user.name || 'Unknown Driver'}</h2>
+            </div>
             <div className={styles.roleContainer}>
               <UserRoleBadge role={user.role} />
+              {user.racerStats &&
+                user.racerStats.length > 0 &&
+                (() => {
+                  const stats =
+                    user.racerStats.find((s) => s.categoryId === 5) ||
+                    user.racerStats.find((s) => s.categoryId === 6) ||
+                    user.racerStats.find((s) => s.categoryId === 1) ||
+                    user.racerStats[0]
+
+                  if (!stats) return null
+
+                  const licenseLabel = stats.groupName.replace('Class ', '').substring(0, 1)
+                  const licenseColor = getLicenseColor(stats.groupName)
+                  // Create very light background (15% opacity) and keep text/border full color
+                  const lightBg = licenseColor + '26'
+
+                  return (
+                    <span
+                      className={styles.statsBadge}
+                      style={{
+                        borderColor: licenseColor,
+                        backgroundColor: lightBg,
+                        color: licenseColor,
+                      }}
+                    >
+                      {licenseLabel} {stats.safetyRating.toFixed(2)} {stats.irating}
+                    </span>
+                  )
+                })()}
             </div>
 
             <div className={styles.stats}>
@@ -88,51 +126,6 @@ export default async function RosterPage({ searchParams }: Props) {
                 <span className={styles.statLabel}>Completed</span>
               </div>
             </div>
-
-            {user.racerStats && user.racerStats.length > 0 && (
-              <div className={styles.paramGrid}>
-                {(() => {
-                  // Prioritize Sports Car (5), then Formula (6), then Oval (1)
-                  const stats =
-                    user.racerStats.find((s) => s.categoryId === 5) ||
-                    user.racerStats.find((s) => s.categoryId === 6) ||
-                    user.racerStats.find((s) => s.categoryId === 1) ||
-                    user.racerStats[0]
-
-                  if (!stats) return null
-
-                  // Format license: "A 2.45"
-                  const licenseLabel = stats.groupName.replace('Class ', '').substring(0, 1)
-                  const licText = `${licenseLabel} ${stats.safetyRating.toFixed(2)}`
-                  const licenseColor = getLicenseColor(stats.groupName)
-
-                  return (
-                    <>
-                      <div className={styles.paramItem} style={{ borderColor: licenseColor }}>
-                        <span className={styles.paramValue}>{stats.irating}</span>
-                        <span className={styles.paramLabel}>
-                          {stats.category === 'sports_car'
-                            ? 'Sports Car'
-                            : stats.category === 'formula_car'
-                              ? 'Formula'
-                              : stats.category === 'oval'
-                                ? 'Oval'
-                                : stats.category === 'dirt_oval'
-                                  ? 'Dirt Oval'
-                                  : stats.category === 'dirt_road'
-                                    ? 'Dirt Road'
-                                    : 'iRating'}
-                        </span>
-                      </div>
-                      <div className={styles.paramItem} style={{ borderColor: licenseColor }}>
-                        <span className={styles.paramValue}>{licText}</span>
-                        <span className={styles.paramLabel}>License</span>
-                      </div>
-                    </>
-                  )
-                })()}
-              </div>
-            )}
 
             <Link href={`/users/${user.id}/registrations`} className={styles.viewButton}>
               View Schedule

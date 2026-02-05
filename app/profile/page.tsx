@@ -16,6 +16,15 @@ export default async function ProfilePage() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
+    include: {
+      teams: {
+        select: {
+          id: true,
+          name: true,
+          iracingTeamId: true,
+        },
+      },
+    },
   })
 
   if (!user) redirect('/login')
@@ -78,6 +87,19 @@ export default async function ProfilePage() {
           initialCustomerId={user.iracingCustomerId || ''}
           initialIracingName={user.iracingName || ''}
         />
+
+        {user.teams && user.teams.length > 0 && (
+          <div className={styles.field}>
+            <label className={styles.label}>Teams</label>
+            <div className={styles.teamsList}>
+              {user.teams.map((team) => (
+                <span key={team.id} className={styles.teamBadge}>
+                  {team.name}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
         <DeleteAccountButton userName={user.name || ''} />
       </div>

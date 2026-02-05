@@ -107,32 +107,33 @@
   border-color: #475569;
 }
 
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  width: 100%;
+}
+
 .avatar {
-  width: 5.5rem;
-  height: 5.5rem;
+  width: 2.75rem;
+  height: 2.75rem;
   border-radius: 9999px;
   background-color: #334155;
-  margin-bottom: 1.25rem;
   object-fit: cover;
-  border: 3px solid #3b82f6;
-  padding: 2px;
+  border: 2px solid #3b82f6;
+  padding: 1px;
+  flex-shrink: 0;
 }
 
 .name {
   font-size: 1.125rem;
   font-weight: 600;
   color: white;
-  margin-bottom: 0.25rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.email {
-  font-size: 0.875rem;
-  color: #9ca3af;
-  margin-bottom: 1rem;
+  margin: 0;
+  text-align: left;
+  flex: 1;
 }
 
 .stats {
@@ -150,7 +151,7 @@
   flex-direction: column;
   align-items: center;
   background-color: #0f172a;
-  padding: 0.875rem 0.25rem;
+  padding: 0.45rem 0.15rem;
   border-radius: 0.5rem;
   border: 1px solid #334155;
   transition: all 0.2s;
@@ -161,7 +162,7 @@
 }
 
 .statValue {
-  font-size: 1.25rem;
+  font-size: 0.875rem;
   font-weight: 700;
   color: white;
 }
@@ -180,25 +181,25 @@
   flex-direction: column;
   align-items: center;
   background-color: rgba(15, 23, 42, 0.5);
-  padding: 0.75rem 0.25rem;
+  padding: 0.525rem 0.175rem;
   border-radius: 0.5rem;
   border: 1px solid #334155;
-  border-left-width: 4px;
+  border-left-width: 3px;
 }
 
 .paramValue {
-  font-size: 1.125rem;
+  font-size: 0.7875rem;
   font-weight: 700;
   color: #e2e8f0;
 }
 
 .paramLabel {
-  font-size: 0.55rem;
+  font-size: 0.385rem;
   text-transform: uppercase;
   color: #94a3b8;
   letter-spacing: 0.05em;
   font-weight: 600;
-  margin-top: 2px;
+  margin-top: 1px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -206,11 +207,20 @@
 }
 
 .statLabel {
-  font-size: 0.6875rem;
+  font-size: 0.65rem;
   text-transform: uppercase;
   color: #94a3b8;
   letter-spacing: 0.05em;
   font-weight: 600;
+}
+
+.teamsContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  justify-content: center;
+  width: 100%;
+  margin-bottom: 1rem;
 }
 
 .viewButton {
@@ -239,6 +249,20 @@
   margin-bottom: 1.25rem;
   display: flex;
   justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.statsBadge {
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 2px solid;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
 }
 
 .syncNote {
@@ -249,4 +273,41 @@
   width: 100%;
   margin-top: -1.5rem;
   padding-left: 2px;
+}
+
+.teamsSection {
+  width: 100%;
+  margin-bottom: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #334155;
+}
+
+.teamsLabel {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  color: #94a3b8;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.teamsList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  justify-content: center;
+}
+
+.teamBadge {
+  background-color: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
 }

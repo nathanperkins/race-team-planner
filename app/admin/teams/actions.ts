@@ -3,44 +3,340 @@
 import { auth } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
+import { fetchTeamInfo, fetchTeamMembers } from '@/lib/iracing'
 
 export async function getTeams() {
-  return await prisma.team.findMany({
+  const teams = await prisma.team.findMany({
     orderBy: { name: 'asc' },
+    include: {
+      teamMembers: {
+        select: {
+          id: true,
+        },
+      },
+    },
   })
+
+  // Return teams with member counts from database (teamMembers, not User members)
+  return teams.map((team) => ({
+    id: team.id,
+    name: team.name,
+    iracingTeamId: team.iracingTeamId,
+    createdAt: team.createdAt,
+    updatedAt: team.updatedAt,
+    memberCount: team.teamMembers.length,
+  }))
 }
 
-export async function createTeam(name: string) {
+export async function syncTeamMembers(teamId: string) {
   const session = await auth()
   if (!session?.user || session.user.role !== 'ADMIN') {
     throw new Error('Unauthorized')
   }
 
-  if (!name.trim()) {
-    throw new Error('Team name is required')
+  const team = await prisma.team.findUnique({
+    where: { id: teamId },
+  })
+
+  if (!team) {
+    throw new Error('Team not found')
   }
 
-  const team = await prisma.team.create({
-    data: { name: name.trim() },
+  // Fetch latest members from iRacing
+  const iracingMembers = await fetchTeamMembers(team.iracingTeamId)
+
+  // Delete existing roles for this team
+  await prisma.teamMemberRole.deleteMany({
+    where: { teamId: team.id },
+  })
+
+  // Disconnect all team members from this team
+  await prisma.team.update({
+    where: { id: team.id },
+    data: {
+      teamMembers: {
+        set: [],
+      },
+    },
+  })
+
+  // Process each member from iRacing
+  for (const member of iracingMembers) {
+    // Find or create TeamMember
+    let teamMember = await prisma.teamMember.findUnique({
+      where: { custId: member.custId },
+    })
+
+    if (!teamMember) {
+      teamMember = await prisma.teamMember.create({
+        data: {
+          custId: member.custId,
+          displayName: member.displayName,
+        },
+      })
+    }
+
+    // Create role for this team
+    await prisma.teamMemberRole.create({
+      data: {
+        teamMemberId: teamMember.id,
+        teamId: team.id,
+        isOwner: member.owner || false,
+        isAdmin: member.admin || false,
+      },
+    })
+
+    // Connect team member to team
+    await prisma.team.update({
+      where: { id: team.id },
+      data: {
+        teamMembers: {
+          connect: { id: teamMember.id },
+        },
+      },
+    })
+  }
+
+  // Update user-team relationships
+  const users = await prisma.user.findMany({
+    where: {
+      iracingCustomerId: {
+        not: null,
+      },
+    },
+    select: {
+      id: true,
+      iracingCustomerId: true,
+    },
+  })
+
+  const memberCustomerIds = new Set(iracingMembers.map((m) => m.custId.toString()))
+  const matchingUserIds = users
+    .filter((user) => user.iracingCustomerId && memberCustomerIds.has(user.iracingCustomerId))
+    .map((user) => ({ id: user.id }))
+
+  // Update team-user connections
+  await prisma.team.update({
+    where: { id: team.id },
+    data: {
+      members: {
+        set: matchingUserIds,
+      },
+    },
   })
 
   revalidatePath('/admin')
-  return team
+  revalidatePath('/roster')
+
+  return { success: true, memberCount: iracingMembers.length }
 }
 
-export async function updateTeam(id: string, name: string) {
+export async function getTeamMembers(teamId: string) {
   const session = await auth()
   if (!session?.user || session.user.role !== 'ADMIN') {
     throw new Error('Unauthorized')
   }
 
-  if (!name.trim()) {
-    throw new Error('Team name is required')
+  const team = await prisma.team.findUnique({
+    where: { id: teamId },
+    include: {
+      teamMembers: {
+        include: {
+          roles: {
+            where: {
+              teamId: teamId,
+            },
+          },
+        },
+      },
+    },
+  })
+
+  if (!team) {
+    throw new Error('Team not found')
+  }
+
+  // Sort members by role and name
+  const sortedMembers = team.teamMembers
+    .map((member) => ({
+      ...member,
+      role: member.roles[0], // Get the role for this specific team
+    }))
+    .sort((a, b) => {
+      // Sort by owner first, then admin, then name
+      if (a.role?.isOwner !== b.role?.isOwner) return a.role?.isOwner ? -1 : 1
+      if (a.role?.isAdmin !== b.role?.isAdmin) return a.role?.isAdmin ? -1 : 1
+      return a.displayName.localeCompare(b.displayName)
+    })
+
+  // Check which members are enrolled in the app
+  const enrolledUsers = await prisma.user.findMany({
+    where: {
+      iracingCustomerId: {
+        in: sortedMembers.map((m) => m.custId.toString()),
+      },
+    },
+    select: {
+      id: true,
+      iracingCustomerId: true,
+      name: true,
+      email: true,
+    },
+  })
+
+  // Create a map for quick lookup
+  const enrolledMap = new Map(enrolledUsers.map((u) => [u.iracingCustomerId, u]))
+
+  const membersWithEnrollment = sortedMembers.map((member) => {
+    const enrolledUser = enrolledMap.get(member.custId.toString())
+    return {
+      custId: member.custId,
+      displayName: member.displayName,
+      isOwner: member.role?.isOwner || false,
+      isAdmin: member.role?.isAdmin || false,
+      isEnrolled: !!enrolledUser,
+      userId: enrolledUser?.id,
+      appName: enrolledUser?.name,
+      appEmail: enrolledUser?.email,
+    }
+  })
+
+  const enrolledCount = membersWithEnrollment.filter((m) => m.isEnrolled).length
+
+  return {
+    teamName: team.name,
+    iracingTeamId: team.iracingTeamId,
+    members: membersWithEnrollment,
+    enrolledCount,
+    totalCount: team.teamMembers.length,
+  }
+}
+
+export async function createTeam(iracingTeamId: number) {
+  const session = await auth()
+  if (!session?.user || session.user.role !== 'ADMIN') {
+    throw new Error('Unauthorized')
+  }
+
+  console.log('[createTeam] Input iracingTeamId:', iracingTeamId, 'Type:', typeof iracingTeamId)
+
+  if (!iracingTeamId) {
+    throw new Error('iRacing Team ID is required')
+  }
+
+  // Check if team already exists
+  const existing = await prisma.team.findUnique({
+    where: { iracingTeamId },
+  })
+
+  if (existing) {
+    throw new Error('This iRacing Team ID is already registered')
+  }
+
+  // Fetch team info from iRacing API
+  console.log('[createTeam] Fetching team info for ID:', iracingTeamId)
+  const teamInfo = await fetchTeamInfo(iracingTeamId)
+  console.log('[createTeam] Team info received:', JSON.stringify(teamInfo, null, 2))
+
+  if (!teamInfo) {
+    throw new Error(
+      'Could not fetch team information from iRacing. Please verify the Team ID is correct.'
+    )
+  }
+
+  // Fetch team members to check against our users
+  console.log('[createTeam] Fetching team members for ID:', iracingTeamId)
+  const teamMembers = await fetchTeamMembers(iracingTeamId)
+  console.log('[createTeam] Team members count:', teamMembers.length)
+
+  // Get all users with iRacing customer IDs
+  const users = await prisma.user.findMany({
+    where: {
+      iracingCustomerId: {
+        not: null,
+      },
+    },
+    select: {
+      id: true,
+      iracingCustomerId: true,
+    },
+  })
+  console.log('[createTeam] Found', users.length, 'users with iRacing IDs')
+
+  // Find which users are members of this team
+  const memberCustomerIds = new Set(teamMembers.map((m) => m.custId.toString()))
+  const matchingUserIds = users
+    .filter((user) => user.iracingCustomerId && memberCustomerIds.has(user.iracingCustomerId))
+    .map((user) => ({ id: user.id }))
+  console.log('[createTeam] Matched', matchingUserIds.length, 'users to team members')
+
+  console.log(
+    '[createTeam] Creating team with iracingTeamId:',
+    teamInfo.teamId,
+    'Type:',
+    typeof teamInfo.teamId
+  )
+  const team = await prisma.team.create({
+    data: {
+      name: teamInfo.teamName,
+      iracingTeamId: teamInfo.teamId,
+      members: {
+        connect: matchingUserIds,
+      },
+      teamMembers: {
+        create: teamMembers.map((member) => ({
+          custId: member.custId,
+          displayName: member.displayName,
+          isOwner: member.owner || false,
+          isAdmin: member.admin || false,
+        })),
+      },
+    },
+  })
+
+  console.log('[createTeam] Team created successfully with DB iracingTeamId:', team.iracingTeamId)
+  revalidatePath('/admin')
+  revalidatePath('/roster')
+  return team
+}
+
+export async function updateTeam(id: string, iracingTeamId: number) {
+  const session = await auth()
+  if (!session?.user || session.user.role !== 'ADMIN') {
+    throw new Error('Unauthorized')
+  }
+
+  if (!iracingTeamId) {
+    throw new Error('iRacing Team ID is required')
+  }
+
+  // Check if another team has this ID
+  const existing = await prisma.team.findFirst({
+    where: {
+      iracingTeamId,
+      id: { not: id },
+    },
+  })
+
+  if (existing) {
+    throw new Error('This iRacing Team ID is already used by another team')
+  }
+
+  // Fetch team info from iRacing API
+  const teamInfo = await fetchTeamInfo(iracingTeamId)
+
+  if (!teamInfo) {
+    throw new Error(
+      'Could not fetch team information from iRacing. Please verify the Team ID is correct.'
+    )
   }
 
   const team = await prisma.team.update({
     where: { id },
-    data: { name: name.trim() },
+    data: {
+      name: teamInfo.teamName,
+      iracingTeamId: teamInfo.teamId,
+    },
   })
 
   revalidatePath('/admin')

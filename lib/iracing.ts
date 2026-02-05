@@ -56,6 +56,22 @@ export interface IRacingMemberInfo {
   displayName: string
   licenses: Record<string, IRacingLicense>
 }
+
+export interface IRacingTeam {
+  teamId: number
+  teamName: string
+}
+
+export interface IRacingTeamMember {
+  custId: number
+  displayName: string
+  teamName?: string
+  ownerName?: string
+  owner?: boolean
+  admin?: boolean
+  isEnrolled?: boolean
+  userId?: string
+}
 const MOCK_MEMBER_INFO: IRacingMemberInfo = {
   custId: 123456,
   displayName: 'Local Dev User',
@@ -132,7 +148,15 @@ function maskCredential(plain: string, salt: string): string {
   return hash.toString('base64')
 }
 
+// Token cache to avoid hitting rate limits
+let cachedToken: string | null = null
+let tokenExpiry: number = 0
+
 async function getAccessToken(): Promise<string | null> {
+  // Return cached token if still valid (with 5 minute buffer)
+  if (cachedToken && Date.now() < tokenExpiry - 300000) {
+    return cachedToken
+  }
   const clientId = process.env.IRACING_CLIENT_ID
   const clientSecret = process.env.IRACING_CLIENT_SECRET
   const username = process.env.IRACING_USERNAME
@@ -158,10 +182,36 @@ async function getAccessToken(): Promise<string | null> {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     })
 
-    if (!response.ok) return null
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('[getAccessToken] iRacing OAuth failed:', response.status, errorText)
+
+      // Parse rate limit error
+      try {
+        const errorData = JSON.parse(errorText)
+        if (
+          errorData.error === 'unauthorized_client' &&
+          errorData.error_description?.includes('rate limit')
+        ) {
+          const retryMatch = errorData.error_description.match(/retry after (\d+) seconds/)
+          if (retryMatch) {
+            console.error(`[getAccessToken] RATE LIMITED - Retry after ${retryMatch[1]} seconds`)
+          }
+        }
+      } catch {}
+
+      return null
+    }
     const data = await response.json()
+
+    // Cache the token with expiry (iRacing tokens typically last 1 hour)
+    cachedToken = data.access_token
+    tokenExpiry = Date.now() + (data.expires_in || 3600) * 1000
+    console.log('[getAccessToken] New token cached, expires in', data.expires_in || 3600, 'seconds')
+
     return data.access_token
-  } catch {
+  } catch (error) {
+    console.error('[getAccessToken] Exception:', error)
     return null
   }
 }
@@ -249,6 +299,80 @@ export async function fetchCarClasses(): Promise<IRacingCarClass[]> {
     name: item.name,
     shortName: item.short_name,
   }))
+}
+
+/**
+ * Fetches team information from iRacing by team ID.
+ */
+export async function fetchTeamInfo(teamId: number): Promise<IRacingTeam | null> {
+  const token = await getAccessToken()
+  if (!token) {
+    if (process.env.NODE_ENV === 'development') {
+      return { teamId, teamName: `Mock Team ${teamId}` }
+    }
+    return null
+  }
+
+  try {
+    const response = await fetchFromIRacing(`/data/team/get?team_id=${teamId}`, token)
+    if (!response) return null
+
+    console.log('[fetchTeamInfo] iRacing API Response:', JSON.stringify(response, null, 2))
+
+    return {
+      teamId: response.team_id,
+      teamName: response.team_name,
+    }
+  } catch (error) {
+    console.error(`Failed to fetch team ${teamId}:`, error)
+    return null
+  }
+}
+
+/**
+ * Fetches team members from iRacing by team ID.
+ */
+export async function fetchTeamMembers(teamId: number): Promise<IRacingTeamMember[]> {
+  const token = await getAccessToken()
+  if (!token) {
+    if (process.env.NODE_ENV === 'development') {
+      // Return mock data for development
+      return [
+        { custId: 123456, displayName: 'Mock Driver 1' },
+        { custId: 123457, displayName: 'Mock Driver 2' },
+        { custId: 123458, displayName: 'Mock Driver 3' },
+      ]
+    }
+    return []
+  }
+
+  try {
+    const response = await fetchFromIRacing(
+      `/data/team/get?team_id=${teamId}&include_licenses=true`,
+      token
+    )
+    if (!response || !response.roster) return []
+
+    return response.roster.map(
+      (member: {
+        cust_id: number
+        display_name?: string
+        name?: string
+        owner?: boolean
+        admin?: boolean
+      }) => ({
+        custId: member.cust_id,
+        displayName: member.display_name || member.name || `Member ${member.cust_id}`,
+        teamName: response.team_name,
+        ownerName: response.owner_display_name,
+        owner: member.owner || false,
+        admin: member.admin || false,
+      })
+    )
+  } catch {
+    // Silently return empty array for failed fetches (team might not exist or be private)
+    return []
+  }
 }
 
 /**

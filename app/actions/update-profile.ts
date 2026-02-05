@@ -25,6 +25,31 @@ export async function updateProfile(formData: FormData) {
       if (!syncResult.success) {
         return { success: false, error: 'Failed to validate iRacing Customer ID.' }
       }
+
+      // Check if user is part of any existing teams
+      const teams = await prisma.team.findMany({
+        include: {
+          teamMembers: {
+            where: {
+              custId: parseInt(customerId),
+            },
+          },
+        },
+      })
+
+      // Connect user to teams where they are a member
+      const teamsToConnect = teams.filter((team) => team.teamMembers.length > 0)
+
+      if (teamsToConnect.length > 0) {
+        await prisma.user.update({
+          where: { id: session.user.id },
+          data: {
+            teams: {
+              connect: teamsToConnect.map((team) => ({ id: team.id })),
+            },
+          },
+        })
+      }
     }
 
     const updatedUser = await prisma.user.update({
