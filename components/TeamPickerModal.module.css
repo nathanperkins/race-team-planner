@@ -492,6 +492,11 @@
   border-color: #3b82f6;
 }
 
+.disabledOption {
+  color: #6b7280;
+  font-style: italic;
+}
+
 .teamTitle {
   font-weight: 700;
   color: #f1f5f9;

@@ -428,6 +428,28 @@ export default function TeamPickerModal({
       errors.push('Some teams are empty')
     }
 
+    // Check for Class/Team conflicts
+    // Teams cannot run in multiple classes in the same race.
+    if (eventRegistrations && raceId && carClassId) {
+      const realTeamsInResults = results.filter((r) => !r.isGeneric)
+
+      realTeamsInResults.forEach((team) => {
+        const conflict = eventRegistrations.find(
+          (r) =>
+            r.team?.id === team.teamId &&
+            r.raceId === raceId &&
+            r.carClass.id !== carClassId &&
+            !results.some((res) => res.drivers.some((d) => d.id === r.id)) // Driver is not being moved/updated in this session
+        )
+
+        if (conflict) {
+          errors.push(
+            `Team '${team.teamName}' is already fielding a '${conflict.carClass.name}' car. Teams cannot run multiple classes in one race.`
+          )
+        }
+      })
+    }
+
     return errors
   }
 
@@ -661,11 +683,34 @@ export default function TeamPickerModal({
                           </option>
                           {teams
                             .filter((t) => !results.some((r) => r.teamId === t.id))
-                            .map((t) => (
-                              <option key={t.id} value={t.id}>
-                                {t.name}
-                              </option>
-                            ))}
+                            .map((t) => {
+                              // Check if this team is already running a different class in this race
+                              const conflictReg = eventRegistrations?.find(
+                                (r) =>
+                                  r.team?.id === t.id &&
+                                  r.raceId === raceId &&
+                                  r.carClass.id !== carClassId
+                              )
+
+                              if (conflictReg) {
+                                return (
+                                  <option
+                                    key={t.id}
+                                    value={t.id}
+                                    disabled
+                                    className={styles.disabledOption}
+                                  >
+                                    {t.name} (running {conflictReg.carClass.shortName})
+                                  </option>
+                                )
+                              }
+
+                              return (
+                                <option key={t.id} value={t.id}>
+                                  {t.name}
+                                </option>
+                              )
+                            })}
                         </select>
                       </div>
                     )}
