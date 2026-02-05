@@ -1,0 +1,153 @@
+.container {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+.searchButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid #4b5563;
+  border-radius: 0.375rem;
+  background-color: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+  justify-content: center;
+}
+
+.searchButton:hover:not(:disabled) {
+  background-color: rgba(59, 130, 246, 0.2);
+  border-color: #3b82f6;
+}
+
+.searchButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  margin-top: 0.5rem;
+  background-color: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+.searchInputWrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-bottom: 1px solid #374151;
+  background-color: #111827;
+}
+
+.searchIcon {
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.searchInput {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 0.875rem;
+  outline: none;
+}
+
+.searchInput::placeholder {
+  color: #6b7280;
+}
+
+.driverList {
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.driverItem {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem;
+  border: none;
+  background: transparent;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  text-align: left;
+  font-size: 0.875rem;
+}
+
+.driverItem:hover:not(:disabled) {
+  background-color: #374151;
+}
+
+.driverItem:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.driverName {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.noResults {
+  padding: 1rem;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 0.875rem;
+}
+
+.noDrivers {
+  padding: 0.5rem;
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.875rem;
+  font-style: italic;
+}
+.successMessage {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background-color: rgba(34, 197, 94, 0.1);
+  border: 1px solid #22c55e;
+  border-radius: 0.375rem;
+  color: #86efac;
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.errorMessage {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid #ef4444;
+  border-radius: 0.375rem;
+  color: #fca5a5;
+  font-size: 0.875rem;
+  text-align: center;
+}

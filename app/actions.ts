@@ -313,3 +313,68 @@ export async function agreeToExpectations() {
 
   return { success: true }
 }
+export async function adminRegisterDriver(prevState: State, formData: FormData) {
+  const session = await auth()
+  if (!session || !session.user?.id) {
+    return { message: 'Unauthorized', timestamp: Date.now() }
+  }
+
+  // Admin only
+  if (session.user.role !== 'ADMIN') {
+    return { message: 'Only admins can use this function', timestamp: Date.now() }
+  }
+
+  const raceId = formData.get('raceId') as string
+  const userId = formData.get('userId') as string
+  const carClassId = formData.get('carClassId') as string
+
+  if (!raceId || !userId || !carClassId) {
+    return { message: 'Missing required fields', timestamp: Date.now() }
+  }
+
+  try {
+    // Check race exists and is not completed
+    const race = await prisma.race.findUnique({
+      where: { id: raceId },
+      select: { endTime: true, eventId: true },
+    })
+
+    if (!race) return { message: 'Race not found', timestamp: Date.now() }
+    if (new Date() > race.endTime) {
+      return { message: 'Cannot register for a completed race', timestamp: Date.now() }
+    }
+
+    // Check user exists
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    })
+
+    if (!user) return { message: 'User not found', timestamp: Date.now() }
+
+    // Check if already registered
+    const existing = await prisma.registration.findUnique({
+      where: { userId_raceId: { userId, raceId } },
+    })
+
+    if (existing) {
+      return { message: 'User already registered for this race', timestamp: Date.now() }
+    }
+
+    // Create registration
+    await prisma.registration.create({
+      data: {
+        userId,
+        raceId,
+        carClassId,
+      },
+    })
+
+    revalidatePath(`/events`)
+
+    return { message: 'Success', timestamp: Date.now() }
+  } catch (e) {
+    console.error('Admin register driver error:', e)
+    return { message: 'Failed to register driver', timestamp: Date.now() }
+  }
+}

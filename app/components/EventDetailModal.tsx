@@ -11,7 +11,7 @@ import {
   Calendar,
   Car,
 } from 'lucide-react'
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import RaceDetails from '@/components/RaceDetails'
 import EditEventButton from '@/app/admin/EditEventButton'
 import { getLicenseForId, getLicenseColor, formatDuration, getSeriesNameOnly } from '@/lib/utils'
@@ -25,7 +25,11 @@ type EventWithRaces = Prisma.EventGetPayload<{
       include: {
         registrations: {
           include: {
-            user: { select: { name: true; id: true; image: true } }
+            user: {
+              include: {
+                racerStats: true
+              }
+            }
             carClass: true
           }
         }
@@ -33,6 +37,12 @@ type EventWithRaces = Prisma.EventGetPayload<{
     }
   }
 }>
+
+interface Driver {
+  id: string
+  name: string | null
+  image: string | null
+}
 
 interface EventDetailModalProps {
   event: EventWithRaces
@@ -48,9 +58,20 @@ export default function EventDetailModal({
   userId,
 }: EventDetailModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
+  const [allDrivers, setAllDrivers] = useState<Driver[]>([])
 
   const license = getLicenseForId(event.id, event.licenseGroup)
   const licenseColor = getLicenseColor(license)
+
+  // Fetch all drivers for admin search
+  useEffect(() => {
+    if (isAdmin) {
+      fetch('/api/drivers')
+        .then((res) => res.json())
+        .then((data) => setAllDrivers(data))
+        .catch((err) => console.error('Failed to fetch drivers:', err))
+    }
+  }, [isAdmin])
 
   // Calculate ISO week number
   const getWeekNumber = (date: Date): number => {
@@ -208,6 +229,7 @@ export default function EventDetailModal({
                 race={race}
                 userId={userId}
                 isAdmin={isAdmin}
+                allDrivers={allDrivers}
                 carClasses={event.carClasses.map((cc) => ({
                   id: cc.id,
                   name: cc.name,

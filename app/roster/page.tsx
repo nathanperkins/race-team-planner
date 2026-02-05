@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import styles from './roster.module.css'
 import UserRoleBadge from '@/components/UserRoleBadge'
-import { getLicenseForId, getLicenseColor } from '@/lib/utils'
+import { getLicenseColor } from '@/lib/utils'
 
 import RosterSortControls from './RosterSortControls'
 

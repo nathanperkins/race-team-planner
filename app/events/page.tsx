@@ -163,7 +163,9 @@ export default async function EventsPage({ searchParams }: PageProps) {
           registrations: {
             include: {
               user: {
-                select: { name: true, id: true, image: true },
+                include: {
+                  racerStats: true,
+                },
               },
               carClass: true,
             },

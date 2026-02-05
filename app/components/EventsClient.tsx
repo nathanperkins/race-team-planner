@@ -15,7 +15,11 @@ type EventWithRaces = Prisma.EventGetPayload<{
       include: {
         registrations: {
           include: {
-            user: { select: { name: true; id: true; image: true } }
+            user: {
+              include: {
+                racerStats: true
+              }
+            }
             carClass: true
           }
         }

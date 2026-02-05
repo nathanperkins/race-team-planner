@@ -5,6 +5,10 @@
   position: relative;
 }
 
+.compactContainer {
+  position: relative;
+}
+
 .dropdownWrapper {
   position: relative;
   display: inline-block;

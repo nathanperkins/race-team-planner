@@ -8,6 +8,7 @@ import styles from './QuickRegistration.module.css'
 interface Props {
   raceId: string
   carClasses: { id: string; name: string; shortName: string }[]
+  compact?: boolean
 }
 
 type State = {
@@ -19,7 +20,7 @@ const initialState: State = {
   message: '',
 }
 
-export default function QuickRegistration({ raceId, carClasses }: Props) {
+export default function QuickRegistration({ raceId, carClasses, compact = false }: Props) {
   const [isOpen, setIsOpen] = useState(false)
   const [state, formAction, isPending] = useActionState(registerForRace, initialState)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -48,7 +49,7 @@ export default function QuickRegistration({ raceId, carClasses }: Props) {
   }
 
   return (
-    <div className={styles.container} ref={dropdownRef}>
+    <div className={compact ? styles.compactContainer : styles.container} ref={dropdownRef}>
       <form action={formAction} ref={formRef}>
         <input type="hidden" name="raceId" value={raceId} />
         <input type="hidden" name="carClassId" />
