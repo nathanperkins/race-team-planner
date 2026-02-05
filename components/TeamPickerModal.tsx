@@ -19,7 +19,7 @@ import {
 import { batchAssignTeams } from '@/app/admin/teams/actions'
 import FormattedDate from './FormattedDate'
 import styles from './TeamPickerModal.module.css'
-import { RaceWithRegistrations } from './RaceDetails'
+import { RaceWithRegistrations, ExtendedRegistration } from './RaceDetails'
 
 interface Driver {
   id: string
@@ -27,6 +27,7 @@ interface Driver {
   irating: number
   license: string
   isManual?: boolean
+  category?: 'Unassigned' | 'Assigned' | 'Different Class' | 'Different Time'
 }
 
 interface TeamComposition {
@@ -43,6 +44,9 @@ interface Props {
   registrations: RaceWithRegistrations['registrations']
   teams: { id: string; name: string }[]
   onClose: () => void
+  eventRegistrations?: ExtendedRegistration[]
+  raceId?: string
+  carClassId?: string
 }
 
 export default function TeamPickerModal({
@@ -51,6 +55,9 @@ export default function TeamPickerModal({
   registrations: initialRegistrations,
   teams,
   onClose,
+  eventRegistrations,
+  raceId,
+  carClassId,
 }: Props) {
   const [searchQuery, setSearchQuery] = useState('')
   const [manualDrivers, setManualDrivers] = useState<Driver[]>([])
@@ -62,23 +69,53 @@ export default function TeamPickerModal({
 
   // Map registrations to Driver objects
   const rosterDrivers = useMemo(() => {
-    return initialRegistrations.map((reg) => {
+    // If we have event registrations (full list), use them. Otherwise fallback to just this race.
+    const source =
+      eventRegistrations ||
+      initialRegistrations.map((r) => ({ ...r, raceId: raceId || '', raceStartTime }))
+
+    return source.map((reg) => {
       const stats = reg.user.racerStats?.find((s) => s.categoryId === 5) || reg.user.racerStats?.[0]
+
+      let category: Driver['category'] = 'Unassigned'
+
+      if (reg.raceId !== raceId) {
+        category = 'Different Time'
+      } else if (carClassId && reg.carClass.id !== carClassId) {
+        category = 'Different Class'
+      } else if (reg.team) {
+        category = 'Assigned'
+      } else {
+        category = 'Unassigned'
+      }
+
       return {
-        id: reg.id,
+        id: reg.id, // Registration ID
         name: reg.user.name || 'Unknown',
         irating: stats?.irating || 0,
         license: stats?.groupName || 'R',
         isManual: false,
+        category,
       } as Driver
     })
-  }, [initialRegistrations])
+  }, [initialRegistrations, eventRegistrations, raceId, carClassId, raceStartTime])
 
   // Initialize selection and load existing teams
   useEffect(() => {
-    // Select all drivers by default
-    const allIds = new Set(rosterDrivers.map((d) => d.id))
-    setSelectedDriverIds(allIds)
+    // Select all drivers by default?
+    // Maybe only select 'Unassigned' and 'Assigned' by default?
+    // User requested "grouping", didn't specify default selection change.
+    // But usually you wouldn't balance across different times.
+    // Let's stick safe and select Unassigned + Assigned + Manual.
+    // Wait, `rosterDrivers` includes different time/class.
+    // If I balance, I probably don't want "Different Time" people unless checking them.
+    // So let's default select only Unassigned/Assigned (Current Class, Current Time).
+    const validIds = new Set(
+      rosterDrivers
+        .filter((d) => d.category === 'Unassigned' || d.category === 'Assigned')
+        .map((d) => d.id)
+    )
+    setSelectedDriverIds(validIds)
 
     // Group existing assignments into locked teams
     const existingTeamsMap = new Map<string, TeamComposition>()
@@ -425,38 +462,68 @@ export default function TeamPickerModal({
                 Driver Picker ({selectedDriverIds.size}/{allAvailableDrivers.length})
               </h3>
               <div className={styles.driverList}>
-                {filteredDrivers.map((d) => (
-                  <div
-                    key={d.id}
-                    className={`${styles.driverCard} ${selectedDriverIds.has(d.id) ? styles.selected : ''}`}
-                    onClick={() => toggleSelection(d.id)}
-                  >
-                    <div className={styles.driverInfo}>
-                      <div className={styles.nameRow}>
-                        {selectedDriverIds.has(d.id) && (
-                          <Check size={14} className={styles.checkIcon} />
-                        )}
-                        <span className={styles.driverName}>{d.name}</span>
-                      </div>
-                      {d.isManual && <span className={styles.manualBadge}>Manual Entry</span>}
-                    </div>
-                    <div className={styles.driverStats}>
-                      {!d.isManual && <span className={styles.licenseBadge}>{d.license}</span>}
-                      <span className={styles.irBadge}>{d.irating}</span>
-                      {d.isManual && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            removeManual(d.id)
-                          }}
-                          className={styles.deleteDriver}
+                {/* Grouped Rendering */}
+                {['Unassigned', 'Assigned', 'Different Class', 'Different Time'].map((cat) => {
+                  const driversInGroup = filteredDrivers.filter((d) => {
+                    if (d.isManual) return cat === 'Unassigned' // Showing manual in unassigned? Or separate?
+                    // Let's treat manual as unassigned for now or separate group?
+                    // User didn't specify manual. Let's put manual in 'Unassigned' section for now.
+                    // Actually, manual drivers don't have 'category' set in `rosterDrivers` logic.
+                    // Let's check `d.category`.
+                    if (!d.category && d.isManual) return cat === 'Unassigned'
+                    return d.category === cat
+                  })
+
+                  if (driversInGroup.length === 0) return null
+
+                  // Mapping category specific titles
+                  const titleMap: Record<string, string> = {
+                    Unassigned: 'Unassigned (within class)',
+                    Assigned: 'Assigned (within class)',
+                    'Different Class': 'Different Class',
+                    'Different Time': 'Different Time',
+                  }
+
+                  return (
+                    <div key={cat} className={styles.driverGroupSection}>
+                      <h4 className={styles.groupHeader}>{titleMap[cat]}</h4>
+                      {driversInGroup.map((d) => (
+                        <div
+                          key={d.id}
+                          className={`${styles.driverCard} ${selectedDriverIds.has(d.id) ? styles.selected : ''}`}
+                          onClick={() => toggleSelection(d.id)}
                         >
-                          <Trash2 size={14} />
-                        </button>
-                      )}
+                          <div className={styles.driverInfo}>
+                            <div className={styles.nameRow}>
+                              {selectedDriverIds.has(d.id) && (
+                                <Check size={14} className={styles.checkIcon} />
+                              )}
+                              <span className={styles.driverName}>{d.name}</span>
+                            </div>
+                            {d.isManual && <span className={styles.manualBadge}>Manual Entry</span>}
+                          </div>
+                          <div className={styles.driverStats}>
+                            {!d.isManual && (
+                              <span className={styles.licenseBadge}>{d.license}</span>
+                            )}
+                            <span className={styles.irBadge}>{d.irating}</span>
+                            {d.isManual && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  removeManual(d.id)
+                                }}
+                                className={styles.deleteDriver}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           </div>

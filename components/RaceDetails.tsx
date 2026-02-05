@@ -38,6 +38,11 @@ export interface RaceWithRegistrations {
   }>
 }
 
+export type ExtendedRegistration = RaceWithRegistrations['registrations'][0] & {
+  raceId: string
+  raceStartTime: Date
+}
+
 interface Driver {
   id: string
   name: string | null
@@ -52,6 +57,7 @@ interface Props {
   teams: Array<{ id: string; name: string }>
   allDrivers?: Driver[]
   dateFormat?: Intl.DateTimeFormatOptions
+  eventRegistrations?: ExtendedRegistration[]
 }
 
 export default function RaceDetails({
@@ -62,6 +68,7 @@ export default function RaceDetails({
   teams,
   allDrivers = [],
   dateFormat,
+  eventRegistrations,
 }: Props) {
   const now = new Date()
   const isRaceCompleted = now > new Date(race.endTime)
@@ -110,6 +117,7 @@ export default function RaceDetails({
               registrations={race.registrations}
               carClasses={carClasses}
               teams={teams}
+              eventRegistrations={eventRegistrations || []}
             />
           </div>
         )}

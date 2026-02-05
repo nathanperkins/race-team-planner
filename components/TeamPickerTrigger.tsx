@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { Users, ChevronDown } from 'lucide-react'
 import styles from './TeamPickerTrigger.module.css'
 import TeamPickerModal from './TeamPickerModal'
-import { RaceWithRegistrations } from './RaceDetails'
+import { RaceWithRegistrations, ExtendedRegistration } from './RaceDetails'
 
 interface Props {
   raceId: string
@@ -12,6 +12,7 @@ interface Props {
   registrations: RaceWithRegistrations['registrations']
   carClasses: { id: string; name: string; shortName: string }[]
   teams: { id: string; name: string }[]
+  eventRegistrations?: ExtendedRegistration[]
 }
 
 export default function TeamPickerTrigger({
@@ -20,6 +21,7 @@ export default function TeamPickerTrigger({
   registrations,
   carClasses,
   teams,
+  eventRegistrations,
 }: Props) {
   const [showDropdown, setShowDropdown] = useState(false)
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null)
@@ -72,6 +74,9 @@ export default function TeamPickerTrigger({
           registrations={registrations.filter((r) => r.carClass.id === selectedClassId)}
           teams={teams}
           onClose={() => setSelectedClassId(null)}
+          eventRegistrations={eventRegistrations || []}
+          raceId={raceId}
+          carClassId={selectedClassId}
         />
       )}
     </div>

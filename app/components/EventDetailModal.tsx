@@ -62,6 +62,16 @@ export default function EventDetailModal({
   const modalRef = useRef<HTMLDivElement>(null)
   const [allDrivers, setAllDrivers] = useState<Driver[]>([])
 
+  // Flatten all registrations for the event to pass down
+  // simple memoization not strictly needed as event is stable but good practice
+  const allEventRegistrations = event.races.flatMap((r) =>
+    r.registrations.map((reg) => ({
+      ...reg,
+      raceId: r.id,
+      raceStartTime: r.startTime,
+    }))
+  )
+
   const license = getLicenseForId(event.id, event.licenseGroup)
   const licenseColor = getLicenseColor(license)
 
@@ -238,6 +248,7 @@ export default function EventDetailModal({
                   name: cc.name,
                   shortName: cc.shortName,
                 }))}
+                eventRegistrations={allEventRegistrations}
               />
             ))}
           </div>
