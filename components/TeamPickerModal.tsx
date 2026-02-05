@@ -1,7 +1,18 @@
 'use client'
 
 import React, { useState, useMemo, useEffect } from 'react'
-import { X, Search, Shuffle, Trash2, Plus, Save, Loader2, RefreshCw, Users } from 'lucide-react'
+import {
+  X,
+  Search,
+  Shuffle,
+  TrendingUp,
+  Trash2,
+  Plus,
+  Save,
+  Loader2,
+  RefreshCw,
+  Users,
+} from 'lucide-react'
 import { batchAssignTeams } from '@/app/admin/teams/actions'
 import FormattedDate from './FormattedDate'
 import styles from './TeamPickerModal.module.css'
@@ -262,6 +273,7 @@ export default function TeamPickerModal({
 
           <div className={styles.buttonGroup}>
             <button onClick={() => calculateBalances('balanced')} className={styles.actionButton}>
+              <TrendingUp size={16} />
               Balance
             </button>
             <button
