@@ -34,6 +34,7 @@ interface TeamComposition {
   teamName: string
   drivers: Driver[]
   locked?: boolean
+  isGeneric?: boolean
 }
 
 interface Props {
@@ -143,19 +144,20 @@ export default function TeamPickerModal({
     const compositions: TeamComposition[] = []
 
     // Fill with teams
-    teams.slice(0, count).forEach((t) => {
-      const existing = results.find((r) => r.teamId === t.id)
-      if (existing?.locked) {
+    for (let i = 0; i < count; i++) {
+      const existing = results[i]
+      if (existing?.locked && !existing.isGeneric) {
         compositions.push(existing)
       } else {
         compositions.push({
-          teamId: t.id,
-          teamName: t.name,
+          teamId: `GENERIC-${i + 1}`,
+          teamName: `Team ${i + 1}`,
           drivers: [],
           locked: false,
+          isGeneric: true,
         })
       }
-    })
+    }
 
     if (compositions.length === 0) {
       alert('No teams available. Please create teams in the Admin panel first.')
@@ -204,6 +206,11 @@ export default function TeamPickerModal({
   const handleSave = async () => {
     setSaving(true)
     try {
+      if (results.some((r) => r.isGeneric)) {
+        alert('Please assign all teams to a real team name before submitting.')
+        return
+      }
+
       const assignments = results.flatMap((comp) =>
         comp.drivers
           .filter((d) => !d.isManual) // Can't assign manual drivers to DB registrations
@@ -254,6 +261,19 @@ export default function TeamPickerModal({
   const toggleTeamLock = (teamId: string) => {
     setResults((prev) =>
       prev.map((comp) => (comp.teamId === teamId ? { ...comp, locked: !comp.locked } : comp))
+    )
+  }
+
+  const assignRealTeam = (tempId: string, realTeamId: string) => {
+    const realTeam = teams.find((t) => t.id === realTeamId)
+    if (!realTeam) return
+
+    setResults((prev) =>
+      prev.map((comp) =>
+        comp.teamId === tempId
+          ? { ...comp, teamId: realTeam.id, teamName: realTeam.name, isGeneric: false }
+          : comp
+      )
     )
   }
 
@@ -414,17 +434,40 @@ export default function TeamPickerModal({
                   >
                     <div className={styles.teamHeader}>
                       <div className={styles.teamMainInfo}>
-                        <button
-                          onClick={() => toggleTeamLock(comp.teamId)}
-                          className={`${styles.lockButton} ${comp.locked ? styles.isLocked : ''}`}
-                          title={comp.locked ? 'Unlock Team' : 'Lock Team'}
-                        >
-                          {comp.locked ? <Lock size={14} /> : <Unlock size={14} />}
-                        </button>
+                        {!comp.isGeneric && (
+                          <button
+                            onClick={() => toggleTeamLock(comp.teamId)}
+                            className={`${styles.lockButton} ${comp.locked ? styles.isLocked : ''}`}
+                            title={comp.locked ? 'Unlock Team' : 'Lock Team'}
+                          >
+                            {comp.locked ? <Lock size={14} /> : <Unlock size={14} />}
+                          </button>
+                        )}
                         <span className={styles.teamTitle}>{comp.teamName}</span>
                       </div>
                       <span className={styles.avgIR}>Avg iR: {getTeamAvgIR(comp.drivers)}</span>
                     </div>
+
+                    {comp.isGeneric && (
+                      <div className={styles.teamAssignment}>
+                        <select
+                          className={styles.realTeamSelect}
+                          onChange={(e) => assignRealTeam(comp.teamId, e.target.value)}
+                          value=""
+                        >
+                          <option value="" disabled>
+                            Assign to real team...
+                          </option>
+                          {teams
+                            .filter((t) => !results.some((r) => r.teamId === t.id))
+                            .map((t) => (
+                              <option key={t.id} value={t.id}>
+                                {t.name}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+                    )}
                     <div className={styles.teamDrivers}>
                       {comp.drivers.map((d) => (
                         <div key={d.id} className={styles.memberCard}>
@@ -481,7 +524,7 @@ export default function TeamPickerModal({
           <button
             onClick={handleSave}
             className={styles.primaryButton}
-            disabled={saving || results.length === 0}
+            disabled={saving || results.length === 0 || results.some((r) => r.isGeneric)}
           >
             {saving ? <Loader2 className={styles.spin} size={18} /> : <Save size={18} />}
             Submit Teams

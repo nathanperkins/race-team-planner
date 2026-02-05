@@ -432,6 +432,28 @@
   background: rgba(59, 130, 246, 0.02);
 }
 
+.teamAssignment {
+  padding: 0 0.75rem 0.75rem 0.75rem;
+  margin-top: -0.25rem;
+  border-bottom: 1px solid #334155;
+}
+
+.realTeamSelect {
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: 6px;
+  background: #0f172a;
+  border: 1px solid #334155;
+  color: #f1f5f9;
+  font-size: 0.875rem;
+  cursor: pointer;
+  outline: none;
+}
+
+.realTeamSelect:focus {
+  border-color: #3b82f6;
+}
+
 .teamTitle {
   font-weight: 700;
   color: #f1f5f9;
