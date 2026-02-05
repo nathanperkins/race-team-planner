@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
@@ -170,7 +169,7 @@ async function main() {
     },
   })
 
-  const bobRegistration = await prisma.registration.upsert({
+  await prisma.registration.upsert({
     where: {
       userId_raceId: {
         userId: bob.id,
@@ -242,7 +241,7 @@ async function main() {
     },
   })
 
-  const charlieRegistration = await prisma.registration.upsert({
+  await prisma.registration.upsert({
     where: {
       userId_raceId: {
         userId: charlie.id,
@@ -261,7 +260,7 @@ async function main() {
     },
   })
 
-  const charlieRegistrationRace2 = await prisma.registration.upsert({
+  await prisma.registration.upsert({
     where: {
       userId_raceId: {
         userId: charlie.id,
@@ -280,7 +279,7 @@ async function main() {
     },
   })
 
-  const charlieRegistrationSebring = await prisma.registration.upsert({
+  await prisma.registration.upsert({
     where: {
       userId_raceId: {
         userId: charlie.id,
@@ -342,7 +341,7 @@ async function main() {
     },
   })
 
-  const davidRegistration = await prisma.registration.upsert({
+  await prisma.registration.upsert({
     where: {
       userId_raceId: {
         userId: david.id,
@@ -361,7 +360,7 @@ async function main() {
     },
   })
 
-  const davidSebringRegistration = await prisma.registration.upsert({
+  await prisma.registration.upsert({
     where: {
       userId_raceId: {
         userId: david.id,
@@ -413,7 +412,7 @@ async function main() {
     },
   })
 
-  const emmaRegistration = await prisma.registration.upsert({
+  await prisma.registration.upsert({
     where: {
       userId_raceId: {
         userId: emma.id,
@@ -465,7 +464,7 @@ async function main() {
     },
   })
 
-  const frankRegistration = await prisma.registration.upsert({
+  await prisma.registration.upsert({
     where: {
       userId_raceId: {
         userId: frank.id,
@@ -517,7 +516,7 @@ async function main() {
     },
   })
 
-  const graceRegistration = await prisma.registration.upsert({
+  await prisma.registration.upsert({
     where: {
       userId_raceId: {
         userId: grace.id,
@@ -579,7 +578,7 @@ async function main() {
     },
   })
 
-  const henryRegistration = await prisma.registration.upsert({
+  await prisma.registration.upsert({
     where: {
       userId_raceId: {
         userId: henry.id,
@@ -626,19 +625,19 @@ async function main() {
     },
   })
 
-  const pastAliceRegistration = await prisma.registration.upsert({
+  await prisma.registration.upsert({
     where: { userId_raceId: { userId: alice.id, raceId: pastSebringRace.id } },
     update: {},
     create: { userId: alice.id, raceId: pastSebringRace.id, carClassId: gt3.id },
   })
 
-  const pastBobRegistration = await prisma.registration.upsert({
+  await prisma.registration.upsert({
     where: { userId_raceId: { userId: bob.id, raceId: pastSebringRace.id } },
     update: {},
     create: { userId: bob.id, raceId: pastSebringRace.id, carClassId: gt3.id },
   })
 
-  const pastCharlieRegistration = await prisma.registration.upsert({
+  await prisma.registration.upsert({
     where: { userId_raceId: { userId: charlie.id, raceId: pastSebringRace.id } },
     update: {},
     create: { userId: charlie.id, raceId: pastSebringRace.id, carClassId: gt3.id },
