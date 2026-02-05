@@ -31,7 +31,7 @@ export default async function AdminPage() {
         <div className={styles.sectionHeader}>
           <h2 className={styles.sectionTitle}>Global Team Management</h2>
         </div>
-        <p className={styles.description}>Create and manage teams (e.g. SRG Cobalt, SRG Carbon).</p>
+        <p className={styles.description}>Create and manage teams (e.g. Cobalt, Carbon).</p>
         <TeamManagement />
       </section>
 

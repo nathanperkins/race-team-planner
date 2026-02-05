@@ -141,7 +141,7 @@ A user's expression of interest for a specific race.
 - [x] Add sync support for racer info.
 - [x] Sync and display race duration.
 - [x] Fix syncing fails with success message.
-- [x] **Check Membership in SRG Discord**: Use the Discord API to check if a user is a member of the SRG Discord.
+- [x] **Check Membership in Discord**: Use the Discord API to check if a user is a member of the Discord.
 - [x] **Implement roles**: Admins can modify all registrations, users can only modify their own registrations.
 - [x] **Automated iRacing Sync**: Background synchronization for events and driver stats.
 

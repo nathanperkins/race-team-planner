@@ -153,6 +153,16 @@ async function main() {
     },
   })
 
+  // Create global teams
+  const teamNames = ['Ruby', 'Sapphire', 'Emerald', 'Silver', 'Gold']
+  for (const name of teamNames) {
+    await prisma.team.upsert({
+      where: { name },
+      update: {},
+      create: { name },
+    })
+  }
+
   const alice = await prisma.user.upsert({
     where: { id: 'user_alice' },
     update: {

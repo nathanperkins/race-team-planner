@@ -23,7 +23,7 @@ export default async function ExpectationsPage() {
     <div className={styles.container}>
       <div className={styles.content}>
         <header className={styles.header}>
-          <h1 className={styles.title}>SRG Endurance – Team Expectations</h1>
+          <h1 className={styles.title}>Endurance Team Expectations</h1>
           <div className={styles.versionTop}>Revision v{CURRENT_EXPECTATIONS_VERSION}</div>
           <p className={styles.subtitle}>
             Please review the expectations below{' '}

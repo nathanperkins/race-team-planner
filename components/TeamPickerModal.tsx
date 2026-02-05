@@ -461,7 +461,7 @@ export default function TeamPickerModal({
       <div className={styles.modal}>
         <div className={styles.header}>
           <div>
-            <h2 className={styles.title}>SRG Team Balancer</h2>
+            <h2 className={styles.title}>Team Balancer</h2>
             <p className={styles.subtitle}>
               <FormattedDate
                 date={raceStartTime}
@@ -583,6 +583,14 @@ export default function TeamPickerModal({
 
                   if (driversInGroup.length === 0) return null
 
+                  // Sort: selected drivers first, then alphabetical by name
+                  const sortedDrivers = [...driversInGroup].sort((a, b) => {
+                    const aSelected = selectedDriverIds.has(a.id) ? 0 : 1
+                    const bSelected = selectedDriverIds.has(b.id) ? 0 : 1
+                    if (aSelected !== bSelected) return aSelected - bSelected
+                    return a.name.localeCompare(b.name)
+                  })
+
                   // Mapping category specific titles
                   const titleMap: Record<string, string> = {
                     Unassigned: 'Unassigned (within class)',
@@ -595,7 +603,7 @@ export default function TeamPickerModal({
                   return (
                     <div key={cat} className={styles.driverGroupSection}>
                       <h4 className={styles.groupHeader}>{titleMap[cat]}</h4>
-                      {driversInGroup.map((d) => (
+                      {sortedDrivers.map((d) => (
                         <div
                           key={d.id}
                           className={`${styles.driverCard} ${selectedDriverIds.has(d.id) ? styles.selected : ''}`}
@@ -655,36 +663,23 @@ export default function TeamPickerModal({
                             {comp.locked ? <Lock size={14} /> : <Unlock size={14} />}
                           </button>
                         )}
-                        <span className={styles.teamTitle}>{comp.teamName}</span>
-                      </div>
-                      <div className={styles.teamActions}>
-                        <button
-                          onClick={() => handleDeleteTeam(comp.teamId)}
-                          className={styles.deleteTeamButton}
-                          title="Delete Team"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </div>
-                    <div className={styles.teamHeaderStats}>
-                      <span className={styles.avgIR}>Avg iR: {getTeamAvgIR(comp.drivers)}</span>
-                    </div>
-
-                    {comp.isGeneric && (
-                      <div className={styles.teamAssignment}>
                         <select
-                          className={styles.realTeamSelect}
-                          onChange={(e) => assignRealTeam(comp.teamId, e.target.value)}
-                          value=""
+                          className={`${styles.teamNameSelect} ${comp.isGeneric ? styles.unassigned : ''}`}
+                          value={comp.isGeneric ? '' : comp.teamId}
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              assignRealTeam(comp.teamId, e.target.value)
+                            }
+                          }}
                         >
                           <option value="" disabled>
-                            Assign to real team...
+                            Select Team...
                           </option>
                           {teams
-                            .filter((t) => !results.some((r) => r.teamId === t.id))
+                            .filter(
+                              (t) => t.id === comp.teamId || !results.some((r) => r.teamId === t.id)
+                            )
                             .map((t) => {
-                              // Check if this team is already running a different class in this race
                               const conflictReg = eventRegistrations?.find(
                                 (r) =>
                                   r.team?.id === t.id &&
@@ -713,7 +708,19 @@ export default function TeamPickerModal({
                             })}
                         </select>
                       </div>
-                    )}
+                      <div className={styles.teamActions}>
+                        <button
+                          onClick={() => handleDeleteTeam(comp.teamId)}
+                          className={styles.deleteTeamButton}
+                          title="Delete Team"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                    <div className={styles.teamHeaderStats}>
+                      <span className={styles.avgIR}>Avg iR: {getTeamAvgIR(comp.drivers)}</span>
+                    </div>
                     <div className={styles.teamDrivers}>
                       {comp.drivers.map((d) => (
                         <div key={d.id} className={styles.memberCard}>

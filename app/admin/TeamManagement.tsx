@@ -93,7 +93,7 @@ export default function TeamManagement() {
           type="text"
           value={newTeamName}
           onChange={(e) => setNewTeamName(e.target.value)}
-          placeholder="New team name (e.g. SRG Cobalt)"
+          placeholder="New team name (e.g. Cobalt)"
           className={styles.input}
           disabled={processing === 'adding'}
           onKeyDown={(e) => e.key === 'Enter' && handleAddTeam()}

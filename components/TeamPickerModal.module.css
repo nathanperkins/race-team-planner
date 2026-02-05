@@ -453,11 +453,6 @@
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
-  opacity: 0;
-}
-
-.teamHeader:hover .deleteTeamButton {
-  opacity: 1;
 }
 
 .deleteTeamButton:hover {
@@ -500,6 +495,34 @@
 .teamTitle {
   font-weight: 700;
   color: #f1f5f9;
+}
+
+.teamNameSelect {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #f1f5f9;
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  min-width: 120px;
+  max-width: 180px;
+}
+
+.teamNameSelect:hover {
+  border-color: #374151;
+  background: rgba(55, 65, 81, 0.3);
+}
+
+.teamNameSelect:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.teamNameSelect.unassigned {
+  color: #f59e0b;
+  font-style: italic;
 }
 
 .avgIR {
