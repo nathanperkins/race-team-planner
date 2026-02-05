@@ -121,3 +121,23 @@ export async function assignRegistrationToTeam(registrationId: string, teamId: s
 
   return registration
 }
+export async function batchAssignTeams(
+  assignments: { registrationId: string; teamId: string | null }[]
+) {
+  const session = await auth()
+  if (!session?.user || session.user.role !== 'ADMIN') {
+    throw new Error('Unauthorized')
+  }
+
+  // Use a transaction for reliability
+  await prisma.$transaction(
+    assignments.map((a) =>
+      prisma.registration.update({
+        where: { id: a.registrationId },
+        data: { teamId: a.teamId },
+      })
+    )
+  )
+
+  revalidatePath('/events')
+}

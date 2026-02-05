@@ -1,0 +1,566 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 2rem;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.modal {
+  background: #111827;
+  border: 1px solid #374151;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 1200px;
+  height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  animation: scaleUp 0.3s ease-out;
+}
+
+.header {
+  padding: 1.5rem;
+  border-bottom: 1px solid #374151;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: white;
+}
+
+.subtitle {
+  margin: 0.25rem 0 0 0;
+  font-size: 0.875rem;
+  color: #9ca3af;
+}
+
+.closeButton {
+  background: transparent;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.closeButton:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
+}
+
+.toolbar {
+  padding: 1rem 1.5rem;
+  background: #1f2937;
+  border-bottom: 1px solid #374151;
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.searchWrapper {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.searchWrapper svg {
+  position: absolute;
+  left: 0.75rem;
+  color: #6b7280;
+}
+
+.input {
+  width: 100%;
+  background: #111827;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem 0.5rem 2.25rem;
+  color: white;
+  font-size: 0.875rem;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.teamCount {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #9ca3af;
+}
+
+.smallInput {
+  width: 60px;
+  background: #111827;
+  border: 1px solid #374151;
+  border-radius: 6px;
+  padding: 0.4rem;
+  color: white;
+  text-align: center;
+}
+
+.buttonGroup {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.actionButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #3b82f6;
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.actionButton:hover {
+  background: #2563eb;
+  transform: translateY(-1px);
+}
+
+.iconButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  background: #374151;
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  color: #d1d5db;
+  font-size: 0.825rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.iconButton:hover {
+  background: #4b5563;
+  color: white;
+}
+
+.content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 320px;
+  border-right: 1px solid #374151;
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.section {
+  padding: 1.25rem;
+  border-bottom: 1px solid #374151;
+}
+
+.sectionTitle {
+  margin: 0 0 1rem 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.manualEntry {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.manualEntry .input {
+  padding-left: 0.75rem;
+}
+
+.row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.addButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #10b981;
+  padding: 0.6rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.addButton:hover {
+  background: rgba(16, 185, 129, 0.2);
+}
+
+.driverListSection {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem;
+  overflow: hidden;
+}
+
+.driverList {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+.statusBadge {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid #374151;
+  border-radius: 6px;
+  padding: 0.4rem 0.75rem;
+  color: #9ca3af;
+  font-size: 0.825rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.statusBar {
+  padding: 0.6rem 1.5rem;
+  background: rgba(16, 185, 129, 0.05);
+  border-bottom: 1px solid rgba(16, 185, 129, 0.2);
+  color: #10b981;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.driverCard {
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  padding: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.driverCard:hover {
+  background: #374151;
+  border-color: #4b5563;
+}
+
+.driverCard.selected {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: #3b82f6;
+  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.5);
+}
+
+.driverInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.driverName {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: white;
+}
+
+.manualBadge {
+  font-size: 0.7rem;
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  width: fit-content;
+}
+
+.driverStats {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.licenseBadge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: #374151;
+  color: #9ca3af;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+}
+
+.irBadge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #60a5fa;
+  min-width: 40px;
+  text-align: right;
+}
+
+.deleteDriver {
+  background: transparent;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+}
+
+.deleteDriver:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.main {
+  flex: 1;
+  padding: 1.5rem;
+  overflow-y: auto;
+  background: #0f172a;
+}
+
+.resultsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.teamColumn {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.teamHeader {
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid #334155;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.teamTitle {
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.avgIR {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.teamDrivers {
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.memberCard {
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 0.75rem;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.memberName {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #cbd5e1;
+}
+
+.moveSelect {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid #334155;
+  border-radius: 4px;
+  color: #94a3b8;
+  font-size: 0.7rem;
+  padding: 0.2rem;
+  width: 100%;
+  cursor: pointer;
+  outline: none;
+}
+
+.moveSelect:hover {
+  border-color: #4b5563;
+  color: #d1d5db;
+}
+
+.memberIR {
+  font-weight: 600;
+  color: #38bdf8;
+}
+
+.emptyTeam {
+  text-align: center;
+  padding: 1.5rem;
+  color: #64748b;
+  font-size: 0.875rem;
+  font-style: italic;
+}
+
+.emptyResults {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #475569;
+  text-align: center;
+}
+
+.emptyResults h3 {
+  margin: 1.5rem 0 0.5rem 0;
+  color: #94a3b8;
+}
+
+.emptyResults p {
+  color: #64748b;
+  max-width: 300px;
+}
+
+.footer {
+  padding: 1.25rem 1.5rem;
+  border-top: 1px solid #374151;
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.secondaryButton {
+  background: transparent;
+  border: 1px solid #374151;
+  color: #d1d5db;
+  padding: 0.6rem 1.25rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.secondaryButton:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: #4b5563;
+}
+
+.primaryButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #10b981;
+  border: none;
+  color: white;
+  padding: 0.6rem 1.5rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.primaryButton:hover:not(:disabled) {
+  background: #059669;
+  transform: translateY(-1px);
+}
+
+.primaryButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Custom Scrollbar */
+.driverList::-webkit-scrollbar {
+  width: 4px;
+}
+
+.driverList::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.driverList::-webkit-scrollbar-thumb {
+  background: #374151;
+  border-radius: 2px;
+}
+
+.driverList::-webkit-scrollbar-thumb:hover {
+  background: #4b5563;
+}

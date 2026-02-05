@@ -18,11 +18,15 @@
 
 .raceHeader {
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: center;
   margin-bottom: 1.5rem;
   padding-bottom: 0.75rem;
   border-bottom: 1px solid #374151;
+}
+
+.headerActions {
+  margin-left: auto;
 }
 
 .raceTitle {

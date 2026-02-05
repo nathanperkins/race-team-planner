@@ -7,8 +7,9 @@ import QuickRegistration from './QuickRegistration'
 import EditableCarClass from './EditableCarClass'
 import AdminDriverSearch from './AdminDriverSearch'
 import EditableTeamAssignment from './EditableTeamAssignment'
+import TeamPickerTrigger from './TeamPickerTrigger'
 
-interface RaceWithRegistrations {
+export interface RaceWithRegistrations {
   id: string
   startTime: Date
   endTime: Date
@@ -100,6 +101,18 @@ export default function RaceDetails({
           </span>
         )}
         {isRaceCompleted && <span className={styles.completedBadge}>Completed</span>}
+
+        {isAdmin && !isRaceCompleted && (
+          <div className={styles.headerActions}>
+            <TeamPickerTrigger
+              raceId={race.id}
+              raceStartTime={race.startTime}
+              registrations={race.registrations}
+              carClasses={carClasses}
+              teams={teams}
+            />
+          </div>
+        )}
       </div>
 
       {race.registrations.length === 0 ? (
