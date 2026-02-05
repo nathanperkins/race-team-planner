@@ -122,7 +122,8 @@ export async function assignRegistrationToTeam(registrationId: string, teamId: s
   return registration
 }
 export async function batchAssignTeams(
-  assignments: { registrationId: string; teamId: string | null }[]
+  assignments: { registrationId: string; teamId: string | null }[],
+  overrides?: { raceId?: string; carClassId?: string }
 ) {
   const session = await auth()
   if (!session?.user || session.user.role !== 'ADMIN') {
@@ -134,10 +135,15 @@ export async function batchAssignTeams(
     assignments.map((a) =>
       prisma.registration.update({
         where: { id: a.registrationId },
-        data: { teamId: a.teamId },
+        data: {
+          teamId: a.teamId,
+          ...(overrides?.raceId ? { raceId: overrides.raceId } : {}),
+          ...(overrides?.carClassId ? { carClassId: overrides.carClassId } : {}),
+        },
       })
     )
   )
 
   revalidatePath('/events')
+  revalidatePath('/events/[id]', 'layout')
 }

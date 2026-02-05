@@ -347,7 +347,7 @@ export default function TeamPickerModal({
           }))
       )
 
-      await batchAssignTeams(assignments)
+      await batchAssignTeams(assignments, { raceId, carClassId })
       onClose()
     } catch (err) {
       console.error(err)
