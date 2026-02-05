@@ -15,6 +15,7 @@ import {
   Check,
   Lock,
   Unlock,
+  AlertTriangle,
 } from 'lucide-react'
 import { batchAssignTeams } from '@/app/admin/teams/actions'
 import FormattedDate from './FormattedDate'
@@ -27,7 +28,14 @@ interface Driver {
   irating: number
   license: string
   isManual?: boolean
-  category?: 'Unassigned' | 'Assigned' | 'Different Class' | 'Different Time'
+  category?:
+    | 'Unassigned'
+    | 'Assigned'
+    | 'Different Class'
+    | 'Different Time'
+    | 'Different Time and Class'
+  originalClass?: string
+  originalTime?: Date
 }
 
 interface TeamComposition {
@@ -79,7 +87,9 @@ export default function TeamPickerModal({
 
       let category: Driver['category'] = 'Unassigned'
 
-      if (reg.raceId !== raceId) {
+      if (reg.raceId !== raceId && carClassId && reg.carClass.id !== carClassId) {
+        category = 'Different Time and Class'
+      } else if (reg.raceId !== raceId) {
         category = 'Different Time'
       } else if (carClassId && reg.carClass.id !== carClassId) {
         category = 'Different Class'
@@ -96,6 +106,8 @@ export default function TeamPickerModal({
         license: stats?.groupName || 'R',
         isManual: false,
         category,
+        originalClass: reg.carClass.name,
+        originalTime: reg.raceStartTime,
       } as Driver
     })
   }, [initialRegistrations, eventRegistrations, raceId, carClassId, raceStartTime])
@@ -355,6 +367,36 @@ export default function TeamPickerModal({
     )
   }
 
+  const getValidationState = () => {
+    const errors: string[] = []
+
+    // Check for unassigned selected drivers
+    const assignedIds = new Set(results.flatMap((r) => r.drivers.map((d) => d.id)))
+    const unassignedCount = Array.from(selectedDriverIds).filter(
+      (id) => !assignedIds.has(id)
+    ).length
+
+    if (unassignedCount > 0) {
+      errors.push(`${unassignedCount} selected drivers are not assigned to a team`)
+    }
+
+    // Check for generic teams
+    if (results.some((r) => r.isGeneric)) {
+      errors.push('All teams must be assigned to a real team name')
+    }
+
+    // Check for empty teams
+    // (Optional: user didn't strictly say empty teams are forbidden, but usually bad practice)
+    if (results.some((r) => r.drivers.length === 0)) {
+      errors.push('Some teams are empty')
+    }
+
+    return errors
+  }
+
+  const validationErrors = getValidationState()
+  const hasErrors = validationErrors.length > 0
+
   return (
     <div className={styles.overlay}>
       <div className={styles.modal}>
@@ -463,7 +505,13 @@ export default function TeamPickerModal({
               </h3>
               <div className={styles.driverList}>
                 {/* Grouped Rendering */}
-                {['Unassigned', 'Assigned', 'Different Class', 'Different Time'].map((cat) => {
+                {[
+                  'Unassigned',
+                  'Assigned',
+                  'Different Class',
+                  'Different Time',
+                  'Different Time and Class',
+                ].map((cat) => {
                   const driversInGroup = filteredDrivers.filter((d) => {
                     if (d.isManual) return cat === 'Unassigned' // Showing manual in unassigned? Or separate?
                     // Let's treat manual as unassigned for now or separate group?
@@ -482,6 +530,7 @@ export default function TeamPickerModal({
                     Assigned: 'Assigned (within class)',
                     'Different Class': 'Different Class',
                     'Different Time': 'Different Time',
+                    'Different Time and Class': 'Different Time & Class',
                   }
 
                   return (
@@ -587,7 +636,29 @@ export default function TeamPickerModal({
                       {comp.drivers.map((d) => (
                         <div key={d.id} className={styles.memberCard}>
                           <div className={styles.memberName}>
-                            <span>{d.name}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span>{d.name}</span>
+                              {d.category && d.category.startsWith('Different') && (
+                                <div
+                                  className={styles.warningIcon}
+                                  data-tooltip={`Driver will be changed from:\n${
+                                    d.category.includes('Class')
+                                      ? `Class: ${d.originalClass}\n`
+                                      : ''
+                                  }${
+                                    d.category.includes('Time') && d.originalTime
+                                      ? `Time: ${d.originalTime.toLocaleString(undefined, {
+                                          weekday: 'short',
+                                          hour: 'numeric',
+                                          minute: '2-digit',
+                                        })}`
+                                      : ''
+                                  }`}
+                                >
+                                  <AlertTriangle size={12} color="#f59e0b" />
+                                </div>
+                              )}
+                            </div>
                             <span className={styles.memberIR}>{d.irating}</span>
                           </div>
                           {!comp.locked && (
@@ -636,14 +707,25 @@ export default function TeamPickerModal({
           <button onClick={onClose} className={styles.secondaryButton}>
             Cancel
           </button>
-          <button
-            onClick={handleSave}
-            className={styles.primaryButton}
-            disabled={saving || results.length === 0 || results.some((r) => r.isGeneric)}
+          <div
+            className={styles.submitWrapper}
+            data-tooltip={hasErrors ? validationErrors.join('\n') : undefined}
           >
-            {saving ? <Loader2 className={styles.spin} size={18} /> : <Save size={18} />}
-            Submit Teams
-          </button>
+            <button
+              onClick={handleSave}
+              className={`${styles.primaryButton} ${hasErrors ? styles.warningButton : ''}`}
+              disabled={saving || hasErrors}
+            >
+              {saving ? (
+                <Loader2 className={styles.spin} size={18} />
+              ) : hasErrors ? (
+                <AlertTriangle size={18} />
+              ) : (
+                <Save size={18} />
+              )}
+              {hasErrors ? 'Cannot Submit' : 'Submit Teams'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

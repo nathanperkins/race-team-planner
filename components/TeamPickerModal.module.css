@@ -625,6 +625,73 @@
 .primaryButton:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  pointer-events: none;
+}
+
+.warningButton {
+  background: #d97706 !important;
+  /* amber-600 */
+}
+
+.warningButton:hover:not(:disabled) {
+  background: #b45309 !important;
+  /* amber-700 */
+}
+
+.warningIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: help;
+  position: relative;
+}
+
+.warningIcon[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 8px;
+  background: #1f2937;
+  border: 1px solid #374151;
+  color: #f3f4f6;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  white-space: pre;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+  z-index: 50;
+  pointer-events: none;
+  min-width: max-content;
+  text-align: center;
+}
+
+.submitWrapper {
+  display: inline-block;
+  position: relative;
+  cursor: help;
+}
+
+.submitWrapper[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  transform: translateX(0);
+  margin-bottom: 8px;
+  background: #1f2937;
+  border: 1px solid #374151;
+  color: #f3f4f6;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  white-space: pre;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+  z-index: 50;
+  pointer-events: none;
+  min-width: 200px;
+  text-align: right;
 }
 
 .spin {
