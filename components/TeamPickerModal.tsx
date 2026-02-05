@@ -12,6 +12,7 @@ import {
   Loader2,
   RefreshCw,
   Users,
+  Check,
 } from 'lucide-react'
 import { batchAssignTeams } from '@/app/admin/teams/actions'
 import FormattedDate from './FormattedDate'
@@ -258,8 +259,6 @@ export default function TeamPickerModal({
             />
           </div>
 
-          <div className={styles.statusBadge}>Selected: {selectedDriverIds.size}</div>
-
           <div className={styles.teamCount}>
             <span>Max Drivers:</span>
             <input
@@ -336,7 +335,9 @@ export default function TeamPickerModal({
             </div>
 
             <div className={styles.driverListSection}>
-              <h3 className={styles.sectionTitle}>Driver Picker ({filteredDrivers.length})</h3>
+              <h3 className={styles.sectionTitle}>
+                Driver Picker ({selectedDriverIds.size}/{allAvailableDrivers.length})
+              </h3>
               <div className={styles.driverList}>
                 {filteredDrivers.map((d) => (
                   <div
@@ -345,7 +346,12 @@ export default function TeamPickerModal({
                     onClick={() => toggleSelection(d.id)}
                   >
                     <div className={styles.driverInfo}>
-                      <span className={styles.driverName}>{d.name}</span>
+                      <div className={styles.nameRow}>
+                        {selectedDriverIds.has(d.id) && (
+                          <Check size={14} className={styles.checkIcon} />
+                        )}
+                        <span className={styles.driverName}>{d.name}</span>
+                      </div>
                       {d.isManual && <span className={styles.manualBadge}>Manual Entry</span>}
                     </div>
                     <div className={styles.driverStats}>
