@@ -39,6 +39,18 @@ async function main() {
     },
   })
 
+  const sebringRace2 = await prisma.race.upsert({
+    where: {
+      eventId_startTime: { eventId: sebring.id, startTime: new Date('2026-03-21T06:00:00Z') },
+    },
+    update: {},
+    create: {
+      eventId: sebring.id,
+      startTime: new Date('2026-03-21T06:00:00Z'),
+      endTime: new Date('2026-03-21T18:00:00Z'),
+    },
+  })
+
   const daytona = await prisma.event.upsert({
     where: { id: daytonaId },
     update: {
@@ -641,6 +653,40 @@ async function main() {
     where: { userId_raceId: { userId: charlie.id, raceId: pastSebringRace.id } },
     update: {},
     create: { userId: charlie.id, raceId: pastSebringRace.id, carClassId: gt3.id },
+  })
+
+  // Register drivers for Sebring Race 2 (Cross-time testing)
+  await prisma.registration.upsert({
+    where: {
+      userId_raceId: {
+        userId: david.id,
+        raceId: sebringRace2.id,
+      },
+    },
+    update: { carClassId: lmp2.id },
+    create: { userId: david.id, raceId: sebringRace2.id, carClassId: lmp2.id },
+  })
+
+  await prisma.registration.upsert({
+    where: {
+      userId_raceId: {
+        userId: emma.id,
+        raceId: sebringRace2.id,
+      },
+    },
+    update: { carClassId: gt3.id },
+    create: { userId: emma.id, raceId: sebringRace2.id, carClassId: gt3.id },
+  })
+
+  await prisma.registration.upsert({
+    where: {
+      userId_raceId: {
+        userId: frank.id,
+        raceId: sebringRace2.id,
+      },
+    },
+    update: { carClassId: gtp.id },
+    create: { userId: frank.id, raceId: sebringRace2.id, carClassId: gtp.id },
   })
 
   console.log('Mock drivers seeded:', {
