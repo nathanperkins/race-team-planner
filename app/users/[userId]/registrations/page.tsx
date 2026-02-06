@@ -47,7 +47,7 @@ export default async function UserRegistrationsPage({ params }: Props) {
     },
     orderBy: {
       race: {
-        startTime: 'asc',
+        startTime: 'desc',
       },
     },
   })
@@ -82,47 +82,55 @@ export default async function UserRegistrationsPage({ params }: Props) {
                 {registrations.map((reg) => (
                   <tr key={reg.id} className={styles.tr}>
                     <td className={`${styles.td} ${styles.eventCell}`} data-label="Event">
-                      <Link
-                        href={`/events?eventId=${reg.race.eventId}`}
-                        className={styles.eventName}
-                      >
-                        {reg.race.event.name}
-                      </Link>
+                      <div className={styles.eventLine}>
+                        <Link
+                          href={`/events?eventId=${reg.race.eventId}`}
+                          className={styles.eventName}
+                        >
+                          {reg.race.event.name}
+                        </Link>
+                        <span className={styles.trackText}>{reg.race.event.track}</span>
+                      </div>
                     </td>
                     <td className={styles.td} data-label="Race Time">
-                      <EditableRaceTime
-                        registrationId={reg.id}
-                        currentRaceId={reg.raceId}
-                        currentRaceStartTime={reg.race.startTime}
-                        availableRaces={reg.race.event.races.map((r) => ({
-                          id: r.id,
-                          startTime: r.startTime,
-                        }))}
-                        readOnly={
-                          (!isAdmin && userId !== session.user?.id) || new Date() > reg.race.endTime
-                        }
-                      />
-                    </td>
-                    <td className={styles.td} data-label="Track">
-                      {reg.race.event.track}
+                      <div className={styles.timePill}>
+                        <EditableRaceTime
+                          registrationId={reg.id}
+                          currentRaceId={reg.raceId}
+                          currentRaceStartTime={reg.race.startTime}
+                          availableRaces={reg.race.event.races.map((r) => ({
+                            id: r.id,
+                            startTime: r.startTime,
+                          }))}
+                          readOnly={
+                            (!isAdmin && userId !== session.user?.id) ||
+                            new Date() > reg.race.endTime
+                          }
+                        />
+                      </div>
                     </td>
                     <td className={styles.td} data-label="Car Class">
-                      <EditableCarClass
-                        registrationId={reg.id}
-                        currentCarClassId={reg.carClassId}
-                        currentCarClassShortName={reg.carClass.shortName}
-                        carClasses={reg.race.event.carClasses}
-                        readOnly={
-                          (!isAdmin && userId !== session.user?.id) || new Date() > reg.race.endTime
-                        }
-                        showLabel={false}
-                        variant="table"
-                      />
+                      <div className={styles.classPill}>
+                        <EditableCarClass
+                          registrationId={reg.id}
+                          currentCarClassId={reg.carClassId}
+                          currentCarClassShortName={reg.carClass.shortName}
+                          carClasses={reg.race.event.carClasses}
+                          readOnly={
+                            (!isAdmin && userId !== session.user?.id) ||
+                            new Date() > reg.race.endTime
+                          }
+                          showLabel={false}
+                          variant="table"
+                        />
+                      </div>
                     </td>
                     <td className={styles.td} data-label="Team">
-                      <span className={reg.team ? styles.teamNameDecorated : styles.unassignedText}>
-                        {reg.team?.name || 'Unassigned'}
-                      </span>
+                      {reg.team ? (
+                        <span className={styles.teamNameDecorated}>{reg.team.name}</span>
+                      ) : (
+                        <span className={styles.teamPill}>Team Unassigned</span>
+                      )}
                     </td>
                     {(userId === session.user?.id || session.user?.role === 'ADMIN') && (
                       <td className={styles.td} data-label="Actions">

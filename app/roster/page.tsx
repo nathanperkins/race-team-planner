@@ -6,6 +6,8 @@ import Image from 'next/image'
 import styles from './roster.module.css'
 import UserRoleBadge from '@/components/UserRoleBadge'
 import { getLicenseColor } from '@/lib/utils'
+import { CalendarDays } from 'lucide-react'
+import CompletedEventsButton from '@/components/CompletedEventsButton'
 
 import RosterSortControls from './RosterSortControls'
 
@@ -19,6 +21,7 @@ export default async function RosterPage({ searchParams }: Props) {
 
   const params = await searchParams
   const sort = typeof params.sort === 'string' ? params.sort : 'name'
+  const view = typeof params.view === 'string' ? params.view : 'grid'
 
   // Fetch users with their registrations and event times
   const usersData = await prisma.user.findMany({
@@ -27,7 +30,15 @@ export default async function RosterPage({ searchParams }: Props) {
       registrations: {
         include: {
           race: {
-            select: { endTime: true },
+            select: {
+              endTime: true,
+              event: {
+                select: { name: true },
+              },
+            },
+          },
+          carClass: {
+            select: { name: true },
           },
         },
       },
@@ -44,10 +55,17 @@ export default async function RosterPage({ searchParams }: Props) {
   // Process counts and sort
   const now = new Date()
   const users = usersData.map((user) => {
-    const upcoming = user.registrations.filter((r) => r.race.endTime > now).length
-    const completed = user.registrations.filter((r) => r.race.endTime <= now).length
+    const upcomingRegs = user.registrations.filter((r) => r.race.endTime > now)
+    const completedRegs = user.registrations
+      .filter((r) => r.race.endTime <= now)
+      .sort((a, b) => b.race.endTime.getTime() - a.race.endTime.getTime())
 
-    return { ...user, upcoming, completed }
+    return {
+      ...user,
+      upcoming: upcomingRegs.length,
+      completed: completedRegs.length,
+      completedRegs,
+    }
   })
 
   users.sort((a, b) => {
@@ -70,68 +88,101 @@ export default async function RosterPage({ searchParams }: Props) {
         <RosterSortControls />
       </header>
 
-      <div className={styles.grid}>
-        {users.map((user) => (
-          <div key={user.id} className={styles.card}>
-            <div className={styles.header}>
-              <Image
-                src={user.image || `https://api.dicebear.com/9.x/avataaars/svg?seed=${user.name}`}
-                alt={user.name || 'User'}
-                className={styles.avatar}
-                width={40}
-                height={40}
-              />
-              <h2 className={styles.name}>{user.name || 'Unknown Driver'}</h2>
-            </div>
-            <div className={styles.roleContainer}>
-              <UserRoleBadge role={user.role} />
-              {user.racerStats &&
-                user.racerStats.length > 0 &&
-                (() => {
-                  const stats =
-                    user.racerStats.find((s) => s.categoryId === 5) ||
-                    user.racerStats.find((s) => s.categoryId === 6) ||
-                    user.racerStats.find((s) => s.categoryId === 1) ||
-                    user.racerStats[0]
+      <div className={view === 'list' ? styles.list : styles.grid}>
+        {users.map((user) => {
+          const stats =
+            user.racerStats?.find((s) => s.categoryId === 5) ||
+            user.racerStats?.find((s) => s.categoryId === 6) ||
+            user.racerStats?.find((s) => s.categoryId === 1) ||
+            user.racerStats?.[0]
+          const licenseColor = stats ? getLicenseColor(stats.groupName) : null
+          const licenseLabel = stats?.groupName.replace('Class ', '').substring(0, 1)
+          const lightBg = licenseColor ? licenseColor + '26' : '#ffffff26'
 
-                  if (!stats) return null
+          return (
+            <div
+              key={user.id}
+              className={styles.card}
+              style={licenseColor ? { borderColor: licenseColor, borderWidth: '1px' } : undefined}
+            >
+              <div className={styles.header}>
+                <Image
+                  src={user.image || `https://api.dicebear.com/9.x/avataaars/svg?seed=${user.name}`}
+                  alt={user.name || 'User'}
+                  className={styles.avatar}
+                  width={40}
+                  height={40}
+                />
+                <h2 className={styles.name}>{user.name || 'Unknown Driver'}</h2>
+              </div>
+              <div className={styles.roleContainer}>
+                <UserRoleBadge role={user.role} />
+                {stats && (
+                  <span
+                    className={styles.statsBadge}
+                    style={{
+                      borderColor: licenseColor || undefined,
+                      backgroundColor: lightBg,
+                      color: licenseColor || undefined,
+                    }}
+                  >
+                    {licenseLabel} {stats.safetyRating.toFixed(2)} {stats.irating}
+                  </span>
+                )}
+              </div>
 
-                  const licenseLabel = stats.groupName.replace('Class ', '').substring(0, 1)
-                  const licenseColor = getLicenseColor(stats.groupName)
-                  // Create very light background (15% opacity) and keep text/border full color
-                  const lightBg = licenseColor + '26'
+              {view === 'grid' && (
+                <div className={styles.stats}>
+                  <Link
+                    href={`/users/${user.id}/registrations`}
+                    className={`${styles.statItem} ${styles.upcomingPill}`}
+                  >
+                    <span className={styles.statValue}>{user.upcoming}</span>
+                    <span className={styles.statLabel}>
+                      <CalendarDays size={14} />
+                      Upcoming
+                    </span>
+                  </Link>
+                  <CompletedEventsButton
+                    registrations={user.completedRegs}
+                    className={styles.completedPill}
+                  />
+                </div>
+              )}
 
-                  return (
+              {view === 'list' && (
+                <div className={styles.stats}>
+                  {stats && (
                     <span
                       className={styles.statsBadge}
                       style={{
-                        borderColor: licenseColor,
+                        borderColor: licenseColor || undefined,
                         backgroundColor: lightBg,
-                        color: licenseColor,
+                        color: licenseColor || undefined,
                       }}
                     >
                       {licenseLabel} {stats.safetyRating.toFixed(2)} {stats.irating}
                     </span>
-                  )
-                })()}
+                  )}
+                  <Link
+                    href={`/users/${user.id}/registrations`}
+                    className={`${styles.statItem} ${styles.upcomingPill}`}
+                  >
+                    <span className={styles.statValue}>{user.upcoming}</span>
+                    <span className={styles.statLabel}>
+                      <CalendarDays size={14} />
+                      Upcoming
+                    </span>
+                  </Link>
+                  <CompletedEventsButton
+                    registrations={user.completedRegs}
+                    className={styles.completedPill}
+                  />
+                </div>
+              )}
             </div>
-
-            <div className={styles.stats}>
-              <div className={styles.statItem}>
-                <span className={styles.statValue}>{user.upcoming}</span>
-                <span className={styles.statLabel}>Upcoming</span>
-              </div>
-              <div className={styles.statItem}>
-                <span className={styles.statValue}>{user.completed}</span>
-                <span className={styles.statLabel}>Completed</span>
-              </div>
-            </div>
-
-            <Link href={`/users/${user.id}/registrations`} className={styles.viewButton}>
-              View Schedule
-            </Link>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
