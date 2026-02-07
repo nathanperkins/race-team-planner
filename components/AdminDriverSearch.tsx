@@ -17,6 +17,7 @@ interface Props {
   registeredUserIds: string[]
   allDrivers: Driver[]
   defaultCarClassId: string
+  buttonLabel?: string
   onDropdownToggle?: (open: boolean) => void
   onSuccess?: (payload: {
     message: string
@@ -47,6 +48,7 @@ export default function AdminDriverSearch({
   registeredUserIds,
   allDrivers,
   defaultCarClassId,
+  buttonLabel = 'Add Driver',
   onDropdownToggle,
   onSuccess,
 }: Props) {
@@ -145,7 +147,7 @@ export default function AdminDriverSearch({
         }}
       >
         <Plus size={16} />
-        Add Driver
+        {buttonLabel}
       </button>
 
       {isOpen && (

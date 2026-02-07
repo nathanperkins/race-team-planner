@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState, useEffect, useRef, startTransition } from 'react'
+import { useActionState, useState, useEffect, useRef, startTransition, useCallback } from 'react'
 import { updateRegistrationCarClass } from '@/app/actions'
 import { Car, ChevronDown } from 'lucide-react'
 import styles from './EditableCarClass.module.css'
@@ -10,6 +10,7 @@ interface Props {
   currentCarClassId: string
   currentCarClassShortName: string
   carClasses?: { id: string; name: string; shortName: string }[]
+  className?: string
   readOnly?: boolean
   showLabel?: boolean
   variant?: 'standard' | 'table' | 'pill'
@@ -33,6 +34,7 @@ export default function EditableCarClass({
   currentCarClassId,
   currentCarClassShortName,
   carClasses,
+  className,
   readOnly = false,
   showLabel = true,
   variant = 'standard',
@@ -40,9 +42,12 @@ export default function EditableCarClass({
   onChange,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false)
+  const [dropdownPlacement, setDropdownPlacement] = useState<'up' | 'down'>('down')
+  const [dropdownMaxHeight, setDropdownMaxHeight] = useState<number | undefined>(undefined)
   const [pendingLabel, setPendingLabel] = useState<string | null>(null)
   const [state, formAction, isPending] = useActionState(updateRegistrationCarClass, initialState)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const dropdownMenuRef = useRef<HTMLDivElement>(null)
   const lastProcessedTimestamp = useRef<number>(0)
 
   useEffect(() => {
@@ -54,6 +59,33 @@ export default function EditableCarClass({
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  const updateDropdownPlacement = useCallback(() => {
+    const container = dropdownRef.current
+    if (!container) return
+    const rect = container.getBoundingClientRect()
+    const viewportHeight = window.innerHeight
+    const spaceBelow = viewportHeight - rect.bottom
+    const spaceAbove = rect.top
+    const desiredHeight = 300
+    const shouldFlip = spaceBelow < 160 && spaceAbove > spaceBelow
+    setDropdownPlacement(shouldFlip ? 'up' : 'down')
+    const available = shouldFlip ? spaceAbove - 12 : spaceBelow - 12
+    if (available > 120) {
+      setDropdownMaxHeight(Math.min(desiredHeight, available))
+    } else {
+      setDropdownMaxHeight(desiredHeight)
+    }
+  }, [])
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (!isOpen) return
+      requestAnimationFrame(updateDropdownPlacement)
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [isOpen, updateDropdownPlacement])
 
   useEffect(() => {
     // Only process if we have a state message, a pending action was initiated (pendingLabel),
@@ -102,6 +134,7 @@ export default function EditableCarClass({
     styles.container,
     variant === 'table' ? styles.tableVariant : '',
     variant === 'pill' ? styles.pillVariant : '',
+    className ?? '',
   ]
     .filter(Boolean)
     .join(' ')
@@ -122,7 +155,15 @@ export default function EditableCarClass({
       <button
         type="button"
         className={`${styles.editButton} ${isOpen ? styles.active : ''}`}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          setIsOpen((prev) => {
+            const next = !prev
+            if (next) {
+              requestAnimationFrame(updateDropdownPlacement)
+            }
+            return next
+          })
+        }}
         disabled={isPending}
       >
         {variant === 'pill' && <Car size={12} />}
@@ -131,18 +172,27 @@ export default function EditableCarClass({
       </button>
 
       {isOpen && (
-        <div className={styles.dropdown}>
-          {carClasses.map((cc) => (
-            <button
-              key={cc.id}
-              type="button"
-              className={`${styles.dropdownItem} ${cc.id === currentCarClassId ? styles.active : ''}`}
-              onClick={() => handleSelect(cc.id, cc.shortName)}
-              disabled={isPending}
-            >
-              {cc.name} ({cc.shortName})
-            </button>
-          ))}
+        <div
+          className={`${styles.dropdown} ${dropdownPlacement === 'up' ? styles.dropdownUp : ''}`}
+          style={dropdownMaxHeight ? { maxHeight: `${dropdownMaxHeight}px` } : undefined}
+          ref={dropdownMenuRef}
+        >
+          {carClasses.map((cc) => {
+            const label = cc.name === cc.shortName ? cc.name : `${cc.name} (${cc.shortName})`
+            return (
+              <button
+                key={cc.id}
+                type="button"
+                className={`${styles.dropdownItem} ${
+                  cc.id === currentCarClassId ? styles.active : ''
+                }`}
+                onClick={() => handleSelect(cc.id, cc.shortName)}
+                disabled={isPending}
+              >
+                {label}
+              </button>
+            )
+          })}
         </div>
       )}
     </div>

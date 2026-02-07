@@ -344,9 +344,15 @@
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   margin-top: 0;
   min-width: 0;
+}
+
+.carClassPill {
+  max-width: 150px;
+  min-width: 0;
+  flex: 0 1 auto;
 }
 
 .driverClass {
@@ -441,6 +447,28 @@
   border: 1px solid #374151;
   border-radius: 0.75rem;
   padding: 0.75rem;
+  min-width: 0;
+}
+
+.unassignedTile {
+  grid-column: 1 / -1;
+}
+
+.unassignedGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.unassignedGrid .driverRow {
+  border-bottom: 1px solid rgba(55, 65, 81, 0.5);
+  padding: 0.5rem 0;
+}
+
+@media (max-width: 800px) {
+  .unassignedGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .teamGroupDragOver {
@@ -511,16 +539,27 @@
 .teamModalHeader {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
-  padding: 1.25rem 1.5rem 0.75rem;
+  justify-content: center;
+  padding: 1rem 1rem 0.75rem;
   border-bottom: 1px solid #1f2937;
   gap: 1rem;
+  position: relative;
+}
+
+.teamModalHeaderContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+  gap: 0.5rem;
 }
 
 .teamModalActions {
   display: inline-flex;
   align-items: center;
   gap: 0.75rem;
+  justify-content: center;
 }
 
 .teamModalTitle {
@@ -547,10 +586,13 @@
   justify-content: center;
   cursor: pointer;
   border: 1px solid #1f2937;
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
 }
 
 .teamModalBody {
-  padding: 1rem 1.5rem 1.5rem;
+  padding: 1rem 0.75rem 1.5rem;
   overflow: auto;
 }
 
@@ -619,10 +661,45 @@
   }
 }
 
+@media (max-width: 640px) {
+  .driverRow {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    row-gap: 0.5rem;
+  }
+
+  .driverMeta {
+    width: 100%;
+  }
+
+  .driverPills {
+    flex-wrap: nowrap;
+    gap: 0.3rem;
+  }
+
+  .driverTimeslot {
+    width: auto;
+    margin-left: auto;
+    justify-content: flex-end;
+    align-self: center;
+    flex: 0 0 auto;
+  }
+
+  .teamSof {
+    margin-left: 0;
+  }
+
+  .carClassPill {
+    max-width: 96px;
+  }
+}
+
 .teamGroupHeader {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex-wrap: wrap;
   padding: 0.25rem 0.5rem;
   background-color: rgba(59, 130, 246, 0.1);
   border-radius: 4px;
@@ -643,6 +720,30 @@
   font-weight: 600;
   color: #e5e7eb;
   font-size: 0.75rem;
+}
+
+.teamRemoveButton {
+  margin-left: 0.5rem;
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+  width: 26px;
+  height: 26px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.teamRemoveButton:hover {
+  border-color: rgba(239, 68, 68, 0.7);
+  background: rgba(239, 68, 68, 0.2);
+  color: #fee2e2;
 }
 
 .editableContainer {

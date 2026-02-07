@@ -119,6 +119,19 @@
   flex-direction: column;
 }
 
+.pillVariant .dropdown {
+  min-width: 160px;
+  width: max-content;
+  max-width: min(240px, 80vw);
+}
+
+.dropdownUp {
+  top: auto;
+  bottom: 100%;
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+
 .dropdownItem {
   width: 100%;
   padding: 0.75rem 1rem;

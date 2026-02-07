@@ -1,6 +1,6 @@
 'use client'
 
-import { UserCog, Users, X } from 'lucide-react'
+import { Trash2, UserCog, Users, X } from 'lucide-react'
 import Image from 'next/image'
 import {
   type DragEvent,
@@ -614,6 +614,21 @@ export default function RaceDetails({
     return { id: created.id, name: created.name, isTemp: true }
   }, [createTempTeam, pendingRegistrations, revealedTeamIds, teams])
 
+  const removeTeam = useCallback((teamId: string) => {
+    if (!teamId || teamId === 'unassigned') return
+    const affectedIds: string[] = []
+    setPendingRegistrations((prev) =>
+      prev.map((reg) => {
+        if ((reg.teamId ?? reg.team?.id) !== teamId) return reg
+        affectedIds.push(reg.id)
+        return { ...reg, teamId: null, team: null }
+      })
+    )
+    affectedIds.forEach((id) => teamOverridesRef.current.set(id, { teamId: null }))
+    setExtraTeams((prev) => prev.filter((team) => team.id !== teamId))
+    setRevealedTeamIds((prev) => prev.filter((id) => id !== teamId))
+  }, [])
+
   const moveRegistrationToTeam = useCallback(
     (registrationId: string, teamId: string | null, teamName?: string) => {
       teamOverridesRef.current.set(registrationId, { teamId, teamName })
@@ -794,6 +809,7 @@ export default function RaceDetails({
                 readOnly={!canEditCarClass && (!isAdmin || reg.userId !== userId)}
                 showLabel={false}
                 variant="pill"
+                className={styles.carClassPill}
               />
             </div>
           </div>
@@ -824,6 +840,9 @@ export default function RaceDetails({
       },
       {} as Record<string, typeof pendingRegistrations>
     )
+    if (includeAddTeam && !grouped.unassigned) {
+      grouped.unassigned = []
+    }
 
     const orderedTeamIds = teamList.map((team) => team.id)
     const extraTeamIds = new Set(extraTeams.map((team) => team.id))
@@ -836,100 +855,127 @@ export default function RaceDetails({
     const unknownTeams = Object.keys(grouped).filter(
       (id) => id !== 'unassigned' && !orderedTeamIds.includes(id)
     )
-    const sortedTeams = [...visibleOrderedTeams, ...unknownTeams]
+    const sortedTeams = [...visibleOrderedTeams, ...unknownTeams].filter(
+      (id) => id !== 'unassigned'
+    )
     if (grouped.unassigned) sortedTeams.push('unassigned')
 
     const getTeamLabel = (teamId: string) =>
       teamId === 'unassigned' ? 'Unassigned' : teamNameById.get(teamId) || 'Team'
 
-    return (
-      <div className={styles.teamGrid}>
-        {sortedTeams
-          .filter((teamId) => includeAddTeam || (grouped[teamId]?.length ?? 0) > 0)
-          .map((teamId) => {
-            const teamRegistrations = grouped[teamId] ?? []
-            const ratings = teamRegistrations.map((reg) => getRegistrationRating(reg))
-            const avgRating =
-              ratings.length > 0
-                ? Math.round(ratings.reduce((sum, value) => sum + value, 0) / ratings.length)
-                : 0
-
-            return (
-              <div
-                key={teamId}
-                className={`${styles.teamGroup} ${
-                  dragOverTeamId === teamId ? styles.teamGroupDragOver : ''
-                }`}
-                onDragOver={(event) => {
-                  if (!canAssignTeams) return
-                  event.preventDefault()
-                  setDragOverTeamId(teamId)
-                }}
-                onDragLeave={() => setDragOverTeamId(null)}
-                onDrop={(event) => {
-                  if (!canAssignTeams) return
-                  setDragOverTeamId(null)
-                  handleDropOnTeam(teamId === 'unassigned' ? null : teamId)(event)
-                }}
-              >
-                <div className={styles.teamGroupHeader}>
-                  <Users size={14} />
-                  <span>{getTeamLabel(teamId)}</span>
-                  <span className={styles.teamCount}>({teamRegistrations.length})</span>
-                  <span className={styles.teamSof}>{avgRating} SOF</span>
-                </div>
-                {teamRegistrations.map((reg) => renderDriverRow(reg, { allowAdminEdits }))}
-                {includeAddTeam && canAssignTeams && teamId !== 'unassigned' && (
-                  <div className={styles.addDriverInline}>
-                    <AdminDriverSearch
-                      raceId={race.id}
-                      registeredUserIds={registeredUserIds}
-                      allDrivers={allDrivers}
-                      defaultCarClassId={teamRegistrations[0]?.carClass.id || lastDriverCarClass}
-                      onDropdownToggle={setIsAddDriverOpen}
-                      onSuccess={({ message, registration }) => {
-                        if (registration) {
-                          upsertRegistration(registration, {
-                            teamId: teamId === 'unassigned' ? null : teamId,
-                            teamName: teamNameById.get(teamId) || 'Team',
-                          })
-                        }
-                        setAddDriverMessage(message.replace(/\s+Added!$/, ''))
-                        setTimeout(() => setAddDriverMessage(''), 3000)
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        {includeAddTeam && canAssignTeams && (
-          <div
-            className={`${styles.teamGroup} ${styles.addTeamTile} ${
-              dragOverTeamId === 'add-team' ? styles.teamGroupDragOver : ''
-            }`}
-            onDragOver={(event) => {
-              event.preventDefault()
-              setDragOverTeamId('add-team')
-            }}
-            onDragLeave={() => setDragOverTeamId(null)}
-            onDrop={(event) => {
-              setDragOverTeamId(null)
-              handleDropOnNewTeam(event)
-            }}
-            onClick={() => {
-              if (!canAssignTeams) return
-              revealOrCreateTeam()
-            }}
-          >
-            <div className={styles.addTeamContent}>
-              <span className={styles.addTeamIcon}>+</span>
-              <span>Add Team</span>
-            </div>
-          </div>
-        )}
-      </div>
+    const filteredTeams = sortedTeams.filter(
+      (teamId) => includeAddTeam || (grouped[teamId]?.length ?? 0) > 0
     )
+    const assignedTeams = filteredTeams.filter((teamId) => teamId !== 'unassigned')
+    const unassignedTeams = filteredTeams.filter((teamId) => teamId === 'unassigned')
+
+    const renderedTeams = [...assignedTeams, ...unassignedTeams].map((teamId) => {
+      const teamRegistrations = grouped[teamId] ?? []
+      const ratings = teamRegistrations.map((reg) => getRegistrationRating(reg))
+      const avgRating =
+        ratings.length > 0
+          ? Math.round(ratings.reduce((sum, value) => sum + value, 0) / ratings.length)
+          : 0
+
+      return (
+        <div
+          key={teamId}
+          className={`${styles.teamGroup} ${
+            dragOverTeamId === teamId ? styles.teamGroupDragOver : ''
+          } ${teamId === 'unassigned' ? styles.unassignedTile : ''}`}
+          onDragOver={(event) => {
+            if (!canAssignTeams) return
+            event.preventDefault()
+            setDragOverTeamId(teamId)
+          }}
+          onDragLeave={() => setDragOverTeamId(null)}
+          onDrop={(event) => {
+            if (!canAssignTeams) return
+            setDragOverTeamId(null)
+            handleDropOnTeam(teamId === 'unassigned' ? null : teamId)(event)
+          }}
+        >
+          <div className={styles.teamGroupHeader}>
+            <Users size={14} />
+            <span>{getTeamLabel(teamId)}</span>
+            <span className={styles.teamCount}>({teamRegistrations.length})</span>
+            <span className={styles.teamSof}>{avgRating} SOF</span>
+            {includeAddTeam && canAssignTeams && teamId !== 'unassigned' && (
+              <button
+                type="button"
+                className={styles.teamRemoveButton}
+                onClick={() => removeTeam(teamId)}
+                title="Remove team"
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
+          </div>
+          <div className={teamId === 'unassigned' ? styles.unassignedGrid : undefined}>
+            {teamRegistrations.map((reg) => renderDriverRow(reg, { allowAdminEdits }))}
+          </div>
+          {includeAddTeam && canAssignTeams && teamId !== 'unassigned' && (
+            <div className={styles.addDriverInline}>
+              <AdminDriverSearch
+                raceId={race.id}
+                registeredUserIds={registeredUserIds}
+                allDrivers={allDrivers}
+                defaultCarClassId={teamRegistrations[0]?.carClass.id || lastDriverCarClass}
+                onDropdownToggle={setIsAddDriverOpen}
+                buttonLabel="Register Driver"
+                onSuccess={({ message, registration }) => {
+                  if (registration) {
+                    upsertRegistration(registration, {
+                      teamId: teamId === 'unassigned' ? null : teamId,
+                      teamName: teamNameById.get(teamId) || 'Team',
+                    })
+                  }
+                  setAddDriverMessage(message.replace(/\s+Added!$/, ''))
+                  setTimeout(() => setAddDriverMessage(''), 3000)
+                }}
+              />
+            </div>
+          )}
+        </div>
+      )
+    })
+
+    if (includeAddTeam && canAssignTeams) {
+      const addTeamTile = (
+        <div
+          key="add-team"
+          className={`${styles.teamGroup} ${styles.addTeamTile} ${
+            dragOverTeamId === 'add-team' ? styles.teamGroupDragOver : ''
+          }`}
+          onDragOver={(event) => {
+            event.preventDefault()
+            setDragOverTeamId('add-team')
+          }}
+          onDragLeave={() => setDragOverTeamId(null)}
+          onDrop={(event) => {
+            setDragOverTeamId(null)
+            handleDropOnNewTeam(event)
+          }}
+          onClick={() => {
+            if (!canAssignTeams) return
+            revealOrCreateTeam()
+          }}
+        >
+          <div className={styles.addTeamContent}>
+            <span className={styles.addTeamIcon}>+</span>
+            <span>Add Team</span>
+          </div>
+        </div>
+      )
+
+      if (assignedTeams.length === 0) {
+        renderedTeams.unshift(addTeamTile)
+      } else {
+        renderedTeams.splice(assignedTeams.length, 0, addTeamTile)
+      }
+    }
+
+    return <div className={styles.teamGrid}>{renderedTeams}</div>
   }
 
   return (
@@ -1022,31 +1068,31 @@ export default function RaceDetails({
           <div className={styles.teamModalOverlay} onClick={handleCloseTeamModal}>
             <div className={styles.teamModal} onClick={(event) => event.stopPropagation()}>
               <div className={styles.teamModalHeader}>
-                <div>
+                <div className={styles.teamModalHeaderContent}>
                   <h3 className={styles.teamModalTitle}>Assign Teams</h3>
                   <p className={styles.teamModalSubtitle}>
                     Drag drivers between teams, then save when you are ready.
                   </p>
+                  <div className={styles.teamModalActions}>
+                    <MaxDriversPerTeamInput
+                      textValue={pendingMaxDriversText}
+                      strategy={pendingStrategy}
+                      onTextChange={handleMaxDriversTextChange}
+                      onStep={handleMaxDriversStep}
+                      onStrategyChange={handleStrategyChange}
+                      onRebalance={handleRebalance}
+                      disabled={!isAdmin}
+                    />
+                  </div>
                 </div>
-                <div className={styles.teamModalActions}>
-                  <MaxDriversPerTeamInput
-                    textValue={pendingMaxDriversText}
-                    strategy={pendingStrategy}
-                    onTextChange={handleMaxDriversTextChange}
-                    onStep={handleMaxDriversStep}
-                    onStrategyChange={handleStrategyChange}
-                    onRebalance={handleRebalance}
-                    disabled={!isAdmin}
-                  />
-                  <button
-                    type="button"
-                    className={styles.teamModalClose}
-                    onClick={handleCloseTeamModal}
-                    aria-label="Close team assignment"
-                  >
-                    <X size={18} />
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  className={styles.teamModalClose}
+                  onClick={handleCloseTeamModal}
+                  aria-label="Close team assignment"
+                >
+                  <X size={18} />
+                </button>
               </div>
               <div className={styles.teamModalBody}>
                 {renderTeamGrid({ includeAddTeam: true, allowAdminEdits: true })}
