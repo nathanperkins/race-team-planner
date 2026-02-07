@@ -305,12 +305,13 @@
   border-radius: 9999px;
   font-size: 0.75rem;
   font-weight: 600;
-  border: 2px solid;
+  border: 1px solid;
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
   flex-shrink: 0;
   white-space: nowrap;
+  margin-top: 0;
 }
 
 .syncNote {

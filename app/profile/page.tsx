@@ -4,6 +4,7 @@ import ProfileForm from './ProfileForm'
 import styles from './profile.module.css'
 import UserRoleBadge from '@/components/UserRoleBadge'
 import { CURRENT_EXPECTATIONS_VERSION } from '@/lib/config'
+import { isMockUser } from '@/lib/utils'
 import DeleteAccountButton from './DeleteAccountButton'
 import prisma from '@/lib/prisma'
 import { Lock, ChevronRight } from 'lucide-react'
@@ -39,7 +40,7 @@ export default async function ProfilePage() {
       <h1 className={styles.title}>User Profile</h1>
       <LastSyncStatus className={styles.syncNote} />
 
-      {!user.iracingCustomerId && (
+      {!user.iracingCustomerId && !isMockUser(user) && (
         <div className={styles.onboardingBanner}>
           <div className={styles.onboardingIcon}>!</div>
           <div className={styles.onboardingText}>

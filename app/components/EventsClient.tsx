@@ -5,9 +5,16 @@ import { useRouter } from 'next/navigation'
 import EventDetailModal from './EventDetailModal'
 import { Prisma } from '@prisma/client'
 import styles from '../events/events.module.css'
-import { getLicenseForId, getLicenseColor, formatDuration, getSeriesNameOnly } from '@/lib/utils'
+import {
+  getLicenseForId,
+  getLicenseColor,
+  formatDuration,
+  getSeriesNameOnly,
+  getLicenseLevelFromName,
+  LicenseLevel,
+} from '@/lib/utils'
 import type { CSSProperties } from 'react'
-import { Timer, User } from 'lucide-react'
+import { ShieldCheck, ShieldX, Timer, User } from 'lucide-react'
 
 type EventWithRaces = Prisma.EventGetPayload<{
   include: {
@@ -49,6 +56,7 @@ interface EventsClientProps {
   }>
   isAdmin: boolean
   userId: string
+  userLicenseLevel: LicenseLevel | null
   initialEventId?: string
   teams: Array<{ id: string; name: string }>
 }
@@ -57,11 +65,13 @@ export default function EventsClient({
   weeks,
   isAdmin,
   userId,
+  userLicenseLevel,
   initialEventId,
   teams,
 }: EventsClientProps) {
   const router = useRouter()
   const [selectedEventId, setSelectedEventId] = useState<string | null>(initialEventId ?? null)
+  const now = new Date()
 
   const selectedEvent = useMemo(() => {
     if (!selectedEventId) return null
@@ -109,6 +119,21 @@ export default function EventsClient({
             <div className={styles.weekBody}>
               {week.events.map((event) => {
                 const license = getLicenseForId(event.id, event.licenseGroup)
+                const requiredLicenseLevel = getLicenseLevelFromName(license)
+                const isEligible =
+                  requiredLicenseLevel === null
+                    ? true
+                    : userLicenseLevel !== null && userLicenseLevel >= requiredLicenseLevel
+                const lastRaceEnd = event.races.reduce<Date | null>((latest, race) => {
+                  const end = new Date(race.endTime)
+                  if (!latest || end > latest) return end
+                  return latest
+                }, null)
+                const isCompleted = lastRaceEnd ? now > lastRaceEnd : now > new Date(event.endTime)
+                const totalDrivers = event.races.reduce(
+                  (sum, race) => sum + race.registrations.length,
+                  0
+                )
                 const licenseStyle: LicenseStyle = {
                   ['--licColor']: getLicenseColor(license),
                 }
@@ -117,9 +142,14 @@ export default function EventsClient({
                   <button
                     key={event.id}
                     onClick={() => handleSelectEvent(event)}
-                    className={styles.eventRow}
+                    className={`${styles.eventRow} ${isCompleted ? styles.eventRowCompleted : ''}`}
                     style={licenseStyle}
                   >
+                    {isCompleted && (
+                      <div className={styles.eventRowOverlay} aria-hidden="true">
+                        Race Completed
+                      </div>
+                    )}
                     <div className={styles.eventLeft}>
                       <div className={styles.eventTopLine}>
                         <div className={styles.eventName} title={event.name}>
@@ -140,23 +170,31 @@ export default function EventsClient({
                       <div className={styles.trackConfig}>{event.trackConfig || ''}</div>
 
                       <div className={styles.racePills}>
-                        {event.races.map((race) => (
-                          <div key={race.id} className={styles.racePill}>
-                            {new Date(race.startTime).toLocaleDateString('en-US', {
-                              month: 'numeric',
-                              day: 'numeric',
-                            })}{' '}
-                            •{' '}
-                            {new Date(race.startTime).toLocaleTimeString('en-US', {
-                              hour: 'numeric',
-                              minute: '2-digit',
-                            })}
-                            <span className={styles.racePillCount}>
-                              <User size={12} />
-                              {race.registrations.length}
-                            </span>
-                          </div>
-                        ))}
+                        {event.races.map((race) => {
+                          const isRaceCompleted = now > new Date(race.startTime)
+                          return (
+                            <div
+                              key={race.id}
+                              className={`${styles.racePill} ${
+                                isRaceCompleted ? styles.racePillCompleted : ''
+                              }`}
+                            >
+                              {new Date(race.startTime).toLocaleDateString('en-US', {
+                                month: 'numeric',
+                                day: 'numeric',
+                              })}{' '}
+                              •{' '}
+                              {new Date(race.startTime).toLocaleTimeString('en-US', {
+                                hour: 'numeric',
+                                minute: '2-digit',
+                              })}
+                              <span className={styles.racePillCount}>
+                                <User size={12} />
+                                {race.registrations.length}
+                              </span>
+                            </div>
+                          )
+                        })}
                       </div>
                       <div className={styles.subRow}>
                         <div className={styles.classPills}>
@@ -183,7 +221,16 @@ export default function EventsClient({
                           backgroundColor: `${getLicenseColor(license)}30`,
                         }}
                       >
+                        {isEligible ? (
+                          <ShieldCheck size={14} />
+                        ) : (
+                          <ShieldX size={14} color="#ef4444" />
+                        )}
                         {license}
+                      </div>
+                      <div className={styles.driverPill}>
+                        <User size={12} className={styles.driverIcon} />
+                        {totalDrivers}
                       </div>
                     </div>
                   </button>
@@ -202,6 +249,7 @@ export default function EventsClient({
           onClose={handleCloseModal}
           isAdmin={isAdmin}
           userId={userId}
+          userLicenseLevel={userLicenseLevel}
           teams={teams}
         />
       )}

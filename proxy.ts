@@ -1,6 +1,7 @@
 import NextAuth from 'next-auth'
 import { authConfig } from '@/lib/auth.config'
 import { CURRENT_EXPECTATIONS_VERSION } from '@/lib/config'
+import { isMockUser } from '@/lib/utils'
 
 // Use the base auth for middleware
 const { auth } = NextAuth(authConfig)
@@ -38,7 +39,7 @@ export const proxy = auth((req) => {
     // 2. Sequential Onboarding Check
     const hasAcceptedExpectations =
       ((user?.expectationsVersion as number) ?? 0) >= CURRENT_EXPECTATIONS_VERSION
-    const hasCustomerId = !!user?.iracingCustomerId
+    const hasCustomerId = !!user?.iracingCustomerId || isMockUser(user)
 
     // Step 1: Force expectations first
     if (!hasAcceptedExpectations && !isExpectationsPage) {

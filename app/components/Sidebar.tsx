@@ -8,6 +8,7 @@ import { Session } from 'next-auth'
 import Image from 'next/image'
 
 import { CURRENT_EXPECTATIONS_VERSION } from '@/lib/config'
+import { isMockUser } from '@/lib/utils'
 
 interface SidebarProps {
   onLinkClick?: () => void
@@ -27,7 +28,7 @@ export default function Sidebar({ onLinkClick, session: propSession }: SidebarPr
 
   if (!session?.user) return null
 
-  const hasCustomerId = !!session.user.iracingCustomerId
+  const hasCustomerId = !!session.user.iracingCustomerId || isMockUser(session.user)
   const hasAcceptedExpectations =
     (session.user.expectationsVersion ?? 0) >= CURRENT_EXPECTATIONS_VERSION
   const isSetupComplete = hasCustomerId && hasAcceptedExpectations

@@ -4,6 +4,7 @@ import {
   X,
   Cloud,
   ShieldCheck,
+  ShieldX,
   Thermometer,
   Droplets,
   Timer,
@@ -14,7 +15,14 @@ import {
 import { useEffect, useRef, useState } from 'react'
 import RaceDetails from '@/components/RaceDetails'
 import EditEventButton from '@/app/admin/EditEventButton'
-import { getLicenseForId, getLicenseColor, formatDuration, getSeriesNameOnly } from '@/lib/utils'
+import {
+  getLicenseForId,
+  getLicenseColor,
+  formatDuration,
+  getSeriesNameOnly,
+  getLicenseLevelFromName,
+  LicenseLevel,
+} from '@/lib/utils'
 import { Prisma } from '@prisma/client'
 import styles from './EventDetailModal.module.css'
 
@@ -51,6 +59,7 @@ interface EventDetailModalProps {
   onClose: () => void
   isAdmin: boolean
   userId: string
+  userLicenseLevel: LicenseLevel | null
   teams: Array<{ id: string; name: string }>
 }
 
@@ -59,6 +68,7 @@ export default function EventDetailModal({
   onClose,
   isAdmin,
   userId,
+  userLicenseLevel,
   teams,
 }: EventDetailModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
@@ -66,6 +76,11 @@ export default function EventDetailModal({
 
   const license = getLicenseForId(event.id, event.licenseGroup)
   const licenseColor = getLicenseColor(license)
+  const requiredLicenseLevel = getLicenseLevelFromName(license)
+  const isEligible =
+    requiredLicenseLevel === null
+      ? true
+      : userLicenseLevel !== null && userLicenseLevel >= requiredLicenseLevel
 
   // Fetch all drivers for admin search
   useEffect(() => {
@@ -149,7 +164,7 @@ export default function EventDetailModal({
                     backgroundColor: `${licenseColor}30`,
                   }}
                 >
-                  <ShieldCheck size={16} />
+                  {isEligible ? <ShieldCheck size={18} /> : <ShieldX size={18} color="#ef4444" />}
                   {license}
                 </div>
               </div>

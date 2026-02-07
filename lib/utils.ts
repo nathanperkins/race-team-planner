@@ -51,6 +51,28 @@ export function getLicenseColor(name: string): string {
   }
 }
 
+export function getLicenseLevelFromName(name?: string | null): LicenseLevel | null {
+  if (!name) return null
+  const normalized = name.trim().toLowerCase()
+  if (normalized === 'r' || normalized === 'rookie' || normalized === 'class r') {
+    return LicenseLevel.ROOKIE
+  }
+  if (normalized === 'd' || normalized === 'class d') return LicenseLevel.D
+  if (normalized === 'c' || normalized === 'class c') return LicenseLevel.C
+  if (normalized === 'b' || normalized === 'class b') return LicenseLevel.B
+  if (normalized === 'a' || normalized === 'class a') return LicenseLevel.A
+  if (normalized === 'pro') return LicenseLevel.PRO
+  if (normalized === 'pwc') return LicenseLevel.PWC
+  return null
+}
+
+export function isMockUser(user?: { email?: string | null; name?: string | null } | null): boolean {
+  if (!user) return false
+  const email = user.email?.toLowerCase() || ''
+  const name = user.name?.toLowerCase() || ''
+  return email.endsWith('@example.com') || name.startsWith('mock ')
+}
+
 export function formatDuration(minutes: number | null | undefined): string {
   if (minutes === null || minutes === undefined) return ''
   const h = Math.floor(minutes / 60)

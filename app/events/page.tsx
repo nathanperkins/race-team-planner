@@ -5,6 +5,7 @@ import EventFilters from '../components/EventFilters'
 import LastSyncStatus from '@/components/LastSyncStatus'
 import EventsClient from '../components/EventsClient'
 import { Prisma } from '@prisma/client'
+import { getLicenseLevelFromName } from '@/lib/utils'
 
 import styles from './events.module.css'
 
@@ -58,6 +59,14 @@ export default async function EventsPage({ searchParams }: PageProps) {
   if (!session) {
     redirect('/login')
   }
+
+  const currentUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    include: { racerStats: true },
+  })
+  const preferredStats =
+    currentUser?.racerStats?.find((s) => s.categoryId === 5) ?? currentUser?.racerStats?.[0]
+  const userLicenseLevel = getLicenseLevelFromName(preferredStats?.groupName)
 
   // Fetch unique racers (users who have signed up)
   const racers = await prisma.user.findMany({
@@ -118,12 +127,21 @@ export default async function EventsPage({ searchParams }: PageProps) {
   // Time filtering
   const startTimeFilter: Prisma.DateTimeFilter = {}
 
+  function getWeekStart(date: Date): Date {
+    const d = new Date(date)
+    const day = d.getDay()
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1)
+    d.setDate(diff)
+    d.setHours(0, 0, 0, 0)
+    return d
+  }
+
   if (params.from) {
     startTimeFilter.gte = new Date(params.from)
   } else {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
-    startTimeFilter.gte = today
+    startTimeFilter.gte = getWeekStart(today)
   }
 
   if (params.to) {
@@ -195,15 +213,6 @@ export default async function EventsPage({ searchParams }: PageProps) {
     const yearStart = new Date(d.getFullYear(), 0, 1)
     const weekNum = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
     return `${d.getFullYear()}-W${weekNum}`
-  }
-
-  function getWeekStart(date: Date): Date {
-    const d = new Date(date)
-    const day = d.getDay()
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1)
-    d.setDate(diff)
-    d.setHours(0, 0, 0, 0)
-    return d
   }
 
   function getWeekEnd(date: Date): Date {
@@ -341,6 +350,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
         weeks={serializedWeeks}
         isAdmin={session.user.role === 'ADMIN'}
         userId={session.user.id}
+        userLicenseLevel={userLicenseLevel}
         initialEventId={params.eventId}
         teams={teams}
       />

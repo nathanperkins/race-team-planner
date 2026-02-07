@@ -3,7 +3,6 @@
 import { UserCog, Users } from 'lucide-react'
 import Image from 'next/image'
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react'
-import FormattedDate from './FormattedDate'
 import styles from './RaceDetails.module.css'
 import DropRegistrationButton from './DropRegistrationButton'
 import QuickRegistration from './QuickRegistration'
@@ -71,7 +70,6 @@ interface Props {
   carClasses: { id: string; name: string; shortName: string }[]
   teams: Array<{ id: string; name: string }>
   allDrivers?: Driver[]
-  dateFormat?: Intl.DateTimeFormatOptions
 }
 
 function MaxDriversPerTeamInput({
@@ -139,7 +137,6 @@ export default function RaceDetails({
   carClasses,
   teams,
   allDrivers = [],
-  dateFormat,
 }: Props) {
   const [isSaving, startSaveTransition] = useTransition()
   const now = new Date()
