@@ -1,4 +1,4 @@
-import { Users } from 'lucide-react'
+import { Users, UserCog } from 'lucide-react'
 import Image from 'next/image'
 import FormattedDate from './FormattedDate'
 import styles from './RaceDetails.module.css'
@@ -175,9 +175,16 @@ export default function RaceDetails({
                         />
                       )}
                       <div>
-                        <p className={styles.driverName}>
-                          {reg.user?.name || reg.manualDriver?.name}
-                        </p>
+                        <div className={styles.nameWrapper}>
+                          <p className={styles.driverName}>
+                            {reg.user?.name || reg.manualDriver?.name}
+                          </p>
+                          {reg.manualDriver && (
+                            <div className={styles.manualIcon} title="Manual Entry">
+                              <UserCog size={14} />
+                            </div>
+                          )}
+                        </div>
                         {reg.user?.racerStats && reg.user.racerStats.length > 0 ? (
                           <p className={styles.driverStats}>
                             {(

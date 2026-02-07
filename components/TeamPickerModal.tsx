@@ -17,6 +17,7 @@ import {
   Lock,
   Unlock,
   AlertTriangle,
+  UserCog,
 } from 'lucide-react'
 import { batchAssignTeams } from '@/app/admin/teams/actions'
 import FormattedDate from './FormattedDate'
@@ -644,7 +645,12 @@ export default function TeamPickerModal({
                                   )}
                                   <span className={styles.driverName}>{d.name}</span>
                                 </div>
-                                {d.isManual && <span className={styles.manualBadge}>Manual</span>}
+                                {d.isManual && (
+                                  <span className={styles.manualBadge}>
+                                    <UserCog size={10} style={{ marginRight: 3 }} />
+                                    Manual
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -762,6 +768,11 @@ export default function TeamPickerModal({
                               />
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 <span>{d.name}</span>
+                                {d.isManual && (
+                                  <div className={styles.manualIcon} title="Manual Entry">
+                                    <UserCog size={14} />
+                                  </div>
+                                )}
                                 {d.category && d.category.startsWith('Different') && (
                                   <div
                                     className={styles.warningIcon}

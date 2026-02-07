@@ -187,3 +187,19 @@
   gap: 0.5rem;
   justify-content: flex-end;
 }
+
+.nameWrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.manualIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.15);
+  padding: 0.15rem;
+  border-radius: 4px;
+}
