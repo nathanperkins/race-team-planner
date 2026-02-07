@@ -110,9 +110,11 @@ export async function syncTeamMembers(teamId: string) {
     },
   })
 
-  const memberCustomerIds = new Set(iracingMembers.map((m) => m.custId.toString()))
+  const memberCustomerIds = new Set(iracingMembers.map((m) => m.custId))
   const matchingUserIds = users
-    .filter((user) => user.iracingCustomerId && memberCustomerIds.has(user.iracingCustomerId))
+    .filter(
+      (user) => user.iracingCustomerId !== null && memberCustomerIds.has(user.iracingCustomerId)
+    )
     .map((user) => ({ id: user.id }))
 
   // Update team-user connections
@@ -173,7 +175,7 @@ export async function getTeamMembers(teamId: string) {
   const enrolledUsers = await prisma.user.findMany({
     where: {
       iracingCustomerId: {
-        in: sortedMembers.map((m) => m.custId.toString()),
+        in: sortedMembers.map((m) => m.custId),
       },
     },
     select: {
@@ -188,7 +190,7 @@ export async function getTeamMembers(teamId: string) {
   const enrolledMap = new Map(enrolledUsers.map((u) => [u.iracingCustomerId, u]))
 
   const membersWithEnrollment = sortedMembers.map((member) => {
-    const enrolledUser = enrolledMap.get(member.custId.toString())
+    const enrolledUser = enrolledMap.get(member.custId)
     return {
       custId: member.custId,
       displayName: member.displayName,
@@ -264,9 +266,11 @@ export async function createTeam(iracingTeamId: number) {
   console.log('[createTeam] Found', users.length, 'users with iRacing IDs')
 
   // Find which users are members of this team
-  const memberCustomerIds = new Set(teamMembers.map((m) => m.custId.toString()))
+  const memberCustomerIds = new Set(teamMembers.map((m) => m.custId))
   const matchingUserIds = users
-    .filter((user) => user.iracingCustomerId && memberCustomerIds.has(user.iracingCustomerId))
+    .filter(
+      (user) => user.iracingCustomerId !== null && memberCustomerIds.has(user.iracingCustomerId)
+    )
     .map((user) => ({ id: user.id }))
   console.log('[createTeam] Matched', matchingUserIds.length, 'users to team members')
 

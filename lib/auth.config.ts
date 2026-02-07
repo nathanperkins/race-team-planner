@@ -39,19 +39,30 @@ export const authConfig = {
       return true
     },
     async jwt({ token, user }) {
+      if (token.iracingCustomerId && typeof token.iracingCustomerId === 'string') {
+        console.log(`[auth][jwt] Deprecated string iracingCustomerId found. Forcing re-login.`)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return null as any
+      }
       if (user) {
         token.id = user.id
         token.role = user.role
-        token.iracingCustomerId = user.iracingCustomerId
+        token.iracingCustomerId = user.iracingCustomerId as number
         token.expectationsVersion = user.expectationsVersion
       }
       return token
     },
     async session({ session, token }) {
+      if (token.iracingCustomerId && typeof token.iracingCustomerId === 'string') {
+        console.log(`[auth][jwt] Deprecated string iracingCustomerId found. Forcing re-login.`)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return null as any
+      }
+
       if (session.user) {
         session.user.id = token.id as string
         session.user.role = (token.role as UserRole) || UserRole.USER
-        session.user.iracingCustomerId = token.iracingCustomerId as string
+        session.user.iracingCustomerId = token.iracingCustomerId as number
         session.user.expectationsVersion = (token.expectationsVersion as number) || 0
       }
       return session

@@ -11,7 +11,12 @@ export async function updateProfile(formData: FormData) {
     return { success: false, error: 'Not authenticated' }
   }
 
-  const customerId = (formData.get('customerId') as string)?.trim() || null
+  const customerIdStr = (formData.get('customerId') as string)?.trim() || null
+  const customerId = customerIdStr ? parseInt(customerIdStr, 10) : null
+
+  if (customerIdStr && isNaN(customerId as number)) {
+    return { success: false, error: 'Invalid iRacing Customer ID. Must be a number.' }
+  }
 
   try {
     const user = await prisma.user.findUnique({
@@ -20,7 +25,7 @@ export async function updateProfile(formData: FormData) {
     })
 
     // If changing the ID and it's not null, try to sync first to validate it
-    if (customerId && customerId !== user?.iracingCustomerId) {
+    if (customerId !== null && customerId !== user?.iracingCustomerId) {
       const syncResult = await syncUserStats(session.user.id, customerId)
       if (!syncResult.success) {
         return { success: false, error: 'Failed to validate iRacing Customer ID.' }
@@ -31,7 +36,7 @@ export async function updateProfile(formData: FormData) {
         include: {
           teamMembers: {
             where: {
-              custId: parseInt(customerId),
+              custId: customerId,
             },
           },
         },
@@ -56,7 +61,7 @@ export async function updateProfile(formData: FormData) {
       where: { id: session.user.id },
       data: {
         iracingCustomerId: customerId,
-        iracingName: customerId ? undefined : null,
+        iracingName: customerId !== null ? undefined : null,
       },
       select: {
         id: true,
@@ -92,7 +97,7 @@ export async function updateProfile(formData: FormData) {
           await sendOnboardingNotification({
             userName: updatedUser.name || 'Unknown User',
             userAvatarUrl: updatedUser.image || undefined,
-            iracingCustomerId: updatedUser.iracingCustomerId,
+            iracingCustomerId: updatedUser.iracingCustomerId.toString(),
             iracingName: updatedUser.iracingName || undefined,
             profileUrl: `${baseUrl}/roster`,
             discordUser: updatedUser.accounts[0]?.providerAccountId

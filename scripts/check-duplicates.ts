@@ -3,9 +3,9 @@ import prisma from '../lib/prisma'
 async function checkDuplicates() {
   // Check TeamMember duplicates
   const members = await prisma.$queryRaw<Array<{ custId: number; count: bigint }>>`
-    SELECT "custId", COUNT(*) as count 
-    FROM "TeamMember" 
-    GROUP BY "custId" 
+    SELECT "custId", COUNT(*) as count
+    FROM "TeamMember"
+    GROUP BY "custId"
     HAVING COUNT(*) > 1
   `
 
@@ -25,20 +25,20 @@ async function checkDuplicates() {
   `
   console.log(`\nJunction table (_TeamToTeamMember) records: ${junctionData[0].count}`)
 
-  // Check User iracingId duplicates
-  const userDups = await prisma.$queryRaw<Array<{ iracingId: number; count: bigint }>>`
-    SELECT "iracingId", COUNT(*) as count 
-    FROM "User" 
-    WHERE "iracingId" IS NOT NULL
-    GROUP BY "iracingId" 
+  // Check User iracingCustomerId duplicates
+  const userDups = await prisma.$queryRaw<Array<{ iracingCustomerId: number; count: bigint }>>`
+    SELECT "iracingCustomerId", COUNT(*) as count
+    FROM "User"
+    WHERE "iracingCustomerId" IS NOT NULL
+    GROUP BY "iracingCustomerId"
     HAVING COUNT(*) > 1
   `
 
-  console.log('\n=== User iracingId Duplicates ===')
+  console.log('\n=== User iracingCustomerId Duplicates ===')
   if (userDups.length > 0) {
-    console.log(`Found ${userDups.length} iracingIds with duplicates:`)
+    console.log(`Found ${userDups.length} iracingCustomerIds with duplicates:`)
     for (const u of userDups) {
-      console.log(`  iracingId ${u.iracingId}: ${u.count} records`)
+      console.log(`  iracingCustomerId ${u.iracingCustomerId}: ${u.count} records`)
     }
   } else {
     console.log('No duplicates found!')

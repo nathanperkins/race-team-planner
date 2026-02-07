@@ -84,7 +84,7 @@ export default async function ProfilePage() {
 
         <ProfileForm
           userId={user.id}
-          initialCustomerId={user.iracingCustomerId || ''}
+          initialCustomerId={user.iracingCustomerId?.toString() || ''}
           initialIracingName={user.iracingName || ''}
         />
 

@@ -192,7 +192,7 @@ export async function runIRacingSync(source: SyncSource = SyncSource.MANUAL) {
 /**
  * Syncs iRacing stats for a specific user.
  */
-export async function syncUserStats(userId: string, overrideCustomerId?: string) {
+export async function syncUserStats(userId: string, overrideCustomerId?: number) {
   const customerId =
     overrideCustomerId ||
     (
@@ -206,12 +206,11 @@ export async function syncUserStats(userId: string, overrideCustomerId?: string)
     throw new Error('User does not have an iRacing Customer ID set.')
   }
 
-  const custIdInt = parseInt(customerId, 10)
-  if (isNaN(custIdInt)) {
+  if (isNaN(customerId)) {
     throw new Error('Invalid iRacing Customer ID.')
   }
 
-  const memberInfo = await fetchDriverStats(custIdInt)
+  const memberInfo = await fetchDriverStats(customerId)
   if (!memberInfo) {
     throw new Error('Failed to fetch stats from iRacing.')
   }

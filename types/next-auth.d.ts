@@ -7,7 +7,7 @@ declare module 'next-auth' {
       name?: string | null
       email?: string | null
       image?: string | null
-      iracingCustomerId?: string | null
+      iracingCustomerId?: number | null
       role: UserRole
       expectationsVersion: number
     }
@@ -15,7 +15,7 @@ declare module 'next-auth' {
 
   interface User {
     role: UserRole
-    iracingCustomerId?: string | null
+    iracingCustomerId?: number | null
     expectationsVersion: number
   }
 }
@@ -23,7 +23,7 @@ declare module 'next-auth' {
 declare module '@auth/core/adapters' {
   interface AdapterUser {
     role: UserRole
-    iracingCustomerId?: string | null
+    iracingCustomerId?: number | null
     expectationsVersion: number
   }
 }
@@ -32,7 +32,7 @@ declare module 'next-auth/jwt' {
   interface JWT {
     id: string
     role: UserRole
-    iracingCustomerId?: string | null
+    iracingCustomerId?: number | null
     expectationsVersion: number
   }
 }

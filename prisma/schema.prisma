@@ -17,11 +17,10 @@ model User {
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
   expectationsVersion Int            @default(0)
-  iracingCustomerId   String?
-  iracingId           Int?           @unique
   role                UserRole       @default(USER)
   iracingName         String?
   onboardedAnnounced  Boolean        @default(false)
+  iracingCustomerId   Int?           @unique
   accounts            Account[]
   racerStats          RacerStats[]
   registrations       Registration[]
@@ -158,9 +157,9 @@ model Team {
   updatedAt     DateTime         @updatedAt
   iracingTeamId Int              @unique
   registrations Registration[]
-  members       User[]           @relation("UserTeams")
-  teamMembers   TeamMember[]     @relation("TeamToTeamMember")
   roles         TeamMemberRole[]
+  teamMembers   TeamMember[]     @relation("TeamToTeamMember")
+  members       User[]           @relation("UserTeams")
 }
 
 model TeamMember {
@@ -169,8 +168,8 @@ model TeamMember {
   displayName String
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
-  teams       Team[]           @relation("TeamToTeamMember")
   roles       TeamMemberRole[]
+  teams       Team[]           @relation("TeamToTeamMember")
 
   @@index([custId])
 }
@@ -183,8 +182,8 @@ model TeamMemberRole {
   isAdmin      Boolean    @default(false)
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
-  teamMember   TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
   team         Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamMember   TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
 
   @@unique([teamMemberId, teamId])
   @@index([teamId])
