@@ -40,9 +40,8 @@ export const authConfig = {
     },
     async jwt({ token, user }) {
       if (token.iracingCustomerId && typeof token.iracingCustomerId === 'string') {
-        console.log(`[auth][jwt] Deprecated string iracingCustomerId found. Forcing re-login.`)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return null as any
+        const parsed = Number(token.iracingCustomerId)
+        token.iracingCustomerId = Number.isFinite(parsed) ? parsed : null
       }
       if (user) {
         token.id = user.id
@@ -54,9 +53,8 @@ export const authConfig = {
     },
     async session({ session, token }) {
       if (token.iracingCustomerId && typeof token.iracingCustomerId === 'string') {
-        console.log(`[auth][jwt] Deprecated string iracingCustomerId found. Forcing re-login.`)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return null as any
+        const parsed = Number(token.iracingCustomerId)
+        token.iracingCustomerId = Number.isFinite(parsed) ? parsed : null
       }
 
       if (session.user) {

@@ -60,9 +60,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async jwt({ token, user, trigger }) {
       if (token.iracingCustomerId && typeof token.iracingCustomerId === 'string') {
-        console.log(`[auth][jwt] Deprecated string iracingCustomerId found. Forcing re-login.`)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return null as any
+        const parsed = Number(token.iracingCustomerId)
+        token.iracingCustomerId = Number.isFinite(parsed) ? parsed : null
       }
 
       if (user) {
@@ -102,9 +101,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async session({ session, token }) {
       if (typeof token.iracingCustomerId === 'string') {
-        console.log(`[auth][jwt] Deprecated string iracingCustomerId found. Forcing re-login.`)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return null as any
+        const parsed = Number(token.iracingCustomerId)
+        token.iracingCustomerId = Number.isFinite(parsed) ? parsed : null
       }
 
       if (session.user && token.id) {

@@ -566,7 +566,9 @@ export default function RaceDetails({
                                     carClasses={carClasses}
                                     deferSubmit
                                     onChange={(classId) => handleCarClassChange(reg.id, classId)}
-                                    readOnly={(!isAdmin && reg.userId !== userId) || isRaceCompleted}
+                                    readOnly={
+                                      (!isAdmin && reg.userId !== userId) || isRaceCompleted
+                                    }
                                     showLabel={false}
                                     variant="pill"
                                   />
@@ -622,7 +624,7 @@ export default function RaceDetails({
             onClick={handleSave}
             disabled={isSaving}
           >
-            {isSaving ? 'Saving…' : 'Save Changes'}
+            {isSaving ? 'Savingâ€¦' : 'Save Changes'}
           </button>
         </div>
       )}

@@ -60,24 +60,20 @@ export default async function EventsPage({ searchParams }: PageProps) {
   }
 
   // Fetch unique racers (users who have signed up)
-  const distinctUsersData = await prisma.registration.findMany({
-    where: { userId: { not: null } },
-    select: {
-      user: {
-        select: { id: true, name: true },
+  const racers = await prisma.user.findMany({
+    where: {
+      registrations: {
+        some: {},
       },
     },
-    distinct: ['userId'],
+    select: {
+      id: true,
+      name: true,
+    },
+    orderBy: {
+      name: 'asc',
+    },
   })
-
-  interface Racer {
-    id: string
-    name: string | null
-  }
-
-  const racers = distinctUsersData
-    .map((r) => r.user as Racer)
-    .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
 
   // Build Prisma filter object (similar to dashboard)
   const where: Prisma.EventWhereInput = {}

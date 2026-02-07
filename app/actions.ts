@@ -164,7 +164,7 @@ async function rebalanceTeamsForClass(
 
   if (strategy === TeamAssignmentStrategy.BALANCED_IRATING) {
     const withRatings = classRegistrations.map((reg) => {
-      const stats = reg.user.racerStats || []
+      const stats = reg.user?.racerStats || []
       const preferred =
         stats.find((s) => s.categoryId === 5) ||
         stats.find((s) => s.category?.toLowerCase() === 'sports car') ||
