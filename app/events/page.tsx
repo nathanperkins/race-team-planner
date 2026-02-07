@@ -256,6 +256,10 @@ export default async function EventsPage({ searchParams }: PageProps) {
     (a, b) => a.weekStart.getTime() - b.weekStart.getTime()
   )
 
+  const teams = await prisma.team.findMany({
+    orderBy: { name: 'asc' },
+  })
+
   // --- TEST: inject a mock 4th event into the matching week by date (UI-only) ---
   try {
     const now = new Date()
@@ -317,10 +321,6 @@ export default async function EventsPage({ searchParams }: PageProps) {
       classes: Array.from(week.meta.classes),
     },
   }))
-
-  const teams = await prisma.team.findMany({
-    orderBy: { name: 'asc' },
-  })
 
   return (
     <main className={styles.main}>

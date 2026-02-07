@@ -60,6 +60,30 @@ export function formatDuration(minutes: number | null | undefined): string {
   return `${m}m`
 }
 
+export function getRaceDurationMinutes(startTime: Date, endTime: Date): number {
+  const diffMs = endTime.getTime() - startTime.getTime()
+  return Math.round(diffMs / 60000)
+}
+
+export function getAutoMaxDriversPerTeam(durationMinutes: number): number | null {
+  switch (durationMinutes) {
+    case 120:
+      return 2
+    case 160:
+      return 3
+    case 180:
+      return 3
+    case 360:
+      return 4
+    case 720:
+      return 5
+    case 1440:
+      return 7
+    default:
+      return null
+  }
+}
+
 export function getSeriesNameOnly(eventName: string): string {
   // Extract series name by removing year, season, and week info
   // Patterns to remove: "- 2025", "- 2026", "- 2027", etc., "Season 1", "Week 1", etc.

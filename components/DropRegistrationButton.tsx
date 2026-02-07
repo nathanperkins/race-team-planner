@@ -69,9 +69,13 @@ export default function DropRegistrationButton({ registrationId, className }: Pr
   }
 
   return (
-    <button className={`${styles.button} ${className || ''}`} onClick={handleInitialClick}>
+    <button
+      className={`${styles.button} ${styles.iconOnly} ${className || ''}`}
+      onClick={handleInitialClick}
+      aria-label="Drop registration"
+      title="Drop"
+    >
       <Trash2 size={14} />
-      <span>Drop</span>
     </button>
   )
 }

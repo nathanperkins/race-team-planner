@@ -29,6 +29,106 @@
   margin-left: auto;
 }
 
+.maxDriversField {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 9999px;
+  border: 1px solid #374151;
+  background-color: #111827;
+  color: #d1d5db;
+  font-size: 0.75rem;
+}
+
+.maxDriversLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.maxDriversInput {
+  width: 28px;
+  height: 22px;
+  background: #0f172a;
+  border: 1px solid #374151;
+  border-radius: 9999px;
+  color: #e5e7eb;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-align: center;
+  outline: none;
+  padding: 0;
+  line-height: 22px;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.maxDriversInput:disabled {
+  color: #e5e7eb;
+  opacity: 1;
+}
+
+.maxDriversInput::-webkit-outer-spin-button,
+.maxDriversInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.maxDriversInput::placeholder {
+  color: #6b7280;
+}
+
+.strategySelect {
+  background: transparent;
+  border: 1px solid #374151;
+  color: #e5e7eb;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  padding: 0.15rem 0.65rem;
+  min-width: 92px;
+  text-align: center;
+}
+
+.strategySelect:disabled {
+  opacity: 0.6;
+}
+
+.strategySelect:disabled {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: none;
+  padding-right: 0.5rem;
+}
+
+.rebalanceButton {
+  border: 1px solid #374151;
+  background: #0f172a;
+  color: #e5e7eb;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.rebalanceButton:hover:not(:disabled) {
+  border-color: #4b5563;
+  background-color: #111827;
+}
+
+.rebalanceButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .raceTitle {
   font-size: 1.125rem;
   font-weight: 600;
@@ -87,6 +187,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  column-gap: 0.75rem;
   padding: 0.75rem 0;
 }
 
@@ -98,6 +199,15 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.driverMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
 }
 
 .avatar {
@@ -116,6 +226,29 @@
   margin: 0.25rem 0 0 0;
 }
 
+.statsBadge {
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  white-space: nowrap;
+  margin-top: 0;
+}
+
+.driverPills {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: nowrap;
+  margin-top: 0;
+  min-width: 0;
+}
+
 .driverClass {
   font-size: 0.75rem;
   color: #6b7280;
@@ -123,10 +256,17 @@
 }
 
 .driverTimeslot {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
   text-align: right;
   font-size: 0.875rem;
   color: #9ca3af;
-  min-width: 140px;
+  min-width: 40px;
+}
+
+.driverTimeslot .actionRow {
+  margin-left: auto;
 }
 
 .registrationControls {
@@ -151,8 +291,18 @@
   border-top: 1px solid #374151;
 }
 
-.teamGroup {
+.teamGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 0.75rem;
   margin-top: 1rem;
+}
+
+.teamGroup {
+  background-color: #111827;
+  border: 1px solid #374151;
+  border-radius: 0.75rem;
+  padding: 0.75rem;
 }
 
 .teamGroupHeader {
@@ -171,6 +321,13 @@
 .teamCount {
   font-weight: 400;
   color: #9ca3af;
+  font-size: 0.75rem;
+}
+
+.teamSof {
+  margin-left: auto;
+  font-weight: 600;
+  color: #e5e7eb;
   font-size: 0.75rem;
 }
 
@@ -202,4 +359,30 @@
   background: rgba(245, 158, 11, 0.15);
   padding: 0.15rem;
   border-radius: 4px;
+}
+
+.saveRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.saveButton {
+  background-color: #2563eb;
+  color: white;
+  border: none;
+  padding: 0.5rem 1.25rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.saveButton:hover:not(:disabled) {
+  background-color: #1d4ed8;
+}
+
+.saveButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }

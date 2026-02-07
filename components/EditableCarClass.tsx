@@ -2,7 +2,7 @@
 
 import { useActionState, useState, useEffect, useRef, startTransition } from 'react'
 import { updateRegistrationCarClass } from '@/app/actions'
-import { ChevronDown } from 'lucide-react'
+import { Car, ChevronDown } from 'lucide-react'
 import styles from './EditableCarClass.module.css'
 
 interface Props {
@@ -12,7 +12,9 @@ interface Props {
   carClasses?: { id: string; name: string; shortName: string }[]
   readOnly?: boolean
   showLabel?: boolean
-  variant?: 'standard' | 'table'
+  variant?: 'standard' | 'table' | 'pill'
+  deferSubmit?: boolean
+  onChange?: (classId: string) => void
 }
 
 type State = {
@@ -34,6 +36,8 @@ export default function EditableCarClass({
   readOnly = false,
   showLabel = true,
   variant = 'standard',
+  deferSubmit = false,
+  onChange,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false)
   const [pendingLabel, setPendingLabel] = useState<string | null>(null)
@@ -79,6 +83,11 @@ export default function EditableCarClass({
 
   const handleSelect = (classId: string, label: string) => {
     if (!registrationId) return
+    if (deferSubmit) {
+      setIsOpen(false)
+      onChange?.(classId)
+      return
+    }
     setPendingLabel(label)
     const formData = new FormData()
     formData.append('registrationId', registrationId)
@@ -89,12 +98,21 @@ export default function EditableCarClass({
   }
 
   const displayText = showLabel ? `Class: ${currentCarClassShortName}` : currentCarClassShortName
-  const containerClassName = `${styles.container} ${variant === 'table' ? styles.tableVariant : ''}`
+  const containerClassName = [
+    styles.container,
+    variant === 'table' ? styles.tableVariant : '',
+    variant === 'pill' ? styles.pillVariant : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   if (readOnly || !registrationId || !carClasses) {
     return (
       <div className={containerClassName}>
-        <p className={styles.displayOnly}>{displayText}</p>
+        <p className={styles.displayOnly}>
+          {variant === 'pill' && <Car size={12} />}
+          {displayText}
+        </p>
       </div>
     )
   }
@@ -103,11 +121,13 @@ export default function EditableCarClass({
     <div className={containerClassName} ref={dropdownRef}>
       <button
         type="button"
-        className={styles.editButton}
+        className={`${styles.editButton} ${isOpen ? styles.active : ''}`}
         onClick={() => setIsOpen(!isOpen)}
         disabled={isPending}
       >
-        {displayText} <ChevronDown size={12} className={styles.chevron} />
+        {variant === 'pill' && <Car size={12} />}
+        {displayText}
+        <ChevronDown size={12} className={styles.chevron} />
       </button>
 
       {isOpen && (
