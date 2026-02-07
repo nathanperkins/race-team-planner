@@ -56,8 +56,10 @@ create subtasks under the epic or feature.
 2. **Commit**: Only commit and push code once verification is confirmed.
 
 ```bash
-# First, verify the feature is working correctly with the user, then run:
-husky check             # Run pre-commit checks
+git hook run pre-commit # Run this and fix any issues in a loop until it passes.
+
+# After the pre-commit hook passes, verify the feature is working correctly with the user. Then run:
+
 git add .               # Stage all changes
 git commit -m "..."     # Commit the changes to git.
 git push                # Push the changes to git.
