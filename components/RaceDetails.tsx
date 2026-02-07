@@ -20,12 +20,19 @@ export interface RaceWithRegistrations {
       name: string
       shortName: string
     }
-    userId: string
+    userId: string | null
+    manualDriverId?: string | null
+    manualDriver?: {
+      id: string
+      name: string
+      irating: number
+      image: string
+    } | null
     team?: {
       id: string
       name: string
     } | null
-    user: {
+    user?: {
       name: string | null
       image: string | null
       racerStats: Array<{
@@ -34,7 +41,7 @@ export interface RaceWithRegistrations {
         irating: number
         groupName: string
       }>
-    }
+    } | null
   }>
 }
 
@@ -75,7 +82,9 @@ export default function RaceDetails({
   const isRaceLive = now >= new Date(race.startTime) && now <= new Date(race.endTime)
 
   const isUserRegistered = race.registrations.some((reg) => reg.userId === userId)
-  const registeredUserIds = race.registrations.map((reg) => reg.userId)
+  const registeredUserIds = race.registrations
+    .map((reg) => reg.userId || reg.manualDriverId)
+    .filter((id): id is string => !!id)
 
   // Get the last driver's car class for default
   const lastDriverCarClass =
@@ -156,18 +165,20 @@ export default function RaceDetails({
                 {grouped[teamName].map((reg) => (
                   <div key={reg.id} className={styles.driverRow}>
                     <div className={styles.driverInfo}>
-                      {reg.user.image && (
+                      {(reg.user?.image || reg.manualDriver?.image) && (
                         <Image
-                          src={reg.user.image}
-                          alt={reg.user.name || 'User'}
+                          src={reg.user?.image || (reg.manualDriver?.image as string)}
+                          alt={reg.user?.name || reg.manualDriver?.name || 'User'}
                           width={32}
                           height={32}
                           className={styles.avatar}
                         />
                       )}
                       <div>
-                        <p className={styles.driverName}>{reg.user.name}</p>
-                        {reg.user.racerStats && reg.user.racerStats.length > 0 && (
+                        <p className={styles.driverName}>
+                          {reg.user?.name || reg.manualDriver?.name}
+                        </p>
+                        {reg.user?.racerStats && reg.user.racerStats.length > 0 ? (
                           <p className={styles.driverStats}>
                             {(
                               reg.user.racerStats.find(
@@ -185,7 +196,11 @@ export default function RaceDetails({
                               ).groupName
                             }
                           </p>
-                        )}
+                        ) : reg.manualDriver?.irating !== undefined ? (
+                          <p className={styles.driverStats}>
+                            {reg.manualDriver.irating.toLocaleString()} iR • Manual Entry
+                          </p>
+                        ) : null}
                         <div className={styles.editableContainer}>
                           <EditableCarClass
                             registrationId={reg.id}

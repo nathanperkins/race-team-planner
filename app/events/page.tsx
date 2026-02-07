@@ -40,9 +40,10 @@ type EventWithRaces = Prisma.EventGetPayload<{
       include: {
         registrations: {
           include: {
-            user: { select: { name: true; id: true; image: true } }
+            user: { select: { name: true; id: true; image: true; racerStats: true } }
             carClass: true
             team: true
+            manualDriver: true
           }
         }
       }
@@ -59,17 +60,23 @@ export default async function EventsPage({ searchParams }: PageProps) {
   }
 
   // Fetch unique racers (users who have signed up)
-  const distinctUsers: { user: { id: string; name: string | null } }[] =
-    await prisma.registration.findMany({
-      select: {
-        user: {
-          select: { id: true, name: true },
-        },
+  const distinctUsersData = await prisma.registration.findMany({
+    where: { userId: { not: null } },
+    select: {
+      user: {
+        select: { id: true, name: true },
       },
-      distinct: ['userId'],
-    })
-  const racers = distinctUsers
-    .map((r) => r.user)
+    },
+    distinct: ['userId'],
+  })
+
+  interface Racer {
+    id: string
+    name: string | null
+  }
+
+  const racers = distinctUsersData
+    .map((r) => r.user as Racer)
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
 
   // Build Prisma filter object (similar to dashboard)
@@ -170,6 +177,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
               },
               carClass: true,
               team: true,
+              manualDriver: true,
             },
           },
         },

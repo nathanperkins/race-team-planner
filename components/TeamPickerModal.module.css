@@ -324,7 +324,30 @@
 .nameRow {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
+}
+
+.avatarWrapper {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+}
+
+.avatar {
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.nameAndManual {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.nameWithCheck {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 
 .checkIcon {
@@ -333,18 +356,25 @@
 }
 
 .driverName {
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   font-weight: 500;
   color: white;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
 }
 
 .manualBadge {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   background: rgba(245, 158, 11, 0.1);
   color: #f59e0b;
-  padding: 0.1rem 0.4rem;
+  padding: 0.05rem 0.35rem;
   border-radius: 4px;
   width: fit-content;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .driverStats {

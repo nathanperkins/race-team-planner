@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
                   },
                 },
                 carClass: { select: { name: true } },
+                manualDriver: { select: { name: true, image: true } },
               },
             },
           },
@@ -77,9 +78,11 @@ export async function GET(request: NextRequest) {
         raceTimes.push(race.startTime)
         race.registrations.forEach((reg) => {
           registeredClasses.add(reg.carClass.name)
-          if (reg.user.name) {
+          if (reg.user?.name) {
             const discordId = reg.user.accounts[0]?.providerAccountId
             registeredUserMap.set(reg.user.name, { name: reg.user.name, discordId })
+          } else if (reg.manualDriver?.name) {
+            registeredUserMap.set(reg.manualDriver.name, { name: reg.manualDriver.name })
           }
         })
       })

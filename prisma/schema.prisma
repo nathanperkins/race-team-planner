@@ -113,20 +113,33 @@ model Race {
 }
 
 model Registration {
-  id         String   @id @default(cuid())
-  userId     String
-  notes      String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  raceId     String
-  carClassId String
-  teamId     String?
-  carClass   CarClass @relation(fields: [carClassId], references: [id])
-  race       Race     @relation(fields: [raceId], references: [id], onDelete: Cascade)
-  team       Team?    @relation(fields: [teamId], references: [id])
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String        @id @default(cuid())
+  userId         String?
+  manualDriverId String?
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  raceId         String
+  carClassId     String
+  teamId         String?
+  carClass       CarClass      @relation(fields: [carClassId], references: [id])
+  manualDriver   ManualDriver? @relation(fields: [manualDriverId], references: [id])
+  race           Race          @relation(fields: [raceId], references: [id], onDelete: Cascade)
+  team           Team?         @relation(fields: [teamId], references: [id])
+  user           User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, raceId])
+  @@unique([manualDriverId, raceId])
+}
+
+model ManualDriver {
+  id            String         @id @default(cuid())
+  name          String
+  image         String
+  irating       Int            @default(1350)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  registrations Registration[]
 }
 
 model CarClass {

@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useMemo, useEffect } from 'react'
+import Image from 'next/image'
 import {
   X,
   Search,
@@ -26,7 +27,7 @@ interface Driver {
   id: string
   name: string
   irating: number
-  license: string
+  image?: string | null
   isManual?: boolean
   category?:
     | 'Unassigned'
@@ -85,7 +86,14 @@ export default function TeamPickerModal({
       initialRegistrations.map((r) => ({ ...r, raceId: raceId || '', raceStartTime }))
 
     const rawDrivers = source.map((reg) => {
-      const stats = reg.user.racerStats?.find((s) => s.categoryId === 5) || reg.user.racerStats?.[0]
+      const stats =
+        reg.user?.racerStats?.find((s) => s.categoryId === 5) || reg.user?.racerStats?.[0]
+      const name = reg.user?.name || reg.manualDriver?.name || 'Unknown'
+      const irating = stats?.irating || reg.manualDriver?.irating || 0
+      const image =
+        reg.user?.image ||
+        reg.manualDriver?.image ||
+        `https://api.dicebear.com/9.x/avataaars/png?seed=${name}`
 
       let category: Driver['category'] = 'Unassigned'
 
@@ -103,10 +111,10 @@ export default function TeamPickerModal({
 
       return {
         id: reg.id, // Registration ID
-        name: reg.user.name || 'Unknown',
-        irating: stats?.irating || 0,
-        license: stats?.groupName || 'R',
-        isManual: false,
+        name,
+        irating,
+        image,
+        isManual: !reg.userId,
         category,
         originalClass: reg.carClass.name,
         originalTime: reg.raceStartTime,
@@ -221,7 +229,7 @@ export default function TeamPickerModal({
       id,
       name: newManualName.trim(),
       irating: parseInt(newManualIR) || 1350,
-      license: '',
+      image: `https://api.dicebear.com/9.x/avataaars/png?seed=${newManualName.trim()}`,
       isManual: true,
     }
     setManualDrivers([...manualDrivers, newDriver])
@@ -341,12 +349,19 @@ export default function TeamPickerModal({
       }
 
       const assignments = results.flatMap((comp) =>
-        comp.drivers
-          .filter((d) => !d.isManual) // Can't assign manual drivers to DB registrations
-          .map((d) => ({
+        comp.drivers.map((d) => {
+          if (d.isManual && d.id.startsWith('M-')) {
+            return {
+              manualName: d.name,
+              manualIR: d.irating,
+              teamId: comp.teamId,
+            }
+          }
+          return {
             registrationId: d.id,
             teamId: comp.teamId,
-          }))
+          }
+        })
       )
 
       await batchAssignTeams(assignments, { raceId, carClassId })
@@ -613,17 +628,27 @@ export default function TeamPickerModal({
                         >
                           <div className={styles.driverInfo}>
                             <div className={styles.nameRow}>
-                              {selectedDriverIds.has(d.id) && (
-                                <Check size={14} className={styles.checkIcon} />
-                              )}
-                              <span className={styles.driverName}>{d.name}</span>
+                              <div className={styles.avatarWrapper}>
+                                <Image
+                                  src={d.image as string}
+                                  alt={d.name}
+                                  width={24}
+                                  height={24}
+                                  className={styles.avatar}
+                                />
+                              </div>
+                              <div className={styles.nameAndManual}>
+                                <div className={styles.nameWithCheck}>
+                                  {selectedDriverIds.has(d.id) && (
+                                    <Check size={14} className={styles.checkIcon} />
+                                  )}
+                                  <span className={styles.driverName}>{d.name}</span>
+                                </div>
+                                {d.isManual && <span className={styles.manualBadge}>Manual</span>}
+                              </div>
                             </div>
-                            {d.isManual && <span className={styles.manualBadge}>Manual Entry</span>}
                           </div>
                           <div className={styles.driverStats}>
-                            {!d.isManual && (
-                              <span className={styles.licenseBadge}>{d.license}</span>
-                            )}
                             <span className={styles.irBadge}>{d.irating}</span>
                             {d.isManual && (
                               <button
@@ -727,30 +752,39 @@ export default function TeamPickerModal({
                       {comp.drivers.map((d) => (
                         <div key={d.id} className={styles.memberCard}>
                           <div className={styles.memberName}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <span>{d.name}</span>
-                              {d.category && d.category.startsWith('Different') && (
-                                <div
-                                  className={styles.warningIcon}
-                                  data-tooltip={`Driver will be changed from:\n${
-                                    d.category.includes('Class')
-                                      ? `Class: ${d.originalClass}\n`
-                                      : ''
-                                  }${
-                                    d.category.includes('Time') && d.originalTime
-                                      ? `Time: ${d.originalTime.toLocaleString(undefined, {
-                                          weekday: 'short',
-                                          hour: 'numeric',
-                                          minute: '2-digit',
-                                        })}\n`
-                                      : ''
-                                  }${
-                                    d.originalTeam ? `⚠️ Will leave team: ${d.originalTeam}` : ''
-                                  }`}
-                                >
-                                  <AlertTriangle size={12} color="#f59e0b" />
-                                </div>
-                              )}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                              <Image
+                                src={d.image as string}
+                                alt={d.name}
+                                width={20}
+                                height={20}
+                                className={styles.avatar}
+                              />
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <span>{d.name}</span>
+                                {d.category && d.category.startsWith('Different') && (
+                                  <div
+                                    className={styles.warningIcon}
+                                    data-tooltip={`Driver will be changed from:\n${
+                                      d.category.includes('Class')
+                                        ? `Class: ${d.originalClass}\n`
+                                        : ''
+                                    }${
+                                      d.category.includes('Time') && d.originalTime
+                                        ? `Time: ${d.originalTime.toLocaleString(undefined, {
+                                            weekday: 'short',
+                                            hour: 'numeric',
+                                            minute: '2-digit',
+                                          })}\n`
+                                        : ''
+                                    }${
+                                      d.originalTeam ? `⚠️ Will leave team: ${d.originalTeam}` : ''
+                                    }`}
+                                  >
+                                    <AlertTriangle size={12} color="#f59e0b" />
+                                  </div>
+                                )}
+                              </div>
                             </div>
                             <span className={styles.memberIR}>{d.irating}</span>
                           </div>

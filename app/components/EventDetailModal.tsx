@@ -31,6 +31,8 @@ type EventWithRaces = Prisma.EventGetPayload<{
               }
             }
             carClass: true
+            team: true
+            manualDriver: true
           }
         }
       }

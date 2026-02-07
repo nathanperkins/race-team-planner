@@ -447,7 +447,12 @@ export async function assignRegistrationToTeam(registrationId: string, teamId: s
   return registration
 }
 export async function batchAssignTeams(
-  assignments: { registrationId: string; teamId: string | null }[],
+  assignments: {
+    registrationId?: string
+    manualName?: string
+    manualIR?: number
+    teamId: string | null
+  }[],
   overrides?: { raceId?: string; carClassId?: string }
 ) {
   const session = await auth()
@@ -456,18 +461,52 @@ export async function batchAssignTeams(
   }
 
   // Use a transaction for reliability
-  await prisma.$transaction(
-    assignments.map((a) =>
-      prisma.registration.update({
-        where: { id: a.registrationId },
-        data: {
-          teamId: a.teamId,
-          ...(overrides?.raceId ? { raceId: overrides.raceId } : {}),
-          ...(overrides?.carClassId ? { carClassId: overrides.carClassId } : {}),
-        },
-      })
-    )
-  )
+  await prisma.$transaction(async (tx) => {
+    for (const a of assignments) {
+      if (a.registrationId && !a.registrationId.startsWith('M-')) {
+        // Update existing registration (User or existing manual)
+        await tx.registration.update({
+          where: { id: a.registrationId },
+          data: {
+            teamId: a.teamId,
+            ...(overrides?.raceId ? { raceId: overrides.raceId } : {}),
+            ...(overrides?.carClassId ? { carClassId: overrides.carClassId } : {}),
+          },
+        })
+      } else if (a.manualName && overrides?.raceId && overrides?.carClassId) {
+        // Find or create manual driver
+        let manualDriver = await tx.manualDriver.findFirst({
+          where: { name: a.manualName },
+        })
+
+        if (!manualDriver) {
+          manualDriver = await tx.manualDriver.create({
+            data: {
+              name: a.manualName,
+              irating: a.manualIR || 1350,
+              image: `https://api.dicebear.com/9.x/avataaars/png?seed=${a.manualName}`,
+            },
+          })
+        } else if (a.manualIR !== undefined && manualDriver.irating !== a.manualIR) {
+          // Update iR if it changed
+          await tx.manualDriver.update({
+            where: { id: manualDriver.id },
+            data: { irating: a.manualIR },
+          })
+        }
+
+        // Create new manual registration
+        await tx.registration.create({
+          data: {
+            manualDriverId: manualDriver.id,
+            teamId: a.teamId,
+            raceId: overrides.raceId,
+            carClassId: overrides.carClassId,
+          },
+        })
+      }
+    }
+  })
 
   revalidatePath('/events')
   revalidatePath('/events/[id]', 'layout')

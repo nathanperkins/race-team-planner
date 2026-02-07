@@ -153,8 +153,53 @@ async function main() {
     },
   })
 
-  // Teams are now created via admin page with real iRacing Team IDs
-  // No seed teams needed
+  // Teams for selection
+  const teamRed = await prisma.team.upsert({
+    where: { id: 'team_red' },
+    update: { name: '[MOCK] Team Red Racing' },
+    create: {
+      id: 'team_red',
+      iracingTeamId: 10001,
+      name: '[MOCK] Team Red Racing',
+    },
+  })
+
+  const teamBlue = await prisma.team.upsert({
+    where: { id: 'team_blue' },
+    update: { name: '[MOCK] Team Blue Motorsports' },
+    create: {
+      id: 'team_blue',
+      iracingTeamId: 10002,
+      name: '[MOCK] Team Blue Motorsports',
+    },
+  })
+
+  const teamGreen = await prisma.team.upsert({
+    where: { id: 'team_green' },
+    update: { name: '[MOCK] Team Green Performance' },
+    create: {
+      id: 'team_green',
+      iracingTeamId: 10003,
+      name: '[MOCK] Team Green Performance',
+    },
+  })
+
+  const teamYellow = await prisma.team.upsert({
+    where: { id: 'team_yellow' },
+    update: { name: '[MOCK] Team Yellow Squad' },
+    create: {
+      id: 'team_yellow',
+      iracingTeamId: 10004,
+      name: '[MOCK] Team Yellow Squad',
+    },
+  })
+
+  console.log('Mock teams seeded:', {
+    teamRed,
+    teamBlue,
+    teamGreen,
+    teamYellow,
+  })
 
   const alice = await prisma.user.upsert({
     where: { id: 'user_alice' },
@@ -692,6 +737,32 @@ async function main() {
     create: { userId: frank.id, raceId: sebringRace2.id, carClassId: gtp.id },
   })
 
+  // Manual Driver seed
+  const manualDriver = await prisma.manualDriver.upsert({
+    where: { id: 'manual_driver_1' },
+    update: {
+      name: 'Mock Manual Racer',
+      irating: 1600,
+      image: 'https://api.dicebear.com/9.x/avataaars/png?seed=Mock%20Manual%20Racer',
+    },
+    create: {
+      id: 'manual_driver_1',
+      name: 'Mock Manual Racer',
+      irating: 1600,
+      image: 'https://api.dicebear.com/9.x/avataaars/png?seed=Mock%20Manual%20Racer',
+    },
+  })
+
+  await prisma.registration.upsert({
+    where: { manualDriverId_raceId: { manualDriverId: manualDriver.id, raceId: daytonaRace1.id } },
+    update: { carClassId: gt3.id },
+    create: {
+      manualDriverId: manualDriver.id,
+      raceId: daytonaRace1.id,
+      carClassId: gt3.id,
+    },
+  })
+
   console.log('Mock drivers seeded:', {
     alice,
     bob,
@@ -701,6 +772,7 @@ async function main() {
     frank,
     grace,
     henry,
+    manualDriver,
   })
 }
 

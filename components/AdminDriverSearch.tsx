@@ -116,15 +116,16 @@ export default function AdminDriverSearch({
                   className={styles.driverItem}
                   onClick={() => handleSelectDriver(driver)}
                 >
-                  {driver.image && (
-                    <Image
-                      src={driver.image}
-                      alt={driver.name || 'User'}
-                      className={styles.avatar}
-                      width={32}
-                      height={32}
-                    />
-                  )}
+                  <Image
+                    src={
+                      driver.image ||
+                      `https://api.dicebear.com/9.x/avataaars/png?seed=${driver.name}`
+                    }
+                    alt={driver.name || 'User'}
+                    className={styles.avatar}
+                    width={32}
+                    height={32}
+                  />
                   <span className={styles.driverName}>{driver.name}</span>
                 </button>
               ))

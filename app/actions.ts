@@ -103,7 +103,7 @@ export async function registerForRace(prevState: State, formData: FormData) {
         },
       })
 
-      if (registrationData) {
+      if (registrationData && registrationData.user) {
         const { sendRegistrationNotification } = await import('@/lib/discord')
         const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
 
@@ -384,31 +384,57 @@ export async function adminRegisterDriver(prevState: State, formData: FormData) 
       return { message: 'Cannot register for a completed race', timestamp: Date.now() }
     }
 
-    // Check user exists
+    // Check if it's a regular user or a manual driver
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { id: true },
     })
 
-    if (!user) return { message: 'User not found', timestamp: Date.now() }
+    if (user) {
+      // Check if already registered
+      const existing = await prisma.registration.findUnique({
+        where: { userId_raceId: { userId, raceId } },
+      })
 
-    // Check if already registered
-    const existing = await prisma.registration.findUnique({
-      where: { userId_raceId: { userId, raceId } },
-    })
+      if (existing) {
+        return { message: 'User already registered for this race', timestamp: Date.now() }
+      }
 
-    if (existing) {
-      return { message: 'User already registered for this race', timestamp: Date.now() }
+      // Create registration
+      await prisma.registration.create({
+        data: {
+          userId,
+          raceId,
+          carClassId,
+        },
+      })
+    } else {
+      // Check if it's a manual driver
+      const manualDriver = await prisma.manualDriver.findUnique({
+        where: { id: userId },
+        select: { id: true },
+      })
+
+      if (!manualDriver) return { message: 'Driver not found', timestamp: Date.now() }
+
+      // Check if already registered
+      const existing = await prisma.registration.findUnique({
+        where: { manualDriverId_raceId: { manualDriverId: userId, raceId } },
+      })
+
+      if (existing) {
+        return { message: 'Driver already registered for this race', timestamp: Date.now() }
+      }
+
+      // Create registration
+      await prisma.registration.create({
+        data: {
+          manualDriverId: userId,
+          raceId,
+          carClassId,
+        },
+      })
     }
-
-    // Create registration
-    await prisma.registration.create({
-      data: {
-        userId,
-        raceId,
-        carClassId,
-      },
-    })
 
     revalidatePath(`/events`)
 
