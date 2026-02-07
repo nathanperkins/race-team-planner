@@ -13,6 +13,7 @@ interface Props {
   carClasses: { id: string; name: string; shortName: string }[]
   teams: { id: string; name: string }[]
   eventRegistrations?: ExtendedRegistration[]
+  onDropdownToggle?: (open: boolean) => void
 }
 
 export default function TeamPickerTrigger({
@@ -22,8 +23,10 @@ export default function TeamPickerTrigger({
   carClasses,
   teams,
   eventRegistrations,
+  onDropdownToggle,
 }: Props) {
   const [showDropdown, setShowDropdown] = useState(false)
+  const [openDirection, setOpenDirection] = useState<'down' | 'up'>('down')
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -37,11 +40,39 @@ export default function TeamPickerTrigger({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  const computeOpenDirection = () => {
+    const rect = dropdownRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const threshold = 220
+    const shouldOpenUp = rect.bottom > window.innerHeight - threshold
+    setOpenDirection(shouldOpenUp ? 'up' : 'down')
+  }
+
+  useEffect(() => {
+    onDropdownToggle?.(showDropdown)
+  }, [showDropdown, onDropdownToggle])
+
+  useEffect(() => {
+    if (!showDropdown) return
+    window.addEventListener('resize', computeOpenDirection)
+    window.addEventListener('scroll', computeOpenDirection, true)
+    return () => {
+      window.removeEventListener('resize', computeOpenDirection)
+      window.removeEventListener('scroll', computeOpenDirection, true)
+    }
+  }, [showDropdown])
+
   return (
     <div className={styles.container} ref={dropdownRef}>
       <button
         className={styles.triggerButton}
-        onClick={() => setShowDropdown(!showDropdown)}
+        onClick={() => {
+          const next = !showDropdown
+          if (next) {
+            computeOpenDirection()
+          }
+          setShowDropdown(next)
+        }}
         title="Automated Team Balancer"
       >
         <Users size={16} />
@@ -50,7 +81,7 @@ export default function TeamPickerTrigger({
       </button>
 
       {showDropdown && (
-        <div className={styles.dropdown}>
+        <div className={`${styles.dropdown} ${openDirection === 'up' ? styles.dropdownUp : ''}`}>
           <div className={styles.dropdownHeader}>Select Car Class</div>
           {carClasses.map((cc) => (
             <button

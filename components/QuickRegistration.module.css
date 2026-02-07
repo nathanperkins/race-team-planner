@@ -55,6 +55,24 @@
   overflow: hidden;
 }
 
+.dropdownHeader {
+  padding: 0.75rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid #374151;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.dropdownUp {
+  top: auto;
+  bottom: 100%;
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+
 .dropdownItem {
   width: 100%;
   padding: 0.75rem 1rem;

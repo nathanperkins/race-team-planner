@@ -12,7 +12,7 @@ import {
   Calendar,
   Car,
 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import RaceDetails from '@/components/RaceDetails'
 import EditEventButton from '@/app/admin/EditEventButton'
 import {
@@ -73,6 +73,7 @@ export default function EventDetailModal({
 }: EventDetailModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
   const [allDrivers, setAllDrivers] = useState<Driver[]>([])
+  const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({})
 
   const license = getLicenseForId(event.id, event.licenseGroup)
   const licenseColor = getLicenseColor(license)
@@ -81,6 +82,15 @@ export default function EventDetailModal({
     requiredLicenseLevel === null
       ? true
       : userLicenseLevel !== null && userLicenseLevel >= requiredLicenseLevel
+
+  const isAnyDropdownOpen = Object.values(openDropdowns).some(Boolean)
+
+  const handleDropdownToggle = useCallback((raceId: string, open: boolean) => {
+    setOpenDropdowns((prev) => {
+      if (prev[raceId] === open) return prev
+      return { ...prev, [raceId]: open }
+    })
+  }, [])
 
   // Fetch all drivers for admin search
   useEffect(() => {
@@ -112,161 +122,165 @@ export default function EventDetailModal({
   return (
     <div className={styles.backdrop} ref={modalRef} onClick={handleBackdropClick}>
       <div className={styles.modal}>
-        <div className={styles.header}>
-          <div className={styles.headerTop}>
-            {event.externalId && (
-              <span className={styles.badge}>
-                <Cloud size={14} /> Synced
-              </span>
-            )}
-            <span className={styles.eventMetaHeader}>
-              {new Date(event.startTime).getFullYear()} • Season{' '}
-              {Math.floor(new Date(event.startTime).getMonth() / 3) + 1} • Week{' '}
-              {getWeekNumber(event.startTime)}
-            </span>
-            {isAdmin && !event.externalId && (
-              <EditEventButton
-                event={{
-                  id: event.id,
-                  name: event.name,
-                  track: event.track,
-                  trackConfig: event.trackConfig,
-                  description: event.description,
-                  startTime: event.startTime,
-                  endTime: event.endTime,
-                  durationMins: event.durationMins,
-                  licenseGroup: event.licenseGroup,
-                  tempValue: event.tempValue,
-                  tempUnits: event.tempUnits,
-                  relHumidity: event.relHumidity,
-                  skies: event.skies,
-                  precipChance: event.precipChance,
-                  carClasses: event.carClasses,
-                }}
-              />
-            )}
-          </div>
-          <button className={styles.closeButton} onClick={onClose} type="button">
-            <X size={24} />
-          </button>
-        </div>
-
-        <div className={styles.content}>
-          <div className={styles.titleRow}>
-            <div>
-              <div className={styles.titleWithBadge}>
-                <h1 className={styles.eventTitle}>{getSeriesNameOnly(event.name)}</h1>
-                <div
-                  className={styles.licenseBadgeInline}
-                  style={{
-                    borderColor: licenseColor,
-                    color: licenseColor,
-                    backgroundColor: `${licenseColor}30`,
-                  }}
-                >
-                  {isEligible ? <ShieldCheck size={18} /> : <ShieldX size={18} color="#ef4444" />}
-                  {license}
-                </div>
-              </div>
-              <div className={styles.trackName}>
-                <MapPin size={16} /> {event.track}
-                {event.trackConfig && ` - ${event.trackConfig}`}
-              </div>
-            </div>
-          </div>
-
-          <div className={styles.carClassList}>
-            {event.races.map((race, idx) => (
-              <span key={race.id} className={styles.carClassTag}>
-                <Calendar size={14} />{' '}
-                {new Date(race.startTime).toLocaleDateString('en-US', {
-                  month: 'numeric',
-                  day: 'numeric',
-                })}{' '}
-                •{' '}
-                {new Date(race.startTime).toLocaleTimeString('en-US', {
-                  hour: 'numeric',
-                  minute: '2-digit',
-                  timeZoneName: idx === event.races.length - 1 ? 'short' : undefined,
-                })}
-              </span>
-            ))}
-          </div>
-
-          {event.carClasses.length > 0 && (
-            <div className={styles.carClassSection}>
-              <div className={styles.carClassList}>
-                {event.carClasses.map((cc) => (
-                  <span key={cc.id} className={styles.carClassTag}>
-                    <Car size={14} /> {cc.shortName || cc.name}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Stats Bar */}
-          <div className={styles.statsBar}>
-            <div className={styles.statsItem}>
-              <Timer size={18} className={styles.statsIcon} />
-              <div>
-                <span className={styles.statsLabel}>Duration</span>
-                <span className={styles.statsValue}>
-                  {event.durationMins ? formatDuration(event.durationMins) : 'N/A'}
+        {isAnyDropdownOpen && <div className={styles.modalDim} aria-hidden="true" />}
+        <div className={styles.modalScroll}>
+          <div className={styles.header}>
+            <div className={styles.headerTop}>
+              {event.externalId && (
+                <span className={styles.badge}>
+                  <Cloud size={14} /> Synced
                 </span>
+              )}
+              <span className={styles.eventMetaHeader}>
+                {new Date(event.startTime).getFullYear()} • Season{' '}
+                {Math.floor(new Date(event.startTime).getMonth() / 3) + 1} • Week{' '}
+                {getWeekNumber(event.startTime)}
+              </span>
+              {isAdmin && !event.externalId && (
+                <EditEventButton
+                  event={{
+                    id: event.id,
+                    name: event.name,
+                    track: event.track,
+                    trackConfig: event.trackConfig,
+                    description: event.description,
+                    startTime: event.startTime,
+                    endTime: event.endTime,
+                    durationMins: event.durationMins,
+                    licenseGroup: event.licenseGroup,
+                    tempValue: event.tempValue,
+                    tempUnits: event.tempUnits,
+                    relHumidity: event.relHumidity,
+                    skies: event.skies,
+                    precipChance: event.precipChance,
+                    carClasses: event.carClasses,
+                  }}
+                />
+              )}
+            </div>
+            <button className={styles.closeButton} onClick={onClose} type="button">
+              <X size={24} />
+            </button>
+          </div>
+
+          <div className={styles.content}>
+            <div className={styles.titleRow}>
+              <div>
+                <div className={styles.titleWithBadge}>
+                  <h1 className={styles.eventTitle}>{getSeriesNameOnly(event.name)}</h1>
+                  <div
+                    className={styles.licenseBadgeInline}
+                    style={{
+                      borderColor: licenseColor,
+                      color: licenseColor,
+                      backgroundColor: `${licenseColor}30`,
+                    }}
+                  >
+                    {isEligible ? <ShieldCheck size={18} /> : <ShieldX size={18} color="#ef4444" />}
+                    {license}
+                  </div>
+                </div>
+                <div className={styles.trackName}>
+                  <MapPin size={16} /> {event.track}
+                  {event.trackConfig && ` - ${event.trackConfig}`}
+                </div>
               </div>
             </div>
 
-            {event.tempValue !== null && (
+            <div className={styles.carClassList}>
+              {event.races.map((race, idx) => (
+                <span key={race.id} className={styles.carClassTag}>
+                  <Calendar size={14} />{' '}
+                  {new Date(race.startTime).toLocaleDateString('en-US', {
+                    month: 'numeric',
+                    day: 'numeric',
+                  })}{' '}
+                  •{' '}
+                  {new Date(race.startTime).toLocaleTimeString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    timeZoneName: idx === event.races.length - 1 ? 'short' : undefined,
+                  })}
+                </span>
+              ))}
+            </div>
+
+            {event.carClasses.length > 0 && (
+              <div className={styles.carClassSection}>
+                <div className={styles.carClassList}>
+                  {event.carClasses.map((cc) => (
+                    <span key={cc.id} className={styles.carClassTag}>
+                      <Car size={14} /> {cc.shortName || cc.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Stats Bar */}
+            <div className={styles.statsBar}>
               <div className={styles.statsItem}>
-                <Thermometer size={18} className={styles.statsIcon} />
+                <Timer size={18} className={styles.statsIcon} />
                 <div>
-                  <span className={styles.statsLabel}>Temp</span>
+                  <span className={styles.statsLabel}>Duration</span>
                   <span className={styles.statsValue}>
-                    {event.tempValue}°{event.tempUnits || 'F'}
+                    {event.durationMins ? formatDuration(event.durationMins) : 'N/A'}
                   </span>
                 </div>
               </div>
-            )}
 
-            {event.relHumidity !== null && (
-              <div className={styles.statsItem}>
-                <Droplets size={18} className={styles.statsIcon} />
-                <div>
-                  <span className={styles.statsLabel}>Humidity</span>
-                  <span className={styles.statsValue}>{event.relHumidity}%</span>
+              {event.tempValue !== null && (
+                <div className={styles.statsItem}>
+                  <Thermometer size={18} className={styles.statsIcon} />
+                  <div>
+                    <span className={styles.statsLabel}>Temp</span>
+                    <span className={styles.statsValue}>
+                      {event.tempValue}°{event.tempUnits || 'F'}
+                    </span>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {event.relHumidity !== null && (
+                <div className={styles.statsItem}>
+                  <Droplets size={18} className={styles.statsIcon} />
+                  <div>
+                    <span className={styles.statsLabel}>Humidity</span>
+                    <span className={styles.statsValue}>{event.relHumidity}%</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Race Sessions */}
+            <div className={styles.racesSection}>
+              {event.races.map((race) => (
+                <RaceDetails
+                  key={race.id}
+                  race={race}
+                  userId={userId}
+                  isAdmin={isAdmin}
+                  allDrivers={allDrivers}
+                  teams={teams}
+                  carClasses={event.carClasses.map((cc) => ({
+                    id: cc.id,
+                    name: cc.name,
+                    shortName: cc.shortName,
+                  }))}
+                  onDropdownToggle={(open) => handleDropdownToggle(race.id, open)}
+                />
+              ))}
+            </div>
+
+            {event.description && (
+              <p className={styles.description}>
+                {event.description
+                  .split('\n')
+                  .filter((line) => !line.toLowerCase().includes('races') && !line.includes('GMT'))
+                  .join('\n')}
+              </p>
             )}
           </div>
-
-          {/* Race Sessions */}
-          <div className={styles.racesSection}>
-            {event.races.map((race) => (
-              <RaceDetails
-                key={race.id}
-                race={race}
-                userId={userId}
-                isAdmin={isAdmin}
-                allDrivers={allDrivers}
-                teams={teams}
-                carClasses={event.carClasses.map((cc) => ({
-                  id: cc.id,
-                  name: cc.name,
-                  shortName: cc.shortName,
-                }))}
-              />
-            ))}
-          </div>
-
-          {event.description && (
-            <p className={styles.description}>
-              {event.description
-                .split('\n')
-                .filter((line) => !line.toLowerCase().includes('races') && !line.includes('GMT'))
-                .join('\n')}
-            </p>
-          )}
         </div>
       </div>
     </div>

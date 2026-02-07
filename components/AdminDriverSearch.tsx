@@ -17,6 +17,8 @@ interface Props {
   registeredUserIds: string[]
   allDrivers: Driver[]
   defaultCarClassId: string
+  onDropdownToggle?: (open: boolean) => void
+  onSuccess?: (message: string) => void
 }
 
 export default function AdminDriverSearch({
@@ -24,10 +26,12 @@ export default function AdminDriverSearch({
   registeredUserIds,
   allDrivers,
   defaultCarClassId,
+  onDropdownToggle,
+  onSuccess,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false)
+  const [openDirection, setOpenDirection] = useState<'down' | 'up'>('down')
   const [searchQuery, setSearchQuery] = useState('')
-  const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -39,6 +43,14 @@ export default function AdminDriverSearch({
     d.name?.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
+  const computeOpenDirection = () => {
+    const rect = dropdownRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const threshold = 220
+    const shouldOpenUp = rect.bottom > window.innerHeight - threshold
+    setOpenDirection(shouldOpenUp ? 'up' : 'down')
+  }
+
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -48,6 +60,20 @@ export default function AdminDriverSearch({
     }
     document.addEventListener('mousedown', handleClickOutside)
   }, [])
+
+  useEffect(() => {
+    if (!isOpen) return
+    window.addEventListener('resize', computeOpenDirection)
+    window.addEventListener('scroll', computeOpenDirection, true)
+    return () => {
+      window.removeEventListener('resize', computeOpenDirection)
+      window.removeEventListener('scroll', computeOpenDirection, true)
+    }
+  }, [isOpen])
+
+  useEffect(() => {
+    onDropdownToggle?.(isOpen)
+  }, [isOpen, onDropdownToggle])
 
   // Handle driver selection
   const handleSelectDriver = async (driver: Driver) => {
@@ -62,8 +88,7 @@ export default function AdminDriverSearch({
       if (result.message === 'Success') {
         setIsOpen(false)
         setSearchQuery('')
-        setSuccessMessage(`${driver.name} registered successfully!`)
-        setTimeout(() => setSuccessMessage(''), 3000)
+        onSuccess?.(`${driver.name || 'Driver'} Added!`)
       } else {
         setErrorMessage(result.message)
         setTimeout(() => setErrorMessage(''), 3000)
@@ -84,13 +109,23 @@ export default function AdminDriverSearch({
 
   return (
     <div className={styles.container} ref={dropdownRef}>
-      <button type="button" className={styles.searchButton} onClick={() => setIsOpen(!isOpen)}>
+      <button
+        type="button"
+        className={styles.searchButton}
+        onClick={() => {
+          const next = !isOpen
+          if (next) {
+            computeOpenDirection()
+          }
+          setIsOpen(next)
+        }}
+      >
         <Plus size={16} />
         Add Driver
       </button>
 
       {isOpen && (
-        <div className={styles.dropdown}>
+        <div className={`${styles.dropdown} ${openDirection === 'up' ? styles.dropdownUp : ''}`}>
           <div className={styles.searchInputWrapper}>
             <Search size={16} className={styles.searchIcon} />
             <input
@@ -134,7 +169,6 @@ export default function AdminDriverSearch({
         </div>
       )}
 
-      {successMessage && <div className={styles.successMessage}>{successMessage}</div>}
       {errorMessage && <div className={styles.errorMessage}>{errorMessage}</div>}
     </div>
   )

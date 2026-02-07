@@ -57,9 +57,15 @@
 
 /* Confirm Group (Container for Confirm/Cancel) */
 .confirmGroup {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  z-index: 4;
+  pointer-events: auto;
 }
 
 /* Confirm Action Button */
@@ -106,6 +112,21 @@
 .cancelButton:hover {
   background: rgba(255, 255, 255, 0.15);
   color: white;
+}
+
+.dropWrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 30px;
+  min-height: 30px;
+}
+
+.placeholder {
+  width: 30px;
+  height: 30px;
+  visibility: hidden;
 }
 
 @keyframes slideIn {

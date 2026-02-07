@@ -9,6 +9,7 @@ interface Props {
   raceId: string
   carClasses: { id: string; name: string; shortName: string }[]
   compact?: boolean
+  onDropdownToggle?: (open: boolean) => void
 }
 
 type State = {
@@ -20,8 +21,14 @@ const initialState: State = {
   message: '',
 }
 
-export default function QuickRegistration({ raceId, carClasses, compact = false }: Props) {
+export default function QuickRegistration({
+  raceId,
+  carClasses,
+  compact = false,
+  onDropdownToggle,
+}: Props) {
   const [isOpen, setIsOpen] = useState(false)
+  const [openDirection, setOpenDirection] = useState<'down' | 'up'>('down')
   const [state, formAction, isPending] = useActionState(registerForRace, initialState)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
@@ -35,6 +42,28 @@ export default function QuickRegistration({ raceId, carClasses, compact = false 
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  const computeOpenDirection = () => {
+    const rect = dropdownRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const threshold = 220
+    const shouldOpenUp = rect.bottom > window.innerHeight - threshold
+    setOpenDirection(shouldOpenUp ? 'up' : 'down')
+  }
+
+  useEffect(() => {
+    onDropdownToggle?.(isOpen)
+  }, [isOpen, onDropdownToggle])
+
+  useEffect(() => {
+    if (!isOpen) return
+    window.addEventListener('resize', computeOpenDirection)
+    window.addEventListener('scroll', computeOpenDirection, true)
+    return () => {
+      window.removeEventListener('resize', computeOpenDirection)
+      window.removeEventListener('scroll', computeOpenDirection, true)
+    }
+  }, [isOpen])
 
   const handleSelect = (classId: string) => {
     setIsOpen(false)
@@ -58,13 +87,20 @@ export default function QuickRegistration({ raceId, carClasses, compact = false 
         <button
           type="button"
           className={styles.registerButton}
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={() => {
+            const next = !isOpen
+            if (next) {
+              computeOpenDirection()
+            }
+            setIsOpen(next)
+          }}
           disabled={isPending}
         >
           {isPending ? 'Registering...' : 'Register'} <ChevronDown size={14} />
         </button>
         {isOpen && !isPending && (
-          <div className={styles.dropdown}>
+          <div className={`${styles.dropdown} ${openDirection === 'up' ? styles.dropdownUp : ''}`}>
+            <div className={styles.dropdownHeader}>Select Car Class</div>
             {carClasses.map((cc) => (
               <button
                 key={cc.id}
@@ -72,7 +108,7 @@ export default function QuickRegistration({ raceId, carClasses, compact = false 
                 className={styles.dropdownItem}
                 onClick={() => handleSelect(cc.id)}
               >
-                {cc.name} ({cc.shortName})
+                {cc.shortName || cc.name}
               </button>
             ))}
           </div>

@@ -70,12 +70,14 @@ interface Props {
   carClasses: { id: string; name: string; shortName: string }[]
   teams: Array<{ id: string; name: string }>
   allDrivers?: Driver[]
+  onDropdownToggle?: (open: boolean) => void
 }
 
 function MaxDriversPerTeamInput({
   textValue,
   strategy,
   onTextChange,
+  onStep,
   onStrategyChange,
   onRebalance,
   disabled = false,
@@ -84,6 +86,7 @@ function MaxDriversPerTeamInput({
   textValue: string
   strategy: 'BALANCED_IRATING'
   onTextChange: (value: string) => void
+  onStep: (delta: number) => void
   onStrategyChange: (value: 'BALANCED_IRATING') => void
   onRebalance: () => void
   disabled?: boolean
@@ -104,6 +107,26 @@ function MaxDriversPerTeamInput({
           onChange={(event) => onTextChange(event.target.value)}
           disabled={disabled}
         />
+        <div className={styles.stepper}>
+          <button
+            type="button"
+            className={styles.stepButton}
+            onClick={() => onStep(1)}
+            disabled={disabled}
+            aria-label="Increase max drivers per team"
+          >
+            ▲
+          </button>
+          <button
+            type="button"
+            className={styles.stepButton}
+            onClick={() => onStep(-1)}
+            disabled={disabled}
+            aria-label="Decrease max drivers per team"
+          >
+            ▼
+          </button>
+        </div>
       </label>
       <label className={styles.maxDriversLabel}>
         Group by
@@ -137,6 +160,7 @@ export default function RaceDetails({
   carClasses,
   teams,
   allDrivers = [],
+  onDropdownToggle,
 }: Props) {
   const [isSaving, startSaveTransition] = useTransition()
   const now = new Date()
@@ -155,6 +179,12 @@ export default function RaceDetails({
   )
   const [pendingRegistrations, setPendingRegistrations] = useState(race.registrations)
   const [applyRebalance, setApplyRebalance] = useState(false)
+  const [isAddDriverOpen, setIsAddDriverOpen] = useState(false)
+  const [isRegisterOpen, setIsRegisterOpen] = useState(false)
+  const [isPickTeamsOpen, setIsPickTeamsOpen] = useState(false)
+  const [isDropConfirming, setIsDropConfirming] = useState(false)
+  const [addDriverMessage, setAddDriverMessage] = useState('')
+  const lastDropdownState = useRef<boolean | null>(null)
 
   const lastRaceIdRef = useRef<string | null>(null)
   const lastCountRef = useRef<number>(race.registrations.length)
@@ -353,20 +383,42 @@ export default function RaceDetails({
   }, [pendingMaxDrivers, pendingStrategy, race, recomputeAssignments])
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  const handleMaxDriversTextChange = useCallback((value: string) => {
-    setPendingMaxDriversText(value)
-    const trimmed = value.trim()
-    if (!trimmed) {
-      setPendingMaxDrivers(null)
-      return
-    }
-    const parsed = Number(trimmed)
-    if (Number.isNaN(parsed) || parsed < 1) {
-      setPendingMaxDrivers(null)
-      return
-    }
-    setPendingMaxDrivers(Math.floor(parsed))
-  }, [])
+  const handleMaxDriversTextChange = useCallback(
+    (value: string) => {
+      setPendingMaxDriversText(value)
+      const trimmed = value.trim()
+      if (!trimmed) {
+        setPendingMaxDrivers(null)
+        setPendingRegistrations(recomputeAssignments(pendingRegistrations, null, pendingStrategy))
+        setApplyRebalance(true)
+        return
+      }
+      const parsed = Number(trimmed)
+      if (Number.isNaN(parsed) || parsed < 1) {
+        setPendingMaxDrivers(null)
+        setPendingRegistrations(recomputeAssignments(pendingRegistrations, null, pendingStrategy))
+        setApplyRebalance(true)
+        return
+      }
+      const nextMax = Math.floor(parsed)
+      setPendingMaxDrivers(nextMax)
+      setPendingRegistrations(recomputeAssignments(pendingRegistrations, nextMax, pendingStrategy))
+      setApplyRebalance(true)
+    },
+    [pendingRegistrations, pendingStrategy, recomputeAssignments]
+  )
+
+  const handleMaxDriversStep = useCallback(
+    (delta: number) => {
+      const current = pendingMaxDrivers ?? autoMaxDrivers ?? 1
+      const next = Math.max(1, current + delta)
+      setPendingMaxDrivers(next)
+      setPendingMaxDriversText(String(next))
+      setPendingRegistrations(recomputeAssignments(pendingRegistrations, next, pendingStrategy))
+      setApplyRebalance(true)
+    },
+    [autoMaxDrivers, pendingMaxDrivers, pendingRegistrations, pendingStrategy, recomputeAssignments]
+  )
 
   const handleCarClassChange = (registrationId: string, newClassId: string) => {
     const carClass = carClasses.find((cc) => cc.id === newClassId)
@@ -415,224 +467,262 @@ export default function RaceDetails({
     })
   }
 
+  const isDropdownOpen = isAddDriverOpen || isRegisterOpen || isPickTeamsOpen
+  const isOverlayOpen = isDropdownOpen || isDropConfirming
+
+  useEffect(() => {
+    if (lastDropdownState.current === isOverlayOpen) return
+    lastDropdownState.current = isOverlayOpen
+    onDropdownToggle?.(isOverlayOpen)
+  }, [isOverlayOpen, onDropdownToggle])
+
   return (
     <div className={styles.raceCard}>
-      <div className={styles.raceHeader}>
-        <h4 className={styles.raceTitle}>
-          Timeslot:{' '}
-          {new Intl.DateTimeFormat('en-US', {
-            month: 'numeric',
-            day: 'numeric',
-          }).format(race.startTime)}{' '}
-          •{' '}
-          {new Intl.DateTimeFormat('en-US', {
-            hour: 'numeric',
-            minute: '2-digit',
-            timeZoneName: 'short',
-          }).format(race.startTime)}
-        </h4>
-        {isRaceLive && (
-          <span className={styles.liveBadge}>
-            <span className={styles.liveDot} />
-            LIVE
-          </span>
-        )}
-        {isRaceCompleted && <span className={styles.completedBadge}>Completed</span>}
+      <div className={styles.raceCardContent}>
+        <div className={styles.raceHeader}>
+          <h4 className={styles.raceTitle}>
+            Timeslot:{' '}
+            {new Intl.DateTimeFormat('en-US', {
+              month: 'numeric',
+              day: 'numeric',
+            }).format(race.startTime)}{' '}
+            {' \u2022 '}
+            {new Intl.DateTimeFormat('en-US', {
+              hour: 'numeric',
+              minute: '2-digit',
+              timeZoneName: 'short',
+            }).format(race.startTime)}
+          </h4>
+          {isRaceLive && (
+            <span className={styles.liveBadge}>
+              <span className={styles.liveDot} />
+              LIVE
+            </span>
+          )}
+          {isRaceCompleted && <span className={styles.completedBadge}>Completed</span>}
 
-        {!isRaceCompleted && (
-          <div className={styles.headerActions}>
-            <MaxDriversPerTeamInput
-              textValue={pendingMaxDriversText}
-              strategy={pendingStrategy}
-              onTextChange={handleMaxDriversTextChange}
-              onStrategyChange={setPendingStrategy}
-              onRebalance={handleRebalance}
-              disabled={!isAdmin}
-              hideRebalance
-            />
+          {!isRaceCompleted && (
+            <div className={styles.headerActions}>
+              <MaxDriversPerTeamInput
+                textValue={pendingMaxDriversText}
+                strategy={pendingStrategy}
+                onTextChange={handleMaxDriversTextChange}
+                onStep={handleMaxDriversStep}
+                onStrategyChange={setPendingStrategy}
+                onRebalance={handleRebalance}
+                disabled={!isAdmin}
+                hideRebalance
+              />
+            </div>
+          )}
+        </div>
+
+        {pendingRegistrations.length === 0 ? (
+          <p className="text-sm text-gray-500 mt-2">No drivers registered for this race.</p>
+        ) : (
+          <div className={styles.driverList}>
+            {(() => {
+              // Group registrations by team
+              const grouped = pendingRegistrations.reduce(
+                (acc, reg) => {
+                  const teamId = reg.teamId ?? reg.team?.id ?? null
+                  const teamName = teamId ? teamNameById.get(teamId) || 'Team' : 'Unassigned'
+                  if (!acc[teamName]) acc[teamName] = []
+                  acc[teamName].push(reg)
+                  return acc
+                },
+                {} as Record<string, typeof pendingRegistrations>
+              )
+
+              // Sort teams: Unassigned last, others alphabetical
+              const sortedTeams = Object.keys(grouped).sort((a, b) => {
+                if (a === 'Unassigned') return 1
+                if (b === 'Unassigned') return -1
+                return a.localeCompare(b)
+              })
+
+              return (
+                <div className={styles.teamGrid}>
+                  {sortedTeams.map((teamName) => {
+                    const teamRegistrations = grouped[teamName]
+                    const ratings = teamRegistrations.map((reg) => getRegistrationRating(reg))
+                    const avgRating =
+                      ratings.length > 0
+                        ? Math.round(
+                            ratings.reduce((sum, value) => sum + value, 0) / ratings.length
+                          )
+                        : 0
+
+                    return (
+                      <div key={teamName} className={styles.teamGroup}>
+                        <div className={styles.teamGroupHeader}>
+                          <Users size={14} />
+                          <span>{teamName}</span>
+                          <span className={styles.teamCount}>({teamRegistrations.length})</span>
+                          <span className={styles.teamSof}>{avgRating} SOF</span>
+                        </div>
+                        {teamRegistrations.map((reg) => {
+                          const driverName = reg.user?.name || reg.manualDriver?.name || 'Driver'
+                          const driverImage = reg.user?.image || reg.manualDriver?.image
+                          const preferredStats = getPreferredStats(reg)
+                          const manualRating = reg.manualDriver?.irating
+                          const licenseColor = preferredStats
+                            ? getLicenseColor(preferredStats.groupName)
+                            : manualRating !== undefined
+                              ? '#94a3b8'
+                              : null
+                          const licenseLabel = preferredStats
+                            ? preferredStats.groupName.replace('Class ', '').substring(0, 1)
+                            : manualRating !== undefined
+                              ? 'M'
+                              : ''
+                          const safetyRating = preferredStats
+                            ? preferredStats.safetyRating.toFixed(2)
+                            : manualRating !== undefined
+                              ? '--'
+                              : ''
+                          const irating = preferredStats?.irating ?? manualRating
+                          const lightBg = licenseColor ? `${licenseColor}26` : '#ffffff26'
+
+                          return (
+                            <div key={reg.id} className={styles.driverRow}>
+                              <div className={styles.driverInfo}>
+                                {driverImage && (
+                                  <Image
+                                    src={driverImage}
+                                    alt={driverName}
+                                    width={32}
+                                    height={32}
+                                    className={styles.avatar}
+                                  />
+                                )}
+                                <div className={styles.driverMeta}>
+                                  <div className={styles.nameWrapper}>
+                                    <p className={styles.driverName}>{driverName}</p>
+                                    {reg.manualDriver && (
+                                      <div className={styles.manualIcon} title="Manual Entry">
+                                        <UserCog size={14} />
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className={styles.driverPills}>
+                                    {irating !== undefined && (
+                                      <span
+                                        className={styles.statsBadge}
+                                        style={{
+                                          borderColor: licenseColor || undefined,
+                                          backgroundColor: lightBg,
+                                          color: licenseColor || undefined,
+                                        }}
+                                      >
+                                        {licenseLabel} {safetyRating} {irating}
+                                      </span>
+                                    )}
+                                    <EditableCarClass
+                                      registrationId={reg.id}
+                                      currentCarClassId={reg.carClass.id}
+                                      currentCarClassShortName={
+                                        reg.carClass.shortName || reg.carClass.name
+                                      }
+                                      carClasses={carClasses}
+                                      deferSubmit
+                                      onChange={(classId) => handleCarClassChange(reg.id, classId)}
+                                      readOnly={
+                                        (!isAdmin && reg.userId !== userId) || isRaceCompleted
+                                      }
+                                      showLabel={false}
+                                      variant="pill"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                              <div className={styles.driverTimeslot}>
+                                {(reg.userId === userId || isAdmin) && !isRaceCompleted && (
+                                  <div className={styles.actionRow}>
+                                    <DropRegistrationButton
+                                      registrationId={reg.id}
+                                      onConfirmingChange={setIsDropConfirming}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })()}
+          </div>
+        )}
+
+        {isAdmin && !isRaceCompleted && (
+          <div className={styles.registrationControls}>
+            <div className={styles.adminSearchWrapper}>
+              <AdminDriverSearch
+                raceId={race.id}
+                registeredUserIds={registeredUserIds}
+                allDrivers={allDrivers}
+                defaultCarClassId={lastDriverCarClass}
+                onDropdownToggle={setIsAddDriverOpen}
+                onSuccess={(message) => {
+                  setAddDriverMessage(message.replace(/\s+Added!$/, ''))
+                  setTimeout(() => setAddDriverMessage(''), 3000)
+                }}
+              />
+            </div>
+            {!isUserRegistered && (
+              <div className={styles.quickRegWrapper}>
+                <QuickRegistration
+                  raceId={race.id}
+                  carClasses={carClasses}
+                  compact
+                  onDropdownToggle={setIsRegisterOpen}
+                />
+              </div>
+            )}
+            <div className={styles.teamPickerWrapper}>
+              <TeamPickerTrigger
+                raceId={race.id}
+                raceStartTime={race.startTime}
+                registrations={pendingRegistrations}
+                carClasses={carClasses}
+                teams={teams}
+                onDropdownToggle={setIsPickTeamsOpen}
+              />
+            </div>
+          </div>
+        )}
+
+        {!isUserRegistered && !isRaceCompleted && !isAdmin && (
+          <QuickRegistration
+            raceId={race.id}
+            carClasses={carClasses}
+            onDropdownToggle={setIsRegisterOpen}
+          />
+        )}
+
+        {isAdmin && !isRaceCompleted && (
+          <div className={styles.saveRow}>
+            {addDriverMessage && (
+              <div className={styles.addDriverToast} title={addDriverMessage}>
+                <span className={styles.addDriverName}>{addDriverMessage}</span>
+                <span className={styles.addDriverSuffix}>Added!</span>
+              </div>
+            )}
+            <button
+              type="button"
+              className={styles.saveButton}
+              onClick={handleSave}
+              disabled={isSaving}
+            >
+              {isSaving ? 'Saving…' : 'Save Changes'}
+            </button>
           </div>
         )}
       </div>
-
-      {pendingRegistrations.length === 0 ? (
-        <p className="text-sm text-gray-500 mt-2">No drivers registered for this race.</p>
-      ) : (
-        <div className={styles.driverList}>
-          {(() => {
-            // Group registrations by team
-            const grouped = pendingRegistrations.reduce(
-              (acc, reg) => {
-                const teamId = reg.teamId ?? reg.team?.id ?? null
-                const teamName = teamId ? teamNameById.get(teamId) || 'Team' : 'Unassigned'
-                if (!acc[teamName]) acc[teamName] = []
-                acc[teamName].push(reg)
-                return acc
-              },
-              {} as Record<string, typeof pendingRegistrations>
-            )
-
-            // Sort teams: Unassigned last, others alphabetical
-            const sortedTeams = Object.keys(grouped).sort((a, b) => {
-              if (a === 'Unassigned') return 1
-              if (b === 'Unassigned') return -1
-              return a.localeCompare(b)
-            })
-
-            return (
-              <div className={styles.teamGrid}>
-                {sortedTeams.map((teamName) => {
-                  const teamRegistrations = grouped[teamName]
-                  const ratings = teamRegistrations.map((reg) => getRegistrationRating(reg))
-                  const avgRating =
-                    ratings.length > 0
-                      ? Math.round(ratings.reduce((sum, value) => sum + value, 0) / ratings.length)
-                      : 0
-
-                  return (
-                    <div key={teamName} className={styles.teamGroup}>
-                      <div className={styles.teamGroupHeader}>
-                        <Users size={14} />
-                        <span>{teamName}</span>
-                        <span className={styles.teamCount}>({teamRegistrations.length})</span>
-                        <span className={styles.teamSof}>{avgRating} SOF</span>
-                      </div>
-                      {teamRegistrations.map((reg) => {
-                        const driverName = reg.user?.name || reg.manualDriver?.name || 'Driver'
-                        const driverImage = reg.user?.image || reg.manualDriver?.image
-                        const preferredStats = getPreferredStats(reg)
-                        const manualRating = reg.manualDriver?.irating
-                        const licenseColor = preferredStats
-                          ? getLicenseColor(preferredStats.groupName)
-                          : manualRating !== undefined
-                            ? '#94a3b8'
-                            : null
-                        const licenseLabel = preferredStats
-                          ? preferredStats.groupName.replace('Class ', '').substring(0, 1)
-                          : manualRating !== undefined
-                            ? 'M'
-                            : ''
-                        const safetyRating = preferredStats
-                          ? preferredStats.safetyRating.toFixed(2)
-                          : manualRating !== undefined
-                            ? '--'
-                            : ''
-                        const irating = preferredStats?.irating ?? manualRating
-                        const lightBg = licenseColor ? `${licenseColor}26` : '#ffffff26'
-
-                        return (
-                          <div key={reg.id} className={styles.driverRow}>
-                            <div className={styles.driverInfo}>
-                              {driverImage && (
-                                <Image
-                                  src={driverImage}
-                                  alt={driverName}
-                                  width={32}
-                                  height={32}
-                                  className={styles.avatar}
-                                />
-                              )}
-                              <div className={styles.driverMeta}>
-                                <div className={styles.nameWrapper}>
-                                  <p className={styles.driverName}>{driverName}</p>
-                                  {reg.manualDriver && (
-                                    <div className={styles.manualIcon} title="Manual Entry">
-                                      <UserCog size={14} />
-                                    </div>
-                                  )}
-                                </div>
-                                <div className={styles.driverPills}>
-                                  {irating !== undefined && (
-                                    <span
-                                      className={styles.statsBadge}
-                                      style={{
-                                        borderColor: licenseColor || undefined,
-                                        backgroundColor: lightBg,
-                                        color: licenseColor || undefined,
-                                      }}
-                                    >
-                                      {licenseLabel} {safetyRating} {irating}
-                                    </span>
-                                  )}
-                                  <EditableCarClass
-                                    registrationId={reg.id}
-                                    currentCarClassId={reg.carClass.id}
-                                    currentCarClassShortName={
-                                      reg.carClass.shortName || reg.carClass.name
-                                    }
-                                    carClasses={carClasses}
-                                    deferSubmit
-                                    onChange={(classId) => handleCarClassChange(reg.id, classId)}
-                                    readOnly={
-                                      (!isAdmin && reg.userId !== userId) || isRaceCompleted
-                                    }
-                                    showLabel={false}
-                                    variant="pill"
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                            <div className={styles.driverTimeslot}>
-                              {(reg.userId === userId || isAdmin) && !isRaceCompleted && (
-                                <div className={styles.actionRow}>
-                                  <DropRegistrationButton registrationId={reg.id} />
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )
-                })}
-              </div>
-            )
-          })()}
-        </div>
-      )}
-
-      {isAdmin && !isRaceCompleted && (
-        <div className={styles.registrationControls}>
-          <div className={styles.adminSearchWrapper}>
-            <AdminDriverSearch
-              raceId={race.id}
-              registeredUserIds={registeredUserIds}
-              allDrivers={allDrivers}
-              defaultCarClassId={lastDriverCarClass}
-            />
-          </div>
-          {!isUserRegistered && (
-            <div className={styles.quickRegWrapper}>
-              <QuickRegistration raceId={race.id} carClasses={carClasses} compact />
-            </div>
-          )}
-          <div className={styles.teamPickerWrapper}>
-            <TeamPickerTrigger
-              raceId={race.id}
-              raceStartTime={race.startTime}
-              registrations={pendingRegistrations}
-              carClasses={carClasses}
-              teams={teams}
-            />
-          </div>
-        </div>
-      )}
-
-      {!isUserRegistered && !isRaceCompleted && !isAdmin && (
-        <QuickRegistration raceId={race.id} carClasses={carClasses} />
-      )}
-
-      {isAdmin && !isRaceCompleted && (
-        <div className={styles.saveRow}>
-          <button
-            type="button"
-            className={styles.saveButton}
-            onClick={handleSave}
-            disabled={isSaving}
-          >
-            {isSaving ? 'Saving…' : 'Save Changes'}
-          </button>
-        </div>
-      )}
     </div>
   )
 }

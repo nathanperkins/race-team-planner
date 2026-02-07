@@ -18,9 +18,24 @@
   width: 100%;
   max-width: 900px;
   max-height: 90vh;
-  overflow-y: auto;
+  overflow: hidden;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
   position: relative;
+}
+
+.modalScroll {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modalDim {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 14, 24, 0.55);
+  border-radius: 20px;
+  z-index: 2;
+  pointer-events: auto;
+  cursor: pointer;
 }
 
 .header {
@@ -30,6 +45,7 @@
   padding: 1.5rem 2rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent);
+  position: relative;
 }
 
 .headerTop {
@@ -83,6 +99,8 @@
   display: flex;
   align-items: center;
   transition: all 0.2s;
+  position: relative;
+  z-index: 3;
 }
 
 .closeButton:hover {
@@ -95,6 +113,7 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  position: relative;
 }
 
 .eventTitle {
