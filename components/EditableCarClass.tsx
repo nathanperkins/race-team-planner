@@ -111,7 +111,7 @@ export default function EditableCarClass({
       <div className={containerClassName}>
         <p className={styles.displayOnly}>
           {variant === 'pill' && <Car size={12} />}
-          {displayText}
+          <span className={styles.pillText}>{displayText}</span>
         </p>
       </div>
     )
@@ -126,7 +126,7 @@ export default function EditableCarClass({
         disabled={isPending}
       >
         {variant === 'pill' && <Car size={12} />}
-        {displayText}
+        <span className={styles.pillText}>{displayText}</span>
         <ChevronDown size={12} className={styles.chevron} />
       </button>
 

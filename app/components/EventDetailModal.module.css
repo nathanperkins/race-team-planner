@@ -306,10 +306,11 @@
     max-width: 100%;
     max-height: calc(100vh - 50px);
     border-radius: 0;
+    scrollbar-gutter: stable both-edges;
   }
 
   .content {
-    padding: 1.5rem;
+    padding: 0.75rem;
   }
 
   .eventTitle {

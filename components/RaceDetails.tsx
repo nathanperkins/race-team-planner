@@ -92,7 +92,7 @@ function MaxDriversPerTeamInput({
   hideRebalance?: boolean
 }) {
   return (
-    <div className={styles.maxDriversField}>
+    <div className={styles.maxDriversField} suppressHydrationWarning>
       <label className={styles.maxDriversLabel}>
         Max/team
         <input
@@ -422,19 +422,17 @@ export default function RaceDetails({
     <div className={styles.raceCard}>
       <div className={styles.raceHeader}>
         <h4 className={styles.raceTitle}>
-          Race:{' '}
-          <FormattedDate
-            date={race.startTime}
-            format={
-              dateFormat || {
-                month: 'numeric',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit',
-                timeZoneName: 'short',
-              }
-            }
-          />
+          Timeslot:{' '}
+          {new Intl.DateTimeFormat('en-US', {
+            month: 'numeric',
+            day: 'numeric',
+          }).format(race.startTime)}{' '}
+          •{' '}
+          {new Intl.DateTimeFormat('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            timeZoneName: 'short',
+          }).format(race.startTime)}
         </h4>
         {isRaceLive && (
           <span className={styles.liveBadge}>
@@ -453,7 +451,7 @@ export default function RaceDetails({
               onStrategyChange={setPendingStrategy}
               onRebalance={handleRebalance}
               disabled={!isAdmin}
-              hideRebalance={!isAdmin}
+              hideRebalance
             />
           </div>
         )}

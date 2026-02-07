@@ -277,6 +277,8 @@ export default async function EventsPage({ searchParams }: PageProps) {
           startTime: new Date('2026-01-17T19:00:00Z'),
           endTime: new Date('2026-01-17T21:00:00Z'),
           eventId: 'mock-week3-extra',
+          maxDriversPerTeam: null,
+          teamAssignmentStrategy: 'BALANCED_IRATING',
           registrations: [],
           createdAt: now,
           updatedAt: now,

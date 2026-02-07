@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { CURRENT_EXPECTATIONS_VERSION } from '@/lib/config'
 import { getAutoMaxDriversPerTeam, getRaceDurationMinutes } from '@/lib/utils'
-import { TeamAssignmentStrategy } from '@prisma/client'
+import { Prisma, TeamAssignmentStrategy } from '@prisma/client'
 
 const RegistrationSchema = z.object({
   raceId: z.string(),
@@ -264,11 +264,11 @@ async function rebalanceTeamsForClass(
 
     for (const team of teamBuckets) {
       for (const entry of team.regs) {
-        if (!entry?.reg) continue
-        if (entry.reg.teamId !== team.id) {
+        if (!entry) continue
+        if (entry.teamId !== team.id) {
           updates.push(
             prisma.registration.update({
-              where: { id: entry.reg.id },
+              where: { id: entry.id },
               data: { teamId: team.id },
             })
           )
@@ -780,7 +780,7 @@ export async function saveRaceEdits(formData: FormData) {
     })
     const regMap = new Map(regs.map((reg) => [reg.id, reg]))
 
-    const tx: Promise<unknown>[] = []
+    const tx: Prisma.PrismaPromise<unknown>[] = []
     for (const update of updates) {
       const reg = regMap.get(update.id)
       if (!reg) continue
