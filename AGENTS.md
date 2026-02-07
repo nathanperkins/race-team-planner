@@ -56,10 +56,13 @@ create subtasks under the epic or feature.
 2. **Commit**: Only commit and push code once verification is confirmed.
 
 ```bash
+# First, verify the feature is working correctly with the user, then run:
+husky check             # Run pre-commit checks
 git add .               # Stage all changes
+git commit -m "..."     # Commit the changes to git.
+git push                # Push the changes to git.
+bd close <id>           # Close the task(s).
 bd sync                 # Commit beads changes
-# git commit -m "..."   # (After verification)
-# git push              # (After verification)
 ```
 
 For full workflow details: `bd prime`
