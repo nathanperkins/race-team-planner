@@ -9,6 +9,7 @@ import DropRegistrationButton from './DropRegistrationButton'
 import QuickRegistration from './QuickRegistration'
 import EditableCarClass from './EditableCarClass'
 import AdminDriverSearch from './AdminDriverSearch'
+import TeamPickerTrigger from './TeamPickerTrigger'
 import { saveRaceEdits } from '@/app/actions'
 import { getAutoMaxDriversPerTeam, getLicenseColor, getRaceDurationMinutes } from '@/lib/utils'
 
@@ -609,6 +610,15 @@ export default function RaceDetails({
               <QuickRegistration raceId={race.id} carClasses={carClasses} compact />
             </div>
           )}
+          <div className={styles.teamPickerWrapper}>
+            <TeamPickerTrigger
+              raceId={race.id}
+              raceStartTime={race.startTime}
+              registrations={pendingRegistrations}
+              carClasses={carClasses}
+              teams={teams}
+            />
+          </div>
         </div>
       )}
 

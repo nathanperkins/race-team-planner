@@ -19,6 +19,7 @@
   transition: all 0.2s;
   width: 100%;
   justify-content: center;
+  min-height: 40px;
 }
 
 .searchButton:hover:not(:disabled) {

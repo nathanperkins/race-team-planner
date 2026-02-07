@@ -275,14 +275,25 @@
   margin-top: 1rem;
   padding-top: 1rem;
   border-top: 1px solid #374151;
+  align-items: center;
 }
 
 .adminSearchWrapper {
   flex: 1;
+  min-width: 0;
 }
 
 .quickRegWrapper {
   flex: 1;
+  min-width: 0;
+}
+
+.teamPickerWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 1;
+  min-width: 0;
 }
 
 .adminSection {

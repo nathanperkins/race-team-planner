@@ -1,6 +1,7 @@
 .container {
   position: relative;
   display: inline-block;
+  width: 100%;
 }
 
 .triggerButton {
@@ -16,6 +17,9 @@
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
+  width: 100%;
+  justify-content: center;
+  min-height: 40px;
 }
 
 .triggerButton:hover {
