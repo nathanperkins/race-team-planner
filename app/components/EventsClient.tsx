@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -7,6 +7,7 @@ import { Prisma } from '@prisma/client'
 import styles from '../events/events.module.css'
 import { getLicenseForId, getLicenseColor, formatDuration, getSeriesNameOnly } from '@/lib/utils'
 import type { CSSProperties } from 'react'
+import { Timer, User } from 'lucide-react'
 
 type EventWithRaces = Prisma.EventGetPayload<{
   include: {
@@ -107,10 +108,6 @@ export default function EventsClient({
 
             <div className={styles.weekBody}>
               {week.events.map((event) => {
-                const totalRegistrations = event.races.reduce(
-                  (sum: number, race) => sum + race.registrations.length,
-                  0
-                )
                 const license = getLicenseForId(event.id, event.licenseGroup)
                 const licenseStyle: LicenseStyle = {
                   ['--licColor']: getLicenseColor(license),
@@ -130,7 +127,8 @@ export default function EventsClient({
                         </div>
                         {event.durationMins && (
                           <span className={styles.durationPill}>
-                            ⏱️ {formatDuration(event.durationMins)}
+                            <Timer size={12} />
+                            {formatDuration(event.durationMins)}
                           </span>
                         )}
                       </div>
@@ -153,6 +151,10 @@ export default function EventsClient({
                               hour: 'numeric',
                               minute: '2-digit',
                             })}
+                            <span className={styles.racePillCount}>
+                              <User size={12} />
+                              {race.registrations.length}
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -182,9 +184,6 @@ export default function EventsClient({
                         }}
                       >
                         {license}
-                      </div>
-                      <div className={styles.driverPillContainer}>
-                        <div className={styles.driverPill}>👥 {totalRegistrations}</div>
                       </div>
                     </div>
                   </button>
