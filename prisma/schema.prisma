@@ -103,6 +103,7 @@ model Race {
   externalId    String?        @unique
   startTime     DateTime
   endTime       DateTime
+  teamsAssigned Boolean        @default(false)
   maxDriversPerTeam Int?
   teamAssignmentStrategy TeamAssignmentStrategy @default(BALANCED_IRATING)
   eventId       String

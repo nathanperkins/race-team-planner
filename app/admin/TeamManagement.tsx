@@ -245,66 +245,79 @@ export default function TeamManagement() {
                   </>
                 ) : (
                   <>
-                    <div className={styles.teamInfo}>
-                      <div className={styles.teamHeader}>
-                        <span className={styles.teamName}>{team.name}</span>
-                        {team.memberCount !== undefined && (
-                          <span className={styles.memberCount}>
-                            <Users size={14} />
-                            {team.memberCount} member{team.memberCount !== 1 ? 's' : ''}
-                          </span>
-                        )}
-                      </div>
-                      <span className={styles.teamId}>
-                        iRacing ID: {Math.abs(team.iracingTeamId)}
-                      </span>
-                    </div>
-                    <div className={styles.actions}>
-                      <button
-                        onClick={() => handleSyncTeam(team.id)}
-                        className={styles.syncBtn}
-                        disabled={!!processing}
-                        title="Sync members from iRacing"
-                      >
-                        {processing === team.id ? (
-                          <Loader2 className={styles.spin} size={16} />
-                        ) : (
-                          <RefreshCw size={16} />
-                        )}
-                      </button>
-                      <button
-                        onClick={() => handleInspectTeam(team)}
-                        className={styles.inspectBtn}
-                        disabled={!!processing || loadingMembers}
-                        title="View team members"
-                      >
-                        {loadingMembers ? (
-                          <Loader2 className={styles.spin} size={16} />
-                        ) : (
-                          <Eye size={16} />
-                        )}
-                      </button>
-                      <button
-                        onClick={() => startEditing(team)}
-                        className={styles.editBtn}
-                        disabled={!!processing}
-                        title="Edit team"
-                      >
-                        <Edit2 size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteTeam(team.id)}
-                        className={styles.deleteBtn}
-                        disabled={!!processing}
-                        title="Delete team"
-                      >
-                        {processing === team.id ? (
-                          <Loader2 className={styles.spin} size={16} />
-                        ) : (
-                          <Trash2 size={16} />
-                        )}
-                      </button>
-                    </div>
+                    {(() => {
+                      const isManualTeam = team.iracingTeamId < 0 && (team.memberCount ?? 0) === 0
+                      return (
+                        <>
+                          <div className={styles.teamInfo}>
+                            <div className={styles.teamHeader}>
+                              <span className={styles.teamName}>{team.name}</span>
+                              {team.memberCount !== undefined && (
+                                <span className={styles.memberCount}>
+                                  <Users size={14} />
+                                  {team.memberCount} member{team.memberCount !== 1 ? 's' : ''}
+                                </span>
+                              )}
+                            </div>
+                            <span className={styles.teamId}>
+                              {isManualTeam
+                                ? 'Manually added team'
+                                : `iRacing ID: ${Math.abs(team.iracingTeamId)}`}
+                            </span>
+                          </div>
+                          <div className={styles.actions}>
+                            {!isManualTeam && (
+                              <button
+                                onClick={() => handleSyncTeam(team.id)}
+                                className={styles.syncBtn}
+                                disabled={!!processing}
+                                title="Sync members from iRacing"
+                              >
+                                {processing === team.id ? (
+                                  <Loader2 className={styles.spin} size={16} />
+                                ) : (
+                                  <RefreshCw size={16} />
+                                )}
+                              </button>
+                            )}
+                            {!isManualTeam && (
+                              <button
+                                onClick={() => handleInspectTeam(team)}
+                                className={styles.inspectBtn}
+                                disabled={!!processing || loadingMembers}
+                                title="View team members"
+                              >
+                                {loadingMembers ? (
+                                  <Loader2 className={styles.spin} size={16} />
+                                ) : (
+                                  <Eye size={16} />
+                                )}
+                              </button>
+                            )}
+                            <button
+                              onClick={() => startEditing(team)}
+                              className={styles.editBtn}
+                              disabled={!!processing}
+                              title="Edit team"
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteTeam(team.id)}
+                              className={styles.deleteBtn}
+                              disabled={!!processing}
+                              title="Delete team"
+                            >
+                              {processing === team.id ? (
+                                <Loader2 className={styles.spin} size={16} />
+                              ) : (
+                                <Trash2 size={16} />
+                              )}
+                            </button>
+                          </div>
+                        </>
+                      )
+                    })()}
                   </>
                 )}
               </div>
@@ -321,8 +334,10 @@ export default function TeamManagement() {
               <div>
                 <h3 className={styles.modalTitle}>{inspectingTeam.teamName}</h3>
                 <p className={styles.modalSubtitle}>
-                  iRacing ID: {Math.abs(inspectingTeam.iracingTeamId)} • {inspectingTeam.totalCount}{' '}
-                  member{inspectingTeam.totalCount !== 1 ? 's' : ''} •{' '}
+                  {inspectingTeam.iracingTeamId < 0 && inspectingTeam.totalCount === 0
+                    ? 'Manually added team'
+                    : `iRacing ID: ${Math.abs(inspectingTeam.iracingTeamId)}`}{' '}
+                  • {inspectingTeam.totalCount} member{inspectingTeam.totalCount !== 1 ? 's' : ''} •{' '}
                   {inspectingTeam.enrolledCount} enrolled in app
                 </p>
               </div>

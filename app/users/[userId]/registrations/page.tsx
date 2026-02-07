@@ -104,6 +104,7 @@ export default async function UserRegistrationsPage({ params }: Props) {
                           }))}
                           readOnly={
                             (!isAdmin && userId !== session.user?.id) ||
+                            (!isAdmin && reg.race.teamsAssigned) ||
                             new Date() > reg.race.endTime
                           }
                         />
@@ -118,6 +119,7 @@ export default async function UserRegistrationsPage({ params }: Props) {
                           carClasses={reg.race.event.carClasses}
                           readOnly={
                             (!isAdmin && userId !== session.user?.id) ||
+                            (!isAdmin && reg.race.teamsAssigned) ||
                             new Date() > reg.race.endTime
                           }
                           showLabel={false}

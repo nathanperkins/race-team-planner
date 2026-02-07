@@ -321,6 +321,7 @@ export async function registerForRace(prevState: State, formData: FormData) {
       endTime: true,
       eventId: true,
       maxDriversPerTeam: true,
+      teamsAssigned: true,
       teamAssignmentStrategy: true,
     },
   })
@@ -351,14 +352,9 @@ export async function registerForRace(prevState: State, formData: FormData) {
   const { raceId, carClassId } = validatedFields.data
 
   try {
-    const resolvedMaxDrivers =
-      race.maxDriversPerTeam ??
-      getAutoMaxDriversPerTeam(getRaceDurationMinutes(race.startTime, race.endTime))
-    const teamId = await getAutoTeamId(raceId, carClassId, {
-      maxDriversPerTeam: resolvedMaxDrivers,
-    })
+    const teamId = null
 
-    await prisma.registration.create({
+    const created = await prisma.registration.create({
       data: {
         userId: session.user.id,
         raceId,
@@ -367,12 +363,12 @@ export async function registerForRace(prevState: State, formData: FormData) {
       },
     })
 
-    await rebalanceTeamsForClass(
-      raceId,
-      carClassId,
-      resolvedMaxDrivers,
-      race.teamAssignmentStrategy
-    )
+    await prisma.registration.update({
+      where: { id: created.id },
+      data: { teamId: null },
+    })
+
+    // New registrations stay unassigned until admins set teams.
 
     // Send Discord notification (non-blocking)
     try {
@@ -533,6 +529,10 @@ export async function updateRegistrationCarClass(prevState: State, formData: For
       return { message: 'Unauthorized', timestamp: Date.now() }
     }
 
+    if (!isAdmin && registration.race.teamsAssigned) {
+      return { message: 'Teams are already assigned for this race', timestamp: Date.now() }
+    }
+
     if (new Date() > registration.race.endTime) {
       return { message: 'Cannot update a completed race', timestamp: Date.now() }
     }
@@ -595,6 +595,10 @@ export async function updateRegistrationRaceTime(prevState: State, formData: For
 
     if (!isAdmin && !isOwner) {
       return { message: 'Unauthorized', timestamp: Date.now() }
+    }
+
+    if (!isAdmin && registration.race.teamsAssigned) {
+      return { message: 'Teams are already assigned for this race', timestamp: Date.now() }
     }
 
     if (new Date() > registration.race.endTime) {
@@ -723,6 +727,7 @@ export async function saveRaceEdits(formData: FormData) {
   const rawStrategy = (formData.get('teamAssignmentStrategy') as string | null) ?? ''
   const rawApplyRebalance = (formData.get('applyRebalance') as string | null) ?? 'false'
   const rawUpdates = (formData.get('registrationUpdates') as string | null) ?? '[]'
+  const rawNewTeams = (formData.get('newTeams') as string | null) ?? '[]'
 
   if (!raceId) {
     return { message: 'Race ID required' }
@@ -730,7 +735,13 @@ export async function saveRaceEdits(formData: FormData) {
 
   const race = await prisma.race.findUnique({
     where: { id: raceId },
-    select: { startTime: true, endTime: true, eventId: true, maxDriversPerTeam: true },
+    select: {
+      startTime: true,
+      endTime: true,
+      eventId: true,
+      maxDriversPerTeam: true,
+      teamsAssigned: true,
+    },
   })
 
   if (!race) return { message: 'Race not found' }
@@ -764,13 +775,55 @@ export async function saveRaceEdits(formData: FormData) {
     return { message: 'Invalid registration updates' }
   }
 
+  let newTeams: Array<{ id: string; name: string }> = []
+  try {
+    newTeams = JSON.parse(rawNewTeams) as Array<{ id: string; name: string }>
+  } catch {
+    return { message: 'Invalid team updates' }
+  }
+
   const isAdmin = session.user.role === 'ADMIN'
 
-  if (isAdmin) {
-    await prisma.race.update({
-      where: { id: raceId },
-      data: { maxDriversPerTeam, teamAssignmentStrategy },
+  const tempTeamMap = new Map<string, string>()
+  if (isAdmin && newTeams.length > 0) {
+    const existingTeams = await prisma.team.findMany({
+      select: { name: true, iracingTeamId: true },
     })
+    const existingTeamNames = new Set(existingTeams.map((team) => team.name))
+    const existingTeamIds = new Set(
+      existingTeams
+        .map((team) => team.iracingTeamId)
+        .filter((value): value is number => typeof value === 'number')
+    )
+    let baseId = -Math.floor(Date.now() / 1000)
+
+    for (const team of newTeams) {
+      let name = team.name.trim() || 'Team'
+      if (existingTeamNames.has(name)) {
+        let suffix = 2
+        while (existingTeamNames.has(`${name} ${suffix}`)) {
+          suffix += 1
+        }
+        name = `${name} ${suffix}`
+      }
+      existingTeamNames.add(name)
+
+      while (existingTeamIds.has(baseId)) {
+        baseId -= 1
+      }
+      const iracingTeamId = baseId
+      baseId -= 1
+      existingTeamIds.add(iracingTeamId)
+
+      const created = await prisma.team.create({
+        data: {
+          name,
+          iracingTeamId,
+        },
+        select: { id: true },
+      })
+      tempTeamMap.set(team.id, created.id)
+    }
   }
 
   if (updates.length > 0) {
@@ -787,12 +840,16 @@ export async function saveRaceEdits(formData: FormData) {
       if (reg.raceId !== raceId) continue
       if (!isAdmin && reg.userId !== session.user.id) continue
 
+      const resolvedTeamId = update.teamId
+        ? (tempTeamMap.get(update.teamId) ?? update.teamId)
+        : null
+
       tx.push(
         prisma.registration.update({
           where: { id: update.id },
           data: {
             carClassId: update.carClassId,
-            teamId: update.teamId,
+            teamId: resolvedTeamId,
           },
         })
       )
@@ -801,6 +858,19 @@ export async function saveRaceEdits(formData: FormData) {
     if (tx.length > 0) {
       await prisma.$transaction(tx)
     }
+  }
+
+  let teamsAssignedValue = race.teamsAssigned ?? false
+  if (isAdmin) {
+    const hasTeams = await prisma.registration.findFirst({
+      where: { raceId, teamId: { not: null } },
+      select: { id: true },
+    })
+    teamsAssignedValue = !!hasTeams
+    await prisma.race.update({
+      where: { id: raceId },
+      data: { maxDriversPerTeam, teamAssignmentStrategy, teamsAssigned: teamsAssignedValue },
+    })
   }
 
   const resolvedMaxDrivers =
@@ -871,6 +941,7 @@ export async function adminRegisterDriver(prevState: State, formData: FormData) 
         endTime: true,
         eventId: true,
         maxDriversPerTeam: true,
+        teamsAssigned: true,
         teamAssignmentStrategy: true,
       },
     })
@@ -880,12 +951,7 @@ export async function adminRegisterDriver(prevState: State, formData: FormData) 
       return { message: 'Cannot register for a completed race', timestamp: Date.now() }
     }
 
-    const resolvedMaxDrivers =
-      race.maxDriversPerTeam ??
-      getAutoMaxDriversPerTeam(getRaceDurationMinutes(race.startTime, race.endTime))
-    const teamId = await getAutoTeamId(raceId, carClassId, {
-      maxDriversPerTeam: resolvedMaxDrivers,
-    })
+    const teamId = null
 
     // Check if it's a regular user or a manual driver
     const user = await prisma.user.findUnique({
@@ -904,13 +970,17 @@ export async function adminRegisterDriver(prevState: State, formData: FormData) 
       }
 
       // Create registration
-      await prisma.registration.create({
+      const created = await prisma.registration.create({
         data: {
           userId,
           raceId,
           carClassId,
           teamId,
         },
+      })
+      await prisma.registration.update({
+        where: { id: created.id },
+        data: { teamId: null },
       })
     } else {
       // Check if it's a manual driver
@@ -931,7 +1001,7 @@ export async function adminRegisterDriver(prevState: State, formData: FormData) 
       }
 
       // Create registration
-      await prisma.registration.create({
+      const created = await prisma.registration.create({
         data: {
           manualDriverId: userId,
           raceId,
@@ -939,17 +1009,43 @@ export async function adminRegisterDriver(prevState: State, formData: FormData) 
           teamId,
         },
       })
+      await prisma.registration.update({
+        where: { id: created.id },
+        data: { teamId: null },
+      })
     }
 
-    await rebalanceTeamsForClass(
-      raceId,
-      carClassId,
-      resolvedMaxDrivers,
-      race.teamAssignmentStrategy
-    )
+    // Admin-registered drivers stay unassigned until teams are set.
     revalidatePath(`/events`)
 
-    return { message: 'Success', timestamp: Date.now() }
+    const registration = await prisma.registration.findFirst({
+      where: {
+        ...(user ? { userId } : { manualDriverId: userId }),
+        raceId,
+      },
+      include: {
+        carClass: true,
+        manualDriver: true,
+        team: true,
+        user: {
+          select: {
+            name: true,
+            image: true,
+            racerStats: {
+              select: {
+                category: true,
+                categoryId: true,
+                irating: true,
+                safetyRating: true,
+                groupName: true,
+              },
+            },
+          },
+        },
+      },
+    })
+
+    return { message: 'Success', timestamp: Date.now(), registration }
   } catch (e) {
     console.error('Admin register driver error:', e)
     return { message: 'Failed to register driver', timestamp: Date.now() }

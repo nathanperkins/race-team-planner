@@ -18,7 +18,28 @@ interface Props {
   allDrivers: Driver[]
   defaultCarClassId: string
   onDropdownToggle?: (open: boolean) => void
-  onSuccess?: (message: string) => void
+  onSuccess?: (payload: {
+    message: string
+    registration?: {
+      id: string
+      userId: string | null
+      manualDriverId: string | null
+      carClass: { id: string; name: string; shortName: string }
+      team?: { id: string; name: string } | null
+      manualDriver?: { id: string; name: string; irating: number; image: string | null } | null
+      user?: {
+        name: string | null
+        image: string | null
+        racerStats: Array<{
+          category: string
+          categoryId: number
+          irating: number
+          safetyRating: number
+          groupName: string
+        }>
+      } | null
+    } | null
+  }) => void
 }
 
 export default function AdminDriverSearch({
@@ -88,7 +109,10 @@ export default function AdminDriverSearch({
       if (result.message === 'Success') {
         setIsOpen(false)
         setSearchQuery('')
-        onSuccess?.(`${driver.name || 'Driver'} Added!`)
+        onSuccess?.({
+          message: `${driver.name || 'Driver'} Added!`,
+          registration: result.registration ?? null,
+        })
       } else {
         setErrorMessage(result.message)
         setTimeout(() => setErrorMessage(''), 3000)
