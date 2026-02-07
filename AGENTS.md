@@ -31,8 +31,9 @@ bd sync               # Commit and push changes
 3. **Claim**: Use `bd update <id> --status=in_progress`.
 4. **Work**: Implement the task and update descriptions if needed.
 5. **Verify**: Once the epic or feature is complete, **stop and ask the user** if it is working correctly and which task to work on next.
-6. **Complete**: Use `bd close <id>`.
-7. **Sync**: Always run `bd sync` at the end of the session.
+6. **Complete**: When the user has confirmed the feature is working correctly, use `bd close <id>` to close the task and `git commit -m "<description>"` to commit the change.
+7. **Document**: Update AGENTS.md with any information that would have made this session more efficient and check with the user before committing.
+8. **Sync**: Always run `bd sync` to sync beads at the end of the session.
 
 ### Key Concepts
 
@@ -76,5 +77,6 @@ For full workflow details: `bd prime`
 - Create new issues with `bd create` when you discover tasks.
 - Use descriptive titles and set appropriate priority/type.
 - Always `bd sync` before ending session.
+- Update AGENTS.md with any information that would have made this session more efficient and check it with the user.
 
 <!-- end-bv-agent-instructions -->
