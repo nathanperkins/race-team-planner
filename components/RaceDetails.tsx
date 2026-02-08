@@ -1,6 +1,6 @@
 'use client'
 
-import { Trash2, UserCog, Users, X } from 'lucide-react'
+import { Check, Lock, Pencil, Trash2, Unlock, UserCog, Users, X } from 'lucide-react'
 import Image from 'next/image'
 import {
   type DragEvent,
@@ -77,12 +77,21 @@ interface Props {
   userId: string
   isAdmin?: boolean
   carClasses: { id: string; name: string; shortName: string }[]
-  teams: Array<{ id: string; name: string }>
+  teams: Array<{ id: string; name: string; iracingTeamId: number | null; memberCount?: number }>
   allDrivers?: Driver[]
   onDropdownToggle?: (open: boolean) => void
 }
 
 type LocalTeam = { id: string; name: string }
+type PendingAddition = {
+  tempId: string
+  userId?: string | null
+  manualDriverId?: string | null
+  carClassId: string
+  teamId: string | null
+}
+
+const tempRegistrationPrefix = 'temp-reg-'
 
 function MaxDriversPerTeamInput({
   textValue,
@@ -199,6 +208,12 @@ export default function RaceDetails({
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false)
   const [teamsAssigned, setTeamsAssigned] = useState(!!race.teamsAssigned)
   const [dragOverTeamId, setDragOverTeamId] = useState<string | null>(null)
+  const [lockedTeamIds, setLockedTeamIds] = useState<Set<string>>(new Set())
+  const [pendingAdditions, setPendingAdditions] = useState<PendingAddition[]>([])
+  const [pendingDrops, setPendingDrops] = useState<Set<string>>(new Set())
+  const [editingTeamId, setEditingTeamId] = useState<string | null>(null)
+  const [editingTeamName, setEditingTeamName] = useState('')
+  const [teamNameOverrides, setTeamNameOverrides] = useState<Record<string, string>>({})
   const lastDropdownState = useRef<boolean | null>(null)
   const extraTeamCounter = useRef(1)
   const teamOverridesRef = useRef<Map<string, { teamId: string | null; teamName?: string }>>(
@@ -214,8 +229,14 @@ export default function RaceDetails({
   const teamNameById = useMemo(() => {
     const map = new Map<string, string>()
     teamList.forEach((team) => map.set(team.id, team.name))
+    Object.entries(teamNameOverrides).forEach(([id, name]) => map.set(id, name))
     return map
-  }, [teamList])
+  }, [teamList, teamNameOverrides])
+
+  const isOfficialTeamId = useCallback(
+    (teamId: string) => teams.some((team) => team.id === teamId && (team.memberCount ?? 0) > 0),
+    [teams]
+  )
 
   const isUserRegistered = pendingRegistrations.some((reg) => reg.userId === userId)
   const registeredUserIds = pendingRegistrations
@@ -248,25 +269,47 @@ export default function RaceDetails({
     (
       registrations: typeof pendingRegistrations,
       maxDrivers: number | null,
-      strategy: 'BALANCED_IRATING'
+      strategy: 'BALANCED_IRATING',
+      lockedTeams: Set<string>,
+      teamIds: string[],
+      teamNameLookup: Map<string, string>,
+      preferredTeamIds: string[]
     ) => {
       if (!maxDrivers || maxDrivers < 1) return registrations.map((reg) => ({ ...reg }))
 
-      const teamOrder = teamList.map((team) => team.id)
-      const usedTeamIds = new Set<string>()
+      const teamOrder = teamIds
+      const usedTeamIds = new Set<string>(lockedTeams)
+      const lockedTeamsByClass = new Map<string, Set<string>>()
       const classOrder: string[] = []
 
       registrations.forEach((reg) => {
         if (!classOrder.includes(reg.carClass.id)) {
           classOrder.push(reg.carClass.id)
         }
+        const teamId = reg.teamId ?? reg.team?.id ?? null
+        if (teamId && lockedTeams.has(teamId)) {
+          const locked = lockedTeamsByClass.get(reg.carClass.id) ?? new Set<string>()
+          locked.add(teamId)
+          lockedTeamsByClass.set(reg.carClass.id, locked)
+        }
       })
 
       const classToTeamIds = new Map<string, string[]>()
       for (const classId of classOrder) {
         const classRegs = registrations.filter((reg) => reg.carClass.id === classId)
-        const requiredTeams = Math.ceil(classRegs.length / maxDrivers)
-        const availableTeams = teamOrder.filter((id) => !usedTeamIds.has(id))
+        const lockedTeamsForClass = new Set(lockedTeamsByClass.get(classId) ?? [])
+        const assignableRegs = classRegs.filter((reg) => {
+          const teamId = reg.teamId ?? reg.team?.id ?? null
+          return !teamId || !lockedTeamsForClass.has(teamId)
+        })
+        const requiredTeams = Math.ceil(assignableRegs.length / maxDrivers)
+        const availableTeams = preferredTeamIds.filter(
+          (id) =>
+            teamOrder.includes(id) &&
+            !usedTeamIds.has(id) &&
+            !lockedTeams.has(id) &&
+            !lockedTeamsForClass.has(id)
+        )
         const selectedTeams = availableTeams.slice(0, requiredTeams)
         selectedTeams.forEach((id) => usedTeamIds.add(id))
         classToTeamIds.set(classId, selectedTeams)
@@ -279,11 +322,21 @@ export default function RaceDetails({
           const teamIds = classToTeamIds.get(classId) || []
           if (teamIds.length === 0) continue
 
+          if (teamIds.length === 0) continue
+
           const classRegs = updated.filter((reg) => reg.carClass.id === classId)
-          const rated = classRegs.map((reg) => {
-            const preferred = getPreferredStats(reg)
-            return { reg, rating: preferred?.irating ?? reg.manualDriver?.irating ?? 0 }
-          })
+          const rated = classRegs
+            .filter((reg) => {
+              const teamId = reg.teamId ?? reg.team?.id ?? null
+              return !teamId || !lockedTeams.has(teamId)
+            })
+            .map((reg) => {
+              const preferred = getPreferredStats(reg)
+              return { reg, rating: preferred?.irating ?? reg.manualDriver?.irating ?? 0 }
+            })
+
+          if (rated.length === 0) continue
+
           rated.sort((a, b) => b.rating - a.rating)
 
           const buckets = teamIds.map((id) => ({
@@ -292,6 +345,7 @@ export default function RaceDetails({
             count: 0,
             regs: [] as typeof rated,
           }))
+
           for (const entry of rated) {
             const candidates = buckets.filter((b) => b.count < maxDrivers)
             const available = candidates.length > 0 ? candidates : buckets
@@ -366,7 +420,7 @@ export default function RaceDetails({
           for (const bucket of buckets) {
             for (const { reg } of bucket.regs) {
               reg.teamId = bucket.id
-              reg.team = { id: bucket.id, name: teamNameById.get(bucket.id) || 'Team' }
+              reg.team = { id: bucket.id, name: teamNameLookup.get(bucket.id) || 'Team' }
             }
           }
         }
@@ -374,7 +428,185 @@ export default function RaceDetails({
 
       return updated
     },
-    [getPreferredStats, teamList, teamNameById]
+    [getPreferredStats]
+  )
+
+  const computeTeamShortfall = useCallback(
+    (
+      registrations: typeof pendingRegistrations,
+      maxDrivers: number | null,
+      lockedTeams: Set<string>,
+      teamIds: string[],
+      preferredTeamIds: string[]
+    ) => {
+      if (!maxDrivers || maxDrivers < 1) return 0
+      const usedTeamIds = new Set<string>(lockedTeams)
+      const classOrder: string[] = []
+
+      registrations.forEach((reg) => {
+        if (!classOrder.includes(reg.carClass.id)) {
+          classOrder.push(reg.carClass.id)
+        }
+      })
+
+      let shortfall = 0
+
+      for (const classId of classOrder) {
+        const classRegs = registrations.filter((reg) => reg.carClass.id === classId)
+        const lockedTeamsForClass = new Set<string>()
+        classRegs.forEach((reg) => {
+          const teamId = reg.teamId ?? reg.team?.id ?? null
+          if (teamId && lockedTeams.has(teamId)) {
+            lockedTeamsForClass.add(teamId)
+          }
+        })
+
+        const assignableRegs = classRegs.filter((reg) => {
+          const teamId = reg.teamId ?? reg.team?.id ?? null
+          return !teamId || !lockedTeamsForClass.has(teamId)
+        })
+
+        const requiredTeams = Math.ceil(assignableRegs.length / maxDrivers)
+        if (requiredTeams === 0) continue
+
+        const availableTeams = preferredTeamIds.filter(
+          (id) =>
+            teamIds.includes(id) &&
+            !usedTeamIds.has(id) &&
+            !lockedTeams.has(id) &&
+            !lockedTeamsForClass.has(id)
+        )
+        const selectedTeams = availableTeams.slice(0, requiredTeams)
+        if (selectedTeams.length < requiredTeams) {
+          shortfall += requiredTeams - selectedTeams.length
+        }
+        selectedTeams.forEach((id) => usedTeamIds.add(id))
+      }
+
+      return shortfall
+    },
+    []
+  )
+
+  const buildTeamNameLookup = useCallback((teamEntries: Array<{ id: string; name: string }>) => {
+    return new Map(teamEntries.map((team) => [team.id, team.name]))
+  }, [])
+
+  const runRebalance = useCallback(
+    (strategyOverride?: 'BALANCED_IRATING') => {
+      if (!isTeamModalOpen) return
+      if (!pendingMaxDrivers || pendingMaxDrivers < 1) return
+
+      const strategy = strategyOverride ?? pendingStrategy
+      const baseTeams = [...teams, ...extraTeams]
+      const officialTeamIds = teams
+        .filter((team) => (team.memberCount ?? 0) > 0)
+        .map((team) => team.id)
+      const nonOfficialTeamIds = teams
+        .filter((team) => (team.memberCount ?? 0) === 0)
+        .map((team) => team.id)
+      const preferredTeamIds = [
+        ...officialTeamIds,
+        ...nonOfficialTeamIds,
+        ...extraTeams.map((team) => team.id),
+      ]
+      let teamIds = baseTeams.map((team) => team.id)
+      const teamNameLookup = buildTeamNameLookup(baseTeams)
+      Object.entries(teamNameOverrides).forEach(([id, name]) => teamNameLookup.set(id, name))
+
+      const shortfall = computeTeamShortfall(
+        pendingRegistrations,
+        pendingMaxDrivers,
+        lockedTeamIds,
+        teamIds,
+        preferredTeamIds
+      )
+
+      if (shortfall > 0) {
+        const created: LocalTeam[] = []
+        const baseIndex = teams.length + extraTeams.length
+        for (let i = 0; i < shortfall; i += 1) {
+          const nextTeam: LocalTeam = {
+            id: `temp-team-${extraTeamCounter.current}`,
+            name: `Team ${baseIndex + i + 1}`,
+          }
+          extraTeamCounter.current += 1
+          created.push(nextTeam)
+        }
+        if (created.length > 0) {
+          setExtraTeams((prev) => [...prev, ...created])
+          teamIds = [...teamIds, ...created.map((team) => team.id)]
+          created.forEach((team) => teamNameLookup.set(team.id, team.name))
+        }
+      }
+
+      const next = recomputeAssignments(
+        pendingRegistrations,
+        pendingMaxDrivers,
+        strategy,
+        lockedTeamIds,
+        teamIds,
+        teamNameLookup,
+        preferredTeamIds
+      )
+      setPendingRegistrations(next)
+      teamOverridesRef.current = new Map(
+        next.map((reg) => [
+          reg.id,
+          { teamId: reg.teamId ?? reg.team?.id ?? null, teamName: reg.team?.name },
+        ])
+      )
+    },
+    [
+      buildTeamNameLookup,
+      computeTeamShortfall,
+      extraTeams,
+      isTeamModalOpen,
+      lockedTeamIds,
+      pendingMaxDrivers,
+      pendingRegistrations,
+      pendingStrategy,
+      recomputeAssignments,
+      teamNameOverrides,
+      teams,
+    ]
+  )
+
+  const initializeLockedTeams = useCallback(() => {
+    const initialLocked = new Set<string>()
+    pendingRegistrations.forEach((reg) => {
+      const teamId = reg.teamId ?? reg.team?.id ?? null
+      if (teamId) initialLocked.add(teamId)
+    })
+    setLockedTeamIds(initialLocked)
+  }, [pendingRegistrations])
+
+  const toggleTeamLock = useCallback((teamId: string) => {
+    setLockedTeamIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(teamId)) {
+        next.delete(teamId)
+      } else {
+        next.add(teamId)
+      }
+      return next
+    })
+  }, [])
+
+  const isTeamLocked = useCallback((teamId: string) => lockedTeamIds.has(teamId), [lockedTeamIds])
+
+  const isTempRegistrationId = useCallback(
+    (registrationId: string) => registrationId.startsWith(tempRegistrationPrefix),
+    []
+  )
+
+  const updatePendingAddition = useCallback(
+    (registrationId: string, updates: Partial<PendingAddition>) => {
+      setPendingAdditions((prev) =>
+        prev.map((entry) => (entry.tempId === registrationId ? { ...entry, ...updates } : entry))
+      )
+    },
+    []
   )
 
   /* eslint-disable react-hooks/set-state-in-effect */
@@ -396,6 +628,9 @@ export default function RaceDetails({
       setTeamsAssigned(!!race.teamsAssigned)
       teamOverridesRef.current = new Map()
       extraTeamCounter.current = 1
+      setPendingAdditions([])
+      setPendingDrops(new Set())
+      setTeamNameOverrides({})
       setPendingMaxDrivers(nextAuto)
       setPendingMaxDriversText(nextAuto ? String(nextAuto) : '')
       setPendingStrategy(nextStrategy)
@@ -494,49 +729,14 @@ export default function RaceDetails({
     [autoMaxDrivers, pendingMaxDrivers]
   )
 
-  const handleCarClassChange = (
-    registrationId: string,
-    newClassId: string,
-    options?: { enforceTeamClass?: boolean }
-  ) => {
-    const carClass = carClasses.find((cc) => cc.id === newClassId)
-    if (!carClass) return
-    setPendingRegistrations((prev) => {
-      const current = prev.find((reg) => reg.id === registrationId)
-      if (!current) return prev
-      let nextTeamId = current.teamId ?? current.team?.id ?? null
-      let nextTeamName = current.team?.name
-      if (options?.enforceTeamClass && isTeamModalOpen) {
-        const resolved = resolveTeamForClass(registrationId, newClassId, nextTeamId)
-        nextTeamId = resolved.id
-        nextTeamName = resolved.name
-        teamOverridesRef.current.set(registrationId, {
-          teamId: nextTeamId,
-          teamName: nextTeamName,
-        })
-      }
-      return prev.map((reg) =>
-        reg.id === registrationId
-          ? {
-              ...reg,
-              carClass: {
-                id: carClass.id,
-                name: carClass.name,
-                shortName: carClass.shortName,
-              },
-              teamId: nextTeamId,
-              team: nextTeamId ? { id: nextTeamId, name: nextTeamName || 'Team' } : null,
-            }
-          : reg
-      )
-    })
-  }
-
   const moveRegistrationToTeamWithClass = useCallback(
     (registrationId: string, teamId: string, classId: string) => {
       const carClass = carClasses.find((cc) => cc.id === classId)
       if (!carClass) return
       const teamName = teamNameById.get(teamId) || 'Team'
+      if (isTempRegistrationId(registrationId)) {
+        updatePendingAddition(registrationId, { teamId, carClassId: classId })
+      }
       teamOverridesRef.current.set(registrationId, { teamId, teamName })
       setPendingRegistrations((prev) =>
         prev.map((reg) =>
@@ -555,37 +755,21 @@ export default function RaceDetails({
         )
       )
     },
-    [carClasses, teamNameById]
+    [carClasses, isTempRegistrationId, teamNameById, updatePendingAddition]
   )
 
   const handleRebalance = () => {
-    if (!isTeamModalOpen) return
-    const next = recomputeAssignments(pendingRegistrations, pendingMaxDrivers, pendingStrategy)
-    setPendingRegistrations(next)
-    teamOverridesRef.current = new Map(
-      next.map((reg) => [
-        reg.id,
-        { teamId: reg.teamId ?? reg.team?.id ?? null, teamName: reg.team?.name },
-      ])
-    )
+    runRebalance()
   }
 
   const handleStrategyChange = (value: 'BALANCED_IRATING') => {
     setPendingStrategy(value)
-    if (isTeamModalOpen) {
-      const next = recomputeAssignments(pendingRegistrations, pendingMaxDrivers, value)
-      setPendingRegistrations(next)
-      teamOverridesRef.current = new Map(
-        next.map((reg) => [
-          reg.id,
-          { teamId: reg.teamId ?? reg.team?.id ?? null, teamName: reg.team?.name },
-        ])
-      )
-    }
+    runRebalance(value)
   }
 
   const handleSave = () => {
     const payload = pendingRegistrations
+      .filter((reg) => !isTempRegistrationId(reg.id))
       .filter((reg) => isAdmin || reg.userId === userId)
       .map((reg) => ({
         id: reg.id,
@@ -600,6 +784,9 @@ export default function RaceDetails({
     formData.set('applyRebalance', 'false')
     formData.set('registrationUpdates', JSON.stringify(payload))
     formData.set('newTeams', JSON.stringify(extraTeams))
+    formData.set('pendingAdditions', JSON.stringify(pendingAdditions))
+    formData.set('pendingDrops', JSON.stringify(Array.from(pendingDrops)))
+    formData.set('teamNameOverrides', JSON.stringify(teamNameOverrides))
 
     setSaveError('')
     startSaveTransition(() => {
@@ -624,6 +811,12 @@ export default function RaceDetails({
     setIsTeamModalOpen(false)
     teamOverridesRef.current = new Map()
     setPendingRegistrations(race.registrations)
+    setLockedTeamIds(new Set())
+    setPendingAdditions([])
+    setPendingDrops(new Set())
+    setEditingTeamId(null)
+    setEditingTeamName('')
+    setTeamNameOverrides({})
   }
 
   const createTempTeam = useCallback(() => {
@@ -694,23 +887,104 @@ export default function RaceDetails({
     [pendingRegistrations, revealOrCreateTeam, teamNameById]
   )
 
-  const removeTeam = useCallback((teamId: string) => {
-    if (!teamId || teamId === 'unassigned') return
-    const affectedIds: string[] = []
-    setPendingRegistrations((prev) =>
-      prev.map((reg) => {
-        if ((reg.teamId ?? reg.team?.id) !== teamId) return reg
-        affectedIds.push(reg.id)
-        return { ...reg, teamId: null, team: null }
+  const handleCarClassChange = useCallback(
+    (registrationId: string, newClassId: string, options?: { enforceTeamClass?: boolean }) => {
+      const carClass = carClasses.find((cc) => cc.id === newClassId)
+      if (!carClass) return
+      if (isTempRegistrationId(registrationId)) {
+        updatePendingAddition(registrationId, { carClassId: newClassId })
+      }
+      setPendingRegistrations((prev) => {
+        const current = prev.find((reg) => reg.id === registrationId)
+        if (!current) return prev
+        let nextTeamId = current.teamId ?? current.team?.id ?? null
+        let nextTeamName = current.team?.name
+        if (options?.enforceTeamClass && isTeamModalOpen) {
+          const resolved = resolveTeamForClass(registrationId, newClassId, nextTeamId)
+          nextTeamId = resolved.id
+          nextTeamName = resolved.name
+          teamOverridesRef.current.set(registrationId, {
+            teamId: nextTeamId,
+            teamName: nextTeamName,
+          })
+        }
+        return prev.map((reg) =>
+          reg.id === registrationId
+            ? {
+                ...reg,
+                carClass: {
+                  id: carClass.id,
+                  name: carClass.name,
+                  shortName: carClass.shortName,
+                },
+                teamId: nextTeamId,
+                team: nextTeamId ? { id: nextTeamId, name: nextTeamName || 'Team' } : null,
+              }
+            : reg
+        )
       })
-    )
-    affectedIds.forEach((id) => teamOverridesRef.current.set(id, { teamId: null }))
-    setExtraTeams((prev) => prev.filter((team) => team.id !== teamId))
-    setRevealedTeamIds((prev) => prev.filter((id) => id !== teamId))
-  }, [])
+    },
+    [carClasses, isTempRegistrationId, isTeamModalOpen, resolveTeamForClass, updatePendingAddition]
+  )
+
+  const removeTeam = useCallback(
+    (teamId: string) => {
+      if (!teamId || teamId === 'unassigned') return
+      const affectedIds: string[] = []
+      setPendingRegistrations((prev) =>
+        prev.map((reg) => {
+          if ((reg.teamId ?? reg.team?.id) !== teamId) return reg
+          affectedIds.push(reg.id)
+          return { ...reg, teamId: null, team: null }
+        })
+      )
+      affectedIds.forEach((id) => teamOverridesRef.current.set(id, { teamId: null }))
+      setExtraTeams((prev) => prev.filter((team) => team.id !== teamId))
+      setRevealedTeamIds((prev) => prev.filter((id) => id !== teamId))
+      setTeamNameOverrides((prev) => {
+        if (!(teamId in prev)) return prev
+        const next = { ...prev }
+        delete next[teamId]
+        return next
+      })
+      if (editingTeamId === teamId) {
+        setEditingTeamId(null)
+        setEditingTeamName('')
+      }
+    },
+    [editingTeamId]
+  )
+
+  const startTeamRename = useCallback(
+    (teamId: string) => {
+      if (teamId === 'unassigned' || isOfficialTeamId(teamId)) return
+      const currentName = teamNameById.get(teamId) || 'Team'
+      setEditingTeamId(teamId)
+      setEditingTeamName(currentName)
+    },
+    [isOfficialTeamId, teamNameById]
+  )
+
+  const saveTeamRename = useCallback(() => {
+    if (!editingTeamId) return
+    const nextName = editingTeamName.trim() || 'Team'
+    const isExtra = extraTeams.some((team) => team.id === editingTeamId)
+    if (isExtra) {
+      setExtraTeams((prev) =>
+        prev.map((team) => (team.id === editingTeamId ? { ...team, name: nextName } : team))
+      )
+    } else {
+      setTeamNameOverrides((prev) => ({ ...prev, [editingTeamId]: nextName }))
+    }
+    setEditingTeamId(null)
+    setEditingTeamName('')
+  }, [editingTeamId, editingTeamName, extraTeams])
 
   const moveRegistrationToTeam = useCallback(
     (registrationId: string, teamId: string | null, teamName?: string) => {
+      if (isTempRegistrationId(registrationId)) {
+        updatePendingAddition(registrationId, { teamId })
+      }
       teamOverridesRef.current.set(registrationId, { teamId, teamName })
       setPendingRegistrations((prev) =>
         prev.map((reg) =>
@@ -726,7 +1000,7 @@ export default function RaceDetails({
         )
       )
     },
-    [teamNameById]
+    [isTempRegistrationId, teamNameById, updatePendingAddition]
   )
 
   const handleDropOnTeam = useCallback(
@@ -734,6 +1008,9 @@ export default function RaceDetails({
       event.preventDefault()
       const registrationId = event.dataTransfer.getData('text/plain')
       if (!registrationId) return
+      if (teamId && isTeamLocked(teamId)) {
+        return
+      }
       if (teamId === null) {
         moveRegistrationToTeam(registrationId, null)
         return
@@ -750,7 +1027,13 @@ export default function RaceDetails({
       }
       moveRegistrationToTeam(registrationId, teamId)
     },
-    [isTeamModalOpen, moveRegistrationToTeam, moveRegistrationToTeamWithClass, pendingRegistrations]
+    [
+      isTeamLocked,
+      isTeamModalOpen,
+      moveRegistrationToTeam,
+      moveRegistrationToTeamWithClass,
+      pendingRegistrations,
+    ]
   )
 
   const handleDropOnNewTeam = useCallback(
@@ -812,6 +1095,94 @@ export default function RaceDetails({
     [teamNameById]
   )
 
+  const handleLocalAddDriver = useCallback(
+    (driver: Driver, teamId: string | null, carClassId: string) => {
+      const existingReg = race.registrations.find(
+        (reg) => reg.userId === driver.id || reg.manualDriverId === driver.id
+      )
+      const carClass =
+        carClasses.find((cc) => cc.id === carClassId) ?? carClasses[0] ?? carClasses[0]
+      if (!carClass) return
+
+      if (existingReg) {
+        if (pendingDrops.has(existingReg.id)) {
+          setPendingDrops((prev) => {
+            const next = new Set(prev)
+            next.delete(existingReg.id)
+            return next
+          })
+        }
+        const teamName = teamId ? teamNameById.get(teamId) || 'Team' : undefined
+        teamOverridesRef.current.set(existingReg.id, { teamId, teamName })
+        setPendingRegistrations((prev) => {
+          const exists = prev.find((reg) => reg.id === existingReg.id)
+          const updatedReg = {
+            ...existingReg,
+            carClass: {
+              id: carClass.id,
+              name: carClass.name,
+              shortName: carClass.shortName,
+            },
+            teamId,
+            team: teamId ? { id: teamId, name: teamName || 'Team' } : null,
+          }
+          if (exists) {
+            return prev.map((reg) => (reg.id === existingReg.id ? updatedReg : reg))
+          }
+          return [...prev, updatedReg]
+        })
+        return
+      }
+
+      const tempId = `${tempRegistrationPrefix}${driver.id}-${Date.now()}`
+      const teamName = teamId ? teamNameById.get(teamId) || 'Team' : undefined
+      const tempReg: RaceWithRegistrations['registrations'][0] & { isPending?: boolean } = {
+        id: tempId,
+        carClass: {
+          id: carClass.id,
+          name: carClass.name,
+          shortName: carClass.shortName,
+        },
+        userId: driver.id,
+        manualDriverId: null,
+        manualDriver: null,
+        teamId,
+        team: teamId ? { id: teamId, name: teamName || 'Team' } : null,
+        user: {
+          name: driver.name,
+          image: driver.image,
+          racerStats: [],
+        },
+        isPending: true,
+      }
+
+      setPendingRegistrations((prev) => [...prev, tempReg])
+      setPendingAdditions((prev) => [
+        ...prev,
+        {
+          tempId,
+          userId: driver.id,
+          carClassId: carClass.id,
+          teamId,
+        },
+      ])
+    },
+    [carClasses, pendingDrops, race.registrations, teamNameById]
+  )
+
+  const handleLocalDrop = useCallback(
+    (reg: RaceWithRegistrations['registrations'][0]) => {
+      if (isTempRegistrationId(reg.id)) {
+        setPendingAdditions((prev) => prev.filter((entry) => entry.tempId !== reg.id))
+      } else {
+        setPendingDrops((prev) => new Set(prev).add(reg.id))
+      }
+      teamOverridesRef.current.delete(reg.id)
+      setPendingRegistrations((prev) => prev.filter((entry) => entry.id !== reg.id))
+    },
+    [isTempRegistrationId]
+  )
+
   const showTeamsInCard = teamsAssigned
   const canAssignTeams = isAdmin && !isRaceCompleted
   const enableDrag = canAssignTeams && isTeamModalOpen
@@ -821,7 +1192,8 @@ export default function RaceDetails({
     options?: { allowAdminEdits?: boolean }
   ) => {
     const allowAdminEdits = options?.allowAdminEdits ?? false
-    const canEditCarClass = allowAdminEdits && isAdmin && !isRaceCompleted
+    const hasTeamAssigned = !!(reg.teamId ?? reg.team?.id)
+    const canEditCarClass = allowAdminEdits && isAdmin && !isRaceCompleted && !hasTeamAssigned
     const driverName = reg.user?.name || reg.manualDriver?.name || 'Driver'
     const driverImage = reg.user?.image || reg.manualDriver?.image
     const preferredStats = getPreferredStats(reg)
@@ -896,7 +1268,9 @@ export default function RaceDetails({
                 onChange={(classId) =>
                   handleCarClassChange(reg.id, classId, { enforceTeamClass: allowAdminEdits })
                 }
-                readOnly={!canEditCarClass && (!isAdmin || reg.userId !== userId)}
+                readOnly={
+                  hasTeamAssigned || (!canEditCarClass && (!isAdmin || reg.userId !== userId))
+                }
                 showLabel={false}
                 variant="pill"
                 className={styles.carClassPill}
@@ -907,10 +1281,21 @@ export default function RaceDetails({
         <div className={styles.driverTimeslot}>
           {(reg.userId === userId || isAdmin) && !isRaceCompleted && (
             <div className={styles.actionRow}>
-              <DropRegistrationButton
-                registrationId={reg.id}
-                onConfirmingChange={setIsDropConfirming}
-              />
+              {allowAdminEdits && isTeamModalOpen ? (
+                <button
+                  type="button"
+                  className={styles.driverRemoveButton}
+                  onClick={() => handleLocalDrop(reg)}
+                  title="Remove driver"
+                >
+                  <Trash2 size={14} />
+                </button>
+              ) : (
+                <DropRegistrationButton
+                  registrationId={reg.id}
+                  onConfirmingChange={setIsDropConfirming}
+                />
+              )}
             </div>
           )}
         </div>
@@ -966,28 +1351,88 @@ export default function RaceDetails({
         ratings.length > 0
           ? Math.round(ratings.reduce((sum, value) => sum + value, 0) / ratings.length)
           : 0
+      const isLocked = allowAdminEdits && teamId !== 'unassigned' && isTeamLocked(teamId)
 
       return (
         <div
           key={teamId}
           className={`${styles.teamGroup} ${
             dragOverTeamId === teamId ? styles.teamGroupDragOver : ''
-          } ${teamId === 'unassigned' ? styles.unassignedTile : ''}`}
+          } ${teamId === 'unassigned' ? styles.unassignedTile : ''} ${
+            isLocked ? styles.teamGroupLocked : ''
+          }`}
           onDragOver={(event) => {
             if (!canAssignTeams) return
+            if (isLocked) return
             event.preventDefault()
             setDragOverTeamId(teamId)
           }}
           onDragLeave={() => setDragOverTeamId(null)}
           onDrop={(event) => {
             if (!canAssignTeams) return
+            if (isLocked) return
             setDragOverTeamId(null)
             handleDropOnTeam(teamId === 'unassigned' ? null : teamId)(event)
           }}
         >
           <div className={styles.teamGroupHeader}>
             <Users size={14} />
-            <span>{getTeamLabel(teamId)}</span>
+            {allowAdminEdits &&
+            teamId !== 'unassigned' &&
+            editingTeamId === teamId &&
+            !isOfficialTeamId(teamId) ? (
+              <div className={styles.teamNameEdit}>
+                <input
+                  className={styles.teamNameInput}
+                  value={editingTeamName}
+                  onChange={(event) => setEditingTeamName(event.target.value)}
+                />
+                <button
+                  type="button"
+                  className={styles.teamNameSave}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    saveTeamRename()
+                  }}
+                  title="Save team name"
+                >
+                  <Check size={12} />
+                </button>
+              </div>
+            ) : (
+              <span>{getTeamLabel(teamId)}</span>
+            )}
+            {allowAdminEdits &&
+              teamId !== 'unassigned' &&
+              !isOfficialTeamId(teamId) &&
+              editingTeamId !== teamId && (
+                <button
+                  type="button"
+                  className={styles.teamNameEditButton}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    startTeamRename(teamId)
+                  }}
+                  title="Edit team name"
+                >
+                  <Pencil size={12} />
+                </button>
+              )}
+            {allowAdminEdits && teamId !== 'unassigned' && (
+              <button
+                type="button"
+                className={`${styles.teamLockButton} ${
+                  isTeamLocked(teamId) ? styles.teamLockActive : ''
+                }`}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  toggleTeamLock(teamId)
+                }}
+                title={isTeamLocked(teamId) ? 'Unlock team' : 'Lock team'}
+              >
+                {isTeamLocked(teamId) ? <Lock size={12} /> : <Unlock size={12} />}
+              </button>
+            )}
             <span className={styles.teamCount}>({teamRegistrations.length})</span>
             <span className={styles.teamSof}>{avgRating} SOF</span>
             {includeAddTeam && canAssignTeams && teamId !== 'unassigned' && (
@@ -1013,6 +1458,16 @@ export default function RaceDetails({
                 defaultCarClassId={teamRegistrations[0]?.carClass.id || lastDriverCarClass}
                 onDropdownToggle={setIsAddDriverOpen}
                 buttonLabel="Register Driver"
+                onSelectDriver={(driver) => {
+                  const resolvedTeamId = teamId === 'unassigned' ? null : teamId
+                  handleLocalAddDriver(
+                    driver,
+                    resolvedTeamId,
+                    teamRegistrations[0]?.carClass.id || lastDriverCarClass
+                  )
+                  setAddDriverMessage(driver.name || 'Driver')
+                  setTimeout(() => setAddDriverMessage(''), 3000)
+                }}
                 onSuccess={({ message, registration }) => {
                   if (registration) {
                     upsertRegistration(registration, {
@@ -1025,6 +1480,9 @@ export default function RaceDetails({
                 }}
               />
             </div>
+          )}
+          {isLocked && (
+            <div className={styles.teamLockedOverlay}>Team Locked, unlock to make changes</div>
           )}
         </div>
       )
@@ -1139,7 +1597,10 @@ export default function RaceDetails({
             )}
             <div className={styles.teamPickerWrapper}>
               <TeamPickerTrigger
-                onOpen={() => setIsTeamModalOpen(true)}
+                onOpen={() => {
+                  setIsTeamModalOpen(true)
+                  initializeLockedTeams()
+                }}
                 disabled={!canAssignTeams}
               />
             </div>

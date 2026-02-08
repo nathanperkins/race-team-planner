@@ -259,9 +259,20 @@ export default async function EventsPage({ searchParams }: PageProps) {
     (a, b) => a.weekStart.getTime() - b.weekStart.getTime()
   )
 
-  const teams = await prisma.team.findMany({
-    orderBy: { name: 'asc' },
+  const rawTeams = await prisma.team.findMany({
+    orderBy: { createdAt: 'asc' },
+    include: {
+      teamMembers: {
+        select: { id: true },
+      },
+    },
   })
+  const teams = rawTeams.map((team) => ({
+    id: team.id,
+    name: team.name,
+    iracingTeamId: team.iracingTeamId,
+    memberCount: team.teamMembers.length,
+  }))
 
   // --- TEST: inject a mock 4th event into the matching week by date (UI-only) ---
   try {

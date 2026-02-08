@@ -19,6 +19,7 @@ interface Props {
   defaultCarClassId: string
   buttonLabel?: string
   onDropdownToggle?: (open: boolean) => void
+  onSelectDriver?: (driver: Driver) => void
   onSuccess?: (payload: {
     message: string
     registration?: {
@@ -50,6 +51,7 @@ export default function AdminDriverSearch({
   defaultCarClassId,
   buttonLabel = 'Add Driver',
   onDropdownToggle,
+  onSelectDriver,
   onSuccess,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false)
@@ -119,6 +121,12 @@ export default function AdminDriverSearch({
   // Handle driver selection
   const handleSelectDriver = async (driver: Driver) => {
     try {
+      if (onSelectDriver) {
+        setIsOpen(false)
+        setSearchQuery('')
+        onSelectDriver(driver)
+        return
+      }
       const formData = new FormData()
       formData.append('raceId', raceId)
       formData.append('userId', driver.id)

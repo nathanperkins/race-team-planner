@@ -728,6 +728,9 @@ export async function saveRaceEdits(formData: FormData) {
   const rawApplyRebalance = (formData.get('applyRebalance') as string | null) ?? 'false'
   const rawUpdates = (formData.get('registrationUpdates') as string | null) ?? '[]'
   const rawNewTeams = (formData.get('newTeams') as string | null) ?? '[]'
+  const rawPendingAdditions = (formData.get('pendingAdditions') as string | null) ?? '[]'
+  const rawPendingDrops = (formData.get('pendingDrops') as string | null) ?? '[]'
+  const rawTeamNameOverrides = (formData.get('teamNameOverrides') as string | null) ?? '{}'
 
   if (!raceId) {
     return { message: 'Race ID required' }
@@ -785,14 +788,66 @@ export async function saveRaceEdits(formData: FormData) {
     return { message: 'Invalid team updates' }
   }
 
+  let teamNameOverrides: Record<string, string> = {}
+  try {
+    teamNameOverrides = JSON.parse(rawTeamNameOverrides) as Record<string, string>
+  } catch {
+    return { message: 'Invalid team name overrides' }
+  }
+
+  let pendingAdditions: Array<{
+    tempId?: string
+    userId?: string | null
+    manualDriverId?: string | null
+    carClassId: string
+    teamId: string | null
+  }> = []
+  try {
+    pendingAdditions = JSON.parse(rawPendingAdditions) as Array<{
+      tempId?: string
+      userId?: string | null
+      manualDriverId?: string | null
+      carClassId: string
+      teamId: string | null
+    }>
+  } catch {
+    return { message: 'Invalid pending additions' }
+  }
+
+  let pendingDrops: string[] = []
+  try {
+    pendingDrops = JSON.parse(rawPendingDrops) as string[]
+  } catch {
+    return { message: 'Invalid pending drops' }
+  }
+
   const isAdmin = session.user.role === 'ADMIN'
 
   const tempTeamMap = new Map<string, string>()
-  if (isAdmin && newTeams.length > 0) {
+  const renameUpdates: Array<{ id: string; name: string }> = []
+  if (isAdmin && (newTeams.length > 0 || Object.keys(teamNameOverrides).length > 0)) {
     const existingTeams = await prisma.team.findMany({
-      select: { name: true, iracingTeamId: true },
+      select: { id: true, name: true, iracingTeamId: true },
     })
     const existingTeamNames = new Set(existingTeams.map((team) => team.name))
+    const teamById = new Map(existingTeams.map((team) => [team.id, team]))
+
+    for (const [teamId, rawName] of Object.entries(teamNameOverrides)) {
+      const current = teamById.get(teamId)
+      if (!current) continue
+      let name = rawName.trim() || 'Team'
+      if (name === current.name) continue
+      existingTeamNames.delete(current.name)
+      if (existingTeamNames.has(name)) {
+        let suffix = 2
+        while (existingTeamNames.has(`${name} ${suffix}`)) {
+          suffix += 1
+        }
+        name = `${name} ${suffix}`
+      }
+      existingTeamNames.add(name)
+      renameUpdates.push({ id: teamId, name })
+    }
     const existingTeamIds = new Set(
       existingTeams
         .map((team) => team.iracingTeamId)
@@ -826,6 +881,83 @@ export async function saveRaceEdits(formData: FormData) {
         select: { id: true },
       })
       tempTeamMap.set(team.id, created.id)
+    }
+  }
+
+  if (isAdmin && renameUpdates.length > 0) {
+    await prisma.$transaction(
+      renameUpdates.map((update) =>
+        prisma.team.update({
+          where: { id: update.id },
+          data: { name: update.name },
+        })
+      )
+    )
+  }
+
+  if (isAdmin && pendingDrops.length > 0) {
+    const regsToDrop = await prisma.registration.findMany({
+      where: { id: { in: pendingDrops } },
+      select: { id: true, userId: true, raceId: true },
+    })
+    const tx: Prisma.PrismaPromise<unknown>[] = []
+    for (const reg of regsToDrop) {
+      if (reg.raceId !== raceId) continue
+      tx.push(prisma.registration.delete({ where: { id: reg.id } }))
+    }
+    if (tx.length > 0) {
+      await prisma.$transaction(tx)
+    }
+  }
+
+  if (isAdmin && pendingAdditions.length > 0) {
+    for (const addition of pendingAdditions) {
+      if (!addition.carClassId) continue
+      const resolvedTeamId = addition.teamId
+        ? (tempTeamMap.get(addition.teamId) ?? addition.teamId)
+        : null
+
+      if (addition.userId) {
+        const existing = await prisma.registration.findUnique({
+          where: { userId_raceId: { userId: addition.userId, raceId } },
+          select: { id: true },
+        })
+        if (existing) {
+          await prisma.registration.update({
+            where: { id: existing.id },
+            data: { carClassId: addition.carClassId, teamId: resolvedTeamId },
+          })
+        } else {
+          await prisma.registration.create({
+            data: {
+              userId: addition.userId,
+              raceId,
+              carClassId: addition.carClassId,
+              teamId: resolvedTeamId,
+            },
+          })
+        }
+      } else if (addition.manualDriverId) {
+        const existing = await prisma.registration.findUnique({
+          where: { manualDriverId_raceId: { manualDriverId: addition.manualDriverId, raceId } },
+          select: { id: true },
+        })
+        if (existing) {
+          await prisma.registration.update({
+            where: { id: existing.id },
+            data: { carClassId: addition.carClassId, teamId: resolvedTeamId },
+          })
+        } else {
+          await prisma.registration.create({
+            data: {
+              manualDriverId: addition.manualDriverId,
+              raceId,
+              carClassId: addition.carClassId,
+              teamId: resolvedTeamId,
+            },
+          })
+        }
+      }
     }
   }
 

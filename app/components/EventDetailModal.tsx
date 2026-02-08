@@ -60,7 +60,7 @@ interface EventDetailModalProps {
   isAdmin: boolean
   userId: string
   userLicenseLevel: LicenseLevel | null
-  teams: Array<{ id: string; name: string }>
+  teams: Array<{ id: string; name: string; iracingTeamId: number | null; memberCount?: number }>
 }
 
 export default function EventDetailModal({

@@ -58,7 +58,7 @@ interface EventsClientProps {
   userId: string
   userLicenseLevel: LicenseLevel | null
   initialEventId?: string
-  teams: Array<{ id: string; name: string }>
+  teams: Array<{ id: string; name: string; iracingTeamId: number | null; memberCount?: number }>
 }
 
 export default function EventsClient({
