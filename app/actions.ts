@@ -1355,7 +1355,10 @@ export async function agreeToExpectations() {
   revalidatePath('/roster')
   revalidatePath('/events/[id]', 'page')
 
-  return { success: true }
+  return {
+    success: true,
+    data: { expectationsVersion: CURRENT_EXPECTATIONS_VERSION },
+  }
 }
 export async function adminRegisterDriver(prevState: State, formData: FormData) {
   const session = await auth()

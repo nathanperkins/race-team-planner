@@ -11,6 +11,7 @@ declare module 'next-auth' {
       role: UserRole
       expectationsVersion: number
     }
+    version: number
   }
 
   interface User {
@@ -30,9 +31,10 @@ declare module '@auth/core/adapters' {
 
 declare module 'next-auth/jwt' {
   interface JWT {
-    id: string
+    id?: string
     role: UserRole
     iracingCustomerId?: number | null
     expectationsVersion: number
+    version: number
   }
 }

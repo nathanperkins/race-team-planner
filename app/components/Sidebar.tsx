@@ -6,9 +6,29 @@ import styles from './sidebar.module.css'
 import { signOut, useSession } from 'next-auth/react'
 import { Session } from 'next-auth'
 import Image from 'next/image'
+import { getOnboardingStatus, OnboardingStatus } from '@/lib/onboarding'
 
-import { CURRENT_EXPECTATIONS_VERSION } from '@/lib/config'
-import { isMockUser } from '@/lib/utils'
+interface NavLinkProps {
+  href: string
+  label: string
+  isActive: boolean
+  onClick?: () => void
+  className?: string
+  disabled?: boolean
+}
+
+function NavLink({ href, label, isActive, onClick, className = '', disabled }: NavLinkProps) {
+  return (
+    <Link
+      href={href}
+      className={`${styles.link} ${isActive ? styles.activeLink : ''} ${disabled ? styles.setupDisabled : ''} ${className}`}
+      onClick={disabled ? undefined : onClick}
+      aria-disabled={disabled}
+    >
+      {label}
+    </Link>
+  )
+}
 
 interface SidebarProps {
   onLinkClick?: () => void
@@ -20,92 +40,150 @@ export default function Sidebar({ onLinkClick, session: propSession }: SidebarPr
   const { data: hookSession } = useSession()
   const session = propSession || hookSession
 
-  const isActive = (path: string) => {
+  if (!session?.user) return null
+
+  const onboardingStatus = getOnboardingStatus(session)
+  const isSetupComplete = onboardingStatus === OnboardingStatus.COMPLETE
+  const userId = session.user.id
+
+  const checkActive = (path: string) => {
     if (path === '/' && pathname === '/') return true
     if (path !== '/' && pathname.startsWith(path)) return true
     return false
   }
 
-  if (!session?.user) return null
-
-  const hasCustomerId = !!session.user.iracingCustomerId || isMockUser(session.user)
-  const hasAcceptedExpectations =
-    (session.user.expectationsVersion ?? 0) >= CURRENT_EXPECTATIONS_VERSION
-  const isSetupComplete = hasCustomerId && hasAcceptedExpectations
-
   return (
     <div className={styles.navWrapper}>
       <nav className={styles.nav}>
-        <Link
-          href="/events"
-          className={`${styles.link} ${isActive('/events') ? styles.activeLink : ''} ${!isSetupComplete ? styles.disabledLink : ''}`}
-          onClick={onLinkClick}
-        >
-          Events
-        </Link>
-
-        <Link
-          href={`/users/${session.user?.id}/registrations`}
-          className={`${styles.link} ${isActive(`/users/${session.user?.id}`) ? styles.activeLink : ''} ${!isSetupComplete ? styles.disabledLink : ''}`}
-          onClick={onLinkClick}
-        >
-          My Registrations
-        </Link>
-
-        <Link
-          href="/roster"
-          className={`${styles.link} ${isActive('/roster') ? styles.activeLink : ''} ${!isSetupComplete ? styles.disabledLink : ''}`}
-          onClick={onLinkClick}
-        >
-          Roster
-        </Link>
-
-        <Link
-          href="/expectations"
-          className={`${styles.link} ${isActive('/expectations') ? styles.activeLink : ''}`}
-          onClick={onLinkClick}
-        >
-          Team Expectations
-        </Link>
-
-        <Link
-          href="/profile"
-          className={`${styles.link} ${isActive('/profile') ? styles.activeLink : ''} ${!hasAcceptedExpectations ? styles.disabledLink : ''}`}
-          onClick={onLinkClick}
-        >
-          My Profile
-        </Link>
+        {isSetupComplete ? (
+          <MainSection userId={userId} checkActive={checkActive} onLinkClick={onLinkClick} />
+        ) : (
+          <OnboardingSection
+            status={onboardingStatus}
+            checkActive={checkActive}
+            onLinkClick={onLinkClick}
+          />
+        )}
 
         {session.user.role === 'ADMIN' && (
-          <Link
+          <NavLink
             href="/admin"
-            className={`${styles.link} ${isActive('/admin') ? styles.activeLink : ''}`}
+            label="Admin Panel"
+            isActive={checkActive('/admin')}
             onClick={onLinkClick}
-          >
-            Admin Panel
-          </Link>
+          />
         )}
       </nav>
 
       <div className={styles.footer}>
-        <div className={styles.userSection}>
-          <div className={styles.userInfo}>
-            {session.user?.image && (
-              <Image
-                src={session.user.image}
-                alt={session.user.name || 'User'}
-                width={32}
-                height={32}
-                className={styles.avatar}
-              />
-            )}
-            <span className={styles.welcome}>{session.user?.name}</span>
-          </div>
-          <button onClick={() => signOut({ callbackUrl: '/' })} className={styles.signOutButton}>
-            Sign Out
-          </button>
-        </div>
+        <UserSection user={session.user} />
       </div>
+    </div>
+  )
+}
+
+function MainSection({
+  userId,
+  checkActive,
+  onLinkClick,
+}: {
+  userId: string
+  checkActive: (p: string) => boolean
+  onLinkClick?: () => void
+}) {
+  return (
+    <>
+      <NavLink
+        href="/events"
+        label="Events"
+        isActive={checkActive('/events')}
+        onClick={onLinkClick}
+      />
+      <NavLink
+        href={`/users/${userId}/registrations`}
+        label="My Registrations"
+        isActive={checkActive(`/users/${userId}`)}
+        onClick={onLinkClick}
+      />
+      <NavLink
+        href="/roster"
+        label="Roster"
+        isActive={checkActive('/roster')}
+        onClick={onLinkClick}
+      />
+
+      <div className={styles.navDivider} />
+
+      <NavLink
+        href="/expectations"
+        label="Team Expectations"
+        isActive={checkActive('/expectations')}
+        onClick={onLinkClick}
+      />
+      <NavLink
+        href="/profile"
+        label="My Profile"
+        isActive={checkActive('/profile')}
+        onClick={onLinkClick}
+      />
+    </>
+  )
+}
+
+function OnboardingSection({
+  status,
+  checkActive,
+  onLinkClick,
+}: {
+  status: OnboardingStatus
+  checkActive: (p: string) => boolean
+  onLinkClick?: () => void
+}) {
+  const needsExpectations = status === OnboardingStatus.NO_EXPECTATIONS
+  const needsProfile = status === OnboardingStatus.NO_CUSTOMER_ID
+
+  return (
+    <>
+      <div className={styles.setupHeader}>Account Setup</div>
+
+      <NavLink
+        href="/expectations"
+        label="1. Team Expectations"
+        isActive={checkActive('/expectations')}
+        className={!needsExpectations ? styles.completedStep : styles.currentStep}
+        onClick={onLinkClick}
+      />
+
+      <NavLink
+        href="/profile"
+        label="2. Set Up Your Profile"
+        isActive={checkActive('/profile')}
+        className={needsProfile ? styles.currentStep : ''}
+        disabled={needsExpectations}
+        onClick={onLinkClick}
+      />
+    </>
+  )
+}
+
+function UserSection({ user }: { user: Session['user'] }) {
+  return (
+    <div className={styles.userSection}>
+      <div className={styles.userInfo}>
+        {user?.image && (
+          <Image
+            src={user.image}
+            alt={user.name || 'User'}
+            width={32}
+            height={32}
+            className={styles.avatar}
+          />
+        )}
+        <span className={styles.welcome}>{user?.name}</span>
+      </div>
+      <button onClick={() => signOut({ callbackUrl: '/' })} className={styles.signOutButton}>
+        Sign Out
+      </button>
     </div>
   )
 }

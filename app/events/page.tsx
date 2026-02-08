@@ -54,11 +54,9 @@ type EventWithRaces = Prisma.EventGetPayload<{
 
 export default async function EventsPage({ searchParams }: PageProps) {
   const session = await auth()
-  const params = await searchParams
+  if (!session) redirect('/login')
 
-  if (!session) {
-    redirect('/login')
-  }
+  const params = await searchParams
 
   const currentUser = await prisma.user.findUnique({
     where: { id: session.user.id },

@@ -3,13 +3,13 @@ import { redirect } from 'next/navigation'
 import ProfileForm from './ProfileForm'
 import styles from './profile.module.css'
 import UserRoleBadge from '@/components/UserRoleBadge'
-import { CURRENT_EXPECTATIONS_VERSION } from '@/lib/config'
-import { isMockUser } from '@/lib/utils'
 import DeleteAccountButton from './DeleteAccountButton'
 import prisma from '@/lib/prisma'
 import { Lock, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import LastSyncStatus from '@/components/LastSyncStatus'
+
+import { getOnboardingStatus, OnboardingStatus } from '@/lib/onboarding'
 
 export default async function ProfilePage() {
   const session = await auth()
@@ -30,17 +30,15 @@ export default async function ProfilePage() {
 
   if (!user) redirect('/login')
 
-  // Secondary server-side check
-  if (user.expectationsVersion < CURRENT_EXPECTATIONS_VERSION) {
-    redirect('/expectations')
-  }
+  // Use status for UI banners
+  const onboardingStatus = getOnboardingStatus(session)
 
   return (
     <div className={styles.container}>
       <h1 className={styles.title}>User Profile</h1>
       <LastSyncStatus className={styles.syncNote} />
 
-      {!user.iracingCustomerId && !isMockUser(user) && (
+      {onboardingStatus === OnboardingStatus.NO_CUSTOMER_ID && (
         <div className={styles.onboardingBanner}>
           <div className={styles.onboardingIcon}>!</div>
           <div className={styles.onboardingText}>

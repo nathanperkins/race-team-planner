@@ -1,6 +1,6 @@
 import type { NextAuthConfig } from 'next-auth'
 import Discord from 'next-auth/providers/discord'
-import { features } from '@/lib/config'
+import { features, SESSION_VERSION } from '@/lib/config'
 import { UserRole } from '@prisma/client'
 
 export const authConfig = {
@@ -38,30 +38,37 @@ export const authConfig = {
 
       return true
     },
-    async jwt({ token, user }) {
-      if (token.iracingCustomerId && typeof token.iracingCustomerId === 'string') {
-        const parsed = Number(token.iracingCustomerId)
-        token.iracingCustomerId = Number.isFinite(parsed) ? parsed : null
-      }
+    async jwt({ token, user, trigger, session }) {
+      // 1. Initial login: copy persistent fields to token
       if (user) {
         token.id = user.id
         token.role = user.role
-        token.iracingCustomerId = user.iracingCustomerId as number
+        token.iracingCustomerId = user.iracingCustomerId
         token.expectationsVersion = user.expectationsVersion
+        token.version = SESSION_VERSION
       }
+
+      // 2. Handle updates from useSession().update(data)
+      // This allows the Edge runtime (Middleware) to see new data immediately
+      if (trigger === 'update' && session) {
+        if (session.iracingCustomerId !== undefined) {
+          token.iracingCustomerId = session.iracingCustomerId
+        }
+        if (session.expectationsVersion !== undefined) {
+          token.expectationsVersion = session.expectationsVersion
+        }
+      }
+
       return token
     },
     async session({ session, token }) {
-      if (token.iracingCustomerId && typeof token.iracingCustomerId === 'string') {
-        const parsed = Number(token.iracingCustomerId)
-        token.iracingCustomerId = Number.isFinite(parsed) ? parsed : null
-      }
-
+      // Transfer fields from token to session object
       if (session.user) {
-        session.user.id = token.id as string
+        session.user.id = (token.id as string) || (token.sub as string)
         session.user.role = (token.role as UserRole) || UserRole.USER
         session.user.iracingCustomerId = token.iracingCustomerId as number
         session.user.expectationsVersion = (token.expectationsVersion as number) || 0
+        session.version = (token.version as number) || 0
       }
       return session
     },

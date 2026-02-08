@@ -115,7 +115,13 @@ export async function updateProfile(formData: FormData) {
 
     revalidatePath('/profile')
     revalidatePath('/roster')
-    return { success: true }
+    return {
+      success: true,
+      data: {
+        iracingCustomerId: updatedUser.iracingCustomerId,
+        expectationsVersion: updatedUser.expectationsVersion,
+      },
+    }
   } catch (error) {
     console.error('Update profile error:', error)
     const message = error instanceof Error ? error.message : 'Failed to update profile'

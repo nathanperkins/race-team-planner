@@ -82,6 +82,10 @@ For full workflow details: `bd prime`
 - Create new issues with `bd create` when you discover tasks.
 - Use descriptive titles and set appropriate priority/type.
 - Always `bd sync` before ending session.
-- Update AGENTS.md with any information that would have made this session more efficient and check it with the user.
+
+### Project-Specific Architecture
+
+- **Auth & Middleware**: This project uses **`proxy.ts`** at the root instead of `middleware.ts`. It handles base authentication and enforces the onboarding tunnel.
+- **Onboarding Enforcement**: Redirection logic is centralized in **`proxy.ts`**. To prevent the "Stale Edge Cookie" issue after saving profile data, the client-side forms call `update(data)` with the new values. This refreshes the Edge cookie immediately so the Middleware sees the updated status without needing a database check.
 
 <!-- end-bv-agent-instructions -->

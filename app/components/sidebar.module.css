@@ -267,3 +267,56 @@
   pointer-events: none !important;
   user-select: none !important;
 }
+
+.navDivider {
+  height: 1px;
+  background-color: #e5e5e5;
+  margin: 1rem 0;
+  opacity: 0.5;
+}
+
+.setupHeader {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #999;
+  font-weight: 600;
+  margin: 1rem 1rem 0.5rem 1rem;
+}
+
+.currentStep {
+  border-left: 3px solid var(--primary-color, #5865f2);
+  border-radius: 0 0.5rem 0.5rem 0;
+  background-color: rgba(88, 101, 242, 0.05);
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.completedStep {
+  color: #22c55e;
+  opacity: 0.8;
+}
+
+.setupDisabled {
+  opacity: 0.3;
+  pointer-events: none;
+  cursor: default;
+}
+
+@media (prefers-color-scheme: dark) {
+  .navDivider {
+    background-color: #333;
+  }
+
+  .setupHeader {
+    color: #666;
+  }
+
+  .currentStep {
+    background-color: rgba(88, 101, 242, 0.1);
+  }
+
+  .completedStep {
+    color: #4ade80;
+  }
+}

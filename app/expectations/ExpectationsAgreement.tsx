@@ -30,9 +30,10 @@ export default function ExpectationsAgreement() {
         onClick={() =>
           startTransition(async () => {
             const result = await agreeToExpectations()
-            if (result.success) {
-              await update({ refresh: true }) // Force trigger: 'update'
-              // Hard reload to ensure middleware sees the new cookie
+            if (result.success && result.data) {
+              // Push the new data directly to the Edge cookie.
+              await update({ expectationsVersion: result.data.expectationsVersion })
+              // Now navigate - the cookie is already updated
               window.location.href = '/profile'
             }
           })

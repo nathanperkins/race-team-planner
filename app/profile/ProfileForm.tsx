@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { updateProfile } from '@/app/actions/update-profile'
 import { useSession } from 'next-auth/react'
 import { Lock, Loader2 } from 'lucide-react'
+import { getOnboardingStatus, OnboardingStatus } from '@/lib/onboarding'
 import styles from './profile.module.css'
 
 interface Props {
@@ -14,11 +15,14 @@ interface Props {
 }
 
 export default function ProfileForm({ initialCustomerId, initialIracingName }: Props) {
-  const { update } = useSession()
+  const { data: session, update } = useSession()
   const router = useRouter()
   const [customerId, setCustomerId] = useState(initialCustomerId)
   const [isPending, startTransition] = useTransition()
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // Determine if this is an onboarding flow (user doesn't have a customer ID yet)
+  const isOnboarding = getOnboardingStatus(session) === OnboardingStatus.NO_CUSTOMER_ID
 
   const handleSubmit = async (formData: FormData) => {
     setMessage(null)
@@ -26,9 +30,23 @@ export default function ProfileForm({ initialCustomerId, initialIracingName }: P
     startTransition(async () => {
       try {
         const result = await updateProfile(formData)
-        if (result.success) {
-          await update() // Refresh the session JWT
-          router.refresh() // Refresh the server components
+        if (result.success && result.data) {
+          if (isOnboarding) {
+            // Push the new data directly to the Edge cookie.
+            // This is matched by the update handler in auth.config.ts.
+            await update({
+              iracingCustomerId: result.data.iracingCustomerId,
+              expectationsVersion: result.data.expectationsVersion,
+            })
+            // Hard navigate to events - because the cookie is fresh,
+            // the proxy.ts middleware will allow the request.
+            window.location.href = '/events'
+          } else {
+            router.refresh()
+            setMessage({ type: 'success', text: 'Profile updated successfully' })
+          }
+        } else if (result.success) {
+          router.refresh()
           setMessage({ type: 'success', text: 'Profile updated successfully' })
         } else {
           setMessage({ type: 'error', text: result.error || 'Failed to update' })

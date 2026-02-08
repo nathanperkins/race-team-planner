@@ -8,7 +8,7 @@ import ExpectationsAgreed from './ExpectationsAgreed'
 
 export default async function ExpectationsPage() {
   const session = await auth()
-  if (!session) redirect('/login')
+  if (!session?.user?.id) redirect('/login')
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
