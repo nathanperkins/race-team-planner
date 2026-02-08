@@ -30,6 +30,12 @@ export function shouldRefreshUser(token: JWT, trigger?: string): boolean {
   // 4. Refresh if iracingCustomerId is missing (may have just been saved)
   if (!token.iracingCustomerId) return true
 
+  // 5. Periodic Sync: Refresh if the last DB check was more than 5 minutes ago
+  // This catches role changes made by admins or Discord syncs
+  const REFRESH_INTERVAL = 5 * 60 * 1000 // 5 minutes
+  const lastChecked = (token.lastChecked as number) || 0
+  if (Date.now() - lastChecked > REFRESH_INTERVAL) return true
+
   return false
 }
 
