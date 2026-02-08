@@ -722,527 +722,547 @@ export async function updateRaceTeamSettings(formData: FormData) {
 }
 
 export async function saveRaceEdits(formData: FormData) {
-  const session = await auth()
-  if (!session || !session.user?.id) {
-    return { message: 'Unauthorized' }
-  }
-
-  const raceId = formData.get('raceId') as string
-  const rawMaxDrivers = (formData.get('maxDriversPerTeam') as string | null) ?? ''
-  const rawStrategy = (formData.get('teamAssignmentStrategy') as string | null) ?? ''
-  const rawApplyRebalance = (formData.get('applyRebalance') as string | null) ?? 'false'
-  const rawUpdates = (formData.get('registrationUpdates') as string | null) ?? '[]'
-  const rawNewTeams = (formData.get('newTeams') as string | null) ?? '[]'
-  const rawPendingAdditions = (formData.get('pendingAdditions') as string | null) ?? '[]'
-  const rawPendingDrops = (formData.get('pendingDrops') as string | null) ?? '[]'
-  const rawTeamNameOverrides = (formData.get('teamNameOverrides') as string | null) ?? '{}'
-
-  if (!raceId) {
-    return { message: 'Race ID required' }
-  }
-
-  const race = await prisma.race.findUnique({
-    where: { id: raceId },
-    select: {
-      startTime: true,
-      endTime: true,
-      eventId: true,
-      maxDriversPerTeam: true,
-      teamsAssigned: true,
-      discordTeamsThreadId: true,
-      discordTeamsSnapshot: true,
-      discordTeamThreads: true,
-    },
-  })
-
-  if (!race) return { message: 'Race not found' }
-  if (new Date() > race.endTime) {
-    return { message: 'Cannot update a completed race' }
-  }
-
-  let maxDriversPerTeam: number | null = null
-  const trimmed = rawMaxDrivers.trim()
-  if (trimmed.length > 0) {
-    const parsed = Number(trimmed)
-    if (!Number.isFinite(parsed) || parsed < 1) {
-      return { message: 'Max drivers must be a positive number' }
+  try {
+    const session = await auth()
+    if (!session || !session.user?.id) {
+      return { message: 'Unauthorized' }
     }
-    maxDriversPerTeam = Math.floor(parsed)
-  }
+    const raceId = formData.get('raceId') as string
+    const rawMaxDrivers = (formData.get('maxDriversPerTeam') as string | null) ?? ''
+    const rawStrategy = (formData.get('teamAssignmentStrategy') as string | null) ?? ''
+    const rawApplyRebalance = (formData.get('applyRebalance') as string | null) ?? 'false'
+    const rawUpdates = (formData.get('registrationUpdates') as string | null) ?? '[]'
+    const rawNewTeams = (formData.get('newTeams') as string | null) ?? '[]'
+    const rawPendingAdditions = (formData.get('pendingAdditions') as string | null) ?? '[]'
+    const rawPendingDrops = (formData.get('pendingDrops') as string | null) ?? '[]'
+    const rawTeamNameOverrides = (formData.get('teamNameOverrides') as string | null) ?? '{}'
 
-  const teamAssignmentStrategy =
-    rawStrategy === TeamAssignmentStrategy.BALANCED_IRATING
-      ? TeamAssignmentStrategy.BALANCED_IRATING
-      : TeamAssignmentStrategy.BALANCED_IRATING
+    if (!raceId) {
+      return { message: 'Race ID required' }
+    }
 
-  let updates: Array<{ id: string; carClassId: string; teamId: string | null }> = []
-  try {
-    updates = JSON.parse(rawUpdates) as Array<{
-      id: string
-      carClassId: string
-      teamId: string | null
-    }>
-  } catch {
-    return { message: 'Invalid registration updates' }
-  }
+    const race = await prisma.race.findUnique({
+      where: { id: raceId },
+      select: {
+        startTime: true,
+        endTime: true,
+        eventId: true,
+        maxDriversPerTeam: true,
+        teamsAssigned: true,
+        discordTeamsThreadId: true,
+        discordTeamsSnapshot: true,
+        discordTeamThreads: true,
+      },
+    })
 
-  let newTeams: Array<{ id: string; name: string }> = []
-  try {
-    newTeams = JSON.parse(rawNewTeams) as Array<{ id: string; name: string }>
-  } catch {
-    return { message: 'Invalid team updates' }
-  }
+    if (!race) return { message: 'Race not found' }
+    if (new Date() > race.endTime) {
+      return { message: 'Cannot update a completed race' }
+    }
 
-  let teamNameOverrides: Record<string, string> = {}
-  try {
-    teamNameOverrides = JSON.parse(rawTeamNameOverrides) as Record<string, string>
-  } catch {
-    return { message: 'Invalid team name overrides' }
-  }
+    let maxDriversPerTeam: number | null = null
+    const trimmed = rawMaxDrivers.trim()
+    if (trimmed.length > 0) {
+      const parsed = Number(trimmed)
+      if (!Number.isFinite(parsed) || parsed < 1) {
+        return { message: 'Max drivers must be a positive number' }
+      }
+      maxDriversPerTeam = Math.floor(parsed)
+    }
 
-  let pendingAdditions: Array<{
-    tempId?: string
-    userId?: string | null
-    manualDriverId?: string | null
-    carClassId: string
-    teamId: string | null
-  }> = []
-  try {
-    pendingAdditions = JSON.parse(rawPendingAdditions) as Array<{
+    const teamAssignmentStrategy =
+      rawStrategy === TeamAssignmentStrategy.BALANCED_IRATING
+        ? TeamAssignmentStrategy.BALANCED_IRATING
+        : TeamAssignmentStrategy.BALANCED_IRATING
+
+    let updates: Array<{ id: string; carClassId: string; teamId: string | null }> = []
+    try {
+      updates = JSON.parse(rawUpdates) as Array<{
+        id: string
+        carClassId: string
+        teamId: string | null
+      }>
+    } catch {
+      return { message: 'Invalid registration updates' }
+    }
+
+    let newTeams: Array<{ id: string; name: string }> = []
+    try {
+      newTeams = JSON.parse(rawNewTeams) as Array<{ id: string; name: string }>
+    } catch {
+      return { message: 'Invalid team updates' }
+    }
+
+    let teamNameOverrides: Record<string, string> = {}
+    try {
+      teamNameOverrides = JSON.parse(rawTeamNameOverrides) as Record<string, string>
+    } catch {
+      return { message: 'Invalid team name overrides' }
+    }
+
+    let pendingAdditions: Array<{
       tempId?: string
       userId?: string | null
       manualDriverId?: string | null
       carClassId: string
       teamId: string | null
-    }>
-  } catch {
-    return { message: 'Invalid pending additions' }
-  }
-
-  let pendingDrops: string[] = []
-  try {
-    pendingDrops = JSON.parse(rawPendingDrops) as string[]
-  } catch {
-    return { message: 'Invalid pending drops' }
-  }
-
-  const isAdmin = session.user.role === 'ADMIN'
-
-  const tempTeamMap = new Map<string, string>()
-  const renameUpdates: Array<{ id: string; name: string }> = []
-  if (isAdmin && (newTeams.length > 0 || Object.keys(teamNameOverrides).length > 0)) {
-    const existingTeams = await prisma.team.findMany({
-      select: { id: true, name: true, iracingTeamId: true },
-    })
-    const existingTeamNames = new Set(existingTeams.map((team) => team.name))
-    const teamById = new Map(existingTeams.map((team) => [team.id, team]))
-
-    for (const [teamId, rawName] of Object.entries(teamNameOverrides)) {
-      const current = teamById.get(teamId)
-      if (!current) continue
-      let name = rawName.trim() || 'Team'
-      if (name === current.name) continue
-      existingTeamNames.delete(current.name)
-      if (existingTeamNames.has(name)) {
-        let suffix = 2
-        while (existingTeamNames.has(`${name} ${suffix}`)) {
-          suffix += 1
-        }
-        name = `${name} ${suffix}`
-      }
-      existingTeamNames.add(name)
-      renameUpdates.push({ id: teamId, name })
+    }> = []
+    try {
+      pendingAdditions = JSON.parse(rawPendingAdditions) as Array<{
+        tempId?: string
+        userId?: string | null
+        manualDriverId?: string | null
+        carClassId: string
+        teamId: string | null
+      }>
+    } catch {
+      return { message: 'Invalid pending additions' }
     }
-    const existingTeamIds = new Set(
-      existingTeams
-        .map((team) => team.iracingTeamId)
-        .filter((value): value is number => typeof value === 'number')
-    )
-    let baseId = -Math.floor(Date.now() / 1000)
 
-    for (const team of newTeams) {
-      let name = team.name.trim() || 'Team'
-      if (existingTeamNames.has(name)) {
-        let suffix = 2
-        while (existingTeamNames.has(`${name} ${suffix}`)) {
-          suffix += 1
-        }
-        name = `${name} ${suffix}`
-      }
-      existingTeamNames.add(name)
+    let pendingDrops: string[] = []
+    try {
+      pendingDrops = JSON.parse(rawPendingDrops) as string[]
+    } catch {
+      return { message: 'Invalid pending drops' }
+    }
 
-      while (existingTeamIds.has(baseId)) {
-        baseId -= 1
-      }
-      const iracingTeamId = baseId
-      baseId -= 1
-      existingTeamIds.add(iracingTeamId)
+    const isAdmin = session.user.role === 'ADMIN'
 
-      const created = await prisma.team.create({
-        data: {
-          name,
-          iracingTeamId,
-        },
-        select: { id: true },
+    const tempTeamMap = new Map<string, string>()
+    const renameUpdates: Array<{ id: string; name: string }> = []
+    if (isAdmin && (newTeams.length > 0 || Object.keys(teamNameOverrides).length > 0)) {
+      const existingTeams = await prisma.team.findMany({
+        select: { id: true, name: true, iracingTeamId: true },
       })
-      tempTeamMap.set(team.id, created.id)
-    }
-  }
+      const existingTeamNames = new Set(existingTeams.map((team) => team.name))
+      const teamById = new Map(existingTeams.map((team) => [team.id, team]))
 
-  if (isAdmin && renameUpdates.length > 0) {
-    await prisma.$transaction(
-      renameUpdates.map((update) =>
-        prisma.team.update({
-          where: { id: update.id },
-          data: { name: update.name },
-        })
+      for (const [teamId, rawName] of Object.entries(teamNameOverrides)) {
+        const current = teamById.get(teamId)
+        if (!current) continue
+        let name = rawName.trim() || 'Team'
+        if (name === current.name) continue
+        existingTeamNames.delete(current.name)
+        if (existingTeamNames.has(name)) {
+          let suffix = 2
+          while (existingTeamNames.has(`${name} ${suffix}`)) {
+            suffix += 1
+          }
+          name = `${name} ${suffix}`
+        }
+        existingTeamNames.add(name)
+        renameUpdates.push({ id: teamId, name })
+      }
+      const existingTeamIds = new Set(
+        existingTeams
+          .map((team) => team.iracingTeamId)
+          .filter((value): value is number => typeof value === 'number')
       )
-    )
-  }
+      let baseId = -Math.floor(Date.now() / 1000)
 
-  if (isAdmin && pendingDrops.length > 0) {
-    const regsToDrop = await prisma.registration.findMany({
-      where: { id: { in: pendingDrops } },
-      select: { id: true, userId: true, raceId: true },
-    })
-    const tx: Prisma.PrismaPromise<unknown>[] = []
-    for (const reg of regsToDrop) {
-      if (reg.raceId !== raceId) continue
-      tx.push(prisma.registration.delete({ where: { id: reg.id } }))
-    }
-    if (tx.length > 0) {
-      await prisma.$transaction(tx)
-    }
-  }
+      for (const team of newTeams) {
+        let name = team.name.trim() || 'Team'
+        if (existingTeamNames.has(name)) {
+          let suffix = 2
+          while (existingTeamNames.has(`${name} ${suffix}`)) {
+            suffix += 1
+          }
+          name = `${name} ${suffix}`
+        }
+        existingTeamNames.add(name)
 
-  if (isAdmin && pendingAdditions.length > 0) {
-    for (const addition of pendingAdditions) {
-      if (!addition.carClassId) continue
-      const resolvedTeamId = addition.teamId
-        ? (tempTeamMap.get(addition.teamId) ?? addition.teamId)
-        : null
+        while (existingTeamIds.has(baseId)) {
+          baseId -= 1
+        }
+        const iracingTeamId = baseId
+        baseId -= 1
+        existingTeamIds.add(iracingTeamId)
 
-      if (addition.userId) {
-        const existing = await prisma.registration.findUnique({
-          where: { userId_raceId: { userId: addition.userId, raceId } },
+        const created = await prisma.team.create({
+          data: {
+            name,
+            iracingTeamId,
+          },
           select: { id: true },
         })
-        if (existing) {
-          await prisma.registration.update({
-            where: { id: existing.id },
-            data: { carClassId: addition.carClassId, teamId: resolvedTeamId },
-          })
-        } else {
-          await prisma.registration.create({
-            data: {
-              userId: addition.userId,
-              raceId,
-              carClassId: addition.carClassId,
-              teamId: resolvedTeamId,
-            },
-          })
-        }
-      } else if (addition.manualDriverId) {
-        const existing = await prisma.registration.findUnique({
-          where: { manualDriverId_raceId: { manualDriverId: addition.manualDriverId, raceId } },
-          select: { id: true },
-        })
-        if (existing) {
-          await prisma.registration.update({
-            where: { id: existing.id },
-            data: { carClassId: addition.carClassId, teamId: resolvedTeamId },
-          })
-        } else {
-          await prisma.registration.create({
-            data: {
-              manualDriverId: addition.manualDriverId,
-              raceId,
-              carClassId: addition.carClassId,
-              teamId: resolvedTeamId,
-            },
-          })
-        }
+        tempTeamMap.set(team.id, created.id)
       }
     }
-  }
 
-  if (updates.length > 0) {
-    const regs = await prisma.registration.findMany({
-      where: { id: { in: updates.map((u) => u.id) } },
-      select: { id: true, userId: true, raceId: true },
-    })
-    const regMap = new Map(regs.map((reg) => [reg.id, reg]))
-
-    const tx: Prisma.PrismaPromise<unknown>[] = []
-    for (const update of updates) {
-      const reg = regMap.get(update.id)
-      if (!reg) continue
-      if (reg.raceId !== raceId) continue
-      if (!isAdmin && reg.userId !== session.user.id) continue
-
-      const resolvedTeamId = update.teamId
-        ? (tempTeamMap.get(update.teamId) ?? update.teamId)
-        : null
-
-      tx.push(
-        prisma.registration.update({
-          where: { id: update.id },
-          data: {
-            carClassId: update.carClassId,
-            teamId: resolvedTeamId,
-          },
-        })
+    if (isAdmin && renameUpdates.length > 0) {
+      await prisma.$transaction(
+        renameUpdates.map((update) =>
+          prisma.team.update({
+            where: { id: update.id },
+            data: { name: update.name },
+          })
+        )
       )
     }
 
-    if (tx.length > 0) {
-      await prisma.$transaction(tx)
+    if (isAdmin && pendingDrops.length > 0) {
+      const regsToDrop = await prisma.registration.findMany({
+        where: { id: { in: pendingDrops } },
+        select: { id: true, userId: true, raceId: true },
+      })
+      const tx: Prisma.PrismaPromise<unknown>[] = []
+      for (const reg of regsToDrop) {
+        if (reg.raceId !== raceId) continue
+        tx.push(prisma.registration.delete({ where: { id: reg.id } }))
+      }
+      if (tx.length > 0) {
+        await prisma.$transaction(tx)
+      }
     }
-  }
 
-  let teamsAssignedValue = race.teamsAssigned ?? false
-  if (isAdmin) {
-    const hasTeams = await prisma.registration.findFirst({
-      where: { raceId, teamId: { not: null } },
-      select: { id: true },
-    })
-    teamsAssignedValue = !!hasTeams
-    await prisma.race.update({
-      where: { id: raceId },
-      data: { maxDriversPerTeam, teamAssignmentStrategy, teamsAssigned: teamsAssignedValue },
-    })
+    if (isAdmin && pendingAdditions.length > 0) {
+      for (const addition of pendingAdditions) {
+        if (!addition.carClassId) continue
+        const resolvedTeamId = addition.teamId
+          ? (tempTeamMap.get(addition.teamId) ?? addition.teamId)
+          : null
 
-    if (teamsAssignedValue) {
-      try {
-        const raceWithEvent = await prisma.race.findUnique({
-          where: { id: raceId },
-          select: {
-            startTime: true,
-            event: { select: { id: true, name: true } },
-          },
-        })
-        const registrations = await prisma.registration.findMany({
-          where: { raceId },
-          include: {
-            team: { select: { name: true, id: true } },
-            carClass: { select: { name: true, shortName: true } },
-            user: {
-              select: {
-                name: true,
-                accounts: { where: { provider: 'discord' }, select: { providerAccountId: true } },
-                racerStats: { select: { categoryId: true, category: true, irating: true } },
-              },
-            },
-            manualDriver: { select: { name: true, irating: true } },
-          },
-        })
-
-        if (raceWithEvent?.event) {
-          const teamsMap = new Map<
-            string,
-            {
-              name: string
-              members: Array<{
-                name: string
-                carClass: string
-                discordId?: string
-                registrationId?: string
-                rating: number
-              }>
-              carClassName?: string
-              avgSof?: number
-            }
-          >()
-          const unassigned: Array<{
-            name: string
-            carClass: string
-            discordId?: string
-            registrationId?: string
-            rating: number
-          }> = []
-          const currentSnapshot: Record<string, string | null> = {}
-
-          const getPreferredRating = (
-            stats:
-              | Array<{ categoryId: number; category: string; irating: number }>
-              | null
-              | undefined
-          ) => {
-            if (!stats || stats.length === 0) return null
-            const preferred =
-              stats.find((s) => s.categoryId === 5) ||
-              stats.find((s) => s.category?.toLowerCase() === 'sports car') ||
-              stats[0]
-            return preferred?.irating ?? null
-          }
-
-          registrations.forEach((reg) => {
-            const driverName = reg.user?.name || reg.manualDriver?.name || 'Driver'
-            const carClassName = reg.carClass.shortName || reg.carClass.name
-            const discordId = reg.user?.accounts?.[0]?.providerAccountId
-            const rating =
-              getPreferredRating(
-                (
-                  reg.user as {
-                    racerStats?: Array<{ categoryId: number; category: string; irating: number }>
-                  } | null
-                )?.racerStats
-              ) ??
-              reg.manualDriver?.irating ??
-              0
-            const teamId = reg.teamId ?? reg.team?.id ?? null
-            currentSnapshot[reg.id] = teamId
-            if (reg.teamId && reg.team) {
-              const existing = teamsMap.get(reg.teamId) || {
-                name: reg.team.name,
-                members: [],
-              }
-              existing.members.push({
-                name: driverName,
-                carClass: carClassName,
-                discordId,
-                registrationId: reg.id,
-                rating,
-              })
-              if (!existing.carClassName) {
-                existing.carClassName = carClassName
-              }
-              teamsMap.set(reg.teamId, existing)
-            } else {
-              unassigned.push({
-                name: driverName,
-                carClass: carClassName,
-                discordId,
-                registrationId: reg.id,
-                rating,
-              })
-            }
+        if (addition.userId) {
+          const existing = await prisma.registration.findUnique({
+            where: { userId_raceId: { userId: addition.userId, raceId } },
+            select: { id: true },
           })
-
-          const teamThreads = (race.discordTeamThreads as Record<string, string> | null) ?? {}
-          const guildId = process.env.DISCORD_GUILD_ID
-          const { addUsersToThread, buildTeamThreadLink, createTeamThread } =
-            await import('@/lib/discord')
-
-          for (const [teamId, team] of teamsMap.entries()) {
-            const memberDiscordIds = team.members
-              .map((member) => member.discordId)
-              .filter((id): id is string => Boolean(id))
-            if (teamThreads[teamId]) continue
-            try {
-              const threadId = await createTeamThread({
-                teamName: team.name,
-                eventName: raceWithEvent.event.name,
-                raceStartTime: raceWithEvent.startTime,
-                memberDiscordIds,
-              })
-              if (threadId) {
-                teamThreads[teamId] = threadId
-              }
-            } catch (error) {
-              console.error('Failed to create team thread:', error)
-            }
-          }
-
-          for (const [teamId, team] of teamsMap.entries()) {
-            const threadId = teamThreads[teamId]
-            if (!threadId) continue
-            const memberDiscordIds = team.members
-              .map((member) => member.discordId)
-              .filter((id): id is string => Boolean(id))
-            if (memberDiscordIds.length === 0) continue
-            await addUsersToThread(threadId, memberDiscordIds)
-          }
-
-          const teamsList = Array.from(teamsMap.entries()).map(([teamId, team]) => {
-            const total = team.members.reduce((sum, member) => sum + member.rating, 0)
-            const avgSof = team.members.length ? Math.round(total / team.members.length) : 0
-            const carClassName = team.carClassName || team.members[0]?.carClass
-            const threadId = teamThreads[teamId]
-            const threadUrl =
-              guildId && threadId ? buildTeamThreadLink({ guildId, threadId }) : undefined
-            return { ...team, avgSof, carClassName, threadUrl }
-          })
-          teamsList.sort((a, b) => a.name.localeCompare(b.name))
-          teamsList.forEach((team) => team.members.sort((a, b) => a.name.localeCompare(b.name)))
-          unassigned.sort((a, b) => a.name.localeCompare(b.name))
-
-          const previousSnapshot =
-            (race.discordTeamsSnapshot as Record<string, string | null> | null) ?? null
-          const mentionRegistrationIds = new Set<string>()
-          if (!previousSnapshot) {
-            registrations.forEach((reg) => {
-              const discordId = reg.user?.accounts?.[0]?.providerAccountId
-              if (discordId) {
-                mentionRegistrationIds.add(reg.id)
-              }
+          if (existing) {
+            await prisma.registration.update({
+              where: { id: existing.id },
+              data: { carClassId: addition.carClassId, teamId: resolvedTeamId },
             })
           } else {
-            Object.entries(currentSnapshot).forEach(([regId, teamId]) => {
-              if (!(regId in previousSnapshot)) {
-                mentionRegistrationIds.add(regId)
-                return
-              }
-              if (previousSnapshot[regId] !== teamId) {
-                mentionRegistrationIds.add(regId)
-              }
-            })
-          }
-
-          const { sendTeamsAssignedNotification } = await import('@/lib/discord')
-          const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
-          const notification = await sendTeamsAssignedNotification({
-            eventName: raceWithEvent.event.name,
-            raceStartTime: raceWithEvent.startTime,
-            raceUrl: `${baseUrl}/events/${raceWithEvent.event.id}`,
-            teams: teamsList,
-            unassigned: unassigned.length > 0 ? unassigned : undefined,
-            threadId: race.discordTeamsThreadId,
-            mentionRegistrationIds: Array.from(mentionRegistrationIds),
-          })
-
-          if (notification.ok) {
-            await prisma.race.update({
-              where: { id: raceId },
+            await prisma.registration.create({
               data: {
-                discordTeamsThreadId: notification.threadId ?? race.discordTeamsThreadId ?? null,
-                discordTeamsSnapshot: currentSnapshot,
-                discordTeamThreads: teamThreads,
+                userId: addition.userId,
+                raceId,
+                carClassId: addition.carClassId,
+                teamId: resolvedTeamId,
               },
             })
-          } else if (notification.threadId && notification.threadId !== race.discordTeamsThreadId) {
-            await prisma.race.update({
-              where: { id: raceId },
-              data: { discordTeamsThreadId: notification.threadId },
+          }
+        } else if (addition.manualDriverId) {
+          const existing = await prisma.registration.findUnique({
+            where: { manualDriverId_raceId: { manualDriverId: addition.manualDriverId, raceId } },
+            select: { id: true },
+          })
+          if (existing) {
+            await prisma.registration.update({
+              where: { id: existing.id },
+              data: { carClassId: addition.carClassId, teamId: resolvedTeamId },
+            })
+          } else {
+            await prisma.registration.create({
+              data: {
+                manualDriverId: addition.manualDriverId,
+                raceId,
+                carClassId: addition.carClassId,
+                teamId: resolvedTeamId,
+              },
             })
           }
         }
-      } catch (notificationError) {
-        console.error('Failed to send teams assigned notification:', notificationError)
       }
     }
-  }
 
-  const resolvedMaxDrivers =
-    maxDriversPerTeam ??
-    getAutoMaxDriversPerTeam(getRaceDurationMinutes(race.startTime, race.endTime))
+    if (updates.length > 0) {
+      const regs = await prisma.registration.findMany({
+        where: { id: { in: updates.map((u) => u.id) } },
+        select: { id: true, userId: true, raceId: true },
+      })
+      const regMap = new Map(regs.map((reg) => [reg.id, reg]))
 
-  if (isAdmin && rawApplyRebalance === 'true' && resolvedMaxDrivers && resolvedMaxDrivers > 0) {
-    const classIds = await prisma.registration.findMany({
-      where: { raceId },
-      select: { carClassId: true },
-      distinct: ['carClassId'],
-    })
+      const tx: Prisma.PrismaPromise<unknown>[] = []
+      for (const update of updates) {
+        const reg = regMap.get(update.id)
+        if (!reg) continue
+        if (reg.raceId !== raceId) continue
+        if (!isAdmin && reg.userId !== session.user.id) continue
 
-    for (const { carClassId } of classIds) {
-      await rebalanceTeamsForClass(raceId, carClassId, resolvedMaxDrivers, teamAssignmentStrategy)
+        const resolvedTeamId = update.teamId
+          ? (tempTeamMap.get(update.teamId) ?? update.teamId)
+          : null
+
+        tx.push(
+          prisma.registration.update({
+            where: { id: update.id },
+            data: {
+              carClassId: update.carClassId,
+              teamId: resolvedTeamId,
+            },
+          })
+        )
+      }
+
+      if (tx.length > 0) {
+        await prisma.$transaction(tx)
+      }
     }
+
+    let teamsAssignedValue = race.teamsAssigned ?? false
+    if (isAdmin) {
+      const hasTeams = await prisma.registration.findFirst({
+        where: { raceId, teamId: { not: null } },
+        select: { id: true },
+      })
+      teamsAssignedValue = !!hasTeams
+      await prisma.race.update({
+        where: { id: raceId },
+        data: { maxDriversPerTeam, teamAssignmentStrategy, teamsAssigned: teamsAssignedValue },
+      })
+
+      if (teamsAssignedValue) {
+        try {
+          const raceWithEvent = await prisma.race.findUnique({
+            where: { id: raceId },
+            select: {
+              startTime: true,
+              event: { select: { id: true, name: true } },
+            },
+          })
+          const registrations = await prisma.registration.findMany({
+            where: { raceId },
+            include: {
+              team: { select: { name: true, id: true } },
+              carClass: { select: { name: true, shortName: true } },
+              user: {
+                select: {
+                  name: true,
+                  accounts: { where: { provider: 'discord' }, select: { providerAccountId: true } },
+                  racerStats: { select: { categoryId: true, category: true, irating: true } },
+                },
+              },
+              manualDriver: { select: { name: true, irating: true } },
+            },
+          })
+
+          if (raceWithEvent?.event) {
+            const teamsMap = new Map<
+              string,
+              {
+                name: string
+                members: Array<{
+                  name: string
+                  carClass: string
+                  discordId?: string
+                  registrationId?: string
+                  rating: number
+                }>
+                carClassName?: string
+                avgSof?: number
+              }
+            >()
+            const unassigned: Array<{
+              name: string
+              carClass: string
+              discordId?: string
+              registrationId?: string
+              rating: number
+            }> = []
+            const currentSnapshot: Record<string, string | null> = {}
+
+            const getPreferredRating = (
+              stats:
+                | Array<{ categoryId: number; category: string; irating: number }>
+                | null
+                | undefined
+            ) => {
+              if (!stats || stats.length === 0) return null
+              const preferred =
+                stats.find((s) => s.categoryId === 5) ||
+                stats.find((s) => s.category?.toLowerCase() === 'sports car') ||
+                stats[0]
+              return preferred?.irating ?? null
+            }
+
+            registrations.forEach((reg) => {
+              const driverName = reg.user?.name || reg.manualDriver?.name || 'Driver'
+              const carClassName = reg.carClass.shortName || reg.carClass.name
+              const discordId = reg.user?.accounts?.[0]?.providerAccountId
+              const rating =
+                getPreferredRating(
+                  (
+                    reg.user as {
+                      racerStats?: Array<{ categoryId: number; category: string; irating: number }>
+                    } | null
+                  )?.racerStats
+                ) ??
+                reg.manualDriver?.irating ??
+                0
+              const teamId = reg.teamId ?? reg.team?.id ?? null
+              currentSnapshot[reg.id] = teamId
+              if (reg.teamId && reg.team) {
+                const existing = teamsMap.get(reg.teamId) || {
+                  name: reg.team.name,
+                  members: [],
+                }
+                existing.members.push({
+                  name: driverName,
+                  carClass: carClassName,
+                  discordId,
+                  registrationId: reg.id,
+                  rating,
+                })
+                if (!existing.carClassName) {
+                  existing.carClassName = carClassName
+                }
+                teamsMap.set(reg.teamId, existing)
+              } else {
+                unassigned.push({
+                  name: driverName,
+                  carClass: carClassName,
+                  discordId,
+                  registrationId: reg.id,
+                  rating,
+                })
+              }
+            })
+
+            const teamThreads = (race.discordTeamThreads as Record<string, string> | null) ?? {}
+            const guildId = process.env.DISCORD_GUILD_ID
+            const { addUsersToThread, buildTeamThreadLink, createTeamThread } =
+              await import('@/lib/discord')
+
+            for (const [teamId, team] of teamsMap.entries()) {
+              const memberDiscordIds = team.members
+                .map((member) => member.discordId)
+                .filter((id): id is string => Boolean(id))
+              if (teamThreads[teamId]) continue
+              try {
+                const threadId = await createTeamThread({
+                  teamName: team.name,
+                  eventName: raceWithEvent.event.name,
+                  raceStartTime: raceWithEvent.startTime,
+                  memberDiscordIds,
+                })
+                if (threadId) {
+                  teamThreads[teamId] = threadId
+                }
+              } catch (error) {
+                console.error('Failed to create team thread:', error)
+              }
+            }
+
+            for (const [teamId, team] of teamsMap.entries()) {
+              const threadId = teamThreads[teamId]
+              if (!threadId) continue
+              const memberDiscordIds = team.members
+                .map((member) => member.discordId)
+                .filter((id): id is string => Boolean(id))
+              if (memberDiscordIds.length === 0) continue
+              await addUsersToThread(threadId, memberDiscordIds)
+            }
+
+            const teamsList = Array.from(teamsMap.entries()).map(([teamId, team]) => {
+              const total = team.members.reduce((sum, member) => sum + member.rating, 0)
+              const avgSof = team.members.length ? Math.round(total / team.members.length) : 0
+              const carClassName = team.carClassName || team.members[0]?.carClass
+              const threadId = teamThreads[teamId]
+              const threadUrl =
+                guildId && threadId ? buildTeamThreadLink({ guildId, threadId }) : undefined
+              return { ...team, avgSof, carClassName, threadUrl }
+            })
+            teamsList.sort((a, b) => a.name.localeCompare(b.name))
+            teamsList.forEach((team) => team.members.sort((a, b) => a.name.localeCompare(b.name)))
+            unassigned.sort((a, b) => a.name.localeCompare(b.name))
+
+            const previousSnapshot =
+              (race.discordTeamsSnapshot as Record<string, string | null> | null) ?? null
+            const mentionRegistrationIds = new Set<string>()
+            if (!previousSnapshot) {
+              registrations.forEach((reg) => {
+                const discordId = reg.user?.accounts?.[0]?.providerAccountId
+                if (discordId) {
+                  mentionRegistrationIds.add(reg.id)
+                }
+              })
+            } else {
+              Object.entries(currentSnapshot).forEach(([regId, teamId]) => {
+                if (!(regId in previousSnapshot)) {
+                  mentionRegistrationIds.add(regId)
+                  return
+                }
+                if (previousSnapshot[regId] !== teamId) {
+                  mentionRegistrationIds.add(regId)
+                }
+              })
+            }
+
+            const { sendTeamsAssignedNotification } = await import('@/lib/discord')
+            const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+            const notification = await sendTeamsAssignedNotification({
+              eventName: raceWithEvent.event.name,
+              raceStartTime: raceWithEvent.startTime,
+              raceUrl: `${baseUrl}/events/${raceWithEvent.event.id}`,
+              teams: teamsList,
+              unassigned: unassigned.length > 0 ? unassigned : undefined,
+              threadId: race.discordTeamsThreadId,
+              mentionRegistrationIds: Array.from(mentionRegistrationIds),
+            })
+
+            if (notification.ok) {
+              await prisma.race.update({
+                where: { id: raceId },
+                data: {
+                  discordTeamsThreadId: notification.threadId ?? race.discordTeamsThreadId ?? null,
+                  discordTeamsSnapshot: currentSnapshot,
+                  discordTeamThreads: teamThreads,
+                },
+              })
+            } else if (
+              notification.threadId &&
+              notification.threadId !== race.discordTeamsThreadId
+            ) {
+              await prisma.race.update({
+                where: { id: raceId },
+                data: { discordTeamsThreadId: notification.threadId },
+              })
+            }
+          }
+        } catch (notificationError) {
+          console.error('Failed to send teams assigned notification:', notificationError)
+        }
+      }
+    }
+
+    const resolvedMaxDrivers =
+      maxDriversPerTeam ??
+      getAutoMaxDriversPerTeam(getRaceDurationMinutes(race.startTime, race.endTime))
+
+    if (isAdmin && rawApplyRebalance === 'true' && resolvedMaxDrivers && resolvedMaxDrivers > 0) {
+      const classIds = await prisma.registration.findMany({
+        where: { raceId },
+        select: { carClassId: true },
+        distinct: ['carClassId'],
+      })
+
+      for (const { carClassId } of classIds) {
+        await rebalanceTeamsForClass(raceId, carClassId, resolvedMaxDrivers, teamAssignmentStrategy)
+      }
+    }
+
+    revalidatePath('/events')
+    revalidatePath(`/events/${race.eventId}`)
+
+    return { message: 'Success' }
+  } catch (error) {
+    console.error('Save race edits error:', error)
+    if (error instanceof Prisma.PrismaClientInitializationError) {
+      return { message: 'Database connection failed' }
+    }
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P1001') {
+        return { message: 'Database server is unreachable' }
+      }
+      if (error.code === 'P1002') {
+        return { message: 'Database connection timed out' }
+      }
+    }
+    const message =
+      error instanceof Error && error.message ? error.message : 'Failed to save changes'
+    return { message }
   }
-
-  revalidatePath('/events')
-  revalidatePath(`/events/${race.eventId}`)
-
-  return { message: 'Success' }
 }
 
 export async function sendTeamsAssignmentNotification(raceId: string) {

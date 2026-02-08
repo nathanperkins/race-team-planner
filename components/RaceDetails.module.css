@@ -296,6 +296,18 @@
   border-bottom: 1px solid rgba(55, 65, 81, 0.5);
 }
 
+.dragHandle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(148, 163, 184, 0.8);
+  cursor: grab;
+}
+
+.dragHandle:active {
+  cursor: grabbing;
+}
+
 .driverInfo {
   display: flex;
   align-items: center;
@@ -452,6 +464,11 @@
   padding: 0.25rem 0 0.5rem;
   border-top: 1px solid rgba(71, 85, 105, 0.7);
   margin-top: 0.25rem;
+}
+
+.teamGridSeparatorStandalone {
+  border-top: 1px solid rgba(71, 85, 105, 0.7);
+  margin: 0.75rem 0 0.5rem;
 }
 
 .teamGroup {
@@ -666,6 +683,59 @@
   border: 1px solid rgba(239, 68, 68, 0.4);
   padding: 0.4rem 0.6rem;
   border-radius: 0.5rem;
+}
+
+.errorModalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1600;
+  padding: 1.5rem;
+}
+
+.errorModal {
+  width: min(420px, 90vw);
+  background: #0f172a;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: 0 25px 45px rgba(0, 0, 0, 0.45);
+  text-align: center;
+  color: #e2e8f0;
+}
+
+.errorModalTitle {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fca5a5;
+}
+
+.errorModalMessage {
+  margin: 0 0 1rem;
+  font-size: 0.85rem;
+  color: rgba(226, 232, 240, 0.9);
+}
+
+.errorModalButton {
+  border: none;
+  background: rgba(239, 68, 68, 0.15);
+  color: #fecaca;
+  padding: 0.5rem 1.25rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.errorModalButton:hover {
+  background: rgba(239, 68, 68, 0.28);
+  color: #fff1f2;
 }
 
 @media (max-width: 640px) {

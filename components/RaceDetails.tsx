@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, Lock, Pencil, Trash2, Unlock, UserCog, Users, X } from 'lucide-react'
+import { Check, GripVertical, Lock, Pencil, Trash2, Unlock, UserCog, Users, X } from 'lucide-react'
 import Image from 'next/image'
 import {
   type DragEvent,
@@ -813,8 +813,10 @@ export default function RaceDetails({
             setTeamsAssigned(pendingRegistrations.some((reg) => !!(reg.teamId || reg.team?.id)))
           }
         })
-        .catch(() => {
-          setSaveError('Failed to save changes')
+        .catch((error) => {
+          const message =
+            error instanceof Error && error.message ? error.message : 'Failed to save changes'
+          setSaveError(message)
         })
     })
   }
@@ -1252,6 +1254,11 @@ export default function RaceDetails({
           event.dataTransfer.effectAllowed = 'move'
         }}
       >
+        {isTeamModalOpen && canAssignTeams && (
+          <span className={styles.dragHandle} title="Drag to move driver">
+            <GripVertical size={14} />
+          </span>
+        )}
         <div className={styles.driverInfo}>
           {driverImage && (
             <Image
@@ -1489,7 +1496,7 @@ export default function RaceDetails({
                     pillStyle="group"
                     onChange={(classId) => {
                       teamRegistrations.forEach((reg) =>
-                        handleCarClassChange(reg.id, classId, { enforceTeamClass: allowAdminEdits })
+                        handleCarClassChange(reg.id, classId, { enforceTeamClass: false })
                       )
                     }}
                     readOnly={!allowAdminEdits}
@@ -1624,15 +1631,29 @@ export default function RaceDetails({
     const baseAssigned =
       addTeamTile && isTeamModalOpen ? [...assignedTiles, addTeamTile] : [...assignedTiles]
 
-    const renderedTeams = isTeamModalOpen
-      ? [
-          ...baseAssigned,
-          ...(baseAssigned.length > 0 && unassignedTiles.length > 0
-            ? [<div key="unassigned-separator" className={styles.teamGridSeparator} aria-hidden />]
-            : []),
-          ...unassignedTiles,
-        ]
-      : [...assignedTiles, ...unassignedTiles, ...(addTeamTile ? [addTeamTile] : [])]
+    if (!isTeamModalOpen) {
+      return (
+        <>
+          <div className={styles.teamGrid}>
+            {[...assignedTiles, ...(addTeamTile ? [addTeamTile] : [])]}
+          </div>
+          {unassignedTiles.length > 0 && (
+            <>
+              <div className={styles.teamGridSeparatorStandalone} aria-hidden />
+              <div className={styles.teamGrid}>{unassignedTiles}</div>
+            </>
+          )}
+        </>
+      )
+    }
+
+    const renderedTeams = [
+      ...baseAssigned,
+      ...(baseAssigned.length > 0 && unassignedTiles.length > 0
+        ? [<div key="unassigned-separator" className={styles.teamGridSeparator} aria-hidden />]
+        : []),
+      ...unassignedTiles,
+    ]
 
     return <div className={styles.teamGrid}>{renderedTeams}</div>
   }
@@ -1757,7 +1778,21 @@ export default function RaceDetails({
                     <span className={styles.addDriverSuffix}>Added!</span>
                   </div>
                 )}
-                {saveError && <div className={styles.saveError}>{saveError}</div>}
+                {saveError && (
+                  <div className={styles.errorModalOverlay} onClick={() => setSaveError('')}>
+                    <div className={styles.errorModal} onClick={(event) => event.stopPropagation()}>
+                      <h4 className={styles.errorModalTitle}>Save failed</h4>
+                      <p className={styles.errorModalMessage}>{saveError}</p>
+                      <button
+                        type="button"
+                        className={styles.errorModalButton}
+                        onClick={() => setSaveError('')}
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <button
                   type="button"
                   className={styles.teamModalSave}
