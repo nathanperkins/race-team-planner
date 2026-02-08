@@ -206,7 +206,7 @@ export default function RaceDetails({
   )
 
   const lastRaceIdRef = useRef<string | null>(null)
-  const lastCountRef = useRef<number>(race.registrations.length)
+  const lastRegistrationIdsRef = useRef<string>('')
 
   const teamList = useMemo(() => [...teams, ...extraTeams], [extraTeams, teams])
   const revealedTeamSet = useMemo(() => new Set(revealedTeamIds), [revealedTeamIds])
@@ -382,10 +382,14 @@ export default function RaceDetails({
     const nextAuto =
       race.maxDriversPerTeam ??
       getAutoMaxDriversPerTeam(getRaceDurationMinutes(race.startTime, race.endTime))
+    const nextRegistrationIds = race.registrations
+      .map((reg) => reg.id)
+      .sort()
+      .join('|')
 
     if (lastRaceIdRef.current !== race.id) {
       lastRaceIdRef.current = race.id
-      lastCountRef.current = race.registrations.length
+      lastRegistrationIdsRef.current = nextRegistrationIds
       const nextStrategy = race.teamAssignmentStrategy
       setExtraTeams([])
       setRevealedTeamIds([])
@@ -412,10 +416,39 @@ export default function RaceDetails({
       return
     }
 
-    if (race.registrations.length !== lastCountRef.current) {
-      lastCountRef.current = race.registrations.length
-      setPendingRegistrations(
-        race.registrations.map((reg) => {
+    if (nextRegistrationIds !== lastRegistrationIdsRef.current) {
+      lastRegistrationIdsRef.current = nextRegistrationIds
+      setPendingRegistrations((prev) => {
+        if (!isTeamModalOpen) {
+          return race.registrations.map((reg) => {
+            const override = teamOverridesRef.current.get(reg.id)
+            if (!override) return reg
+            const teamId = override.teamId
+            return {
+              ...reg,
+              teamId,
+              team: teamId
+                ? {
+                    id: teamId,
+                    name: override.teamName || reg.team?.name || teamNameById.get(teamId) || 'Team',
+                  }
+                : null,
+            }
+          })
+        }
+
+        const prevById = new Map(prev.map((reg) => [reg.id, reg]))
+        const incomingIds = new Set(race.registrations.map((reg) => reg.id))
+
+        for (const key of teamOverridesRef.current.keys()) {
+          if (!incomingIds.has(key)) {
+            teamOverridesRef.current.delete(key)
+          }
+        }
+
+        return race.registrations.map((reg) => {
+          const existing = prevById.get(reg.id)
+          if (existing) return existing
           const override = teamOverridesRef.current.get(reg.id)
           if (!override) return reg
           const teamId = override.teamId
@@ -423,13 +456,16 @@ export default function RaceDetails({
             ...reg,
             teamId,
             team: teamId
-              ? { id: teamId, name: override.teamName || reg.team?.name || 'Team' }
+              ? {
+                  id: teamId,
+                  name: override.teamName || reg.team?.name || teamNameById.get(teamId) || 'Team',
+                }
               : null,
           }
         })
-      )
+      })
     }
-  }, [race])
+  }, [race, isTeamModalOpen, teamNameById])
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleMaxDriversTextChange = useCallback((value: string) => {
