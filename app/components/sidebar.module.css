@@ -8,7 +8,7 @@
   width: var(--sidebar-width);
   height: 100dvh;
   background-color: var(--background);
-  border-right: 1px solid #e5e5e5;
+  border-right: 1px solid #333;
   display: flex;
   flex-direction: column;
   padding: 1.5rem;
@@ -55,7 +55,7 @@
   right: 0;
   height: 60px;
   background-color: var(--background);
-  border-bottom: 1px solid #e5e5e5;
+  border-bottom: 1px solid #333;
   padding: 0 1rem;
   align-items: center;
   gap: 1rem;
@@ -127,13 +127,6 @@
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  .sidebar,
-  .mobileHeader {
-    border-color: #333;
-  }
-}
-
 .title {
   font-size: 1.25rem;
   font-weight: bold;
@@ -153,37 +146,20 @@
   display: block;
   padding: 0.75rem 1rem;
   border-radius: 0.5rem;
-  color: #666;
+  color: #a1a1a1;
   transition: all 0.2s;
   font-size: 0.95rem;
 }
 
 .link:hover {
-  background-color: #f5f5f5;
+  background-color: #1a1a1a;
   color: var(--foreground);
-}
-
-@media (prefers-color-scheme: dark) {
-  .link {
-    color: #a1a1a1;
-  }
-
-  .link:hover {
-    background-color: #1a1a1a;
-    color: var(--foreground);
-  }
 }
 
 .activeLink {
-  background-color: #f5f5f5;
+  background-color: #1a1a1a;
   color: var(--foreground);
   font-weight: 500;
-}
-
-@media (prefers-color-scheme: dark) {
-  .activeLink {
-    background-color: #1a1a1a;
-  }
 }
 
 .disabledLink {
@@ -195,14 +171,8 @@
 
 .footer {
   margin-top: auto;
-  border-top: 1px solid #e5e5e5;
+  border-top: 1px solid #333;
   padding-top: 1rem;
-}
-
-@media (prefers-color-scheme: dark) {
-  .footer {
-    border-top-color: #333;
-  }
 }
 
 .userSection {
@@ -220,13 +190,7 @@
 
 .avatar {
   border-radius: 9999px;
-  border: 1px solid #e5e5e5;
-}
-
-@media (prefers-color-scheme: dark) {
-  .avatar {
-    border-color: #333;
-  }
+  border: 1px solid #333;
 }
 
 .welcome {
@@ -244,23 +208,13 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: #666;
+  color: #a1a1a1;
   transition: color 0.2s;
 }
 
 .signOutButton:hover {
   color: var(--foreground);
   text-decoration: underline;
-}
-
-@media (prefers-color-scheme: dark) {
-  .signOutButton {
-    color: #a1a1a1;
-  }
-
-  .signOutButton:hover {
-    color: var(--foreground);
-  }
 }
 
 .bgBlocked {
@@ -270,7 +224,7 @@
 
 .navDivider {
   height: 1px;
-  background-color: #e5e5e5;
+  background-color: #333;
   margin: 1rem 0;
   opacity: 0.5;
 }
@@ -279,7 +233,7 @@
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #999;
+  color: #666;
   font-weight: 600;
   margin: 1rem 1rem 0.5rem 1rem;
 }
@@ -287,13 +241,13 @@
 .currentStep {
   border-left: 3px solid var(--primary-color, #5865f2);
   border-radius: 0 0.5rem 0.5rem 0;
-  background-color: rgba(88, 101, 242, 0.05);
+  background-color: rgba(88, 101, 242, 0.1);
   font-weight: 600;
   color: var(--foreground);
 }
 
 .completedStep {
-  color: #22c55e;
+  color: #4ade80;
   opacity: 0.8;
 }
 
@@ -301,22 +255,4 @@
   opacity: 0.3;
   pointer-events: none;
   cursor: default;
-}
-
-@media (prefers-color-scheme: dark) {
-  .navDivider {
-    background-color: #333;
-  }
-
-  .setupHeader {
-    color: #666;
-  }
-
-  .currentStep {
-    background-color: rgba(88, 101, 242, 0.1);
-  }
-
-  .completedStep {
-    color: #4ade80;
-  }
 }

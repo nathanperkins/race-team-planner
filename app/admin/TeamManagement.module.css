@@ -14,17 +14,9 @@
   min-width: 200px;
   padding: 0.6rem 0.8rem;
   border-radius: 6px;
-  border: 1px solid #ddd;
-  background: white;
-  color: #333;
-}
-
-@media (prefers-color-scheme: dark) {
-  .input {
-    background: #1a1a1a;
-    border-color: #333;
-    color: #fff;
-  }
+  border: 1px solid #333;
+  background: #1a1a1a;
+  color: #fff;
 }
 
 .addButton {
@@ -60,15 +52,9 @@
 }
 
 .teamList {
-  background: rgba(0, 0, 0, 0.02);
+  background: rgba(255, 255, 255, 0.02);
   border-radius: 8px;
   min-height: 100px;
-}
-
-@media (prefers-color-scheme: dark) {
-  .teamList {
-    background: rgba(255, 255, 255, 0.02);
-  }
 }
 
 .loading,
@@ -93,13 +79,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-@media (prefers-color-scheme: dark) {
-  .teamRow {
-    border-color: rgba(255, 255, 255, 0.05);
-  }
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .teamRow:last-child {
@@ -116,16 +96,9 @@
   padding: 0.4rem 0.6rem;
   border-radius: 4px;
   border: 1px solid #3b82f6;
-  background: white;
-  color: #333;
+  background: #1a1a1a;
+  color: #fff;
   margin-right: 0.5rem;
-}
-
-@media (prefers-color-scheme: dark) {
-  .editInput {
-    background: #1a1a1a;
-    color: #fff;
-  }
 }
 
 .actions {
@@ -146,11 +119,11 @@
 }
 
 .editBtn {
-  color: #666;
+  color: #aaa;
 }
 
 .editBtn:hover {
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .deleteBtn {
@@ -170,29 +143,11 @@
 }
 
 .cancelBtn {
-  color: #666;
+  color: #aaa;
 }
 
 .cancelBtn:hover {
-  background: rgba(0, 0, 0, 0.05);
-}
-
-@media (prefers-color-scheme: dark) {
-  .editBtn {
-    color: #aaa;
-  }
-
-  .editBtn:hover {
-    background: rgba(255, 255, 255, 0.05);
-  }
-
-  .cancelBtn {
-    color: #aaa;
-  }
-
-  .cancelBtn:hover {
-    background: rgba(255, 255, 255, 0.05);
-  }
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .spin {
@@ -240,63 +195,32 @@
   align-items: center;
   gap: 0.25rem;
   font-size: 0.75rem;
-  color: #3b82f6;
-  background: rgba(59, 130, 246, 0.1);
+  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.15);
   padding: 0.25rem 0.5rem;
   border-radius: 12px;
   font-weight: 500;
 }
 
-@media (prefers-color-scheme: dark) {
-  .memberCount {
-    color: #60a5fa;
-    background: rgba(59, 130, 246, 0.15);
-  }
-}
-
 .teamId {
   font-size: 0.75rem;
-  color: #666;
-}
-
-@media (prefers-color-scheme: dark) {
-  .teamId {
-    color: #aaa;
-  }
+  color: #aaa;
 }
 
 .syncBtn {
-  color: #10b981;
+  color: #34d399;
 }
 
 .syncBtn:hover {
-  background: rgba(16, 185, 129, 0.1);
+  background: rgba(16, 185, 129, 0.15);
 }
 
 .inspectBtn {
-  color: #3b82f6;
+  color: #60a5fa;
 }
 
 .inspectBtn:hover {
-  background: rgba(59, 130, 246, 0.1);
-}
-
-@media (prefers-color-scheme: dark) {
-  .syncBtn {
-    color: #34d399;
-  }
-
-  .syncBtn:hover {
-    background: rgba(16, 185, 129, 0.15);
-  }
-
-  .inspectBtn {
-    color: #60a5fa;
-  }
-
-  .inspectBtn:hover {
-    background: rgba(59, 130, 246, 0.15);
-  }
+  background: rgba(59, 130, 246, 0.15);
 }
 
 /* Modal Styles */
@@ -312,7 +236,8 @@
 }
 
 .modal {
-  background: white;
+  background: #1e1e1e;
+  border: 1px solid #333;
   border-radius: 12px;
   width: 100%;
   max-width: 600px;
@@ -324,25 +249,12 @@
     0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
-@media (prefers-color-scheme: dark) {
-  .modal {
-    background: #1e1e1e;
-    border: 1px solid #333;
-  }
-}
-
 .modalHeader {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   padding: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-@media (prefers-color-scheme: dark) {
-  .modalHeader {
-    border-color: #333;
-  }
+  border-bottom: 1px solid #333;
 }
 
 .modalTitle {
@@ -354,14 +266,8 @@
 
 .modalSubtitle {
   font-size: 0.875rem;
-  color: #666;
+  color: #aaa;
   margin: 0.25rem 0 0 0;
-}
-
-@media (prefers-color-scheme: dark) {
-  .modalSubtitle {
-    color: #aaa;
-  }
 }
 
 .closeBtn {
@@ -373,24 +279,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #666;
+  color: #aaa;
   transition: all 0.2s;
 }
 
 .closeBtn:hover {
-  background: rgba(0, 0, 0, 0.05);
-  color: #333;
-}
-
-@media (prefers-color-scheme: dark) {
-  .closeBtn {
-    color: #aaa;
-  }
-
-  .closeBtn:hover {
-    background: rgba(255, 255, 255, 0.05);
-    color: #fff;
-  }
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
 }
 
 .modalBody {
@@ -410,7 +305,7 @@
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem;
-  background: rgba(0, 0, 0, 0.02);
+  background: rgba(255, 255, 255, 0.03);
   border-radius: 8px;
   transition: background 0.2s;
   border-left: 3px solid transparent;
@@ -425,17 +320,7 @@
 }
 
 .memberRow:hover {
-  background: rgba(0, 0, 0, 0.05);
-}
-
-@media (prefers-color-scheme: dark) {
-  .memberRow {
-    background: rgba(255, 255, 255, 0.03);
-  }
-
-  .memberRow:hover {
-    background: rgba(255, 255, 255, 0.06);
-  }
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .memberIcon {
@@ -443,21 +328,11 @@
 }
 
 .enrolledIcon {
-  color: #10b981;
+  color: #34d399;
 }
 
 .notEnrolledIcon {
-  color: #ef4444;
-}
-
-@media (prefers-color-scheme: dark) {
-  .enrolledIcon {
-    color: #34d399;
-  }
-
-  .notEnrolledIcon {
-    color: #f87171;
-  }
+  color: #f87171;
 }
 
 .memberInfo {
@@ -482,7 +357,7 @@
 .enrolledBadge {
   font-size: 0.625rem;
   padding: 0.125rem 0.375rem;
-  background: #10b981;
+  background: #059669;
   color: white;
   border-radius: 10px;
   font-weight: 600;
@@ -490,29 +365,13 @@
   letter-spacing: 0.025em;
 }
 
-@media (prefers-color-scheme: dark) {
-  .enrolledBadge {
-    background: #059669;
-  }
-}
-
 .memberId {
   font-size: 0.75rem;
-  color: #666;
+  color: #aaa;
 }
 
 .appInfo {
   font-size: 0.75rem;
-  color: #10b981;
+  color: #34d399;
   font-weight: 500;
-}
-
-@media (prefers-color-scheme: dark) {
-  .memberId {
-    color: #aaa;
-  }
-
-  .appInfo {
-    color: #34d399;
-  }
 }

@@ -89,3 +89,5 @@ For full workflow details: `bd prime`
 - **Onboarding Enforcement**: Redirection logic is centralized in **`proxy.ts`**. To prevent the "Stale Edge Cookie" issue after saving profile data, the client-side forms call `update(data)` with the new values. This refreshes the Edge cookie immediately so the Middleware sees the updated status without needing a database check.
 
 <!-- end-bv-agent-instructions -->
+
+@./README.md
