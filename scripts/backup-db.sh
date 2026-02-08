@@ -45,7 +45,7 @@ echo "Starting encrypted database backup at ${TIMESTAMP}..."
 # Create the backup using pg_dump, compress with gzip, and encrypt with GPG
 # Only backup the public schema (exclude Supabase-managed schemas: auth, storage, extensions, etc.)
 # --clean adds DROP statements so restore will wipe existing tables first
-pg_dump "$DB_URL" --schema=public --clean --no-owner --no-acl | gzip | gpg --symmetric --batch --passphrase "$BACKUP_ENCRYPTION_KEY" --cipher-algo AES256 > "${BACKUP_PATH}"
+pg_dump "$DB_URL" --schema=public --clean --if-exists --no-owner --no-acl | gzip | gpg --symmetric --batch --passphrase "$BACKUP_ENCRYPTION_KEY" --cipher-algo AES256 > "${BACKUP_PATH}"
 
 BACKUP_SIZE=$(ls -lh "${BACKUP_PATH}" | awk '{print $5}')
 echo "Encrypted backup created: ${BACKUP_FILE} (${BACKUP_SIZE})"

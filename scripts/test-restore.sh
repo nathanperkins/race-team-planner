@@ -98,6 +98,7 @@ echo ""
 # Set environment for restore script
 export BACKUP_PATH="$LATEST_BACKUP"
 export DIRECT_URL="postgresql://postgres@localhost:${PGPORT}/restore_test"
+export ON_ERROR_STOP=1
 
 # Call the restore script
 if "${SCRIPT_DIR}/restore-db.sh"; then

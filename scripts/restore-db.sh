@@ -13,8 +13,11 @@ set -eo pipefail
 if [ -f /secrets/.env ]; then
   export $(grep -E '^(DATABASE_URL|DIRECT_URL|BACKUP_ENCRYPTION_KEY)=' /secrets/.env | xargs)
 elif [ -f .env ]; then
-  export $(grep -E '^(DATABASE_URL|DIRECT_URL|BACKUP_ENCRYPTION_KEY)=' .env | xargs)
+  export $(grep -E '^(DATABASE_URL|DIRECT_URL|BACKUP_ENCRYPTION_KEY|ON_ERROR_STOP)=' .env | xargs)
 fi
+
+# Configuration
+ON_ERROR_STOP="${ON_ERROR_STOP:-0}"
 
 # Use DIRECT_URL for restores (bypasses connection pooling)
 DB_URL="${DIRECT_URL:-$DATABASE_URL}"
@@ -63,8 +66,8 @@ echo "⚠️  Starting database restore..."
 echo "   This will OVERWRITE existing data!"
 echo ""
 
-# Exit immediately on any error to ensure restore validation works
-psql "$DB_URL" --set ON_ERROR_STOP=1 < "/tmp/restore.sql"
+# Run the restore.
+psql "$DB_URL" --set ON_ERROR_STOP="$ON_ERROR_STOP" < "/tmp/restore.sql"
 
 # Show restored data counts for all tables
 echo ""
