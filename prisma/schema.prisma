@@ -104,6 +104,9 @@ model Race {
   startTime     DateTime
   endTime       DateTime
   teamsAssigned Boolean        @default(false)
+  discordTeamsThreadId String?
+  discordTeamsSnapshot Json?
+  discordTeamThreads Json?
   maxDriversPerTeam Int?
   teamAssignmentStrategy TeamAssignmentStrategy @default(BALANCED_IRATING)
   eventId       String

@@ -193,6 +193,7 @@ export default function RaceDetails({
   const [isRegisterOpen, setIsRegisterOpen] = useState(false)
   const [isDropConfirming, setIsDropConfirming] = useState(false)
   const [addDriverMessage, setAddDriverMessage] = useState('')
+  const [saveError, setSaveError] = useState('')
   const [extraTeams, setExtraTeams] = useState<LocalTeam[]>([])
   const [revealedTeamIds, setRevealedTeamIds] = useState<string[]>([])
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false)
@@ -431,54 +432,21 @@ export default function RaceDetails({
   }, [race])
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  const handleMaxDriversTextChange = useCallback(
-    (value: string) => {
-      setPendingMaxDriversText(value)
-      const trimmed = value.trim()
-      if (!trimmed) {
-        setPendingMaxDrivers(null)
-        if (isTeamModalOpen) {
-          const next = recomputeAssignments(pendingRegistrations, null, pendingStrategy)
-          setPendingRegistrations(next)
-          teamOverridesRef.current = new Map(
-            next.map((reg) => [
-              reg.id,
-              { teamId: reg.teamId ?? reg.team?.id ?? null, teamName: reg.team?.name },
-            ])
-          )
-        }
-        return
-      }
-      const parsed = Number(trimmed)
-      if (Number.isNaN(parsed) || parsed < 1) {
-        setPendingMaxDrivers(null)
-        if (isTeamModalOpen) {
-          const next = recomputeAssignments(pendingRegistrations, null, pendingStrategy)
-          setPendingRegistrations(next)
-          teamOverridesRef.current = new Map(
-            next.map((reg) => [
-              reg.id,
-              { teamId: reg.teamId ?? reg.team?.id ?? null, teamName: reg.team?.name },
-            ])
-          )
-        }
-        return
-      }
-      const nextMax = Math.floor(parsed)
-      setPendingMaxDrivers(nextMax)
-      if (isTeamModalOpen) {
-        const next = recomputeAssignments(pendingRegistrations, nextMax, pendingStrategy)
-        setPendingRegistrations(next)
-        teamOverridesRef.current = new Map(
-          next.map((reg) => [
-            reg.id,
-            { teamId: reg.teamId ?? reg.team?.id ?? null, teamName: reg.team?.name },
-          ])
-        )
-      }
-    },
-    [isTeamModalOpen, pendingRegistrations, pendingStrategy, recomputeAssignments]
-  )
+  const handleMaxDriversTextChange = useCallback((value: string) => {
+    setPendingMaxDriversText(value)
+    const trimmed = value.trim()
+    if (!trimmed) {
+      setPendingMaxDrivers(null)
+      return
+    }
+    const parsed = Number(trimmed)
+    if (Number.isNaN(parsed) || parsed < 1) {
+      setPendingMaxDrivers(null)
+      return
+    }
+    const nextMax = Math.floor(parsed)
+    setPendingMaxDrivers(nextMax)
+  }, [])
 
   const handleMaxDriversStep = useCallback(
     (delta: number) => {
@@ -486,44 +454,73 @@ export default function RaceDetails({
       const next = Math.max(1, current + delta)
       setPendingMaxDrivers(next)
       setPendingMaxDriversText(String(next))
-      if (isTeamModalOpen) {
-        const nextRegs = recomputeAssignments(pendingRegistrations, next, pendingStrategy)
-        setPendingRegistrations(nextRegs)
-        teamOverridesRef.current = new Map(
-          nextRegs.map((reg) => [
-            reg.id,
-            { teamId: reg.teamId ?? reg.team?.id ?? null, teamName: reg.team?.name },
-          ])
-        )
-      }
     },
-    [
-      autoMaxDrivers,
-      isTeamModalOpen,
-      pendingMaxDrivers,
-      pendingRegistrations,
-      pendingStrategy,
-      recomputeAssignments,
-    ]
+    [autoMaxDrivers, pendingMaxDrivers]
   )
 
-  const handleCarClassChange = (registrationId: string, newClassId: string) => {
+  const handleCarClassChange = (
+    registrationId: string,
+    newClassId: string,
+    options?: { enforceTeamClass?: boolean }
+  ) => {
     const carClass = carClasses.find((cc) => cc.id === newClassId)
     if (!carClass) return
-    const updated = pendingRegistrations.map((reg) =>
-      reg.id === registrationId
-        ? {
-            ...reg,
-            carClass: {
-              id: carClass.id,
-              name: carClass.name,
-              shortName: carClass.shortName,
-            },
-          }
-        : reg
-    )
-    setPendingRegistrations(updated)
+    setPendingRegistrations((prev) => {
+      const current = prev.find((reg) => reg.id === registrationId)
+      if (!current) return prev
+      let nextTeamId = current.teamId ?? current.team?.id ?? null
+      let nextTeamName = current.team?.name
+      if (options?.enforceTeamClass && isTeamModalOpen) {
+        const resolved = resolveTeamForClass(registrationId, newClassId, nextTeamId)
+        nextTeamId = resolved.id
+        nextTeamName = resolved.name
+        teamOverridesRef.current.set(registrationId, {
+          teamId: nextTeamId,
+          teamName: nextTeamName,
+        })
+      }
+      return prev.map((reg) =>
+        reg.id === registrationId
+          ? {
+              ...reg,
+              carClass: {
+                id: carClass.id,
+                name: carClass.name,
+                shortName: carClass.shortName,
+              },
+              teamId: nextTeamId,
+              team: nextTeamId ? { id: nextTeamId, name: nextTeamName || 'Team' } : null,
+            }
+          : reg
+      )
+    })
   }
+
+  const moveRegistrationToTeamWithClass = useCallback(
+    (registrationId: string, teamId: string, classId: string) => {
+      const carClass = carClasses.find((cc) => cc.id === classId)
+      if (!carClass) return
+      const teamName = teamNameById.get(teamId) || 'Team'
+      teamOverridesRef.current.set(registrationId, { teamId, teamName })
+      setPendingRegistrations((prev) =>
+        prev.map((reg) =>
+          reg.id === registrationId
+            ? {
+                ...reg,
+                carClass: {
+                  id: carClass.id,
+                  name: carClass.name,
+                  shortName: carClass.shortName,
+                },
+                teamId,
+                team: { id: teamId, name: teamName },
+              }
+            : reg
+        )
+      )
+    },
+    [carClasses, teamNameById]
+  )
 
   const handleRebalance = () => {
     if (!isTeamModalOpen) return
@@ -568,13 +565,23 @@ export default function RaceDetails({
     formData.set('registrationUpdates', JSON.stringify(payload))
     formData.set('newTeams', JSON.stringify(extraTeams))
 
+    setSaveError('')
     startSaveTransition(() => {
       void saveRaceEdits(formData)
+        .then((result) => {
+          if (!result || result.message !== 'Success') {
+            setSaveError(result?.message || 'Failed to save changes')
+            return
+          }
+          setIsTeamModalOpen(false)
+          if (isAdmin) {
+            setTeamsAssigned(pendingRegistrations.some((reg) => !!(reg.teamId || reg.team?.id)))
+          }
+        })
+        .catch(() => {
+          setSaveError('Failed to save changes')
+        })
     })
-
-    if (isAdmin) {
-      setTeamsAssigned(pendingRegistrations.some((reg) => !!(reg.teamId || reg.team?.id)))
-    }
   }
 
   const handleCloseTeamModal = () => {
@@ -613,6 +620,43 @@ export default function RaceDetails({
     const created = createTempTeam()
     return { id: created.id, name: created.name, isTemp: true }
   }, [createTempTeam, pendingRegistrations, revealedTeamIds, teams])
+
+  const resolveTeamForClass = useCallback(
+    (registrationId: string, classId: string, preferredTeamId?: string | null) => {
+      const currentTeamId = preferredTeamId ?? null
+      if (currentTeamId) {
+        const currentTeamRegs = pendingRegistrations.filter(
+          (reg) => reg.id !== registrationId && (reg.teamId ?? reg.team?.id) === currentTeamId
+        )
+        const currentTeamOk = currentTeamRegs.every((reg) => reg.carClass.id === classId)
+        if (currentTeamOk) {
+          return {
+            id: currentTeamId,
+            name: teamNameById.get(currentTeamId) || 'Team',
+          }
+        }
+      }
+
+      const sameClassMatch = pendingRegistrations.find((reg) => {
+        if (reg.id === registrationId) return false
+        const teamId = reg.teamId ?? reg.team?.id
+        return teamId && reg.carClass.id === classId
+      })
+      if (sameClassMatch) {
+        const teamId = sameClassMatch.teamId ?? sameClassMatch.team?.id
+        if (teamId) {
+          return {
+            id: teamId,
+            name: teamNameById.get(teamId) || sameClassMatch.team?.name || 'Team',
+          }
+        }
+      }
+
+      const created = revealOrCreateTeam()
+      return { id: created.id, name: created.name }
+    },
+    [pendingRegistrations, revealOrCreateTeam, teamNameById]
+  )
 
   const removeTeam = useCallback((teamId: string) => {
     if (!teamId || teamId === 'unassigned') return
@@ -658,9 +702,19 @@ export default function RaceDetails({
         moveRegistrationToTeam(registrationId, null)
         return
       }
+      if (isTeamModalOpen) {
+        const targetTeamClass = pendingRegistrations.find(
+          (reg) => (reg.teamId ?? reg.team?.id) === teamId
+        )?.carClass.id
+        const draggedReg = pendingRegistrations.find((reg) => reg.id === registrationId)
+        if (targetTeamClass && draggedReg && draggedReg.carClass.id !== targetTeamClass) {
+          moveRegistrationToTeamWithClass(registrationId, teamId, targetTeamClass)
+          return
+        }
+      }
       moveRegistrationToTeam(registrationId, teamId)
     },
-    [moveRegistrationToTeam]
+    [isTeamModalOpen, moveRegistrationToTeam, moveRegistrationToTeamWithClass, pendingRegistrations]
   )
 
   const handleDropOnNewTeam = useCallback(
@@ -731,9 +785,7 @@ export default function RaceDetails({
     options?: { allowAdminEdits?: boolean }
   ) => {
     const allowAdminEdits = options?.allowAdminEdits ?? false
-    const canEditCarClass = isAdmin
-      ? allowAdminEdits && !isRaceCompleted
-      : !teamsAssigned && !isRaceCompleted
+    const canEditCarClass = allowAdminEdits && isAdmin && !isRaceCompleted
     const driverName = reg.user?.name || reg.manualDriver?.name || 'Driver'
     const driverImage = reg.user?.image || reg.manualDriver?.image
     const preferredStats = getPreferredStats(reg)
@@ -805,7 +857,9 @@ export default function RaceDetails({
                 currentCarClassShortName={reg.carClass.shortName || reg.carClass.name}
                 carClasses={carClasses}
                 deferSubmit
-                onChange={(classId) => handleCarClassChange(reg.id, classId)}
+                onChange={(classId) =>
+                  handleCarClassChange(reg.id, classId, { enforceTeamClass: allowAdminEdits })
+                }
                 readOnly={!canEditCarClass && (!isAdmin || reg.userId !== userId)}
                 showLabel={false}
                 variant="pill"
@@ -1050,7 +1104,7 @@ export default function RaceDetails({
             <div className={styles.teamPickerWrapper}>
               <TeamPickerTrigger
                 onOpen={() => setIsTeamModalOpen(true)}
-                disabled={!canAssignTeams || pendingRegistrations.length === 0}
+                disabled={!canAssignTeams}
               />
             </div>
           </div>
@@ -1104,13 +1158,14 @@ export default function RaceDetails({
                     <span className={styles.addDriverSuffix}>Added!</span>
                   </div>
                 )}
+                {saveError && <div className={styles.saveError}>{saveError}</div>}
                 <button
                   type="button"
                   className={styles.teamModalSave}
                   onClick={handleSave}
                   disabled={isSaving}
                 >
-                  {isSaving ? 'Saving...' : 'Save Changes'}
+                  {isSaving ? 'Saving...' : 'Save and Notify'}
                 </button>
               </div>
             </div>

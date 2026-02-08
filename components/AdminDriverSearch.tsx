@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Search, Plus } from 'lucide-react'
 import { adminRegisterDriver } from '@/app/actions'
 import styles from './AdminDriverSearch.module.css'
@@ -54,6 +54,7 @@ export default function AdminDriverSearch({
 }: Props) {
   const [isOpen, setIsOpen] = useState(false)
   const [openDirection, setOpenDirection] = useState<'down' | 'up'>('down')
+  const [dropdownStyle, setDropdownStyle] = useState<CSSProperties | undefined>(undefined)
   const [searchQuery, setSearchQuery] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -72,6 +73,23 @@ export default function AdminDriverSearch({
     const threshold = 220
     const shouldOpenUp = rect.bottom > window.innerHeight - threshold
     setOpenDirection(shouldOpenUp ? 'up' : 'down')
+    const left = Math.max(8, rect.left)
+    const width = Math.min(rect.width, window.innerWidth - left - 8)
+    if (shouldOpenUp) {
+      setDropdownStyle({
+        position: 'fixed',
+        left,
+        width,
+        bottom: Math.max(8, window.innerHeight - rect.top + 8),
+      })
+    } else {
+      setDropdownStyle({
+        position: 'fixed',
+        left,
+        width,
+        top: Math.min(window.innerHeight - 8, rect.bottom + 8),
+      })
+    }
   }
 
   // Close dropdown when clicking outside
@@ -151,7 +169,10 @@ export default function AdminDriverSearch({
       </button>
 
       {isOpen && (
-        <div className={`${styles.dropdown} ${openDirection === 'up' ? styles.dropdownUp : ''}`}>
+        <div
+          className={`${styles.dropdown} ${openDirection === 'up' ? styles.dropdownUp : ''}`}
+          style={dropdownStyle}
+        >
           <div className={styles.searchInputWrapper}>
             <Search size={16} className={styles.searchIcon} />
             <input

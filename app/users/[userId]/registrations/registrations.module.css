@@ -43,6 +43,14 @@
   font-weight: 700;
 }
 
+.subtitle {
+  margin: 0.75rem 0 0;
+  color: #9ca3af;
+  font-size: 0.95rem;
+  max-width: 720px;
+  line-height: 1.4;
+}
+
 .tableCard {
   border-radius: 0.5rem;
   border: 1px solid #374151;

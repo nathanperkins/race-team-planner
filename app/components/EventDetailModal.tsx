@@ -131,11 +131,6 @@ export default function EventDetailModal({
                   <Cloud size={14} /> Synced
                 </span>
               )}
-              <span className={styles.eventMetaHeader}>
-                {new Date(event.startTime).getFullYear()} • Season{' '}
-                {Math.floor(new Date(event.startTime).getMonth() / 3) + 1} • Week{' '}
-                {getWeekNumber(event.startTime)}
-              </span>
               {isAdmin && !event.externalId && (
                 <EditEventButton
                   event={{
@@ -183,6 +178,11 @@ export default function EventDetailModal({
                 <div className={styles.trackName}>
                   <MapPin size={16} /> {event.track}
                   {event.trackConfig && ` - ${event.trackConfig}`}
+                </div>
+                <div className={styles.eventMeta}>
+                  {new Date(event.startTime).getFullYear()} • Season{' '}
+                  {Math.floor(new Date(event.startTime).getMonth() / 3) + 1} • Week{' '}
+                  {getWeekNumber(event.startTime)}
                 </div>
               </div>
             </div>

@@ -596,6 +596,10 @@
   overflow: auto;
 }
 
+.teamModal {
+  overflow: visible;
+}
+
 .teamModalFooter {
   padding: 0 1.5rem 1.25rem;
   display: flex;
@@ -639,6 +643,16 @@
 .teamModalSave:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.saveError {
+  color: #fca5a5;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.5rem;
 }
 
 @media (max-width: 640px) {

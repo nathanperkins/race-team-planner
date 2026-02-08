@@ -26,6 +26,8 @@
 .modalScroll {
   max-height: 90vh;
   overflow-y: auto;
+  border-radius: 20px;
+  overflow: hidden;
 }
 
 .modalDim {
@@ -65,15 +67,6 @@
   border: 1px solid rgba(59, 130, 246, 0.3);
   color: rgba(147, 197, 253, 0.9);
   font-size: 12px;
-  font-weight: 600;
-}
-
-.eventMetaHeader {
-  display: inline-flex;
-  align-items: center;
-  padding: 0 8px;
-  font-size: 24px;
-  color: rgba(234, 240, 255, 0.5);
   font-weight: 600;
 }
 
@@ -136,9 +129,9 @@
 
 .eventMeta {
   font-size: 0.875rem;
-  color: rgba(234, 240, 255, 0.5);
+  color: rgba(234, 240, 255, 0.55);
   font-weight: 600;
-  margin-top: 0.5rem;
+  margin-top: 0.35rem;
 }
 
 .titleWithLicense {

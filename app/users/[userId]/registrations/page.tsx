@@ -58,6 +58,10 @@ export default async function UserRegistrationsPage({ params }: Props) {
         <h1 className={styles.title}>
           {user.name === session.user?.name ? 'My Registrations' : `${user.name}'s Registrations`}
         </h1>
+        <p className={styles.subtitle}>
+          If teams are already assigned, timeslots and car classes are locked. Message an admin to
+          make changes or drop from the event.
+        </p>
       </header>
 
       <div className={styles.tableCard}>
@@ -103,8 +107,8 @@ export default async function UserRegistrationsPage({ params }: Props) {
                             startTime: r.startTime,
                           }))}
                           readOnly={
-                            (!isAdmin && userId !== session.user?.id) ||
-                            (!isAdmin && reg.race.teamsAssigned) ||
+                            (userId !== session.user?.id && !isAdmin) ||
+                            reg.race.teamsAssigned ||
                             new Date() > reg.race.endTime
                           }
                         />
@@ -118,8 +122,8 @@ export default async function UserRegistrationsPage({ params }: Props) {
                           currentCarClassShortName={reg.carClass.shortName}
                           carClasses={reg.race.event.carClasses}
                           readOnly={
-                            (!isAdmin && userId !== session.user?.id) ||
-                            (!isAdmin && reg.race.teamsAssigned) ||
+                            (userId !== session.user?.id && !isAdmin) ||
+                            reg.race.teamsAssigned ||
                             new Date() > reg.race.endTime
                           }
                           showLabel={false}
