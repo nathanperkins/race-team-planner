@@ -1,5 +1,6 @@
-const DISCORD_API_BASE = 'https://discord.com/api/v10'
 import { appTitle } from './config'
+
+const DISCORD_API_BASE = 'https://discord.com/api/v10'
 
 export enum GuildMembershipStatus {
   MEMBER = 'member',
@@ -787,10 +788,47 @@ export async function sendTeamsAssignedNotification(
   }
 }
 
+export async function addUsersToThread(threadId: string, discordUserIds: string[]) {
+  const botToken = process.env.DISCORD_BOT_TOKEN
+  if (!botToken) {
+    return
+  }
+
+  const uniqueIds = Array.from(new Set(discordUserIds)).filter(Boolean)
+  for (const userId of uniqueIds) {
+    try {
+      const response = await fetch(
+        `${DISCORD_API_BASE}/channels/${threadId}/thread-members/${userId}`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bot ${botToken}`,
+          },
+        }
+      )
+
+      if (!response.ok && response.status !== 409) {
+        const errorText = await response.text()
+        console.error(
+          `Failed to add user ${userId} to thread ${threadId}: ${response.status} ${response.statusText}`,
+          errorText
+        )
+      }
+    } catch (error) {
+      console.error(`Failed to add user ${userId} to thread ${threadId}:`, error)
+    }
+  }
+}
+
+export function buildTeamThreadLink(options: { guildId: string; threadId: string }) {
+  return `discord://-/channels/${options.guildId}/${options.threadId}`
+}
+
 export async function createTeamThread(options: {
   teamName: string
   eventName: string
   raceStartTime: Date
+  memberDiscordIds?: string[]
 }): Promise<string | null> {
   const botToken = process.env.DISCORD_BOT_TOKEN
   const channelId = process.env.DISCORD_NOTIFICATIONS_CHANNEL_ID
@@ -833,5 +871,9 @@ export async function createTeamThread(options: {
   }
 
   const thread = await threadResponse.json()
-  return thread.id ?? null
+  const threadId = thread.id ?? null
+  if (threadId && options.memberDiscordIds?.length) {
+    await addUsersToThread(threadId, options.memberDiscordIds)
+  }
+  return threadId
 }

@@ -984,15 +984,20 @@ export async function saveRaceEdits(formData: FormData) {
 
           const teamThreads = (race.discordTeamThreads as Record<string, string> | null) ?? {}
           const guildId = process.env.DISCORD_GUILD_ID
-          const { createTeamThread } = await import('@/lib/discord')
+          const { addUsersToThread, buildTeamThreadLink, createTeamThread } =
+            await import('@/lib/discord')
 
           for (const [teamId, team] of teamsMap.entries()) {
+            const memberDiscordIds = team.members
+              .map((member) => member.discordId)
+              .filter((id): id is string => Boolean(id))
             if (teamThreads[teamId]) continue
             try {
               const threadId = await createTeamThread({
                 teamName: team.name,
                 eventName: raceWithEvent.event.name,
                 raceStartTime: raceWithEvent.startTime,
+                memberDiscordIds,
               })
               if (threadId) {
                 teamThreads[teamId] = threadId
@@ -1002,15 +1007,23 @@ export async function saveRaceEdits(formData: FormData) {
             }
           }
 
+          for (const [teamId, team] of teamsMap.entries()) {
+            const threadId = teamThreads[teamId]
+            if (!threadId) continue
+            const memberDiscordIds = team.members
+              .map((member) => member.discordId)
+              .filter((id): id is string => Boolean(id))
+            if (memberDiscordIds.length === 0) continue
+            await addUsersToThread(threadId, memberDiscordIds)
+          }
+
           const teamsList = Array.from(teamsMap.entries()).map(([teamId, team]) => {
             const total = team.members.reduce((sum, member) => sum + member.rating, 0)
             const avgSof = team.members.length ? Math.round(total / team.members.length) : 0
             const carClassName = team.carClassName || team.members[0]?.carClass
             const threadId = teamThreads[teamId]
             const threadUrl =
-              guildId && threadId
-                ? `https://discord.com/channels/${guildId}/${threadId}`
-                : undefined
+              guildId && threadId ? buildTeamThreadLink({ guildId, threadId }) : undefined
             return { ...team, avgSof, carClassName, threadUrl }
           })
           teamsList.sort((a, b) => a.name.localeCompare(b.name))
@@ -1220,15 +1233,20 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
 
     const teamThreads = (raceWithEvent.discordTeamThreads as Record<string, string> | null) ?? {}
     const guildId = process.env.DISCORD_GUILD_ID
-    const { createTeamThread } = await import('@/lib/discord')
+    const { addUsersToThread, buildTeamThreadLink, createTeamThread } =
+      await import('@/lib/discord')
 
     for (const [teamId, team] of teamsMap.entries()) {
+      const memberDiscordIds = team.members
+        .map((member) => member.discordId)
+        .filter((id): id is string => Boolean(id))
       if (teamThreads[teamId]) continue
       try {
         const threadId = await createTeamThread({
           teamName: team.name,
           eventName: raceWithEvent.event.name,
           raceStartTime: raceWithEvent.startTime,
+          memberDiscordIds,
         })
         if (threadId) {
           teamThreads[teamId] = threadId
@@ -1238,13 +1256,24 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
       }
     }
 
+    for (const [teamId, team] of teamsMap.entries()) {
+      const threadId = teamThreads[teamId]
+      if (!threadId) continue
+      const memberDiscordIds = team.members
+        .map((member) => member.discordId)
+        .filter((id): id is string => Boolean(id))
+      if (memberDiscordIds.length === 0) continue
+      await addUsersToThread(threadId, memberDiscordIds)
+    }
+
+    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+
     const teamsList = Array.from(teamsMap.entries()).map(([teamId, team]) => {
       const total = team.members.reduce((sum, member) => sum + member.rating, 0)
       const avgSof = team.members.length ? Math.round(total / team.members.length) : 0
       const carClassName = team.carClassName || team.members[0]?.carClass
       const threadId = teamThreads[teamId]
-      const threadUrl =
-        guildId && threadId ? `https://discord.com/channels/${guildId}/${threadId}` : undefined
+      const threadUrl = guildId && threadId ? buildTeamThreadLink({ guildId, threadId }) : undefined
       return { ...team, avgSof, carClassName, threadUrl }
     })
     teamsList.sort((a, b) => a.name.localeCompare(b.name))
@@ -1274,7 +1303,6 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
     }
 
     const { sendTeamsAssignedNotification } = await import('@/lib/discord')
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
     const notification = await sendTeamsAssignedNotification({
       eventName: raceWithEvent.event.name,
       raceStartTime: raceWithEvent.startTime,
