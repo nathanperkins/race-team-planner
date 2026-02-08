@@ -157,7 +157,7 @@ function MaxDriversPerTeamInput({
           onClick={onRebalance}
           disabled={disabled}
         >
-          Rebalance
+          Form/Rebalance Teams
         </button>
       )}
     </div>
