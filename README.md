@@ -101,8 +101,8 @@ Automated encrypted backups are configured in production via Cloud Run Jobs and 
 - **Backup Retention**:
   | Type | Retention |
   |------|-----------|
-  | 4-Hourly | 3 days |
-  | Weekly | 12 weeks |
+  | Hourly | 3 days |
+  | Weekly | 8 weeks |
 
 - **Restoring a Backup**:
   ```bash

@@ -118,9 +118,9 @@ resource "google_cloud_run_v2_job" "db_backup" {
 
 # Cloud Scheduler to trigger hourly backups
 resource "google_cloud_scheduler_job" "db_backup_job" {
-  name             = "${var.app_name}-db-backup-4-hourly"
-  description      = "Triggers database backup every 4 hours"
-  schedule         = "0 */4 * * *"
+  name             = "${var.app_name}-db-backup-hourly"
+  description      = "Triggers database backup every hour"
+  schedule         = "0 * * * *"
   time_zone        = "UTC"
   attempt_deadline = "320s"
 
