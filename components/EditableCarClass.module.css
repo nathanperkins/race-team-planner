@@ -69,6 +69,25 @@
   text-overflow: ellipsis;
 }
 
+.pillVariant .editButton {
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.pillVariant .editButton.placeholder {
+  border-style: dashed;
+  color: rgba(148, 163, 184, 0.9);
+}
+
+.pillVariant .editButton.placeholder::after {
+  content: '';
+  width: 1px;
+  height: 12px;
+  background: rgba(148, 163, 184, 0.9);
+  margin: 0 0.35rem 0 0.1rem;
+}
 .pillVariant .editButton:hover:not(:disabled) {
   color: rgba(234, 240, 255, 0.95);
   border-color: rgba(255, 255, 255, 0.3);

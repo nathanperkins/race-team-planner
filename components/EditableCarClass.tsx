@@ -9,6 +9,7 @@ interface Props {
   registrationId?: string
   currentCarClassId: string
   currentCarClassShortName: string
+  placeholderLabel?: string
   carClasses?: { id: string; name: string; shortName: string }[]
   className?: string
   readOnly?: boolean
@@ -34,6 +35,7 @@ export default function EditableCarClass({
   registrationId,
   currentCarClassId,
   currentCarClassShortName,
+  placeholderLabel,
   carClasses,
   className,
   readOnly = false,
@@ -132,7 +134,9 @@ export default function EditableCarClass({
     })
   }
 
-  const displayText = showLabel ? `Class: ${currentCarClassShortName}` : currentCarClassShortName
+  const baseLabel = currentCarClassId ? currentCarClassShortName : (placeholderLabel ?? '-')
+  const displayText = showLabel ? `Class: ${baseLabel}` : baseLabel
+  const isPlaceholder = !currentCarClassId
   const containerClassName = [
     styles.container,
     variant === 'table' ? styles.tableVariant : '',
@@ -159,7 +163,9 @@ export default function EditableCarClass({
     <div className={containerClassName} ref={dropdownRef}>
       <button
         type="button"
-        className={`${styles.editButton} ${isOpen ? styles.active : ''}`}
+        className={`${styles.editButton} ${isOpen ? styles.active : ''} ${
+          isPlaceholder ? styles.placeholder : ''
+        }`}
         onClick={() => {
           setIsOpen((prev) => {
             const next = !prev
@@ -171,6 +177,7 @@ export default function EditableCarClass({
         }}
         disabled={isPending}
         title={displayText}
+        data-placeholder={isPlaceholder ? baseLabel : ''}
       >
         {(variant === 'pill' || variant === 'icon') && <Car size={12} />}
         {variant !== 'icon' && <span className={styles.pillText}>{displayText}</span>}
