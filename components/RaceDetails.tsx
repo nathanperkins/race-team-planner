@@ -1393,19 +1393,6 @@ export default function RaceDetails({
     [carClasses, pendingDrops, race.registrations, teamNameById]
   )
 
-  const handleLocalDrop = useCallback(
-    (reg: RaceWithRegistrations['registrations'][0]) => {
-      if (isTempRegistrationId(reg.id)) {
-        setPendingAdditions((prev) => prev.filter((entry) => entry.tempId !== reg.id))
-      } else {
-        setPendingDrops((prev) => new Set(prev).add(reg.id))
-      }
-      teamOverridesRef.current.delete(reg.id)
-      setPendingRegistrations((prev) => prev.filter((entry) => entry.id !== reg.id))
-    },
-    [isTempRegistrationId]
-  )
-
   const showTeamsInCard = teamsAssigned
   const canAssignTeams = isAdmin && !isRaceCompleted
   const enableDrag = canAssignTeams && isTeamModalOpen
