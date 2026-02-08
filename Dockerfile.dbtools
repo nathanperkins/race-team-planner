@@ -19,6 +19,7 @@ ENV PATH="/usr/lib/postgresql/17/bin:$PATH"
 COPY scripts/backup-db.sh /scripts/backup-db.sh
 COPY scripts/restore-db.sh /scripts/restore-db.sh
 COPY scripts/test-restore.sh /scripts/test-restore.sh
+COPY scripts/wipe-db.sh /scripts/wipe-db.sh
 RUN chmod +x /scripts/*.sh
 
 # Default to backup (override with CMD when running)

@@ -107,6 +107,12 @@ gcloud run jobs update ${APP_NAME}-db-restore-test \
   --region $REGION \
   --project $PROJECT_ID
 
+echo "Updating wipe job with new image..."
+gcloud run jobs update ${APP_NAME}-db-wipe \
+  --image $DBTOOLS_IMAGE_URI \
+  --region $REGION \
+  --project $PROJECT_ID
+
 echo "Running database migrations..."
 echo "Monitor migration job here: https://console.cloud.google.com/run/jobs/details/${REGION}/${APP_NAME}-migrate/executions?project=${PROJECT_ID}"
 gcloud run jobs execute ${APP_NAME}-migrate \
