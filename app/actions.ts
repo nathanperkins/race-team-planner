@@ -542,22 +542,27 @@ export async function updateRegistrationCarClass(prevState: State, formData: For
       getAutoMaxDriversPerTeam(
         getRaceDurationMinutes(registration.race.startTime, registration.race.endTime)
       )
-    const teamId = await getAutoTeamId(registration.raceId, carClassId, {
-      excludeRegistrationId: registrationId,
-      maxDriversPerTeam: resolvedMaxDrivers,
-    })
+    const preserveUnassigned = !registration.teamId
+    const teamId = preserveUnassigned
+      ? null
+      : await getAutoTeamId(registration.raceId, carClassId, {
+          excludeRegistrationId: registrationId,
+          maxDriversPerTeam: resolvedMaxDrivers,
+        })
 
     await prisma.registration.update({
       where: { id: registrationId },
       data: { carClassId, teamId },
     })
 
-    await rebalanceTeamsForClass(
-      registration.raceId,
-      carClassId,
-      resolvedMaxDrivers,
-      registration.race.teamAssignmentStrategy
-    )
+    if (!preserveUnassigned) {
+      await rebalanceTeamsForClass(
+        registration.raceId,
+        carClassId,
+        resolvedMaxDrivers,
+        registration.race.teamAssignmentStrategy
+      )
+    }
 
     revalidatePath(`/events/${registration.race.eventId}`)
     revalidatePath(`/users/${registration.userId}/registrations`)

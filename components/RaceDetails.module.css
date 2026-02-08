@@ -443,6 +443,17 @@
   margin-top: 1rem;
 }
 
+.teamGridSeparator {
+  grid-column: 1 / -1;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+  padding: 0.25rem 0 0.5rem;
+  border-top: 1px solid rgba(71, 85, 105, 0.7);
+  margin-top: 0.25rem;
+}
+
 .teamGroup {
   background-color: #111827;
   border: 1px solid #374151;
@@ -453,12 +464,12 @@
 }
 
 .unassignedTile {
-  grid-column: 1 / -1;
+  grid-column: auto;
 }
 
 .unassignedGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 0.75rem;
 }
 
@@ -723,6 +734,39 @@
   font-size: 0.875rem;
   font-weight: 600;
   margin-bottom: 0.5rem;
+}
+
+.teamHeaderContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.teamHeaderRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.teamGroupMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #e5e7eb;
+  flex-wrap: wrap;
+}
+
+.teamGroupMeta .teamSof {
+  margin-left: 0;
+  white-space: nowrap;
+}
+
+.teamGroupMeta .carClassPill {
+  max-width: none;
+  flex: 0 0 auto;
 }
 
 .teamNameEdit {

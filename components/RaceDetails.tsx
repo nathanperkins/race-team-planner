@@ -776,6 +776,12 @@ export default function RaceDetails({
         carClassId: reg.carClass.id,
         teamId: reg.teamId ?? reg.team?.id ?? null,
       }))
+    const teamsWithDrivers = new Set(
+      pendingRegistrations
+        .map((reg) => reg.teamId ?? reg.team?.id ?? null)
+        .filter((id): id is string => !!id)
+    )
+    const newTeamsPayload = extraTeams.filter((team) => teamsWithDrivers.has(team.id))
 
     const formData = new FormData()
     formData.set('raceId', race.id)
@@ -783,7 +789,7 @@ export default function RaceDetails({
     formData.set('teamAssignmentStrategy', pendingStrategy)
     formData.set('applyRebalance', 'false')
     formData.set('registrationUpdates', JSON.stringify(payload))
-    formData.set('newTeams', JSON.stringify(extraTeams))
+    formData.set('newTeams', JSON.stringify(newTeamsPayload))
     formData.set('pendingAdditions', JSON.stringify(pendingAdditions))
     formData.set('pendingDrops', JSON.stringify(Array.from(pendingDrops)))
     formData.set('teamNameOverrides', JSON.stringify(teamNameOverrides))
@@ -797,6 +803,12 @@ export default function RaceDetails({
             return
           }
           setIsTeamModalOpen(false)
+          setExtraTeams([])
+          setRevealedTeamIds([])
+          setLockedTeamIds(new Set())
+          setEditingTeamId(null)
+          setEditingTeamName('')
+          setTeamNameOverrides({})
           if (isAdmin) {
             setTeamsAssigned(pendingRegistrations.some((reg) => !!(reg.teamId || reg.team?.id)))
           }
@@ -811,6 +823,8 @@ export default function RaceDetails({
     setIsTeamModalOpen(false)
     teamOverridesRef.current = new Map()
     setPendingRegistrations(race.registrations)
+    setExtraTeams([])
+    setRevealedTeamIds([])
     setLockedTeamIds(new Set())
     setPendingAdditions([])
     setPendingDrops(new Set())
@@ -830,25 +844,31 @@ export default function RaceDetails({
     return nextTeam
   }, [extraTeams.length, teams.length])
 
-  const revealOrCreateTeam = useCallback(() => {
-    const usedTeamIds = new Set<string>()
-    pendingRegistrations.forEach((reg) => {
-      const teamId = reg.teamId ?? reg.team?.id
-      if (teamId) usedTeamIds.add(teamId)
-    })
-    revealedTeamIds.forEach((id) => usedTeamIds.add(id))
+  const revealOrCreateTeam = useCallback(
+    (options?: { allowOfficial?: boolean }) => {
+      const allowOfficial = options?.allowOfficial ?? true
+      const usedTeamIds = new Set<string>()
+      pendingRegistrations.forEach((reg) => {
+        const teamId = reg.teamId ?? reg.team?.id
+        if (teamId) usedTeamIds.add(teamId)
+      })
+      revealedTeamIds.forEach((id) => usedTeamIds.add(id))
 
-    const availableOfficial = teams.find((team) => !usedTeamIds.has(team.id))
-    if (availableOfficial) {
-      setRevealedTeamIds((prev) =>
-        prev.includes(availableOfficial.id) ? prev : [...prev, availableOfficial.id]
-      )
-      return { id: availableOfficial.id, name: availableOfficial.name, isTemp: false }
-    }
+      if (allowOfficial) {
+        const availableOfficial = teams.find((team) => !usedTeamIds.has(team.id))
+        if (availableOfficial) {
+          setRevealedTeamIds((prev) =>
+            prev.includes(availableOfficial.id) ? prev : [...prev, availableOfficial.id]
+          )
+          return { id: availableOfficial.id, name: availableOfficial.name, isTemp: false }
+        }
+      }
 
-    const created = createTempTeam()
-    return { id: created.id, name: created.name, isTemp: true }
-  }, [createTempTeam, pendingRegistrations, revealedTeamIds, teams])
+      const created = createTempTeam()
+      return { id: created.id, name: created.name, isTemp: true }
+    },
+    [createTempTeam, pendingRegistrations, revealedTeamIds, teams]
+  )
 
   const resolveTeamForClass = useCallback(
     (registrationId: string, classId: string, preferredTeamId?: string | null) => {
@@ -1041,7 +1061,7 @@ export default function RaceDetails({
       event.preventDefault()
       const registrationId = event.dataTransfer.getData('text/plain')
       if (!registrationId) return
-      const newTeam = revealOrCreateTeam()
+      const newTeam = revealOrCreateTeam({ allowOfficial: false })
       moveRegistrationToTeam(registrationId, newTeam.id, newTeam.name)
     },
     [moveRegistrationToTeam, revealOrCreateTeam]
@@ -1189,11 +1209,16 @@ export default function RaceDetails({
 
   const renderDriverRow = (
     reg: RaceWithRegistrations['registrations'][0],
-    options?: { allowAdminEdits?: boolean }
+    options?: { allowAdminEdits?: boolean; inUnassignedTile?: boolean }
   ) => {
     const allowAdminEdits = options?.allowAdminEdits ?? false
+    const inUnassignedTile = options?.inUnassignedTile ?? false
     const hasTeamAssigned = !!(reg.teamId ?? reg.team?.id)
     const canEditCarClass = allowAdminEdits && isAdmin && !isRaceCompleted && !hasTeamAssigned
+    const canEditUnassignedCarClass =
+      inUnassignedTile &&
+      !isRaceCompleted &&
+      (isTeamModalOpen ? allowAdminEdits : isAdmin || reg.userId === userId)
     const driverName = reg.user?.name || reg.manualDriver?.name || 'Driver'
     const driverImage = reg.user?.image || reg.manualDriver?.image
     const preferredStats = getPreferredStats(reg)
@@ -1259,28 +1284,42 @@ export default function RaceDetails({
                   {licenseLabel} {safetyRating} {irating}
                 </span>
               )}
-              <EditableCarClass
-                registrationId={reg.id}
-                currentCarClassId={reg.carClass.id}
-                currentCarClassShortName={reg.carClass.shortName || reg.carClass.name}
-                carClasses={carClasses}
-                deferSubmit
-                onChange={(classId) =>
-                  handleCarClassChange(reg.id, classId, { enforceTeamClass: allowAdminEdits })
-                }
-                readOnly={
-                  hasTeamAssigned || (!canEditCarClass && (!isAdmin || reg.userId !== userId))
-                }
-                showLabel={false}
-                variant="pill"
-                className={styles.carClassPill}
-              />
+              {!showTeamsInCard && !inUnassignedTile && !(allowAdminEdits && isTeamModalOpen) && (
+                <EditableCarClass
+                  registrationId={reg.id}
+                  currentCarClassId={reg.carClass.id}
+                  currentCarClassShortName={reg.carClass.shortName || reg.carClass.name}
+                  carClasses={carClasses}
+                  deferSubmit
+                  onChange={(classId) =>
+                    handleCarClassChange(reg.id, classId, { enforceTeamClass: allowAdminEdits })
+                  }
+                  readOnly={
+                    hasTeamAssigned || (!canEditCarClass && (!isAdmin || reg.userId !== userId))
+                  }
+                  showLabel={false}
+                  variant="pill"
+                  className={styles.carClassPill}
+                />
+              )}
             </div>
           </div>
         </div>
         <div className={styles.driverTimeslot}>
           {(reg.userId === userId || isAdmin) && !isRaceCompleted && (
             <div className={styles.actionRow}>
+              {canEditUnassignedCarClass && carClasses && (
+                <EditableCarClass
+                  registrationId={reg.id}
+                  currentCarClassId={reg.carClass.id}
+                  currentCarClassShortName={reg.carClass.shortName || reg.carClass.name}
+                  carClasses={carClasses}
+                  variant="icon"
+                  showLabel={false}
+                  deferSubmit={isTeamModalOpen}
+                  onChange={(classId) => handleCarClassChange(reg.id, classId)}
+                />
+              )}
               {allowAdminEdits && isTeamModalOpen ? (
                 <button
                   type="button"
@@ -1327,13 +1366,8 @@ export default function RaceDetails({
       if (revealedTeamSet.has(id)) return true
       return false
     })
-    const unknownTeams = Object.keys(grouped).filter(
-      (id) => id !== 'unassigned' && !orderedTeamIds.includes(id)
-    )
-    const sortedTeams = [...visibleOrderedTeams, ...unknownTeams].filter(
-      (id) => id !== 'unassigned'
-    )
-    if (grouped.unassigned) sortedTeams.push('unassigned')
+    const unknownTeams = Object.keys(grouped).filter((id) => !orderedTeamIds.includes(id))
+    const sortedTeams = [...visibleOrderedTeams, ...unknownTeams]
 
     const getTeamLabel = (teamId: string) =>
       teamId === 'unassigned' ? 'Unassigned' : teamNameById.get(teamId) || 'Team'
@@ -1344,18 +1378,25 @@ export default function RaceDetails({
     const assignedTeams = filteredTeams.filter((teamId) => teamId !== 'unassigned')
     const unassignedTeams = filteredTeams.filter((teamId) => teamId === 'unassigned')
 
-    const renderedTeams = [...assignedTeams, ...unassignedTeams].map((teamId) => {
-      const teamRegistrations = grouped[teamId] ?? []
+    const renderTeamTile = (
+      teamId: string,
+      teamRegistrations: typeof pendingRegistrations,
+      options?: { unassignedLabel?: string }
+    ) => {
       const ratings = teamRegistrations.map((reg) => getRegistrationRating(reg))
       const avgRating =
         ratings.length > 0
           ? Math.round(ratings.reduce((sum, value) => sum + value, 0) / ratings.length)
           : 0
       const isLocked = allowAdminEdits && teamId !== 'unassigned' && isTeamLocked(teamId)
+      const teamCarClassId = teamRegistrations[0]?.carClass.id
+      const teamCarClassLabel =
+        teamRegistrations[0]?.carClass.shortName || teamRegistrations[0]?.carClass.name
+      const unassignedLabel = options?.unassignedLabel
 
       return (
         <div
-          key={teamId}
+          key={unassignedLabel ? `${teamId}-${unassignedLabel}` : teamId}
           className={`${styles.teamGroup} ${
             dragOverTeamId === teamId ? styles.teamGroupDragOver : ''
           } ${teamId === 'unassigned' ? styles.unassignedTile : ''} ${
@@ -1377,64 +1418,105 @@ export default function RaceDetails({
         >
           <div className={styles.teamGroupHeader}>
             <Users size={14} />
-            {allowAdminEdits &&
-            teamId !== 'unassigned' &&
-            editingTeamId === teamId &&
-            !isOfficialTeamId(teamId) ? (
-              <div className={styles.teamNameEdit}>
-                <input
-                  className={styles.teamNameInput}
-                  value={editingTeamName}
-                  onChange={(event) => setEditingTeamName(event.target.value)}
-                />
-                <button
-                  type="button"
-                  className={styles.teamNameSave}
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    saveTeamRename()
-                  }}
-                  title="Save team name"
-                >
-                  <Check size={12} />
-                </button>
+            <div className={styles.teamHeaderContent}>
+              <div className={styles.teamHeaderRow}>
+                {allowAdminEdits &&
+                teamId !== 'unassigned' &&
+                editingTeamId === teamId &&
+                !isOfficialTeamId(teamId) ? (
+                  <div className={styles.teamNameEdit}>
+                    <input
+                      className={styles.teamNameInput}
+                      value={editingTeamName}
+                      onChange={(event) => setEditingTeamName(event.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className={styles.teamNameSave}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        saveTeamRename()
+                      }}
+                      title="Save team name"
+                    >
+                      <Check size={12} />
+                    </button>
+                  </div>
+                ) : (
+                  <span>{unassignedLabel ?? getTeamLabel(teamId)}</span>
+                )}
+                {allowAdminEdits &&
+                  teamId !== 'unassigned' &&
+                  !isOfficialTeamId(teamId) &&
+                  editingTeamId !== teamId && (
+                    <button
+                      type="button"
+                      className={styles.teamNameEditButton}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        startTeamRename(teamId)
+                      }}
+                      title="Edit team name"
+                    >
+                      <Pencil size={12} />
+                    </button>
+                  )}
+                {allowAdminEdits && teamId !== 'unassigned' && (
+                  <button
+                    type="button"
+                    className={`${styles.teamLockButton} ${
+                      isTeamLocked(teamId) ? styles.teamLockActive : ''
+                    }`}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      toggleTeamLock(teamId)
+                    }}
+                    title={isTeamLocked(teamId) ? 'Unlock team' : 'Lock team'}
+                  >
+                    {isTeamLocked(teamId) ? <Lock size={12} /> : <Unlock size={12} />}
+                  </button>
+                )}
+                <span className={styles.teamCount}>({teamRegistrations.length})</span>
               </div>
-            ) : (
-              <span>{getTeamLabel(teamId)}</span>
-            )}
-            {allowAdminEdits &&
-              teamId !== 'unassigned' &&
-              !isOfficialTeamId(teamId) &&
-              editingTeamId !== teamId && (
-                <button
-                  type="button"
-                  className={styles.teamNameEditButton}
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    startTeamRename(teamId)
-                  }}
-                  title="Edit team name"
-                >
-                  <Pencil size={12} />
-                </button>
+              {allowAdminEdits && isTeamModalOpen && teamId !== 'unassigned' && teamCarClassId && (
+                <div className={styles.teamGroupMeta}>
+                  <EditableCarClass
+                    registrationId={`${teamId}-header`}
+                    currentCarClassId={teamCarClassId}
+                    currentCarClassShortName={teamCarClassLabel}
+                    carClasses={carClasses}
+                    deferSubmit
+                    pillStyle="group"
+                    onChange={(classId) => {
+                      teamRegistrations.forEach((reg) =>
+                        handleCarClassChange(reg.id, classId, { enforceTeamClass: allowAdminEdits })
+                      )
+                    }}
+                    readOnly={!allowAdminEdits}
+                    showLabel={false}
+                    variant="pill"
+                    className={styles.carClassPill}
+                  />
+                  <span className={styles.teamSof}>{avgRating} SOF</span>
+                </div>
               )}
-            {allowAdminEdits && teamId !== 'unassigned' && (
-              <button
-                type="button"
-                className={`${styles.teamLockButton} ${
-                  isTeamLocked(teamId) ? styles.teamLockActive : ''
-                }`}
-                onClick={(event) => {
-                  event.stopPropagation()
-                  toggleTeamLock(teamId)
-                }}
-                title={isTeamLocked(teamId) ? 'Unlock team' : 'Lock team'}
-              >
-                {isTeamLocked(teamId) ? <Lock size={12} /> : <Unlock size={12} />}
-              </button>
-            )}
-            <span className={styles.teamCount}>({teamRegistrations.length})</span>
-            <span className={styles.teamSof}>{avgRating} SOF</span>
+              {!isTeamModalOpen && teamId !== 'unassigned' && teamCarClassId && (
+                <div className={styles.teamGroupMeta}>
+                  <EditableCarClass
+                    registrationId={`${teamId}-header`}
+                    currentCarClassId={teamCarClassId}
+                    currentCarClassShortName={teamCarClassLabel}
+                    carClasses={carClasses}
+                    readOnly
+                    showLabel={false}
+                    variant="pill"
+                    pillStyle="group"
+                    className={styles.carClassPill}
+                  />
+                  <span className={styles.teamSof}>{avgRating} SOF</span>
+                </div>
+              )}
+            </div>
             {includeAddTeam && canAssignTeams && teamId !== 'unassigned' && (
               <button
                 type="button"
@@ -1447,7 +1529,9 @@ export default function RaceDetails({
             )}
           </div>
           <div className={teamId === 'unassigned' ? styles.unassignedGrid : undefined}>
-            {teamRegistrations.map((reg) => renderDriverRow(reg, { allowAdminEdits }))}
+            {teamRegistrations.map((reg) =>
+              renderDriverRow(reg, { allowAdminEdits, inUnassignedTile: teamId === 'unassigned' })
+            )}
           </div>
           {includeAddTeam && canAssignTeams && teamId !== 'unassigned' && (
             <div className={styles.addDriverInline}>
@@ -1486,10 +1570,31 @@ export default function RaceDetails({
           )}
         </div>
       )
+    }
+
+    const assignedTiles = assignedTeams.map((teamId) =>
+      renderTeamTile(teamId, grouped[teamId] ?? [])
+    )
+    const unassignedTiles = unassignedTeams.flatMap((teamId) => {
+      const unassignedRegs = grouped[teamId] ?? []
+      const byClass = new Map<string, typeof pendingRegistrations>()
+      unassignedRegs.forEach((reg) => {
+        const key = reg.carClass.id
+        const list = byClass.get(key) ?? []
+        list.push(reg)
+        byClass.set(key, list)
+      })
+      return Array.from(byClass.entries()).map(([classId, regs]) =>
+        renderTeamTile(teamId, regs, {
+          unassignedLabel: `Unassigned - ${
+            regs[0]?.carClass.shortName || regs[0]?.carClass.name || classId
+          }`,
+        })
+      )
     })
 
-    if (includeAddTeam && canAssignTeams) {
-      const addTeamTile = (
+    const addTeamTile =
+      includeAddTeam && canAssignTeams ? (
         <div
           key="add-team"
           className={`${styles.teamGroup} ${styles.addTeamTile} ${
@@ -1506,7 +1611,7 @@ export default function RaceDetails({
           }}
           onClick={() => {
             if (!canAssignTeams) return
-            revealOrCreateTeam()
+            revealOrCreateTeam({ allowOfficial: false })
           }}
         >
           <div className={styles.addTeamContent}>
@@ -1514,14 +1619,20 @@ export default function RaceDetails({
             <span>Add Team</span>
           </div>
         </div>
-      )
+      ) : null
 
-      if (assignedTeams.length === 0) {
-        renderedTeams.unshift(addTeamTile)
-      } else {
-        renderedTeams.splice(assignedTeams.length, 0, addTeamTile)
-      }
-    }
+    const baseAssigned =
+      addTeamTile && isTeamModalOpen ? [...assignedTiles, addTeamTile] : [...assignedTiles]
+
+    const renderedTeams = isTeamModalOpen
+      ? [
+          ...baseAssigned,
+          ...(baseAssigned.length > 0 && unassignedTiles.length > 0
+            ? [<div key="unassigned-separator" className={styles.teamGridSeparator} aria-hidden />]
+            : []),
+          ...unassignedTiles,
+        ]
+      : [...assignedTiles, ...unassignedTiles, ...(addTeamTile ? [addTeamTile] : [])]
 
     return <div className={styles.teamGrid}>{renderedTeams}</div>
   }
@@ -1555,16 +1666,7 @@ export default function RaceDetails({
         {pendingRegistrations.length === 0 ? (
           <p className="text-sm text-gray-500 mt-2">No drivers registered for this race.</p>
         ) : (
-          <div className={styles.driverList}>
-            {showTeamsInCard ? (
-              renderTeamGrid()
-            ) : (
-              <div className={styles.unassignedGroup}>
-                <div className={styles.unassignedHeader}>Teams pending assignment</div>
-                {pendingRegistrations.map((reg) => renderDriverRow(reg))}
-              </div>
-            )}
-          </div>
+          <div className={styles.driverList}>{renderTeamGrid()}</div>
         )}
 
         {isAdmin && !isRaceCompleted && (

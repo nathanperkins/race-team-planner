@@ -74,6 +74,59 @@
   border-color: rgba(255, 255, 255, 0.3);
 }
 
+.iconVariant .editButton,
+.iconVariant .displayOnly {
+  width: 30px;
+  height: 30px;
+  padding: 6px;
+  gap: 0;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  background: rgba(59, 130, 246, 0.12);
+  color: #93c5fd;
+}
+
+.iconVariant .editButton:hover:not(:disabled) {
+  border-color: rgba(59, 130, 246, 0.7);
+  background: rgba(59, 130, 246, 0.2);
+  color: #dbeafe;
+}
+
+.iconVariant .editButton.active {
+  border-color: rgba(96, 165, 250, 0.9);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.iconVariant .dropdown {
+  min-width: 220px;
+  overflow: hidden;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+}
+
+.groupPill .editButton,
+.groupPill .displayOnly {
+  background: transparent;
+  border: 1px solid #374151;
+  color: #e5e7eb;
+  border-radius: 9999px;
+  padding: 0.15rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  height: 24px;
+}
+
+.groupPill .editButton:hover:not(:disabled) {
+  border-color: #4b5563;
+  background-color: #111827;
+  color: #e5e7eb;
+}
+
+.groupPill .editButton.active {
+  border-color: rgba(96, 165, 250, 0.9);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
 .pillVariant .displayOnly {
   display: inline-flex;
   align-items: center;

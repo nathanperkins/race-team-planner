@@ -13,7 +13,8 @@ interface Props {
   className?: string
   readOnly?: boolean
   showLabel?: boolean
-  variant?: 'standard' | 'table' | 'pill'
+  variant?: 'standard' | 'table' | 'pill' | 'icon'
+  pillStyle?: 'default' | 'group'
   deferSubmit?: boolean
   onChange?: (classId: string) => void
 }
@@ -38,6 +39,7 @@ export default function EditableCarClass({
   readOnly = false,
   showLabel = true,
   variant = 'standard',
+  pillStyle = 'default',
   deferSubmit = false,
   onChange,
 }: Props) {
@@ -120,6 +122,7 @@ export default function EditableCarClass({
       onChange?.(classId)
       return
     }
+    onChange?.(classId)
     setPendingLabel(label)
     const formData = new FormData()
     formData.append('registrationId', registrationId)
@@ -134,6 +137,8 @@ export default function EditableCarClass({
     styles.container,
     variant === 'table' ? styles.tableVariant : '',
     variant === 'pill' ? styles.pillVariant : '',
+    variant === 'icon' ? styles.iconVariant : '',
+    variant === 'pill' && pillStyle === 'group' ? styles.groupPill : '',
     className ?? '',
   ]
     .filter(Boolean)
@@ -143,8 +148,8 @@ export default function EditableCarClass({
     return (
       <div className={containerClassName}>
         <p className={styles.displayOnly}>
-          {variant === 'pill' && <Car size={12} />}
-          <span className={styles.pillText}>{displayText}</span>
+          {(variant === 'pill' || variant === 'icon') && <Car size={12} />}
+          {variant !== 'icon' && <span className={styles.pillText}>{displayText}</span>}
         </p>
       </div>
     )
@@ -165,10 +170,11 @@ export default function EditableCarClass({
           })
         }}
         disabled={isPending}
+        title={displayText}
       >
-        {variant === 'pill' && <Car size={12} />}
-        <span className={styles.pillText}>{displayText}</span>
-        <ChevronDown size={12} className={styles.chevron} />
+        {(variant === 'pill' || variant === 'icon') && <Car size={12} />}
+        {variant !== 'icon' && <span className={styles.pillText}>{displayText}</span>}
+        {variant !== 'icon' && <ChevronDown size={12} className={styles.chevron} />}
       </button>
 
       {isOpen && (

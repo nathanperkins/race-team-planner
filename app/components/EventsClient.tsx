@@ -129,6 +129,11 @@ export default function EventsClient({
                   if (!latest || end > latest) return end
                   return latest
                 }, null)
+                const isLive = event.races.some((race) => {
+                  const start = new Date(race.startTime)
+                  const end = new Date(race.endTime)
+                  return now >= start && now <= end
+                })
                 const isCompleted = lastRaceEnd ? now > lastRaceEnd : now > new Date(event.endTime)
                 const totalDrivers = event.races.reduce(
                   (sum, race) => sum + race.registrations.length,
@@ -152,15 +157,17 @@ export default function EventsClient({
                     )}
                     <div className={styles.eventLeft}>
                       <div className={styles.eventTopLine}>
-                        <div className={styles.eventName} title={event.name}>
-                          {getSeriesNameOnly(event.name)}
+                        <div className={styles.eventTitleGroup}>
+                          <div className={styles.eventName} title={event.name}>
+                            {getSeriesNameOnly(event.name)}
+                          </div>
+                          {event.durationMins && (
+                            <span className={styles.durationPill}>
+                              <Timer size={12} />
+                              {formatDuration(event.durationMins)}
+                            </span>
+                          )}
                         </div>
-                        {event.durationMins && (
-                          <span className={styles.durationPill}>
-                            <Timer size={12} />
-                            {formatDuration(event.durationMins)}
-                          </span>
-                        )}
                       </div>
 
                       <div className={styles.eventTrack}>
@@ -168,6 +175,36 @@ export default function EventsClient({
                         {event.track}
                       </div>
                       <div className={styles.trackConfig}>{event.trackConfig || ''}</div>
+                      <div className={`${styles.eventRight} ${styles.eventRightMobile}`}>
+                        <div className={styles.eventRightTop}>
+                          {isLive && (
+                            <div className={styles.liveBadge}>
+                              <span className={styles.liveDot} />
+                              LIVE
+                            </div>
+                          )}
+                          <div
+                            className={styles.licenseBadge}
+                            title={`License ${license}`}
+                            style={{
+                              borderColor: getLicenseColor(license),
+                              color: getLicenseColor(license),
+                              backgroundColor: `${getLicenseColor(license)}30`,
+                            }}
+                          >
+                            {isEligible ? (
+                              <ShieldCheck size={14} />
+                            ) : (
+                              <ShieldX size={14} color="#ef4444" />
+                            )}
+                            {license}
+                          </div>
+                        </div>
+                        <div className={styles.driverPill}>
+                          <User size={12} className={styles.driverIcon} />
+                          {totalDrivers}
+                        </div>
+                      </div>
 
                       <div className={styles.racePills}>
                         {event.races.map((race) => {
@@ -211,22 +248,30 @@ export default function EventsClient({
                       </div>
                     </div>
 
-                    <div className={styles.eventRight}>
-                      <div
-                        className={styles.licenseBadge}
-                        title={`License ${license}`}
-                        style={{
-                          borderColor: getLicenseColor(license),
-                          color: getLicenseColor(license),
-                          backgroundColor: `${getLicenseColor(license)}30`,
-                        }}
-                      >
-                        {isEligible ? (
-                          <ShieldCheck size={14} />
-                        ) : (
-                          <ShieldX size={14} color="#ef4444" />
+                    <div className={`${styles.eventRight} ${styles.eventRightDesktop}`}>
+                      <div className={styles.eventRightTop}>
+                        {isLive && (
+                          <div className={styles.liveBadge}>
+                            <span className={styles.liveDot} />
+                            LIVE
+                          </div>
                         )}
-                        {license}
+                        <div
+                          className={styles.licenseBadge}
+                          title={`License ${license}`}
+                          style={{
+                            borderColor: getLicenseColor(license),
+                            color: getLicenseColor(license),
+                            backgroundColor: `${getLicenseColor(license)}30`,
+                          }}
+                        >
+                          {isEligible ? (
+                            <ShieldCheck size={14} />
+                          ) : (
+                            <ShieldX size={14} color="#ef4444" />
+                          )}
+                          {license}
+                        </div>
                       </div>
                       <div className={styles.driverPill}>
                         <User size={12} className={styles.driverIcon} />

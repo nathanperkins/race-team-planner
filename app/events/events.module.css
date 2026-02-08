@@ -253,6 +253,14 @@
   min-width: 0;
 }
 
+.eventTitleGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+}
+
 .eventName {
   font-weight: 650;
   font-size: 13px;
@@ -260,7 +268,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
-  flex: 1;
+  flex: 1 1 auto;
 }
 
 .eventTrack {
@@ -323,11 +331,15 @@
   align-items: center;
   gap: 3px;
   background: rgba(255, 255, 255, 0.08);
-  padding: 2px 6px;
-  border-radius: 4px;
-  color: rgba(234, 240, 255, 0.7);
+  padding: 0 0.6rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(234, 240, 255, 0.8);
   font-weight: 650;
-  font-size: 13px;
+  font-size: 0.75rem;
+  min-height: 22px;
+  line-height: 1;
+  flex-shrink: 0;
 }
 
 .durationPill svg {
@@ -381,7 +393,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
+  padding: 0 10px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -389,6 +401,9 @@
   font-weight: 600;
   font-size: 11px;
   position: relative;
+  min-height: 22px;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .racePillCompleted {
@@ -423,6 +438,12 @@
   height: 12px;
 }
 
+.eventRightTop {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .classPill {
   display: inline;
   font-weight: inherit;
@@ -438,6 +459,41 @@
   margin-right: 4px;
 }
 
+.liveBadge {
+  font-size: 0.75rem;
+  background-color: #064e3b;
+  color: #6ee7b7;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  border: 1px solid #059669;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-weight: 600;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+  min-height: 22px;
+  line-height: 1;
+}
+
+.liveDot {
+  width: 6px;
+  height: 6px;
+  background-color: #10b981;
+  border-radius: 50%;
+  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
 /* Right side: driver count pill + status text (not buttons) */
 .eventRight {
   display: flex;
@@ -446,6 +502,30 @@
   gap: 6px;
   flex-shrink: 0;
   flex: 0 0 auto;
+}
+
+.eventRightMobile {
+  display: none;
+  align-items: flex-start;
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 8px;
+  margin-top: 2px;
+  margin-bottom: 10px;
+}
+
+@media (max-width: 520px) {
+  .eventRow {
+    align-items: flex-start;
+  }
+
+  .eventRightDesktop {
+    display: none;
+  }
+
+  .eventRightMobile {
+    display: flex;
+  }
 }
 
 .driverPill {

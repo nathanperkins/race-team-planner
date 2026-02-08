@@ -7,7 +7,7 @@ import { fetchTeamInfo, fetchTeamMembers } from '@/lib/iracing'
 
 export async function getTeams() {
   const teams = await prisma.team.findMany({
-    orderBy: { name: 'asc' },
+    orderBy: { createdAt: 'asc' },
     include: {
       teamMembers: {
         select: {
