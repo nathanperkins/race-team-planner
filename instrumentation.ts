@@ -11,8 +11,13 @@ export async function register() {
   console.log(`[Feature] iRacing Sync: ${features.iracingSync ? 'Enabled ✅' : 'Disabled ❌'}`)
 
   if (features.discordMembership) {
-    const { verifyBotToken, verifyGuildAccess, verifyAdminRoles, verifyNotificationsChannel } =
-      await import('@/lib/discord')
+    const {
+      verifyBotToken,
+      verifyGuildAccess,
+      verifyAdminRoles,
+      verifyNotificationsChannel,
+      verifyEventsForum,
+    } = await import('@/lib/discord')
 
     // 1. Verify Token
     const bot = await verifyBotToken()
@@ -51,6 +56,16 @@ export async function register() {
         )
       } else {
         console.log('[Discord] Notifications Channel: Not Configured (Optional) ⚠️')
+      }
+
+      // 5. Verify Events Forum
+      const eventsForum = await verifyEventsForum()
+      if (eventsForum) {
+        console.log(
+          `[Discord] Events Forum Verified: #${eventsForum.name} (${process.env.DISCORD_EVENTS_FORUM_ID}) ✅`
+        )
+      } else if (process.env.DISCORD_EVENTS_FORUM_ID) {
+        console.error('[Discord] Events Forum NOT FOUND ❌ (Check DISCORD_EVENTS_FORUM_ID in .env)')
       }
     } else {
       console.error('[Discord] Bot Token is INVALID ❌ (Received 401/Unauthorized)')

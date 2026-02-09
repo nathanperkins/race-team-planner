@@ -1007,6 +1007,7 @@ export async function saveRaceEdits(formData: FormData) {
         select: { id: true },
       })
       teamsAssignedValue = !!hasTeams
+
       await prisma.race.update({
         where: { id: raceId },
         data: { maxDriversPerTeam, teamAssignmentStrategy, teamsAssigned: teamsAssignedValue },
@@ -1014,212 +1015,7 @@ export async function saveRaceEdits(formData: FormData) {
 
       if (teamsAssignedValue) {
         try {
-          const raceWithEvent = await prisma.race.findUnique({
-            where: { id: raceId },
-            select: {
-              startTime: true,
-              event: { select: { id: true, name: true } },
-            },
-          })
-          const registrations = await prisma.registration.findMany({
-            where: { raceId },
-            include: {
-              team: { select: { name: true, id: true } },
-              carClass: { select: { name: true, shortName: true } },
-              user: {
-                select: {
-                  name: true,
-                  accounts: { where: { provider: 'discord' }, select: { providerAccountId: true } },
-                  racerStats: { select: { categoryId: true, category: true, irating: true } },
-                },
-              },
-              manualDriver: { select: { name: true, irating: true } },
-            },
-          })
-
-          if (raceWithEvent?.event) {
-            const teamsMap = new Map<
-              string,
-              {
-                name: string
-                members: Array<{
-                  name: string
-                  carClass: string
-                  discordId?: string
-                  registrationId?: string
-                  rating: number
-                }>
-                carClassName?: string
-                avgSof?: number
-              }
-            >()
-            const unassigned: Array<{
-              name: string
-              carClass: string
-              discordId?: string
-              registrationId?: string
-              rating: number
-            }> = []
-            const currentSnapshot: Record<string, string | null> = {}
-
-            const getPreferredRating = (
-              stats:
-                | Array<{ categoryId: number; category: string; irating: number }>
-                | null
-                | undefined
-            ) => {
-              if (!stats || stats.length === 0) return null
-              const preferred =
-                stats.find((s) => s.categoryId === 5) ||
-                stats.find((s) => s.category?.toLowerCase() === 'sports car') ||
-                stats[0]
-              return preferred?.irating ?? null
-            }
-
-            registrations.forEach((reg) => {
-              const driverName = reg.user?.name || reg.manualDriver?.name || 'Driver'
-              const carClassName = reg.carClass.shortName || reg.carClass.name
-              const discordId = reg.user?.accounts?.[0]?.providerAccountId
-              const rating =
-                getPreferredRating(
-                  (
-                    reg.user as {
-                      racerStats?: Array<{ categoryId: number; category: string; irating: number }>
-                    } | null
-                  )?.racerStats
-                ) ??
-                reg.manualDriver?.irating ??
-                0
-              const teamId = reg.teamId ?? reg.team?.id ?? null
-              currentSnapshot[reg.id] = teamId
-              if (reg.teamId && reg.team) {
-                const existing = teamsMap.get(reg.teamId) || {
-                  name: reg.team.name,
-                  members: [],
-                }
-                existing.members.push({
-                  name: driverName,
-                  carClass: carClassName,
-                  discordId,
-                  registrationId: reg.id,
-                  rating,
-                })
-                if (!existing.carClassName) {
-                  existing.carClassName = carClassName
-                }
-                teamsMap.set(reg.teamId, existing)
-              } else {
-                unassigned.push({
-                  name: driverName,
-                  carClass: carClassName,
-                  discordId,
-                  registrationId: reg.id,
-                  rating,
-                })
-              }
-            })
-
-            const teamThreads = (race.discordTeamThreads as Record<string, string> | null) ?? {}
-            const guildId = process.env.DISCORD_GUILD_ID
-            const { addUsersToThread, buildTeamThreadLink, createTeamThread } =
-              await import('@/lib/discord')
-
-            for (const [teamId, team] of teamsMap.entries()) {
-              const memberDiscordIds = team.members
-                .map((member) => member.discordId)
-                .filter((id): id is string => Boolean(id))
-              if (teamThreads[teamId]) continue
-              try {
-                const threadId = await createTeamThread({
-                  teamName: team.name,
-                  eventName: raceWithEvent.event.name,
-                  raceStartTime: raceWithEvent.startTime,
-                  memberDiscordIds,
-                })
-                if (threadId) {
-                  teamThreads[teamId] = threadId
-                }
-              } catch (error) {
-                console.error('Failed to create team thread:', error)
-              }
-            }
-
-            for (const [teamId, team] of teamsMap.entries()) {
-              const threadId = teamThreads[teamId]
-              if (!threadId) continue
-              const memberDiscordIds = team.members
-                .map((member) => member.discordId)
-                .filter((id): id is string => Boolean(id))
-              if (memberDiscordIds.length === 0) continue
-              await addUsersToThread(threadId, memberDiscordIds)
-            }
-
-            const teamsList = Array.from(teamsMap.entries()).map(([teamId, team]) => {
-              const total = team.members.reduce((sum, member) => sum + member.rating, 0)
-              const avgSof = team.members.length ? Math.round(total / team.members.length) : 0
-              const carClassName = team.carClassName || team.members[0]?.carClass
-              const threadId = teamThreads[teamId]
-              const threadUrl =
-                guildId && threadId ? buildTeamThreadLink({ guildId, threadId }) : undefined
-              return { ...team, avgSof, carClassName, threadUrl }
-            })
-            teamsList.sort((a, b) => a.name.localeCompare(b.name))
-            teamsList.forEach((team) => team.members.sort((a, b) => a.name.localeCompare(b.name)))
-            unassigned.sort((a, b) => a.name.localeCompare(b.name))
-
-            const previousSnapshot =
-              (race.discordTeamsSnapshot as Record<string, string | null> | null) ?? null
-            const mentionRegistrationIds = new Set<string>()
-            if (!previousSnapshot) {
-              registrations.forEach((reg) => {
-                const discordId = reg.user?.accounts?.[0]?.providerAccountId
-                if (discordId) {
-                  mentionRegistrationIds.add(reg.id)
-                }
-              })
-            } else {
-              Object.entries(currentSnapshot).forEach(([regId, teamId]) => {
-                if (!(regId in previousSnapshot)) {
-                  mentionRegistrationIds.add(regId)
-                  return
-                }
-                if (previousSnapshot[regId] !== teamId) {
-                  mentionRegistrationIds.add(regId)
-                }
-              })
-            }
-
-            const { sendTeamsAssignedNotification } = await import('@/lib/discord')
-            const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
-            const notification = await sendTeamsAssignedNotification({
-              eventName: raceWithEvent.event.name,
-              raceStartTime: raceWithEvent.startTime,
-              raceUrl: `${baseUrl}/events/${raceWithEvent.event.id}`,
-              teams: teamsList,
-              unassigned: unassigned.length > 0 ? unassigned : undefined,
-              threadId: race.discordTeamsThreadId,
-              mentionRegistrationIds: Array.from(mentionRegistrationIds),
-            })
-
-            if (notification.ok) {
-              await prisma.race.update({
-                where: { id: raceId },
-                data: {
-                  discordTeamsThreadId: notification.threadId ?? race.discordTeamsThreadId ?? null,
-                  discordTeamsSnapshot: currentSnapshot,
-                  discordTeamThreads: teamThreads,
-                },
-              })
-            } else if (
-              notification.threadId &&
-              notification.threadId !== race.discordTeamsThreadId
-            ) {
-              await prisma.race.update({
-                where: { id: raceId },
-                data: { discordTeamsThreadId: notification.threadId },
-              })
-            }
-          }
+          await sendTeamsAssignmentNotification(raceId)
         } catch (notificationError) {
           console.error('Failed to send teams assigned notification:', notificationError)
         }
@@ -1265,6 +1061,15 @@ export async function saveRaceEdits(formData: FormData) {
   }
 }
 
+/**
+ * Orchestration layer for team assignment notifications.
+ * This function handles the "Business Logic":
+ * 1. Fetches raw data from Prisma (Registrations, Users, RacerStats).
+ * 2. Processes logic like calculating average SOF and mapping team compositions.
+ * 3. Identifies which users have changed teams (Snapshots) to determine who to mention.
+ * 4. Coordinates calls to lib/discord.ts to perform the actual API actions.
+ * 5. Persists the resulting Discord IDs (Thread IDs) and Snapshots back to the database.
+ */
 export async function sendTeamsAssignmentNotification(raceId: string) {
   const session = await auth()
   if (!session || !session.user?.id) {
@@ -1287,7 +1092,16 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
         discordTeamsThreadId: true,
         discordTeamsSnapshot: true,
         discordTeamThreads: true,
-        event: { select: { id: true, name: true } },
+        event: {
+          select: {
+            id: true,
+            name: true,
+            track: true,
+            trackConfig: true,
+            tempValue: true,
+            precipChance: true,
+          },
+        },
       },
     })
     if (!raceWithEvent?.event) {
@@ -1388,6 +1202,9 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
       }
     })
 
+    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+    const raceUrl = `${baseUrl}/events/${raceWithEvent.event.id}`
+
     const teamThreads = (raceWithEvent.discordTeamThreads as Record<string, string> | null) ?? {}
     const guildId = process.env.DISCORD_GUILD_ID
     const { addUsersToThread, buildTeamThreadLink, createTeamThread } =
@@ -1404,6 +1221,13 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
           eventName: raceWithEvent.event.name,
           raceStartTime: raceWithEvent.startTime,
           memberDiscordIds,
+          raceUrl,
+          track: raceWithEvent.event.track,
+          trackConfig: raceWithEvent.event.trackConfig ?? undefined,
+          tempValue: raceWithEvent.event.tempValue,
+          precipChance: raceWithEvent.event.precipChance,
+          carClassName: team.carClassName,
+          members: team.members.map((m) => m.name),
         })
         if (threadId) {
           teamThreads[teamId] = threadId
@@ -1422,8 +1246,6 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
       if (memberDiscordIds.length === 0) continue
       await addUsersToThread(threadId, memberDiscordIds)
     }
-
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
 
     const teamsList = Array.from(teamsMap.entries()).map(([teamId, team]) => {
       const total = team.members.reduce((sum, member) => sum + member.rating, 0)
@@ -1463,7 +1285,11 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
     const notification = await sendTeamsAssignedNotification({
       eventName: raceWithEvent.event.name,
       raceStartTime: raceWithEvent.startTime,
-      raceUrl: `${baseUrl}/events/${raceWithEvent.event.id}`,
+      raceUrl,
+      track: raceWithEvent.event.track,
+      trackConfig: raceWithEvent.event.trackConfig ?? undefined,
+      tempValue: raceWithEvent.event.tempValue,
+      precipChance: raceWithEvent.event.precipChance,
       teams: teamsList,
       unassigned: unassigned.length > 0 ? unassigned : undefined,
       threadId: raceWithEvent.discordTeamsThreadId,

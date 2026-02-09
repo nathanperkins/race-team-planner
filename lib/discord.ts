@@ -196,6 +196,38 @@ export async function verifyNotificationsChannel(): Promise<{ name: string } | n
   }
 }
 
+/**
+ * Diagnostic function to verify the events forum is accessible if configured.
+ */
+export async function verifyEventsForum(): Promise<{ name: string } | null> {
+  const botToken = process.env.DISCORD_BOT_TOKEN
+  const forumId = process.env.DISCORD_EVENTS_FORUM_ID
+
+  if (!botToken || !forumId) return null
+
+  try {
+    const response = await fetch(`${DISCORD_API_BASE}/channels/${forumId}`, {
+      headers: {
+        Authorization: `Bot ${botToken}`,
+      },
+    })
+
+    if (response.ok) {
+      const data = await response.json()
+      return { name: data.name }
+    } else {
+      const text = await response.text()
+      console.error(
+        `❌ Discord Events Forum Access Failed: ${response.status} ${response.statusText}`,
+        text
+      )
+      return null
+    }
+  } catch (error) {
+    console.error('❌ Failed to connect to Discord API during forum verification:', error)
+    return null
+  }
+}
 interface RegistrationNotificationData {
   userName: string
   userAvatarUrl?: string
@@ -298,6 +330,9 @@ export async function sendRegistrationNotification(
       return false
     }
 
+    console.log(
+      `✅ [Discord] Registration notification sent for ${data.userName} in ${data.eventName}`
+    )
     return true
   } catch (error) {
     console.error('Error sending Discord registration notification:', error)
@@ -387,6 +422,7 @@ export async function sendOnboardingNotification(
       return false
     }
 
+    console.log(`✅ [Discord] Onboarding notification sent for ${data.userName}`)
     return true
   } catch (error) {
     console.error('Error sending Discord onboarding notification:', error)
@@ -411,6 +447,10 @@ interface TeamsAssignedNotificationData {
   eventName: string
   raceStartTime: Date
   raceUrl: string
+  track?: string
+  trackConfig?: string
+  tempValue?: number | null
+  precipChance?: number | null
   teams: Array<{
     name: string
     carClassName?: string
@@ -515,7 +555,7 @@ export async function sendWeeklyScheduleNotification(
     }
 
     for (const chunk of chunks) {
-      await fetch(`${DISCORD_API_BASE}/channels/${channelId}/messages`, {
+      const resp = await fetch(`${DISCORD_API_BASE}/channels/${channelId}/messages`, {
         method: 'POST',
         headers: {
           Authorization: `Bot ${botToken}`,
@@ -527,6 +567,11 @@ export async function sendWeeklyScheduleNotification(
           flags: 4096, // Suppress notifications (silent)
         }),
       })
+      if (resp.ok) {
+        console.log(
+          `✅ [Discord] Weekly schedule chunk ${chunks.indexOf(chunk) + 1}/${chunks.length} sent`
+        )
+      }
     }
 
     return true
@@ -606,12 +651,20 @@ function chunkLines(lines: string[], maxLength = 1800) {
 /**
  * Sends a Discord notification when teams are assigned for a race.
  * Creates a new thread and posts the team composition inside.
+ *
+ * This function handles the "Technical Execution":
+ * 1. Formats the raw payload (Embeds, Timestamps, Mention lists).
+ * 2. Interacts with the Discord API (fetch, error handling).
+ * 3. Handles Discord-specific nuances like Public vs Forum threads.
+ * 4. This layer knows NOTHING about Prisma or our database state.
  */
 export async function sendTeamsAssignedNotification(
   data: TeamsAssignedNotificationData
 ): Promise<{ ok: boolean; threadId?: string }> {
   const botToken = process.env.DISCORD_BOT_TOKEN
   const channelId = process.env.DISCORD_NOTIFICATIONS_CHANNEL_ID
+  const forumId = process.env.DISCORD_EVENTS_FORUM_ID
+  const guildId = process.env.DISCORD_GUILD_ID
 
   if (!botToken || !channelId) {
     console.warn(
@@ -619,6 +672,8 @@ export async function sendTeamsAssignedNotification(
     )
     return { ok: false }
   }
+
+  const threadParentId = forumId || channelId
 
   try {
     const unixTimestamp = Math.floor(data.raceStartTime.getTime() / 1000)
@@ -648,19 +703,69 @@ export async function sendTeamsAssignedNotification(
       }
     })
     const buildEmbeds = () => {
-      const baseLines = [`**Event:** ${data.eventName}`, `**Time:** ${discordTimestamp}`, '']
-      const lines = [...baseLines, ...formatTeamLines(data.teams, data.unassigned)]
-      const chunks = chunkLines(lines, 3500)
-      return chunks.map((chunk, index) => ({
-        title: index === 0 ? '✅ Teams Assigned' : '✅ Teams Assigned (cont.)',
-        description: chunk,
-        color: 0x22c55e,
-        url: data.raceUrl,
-        timestamp: new Date().toISOString(),
-        footer: {
-          text: appTitle,
-        },
-      }))
+      const lines = formatTeamLines(data.teams, data.unassigned)
+      const chunks = chunkLines(lines, 3800)
+      return chunks.map((chunk, index) => {
+        const embed: {
+          title: string
+          description: string
+          color: number
+          url: string
+          timestamp: string
+          footer: { text: string }
+          fields?: Array<{ name: string; value: string; inline: boolean }>
+        } = {
+          title: index === 0 ? '🏁 Teams Assigned' : '🏁 Teams Assigned (cont.)',
+          description: chunk,
+          color: 0x5865f2, // Blurple
+          url: data.raceUrl,
+          timestamp: new Date().toISOString(),
+          footer: {
+            text: appTitle,
+          },
+        }
+
+        if (index === 0) {
+          const fields = [
+            {
+              name: '🏎️ Event',
+              value: data.eventName,
+              inline: true,
+            },
+            {
+              name: '🕐 Race Time',
+              value: discordTimestamp,
+              inline: true,
+            },
+          ]
+
+          if (data.track) {
+            let trackVal = data.track
+            if (data.trackConfig) trackVal += ` (${data.trackConfig})`
+            fields.push({
+              name: '🏟️ Track',
+              value: trackVal,
+              inline: true,
+            })
+          }
+
+          if (typeof data.tempValue === 'number') {
+            let weather = `${data.tempValue}°F`
+            if (typeof data.precipChance === 'number') {
+              weather += `, ${data.precipChance}% Rain`
+            }
+            fields.push({
+              name: '🌤️ Weather',
+              value: weather,
+              inline: true,
+            })
+          }
+
+          embed.fields = fields
+        }
+
+        return embed
+      })
     }
 
     let threadId = data.threadId ?? null
@@ -691,7 +796,7 @@ export async function sendTeamsAssignedNotification(
         .map((regId) => allDiscordIds.get(regId))
         .filter((id): id is string => Boolean(id))
       const content = mentionList.length ? mentionList.join(' ') : undefined
-      return fetch(`${DISCORD_API_BASE}/channels/${id}/messages`, {
+      const resp = await fetch(`${DISCORD_API_BASE}/channels/${id}/messages`, {
         method: 'POST',
         headers: {
           Authorization: `Bot ${botToken}`,
@@ -703,12 +808,37 @@ export async function sendTeamsAssignedNotification(
           allowed_mentions: { users: allowedIds, parse: [] },
         }),
       })
+      console.log(`[Discord] postToThread response: ${resp.status} ${resp.statusText}`)
+      return resp
     }
 
     let threadCreated = false
     if (!threadId) {
       threadCreated = true
-      const threadResponse = await fetch(`${DISCORD_API_BASE}/channels/${channelId}/threads`, {
+      const embeds = buildEmbeds()
+      const discordIds = new Map<string, string>()
+      data.teams.forEach((team) => {
+        team.members.forEach((member) => {
+          if (member.registrationId && member.discordId) {
+            discordIds.set(member.registrationId, member.discordId)
+          }
+        })
+      })
+      data.unassigned?.forEach((member) => {
+        if (member.registrationId && member.discordId) {
+          discordIds.set(member.registrationId, member.discordId)
+        }
+      })
+      const mentionList = Array.from(allMentionIds)
+        .map((regId) => discordIds.get(regId))
+        .filter((id): id is string => Boolean(id))
+        .map((id) => `<@${id}>`)
+      const allowedIds = Array.from(allMentionIds)
+        .map((regId) => discordIds.get(regId))
+        .filter((id): id is string => Boolean(id))
+      const content = mentionList.length ? mentionList.join(' ') : undefined
+
+      const threadResponse = await fetch(`${DISCORD_API_BASE}/channels/${threadParentId}/threads`, {
         method: 'POST',
         headers: {
           Authorization: `Bot ${botToken}`,
@@ -717,68 +847,201 @@ export async function sendTeamsAssignedNotification(
         body: JSON.stringify({
           name: threadName,
           auto_archive_duration: 10080,
+          message: {
+            content,
+            embeds,
+            allowed_mentions: { users: allowedIds, parse: [] },
+          },
         }),
       })
 
       if (!threadResponse.ok) {
         const errorText = await threadResponse.text()
+        let errorBody = {}
+        try {
+          errorBody = JSON.parse(errorText)
+        } catch (_e) {
+          errorBody = { raw: errorText }
+        }
         console.error(
-          `Failed to create Discord thread: ${threadResponse.status} ${threadResponse.statusText}`,
-          errorText
+          `❌ [Discord] Failed to create thread in ${threadParentId}: ${threadResponse.status} ${threadResponse.statusText}`,
+          JSON.stringify(errorBody, null, 2)
         )
         return { ok: false }
       }
 
       const thread = await threadResponse.json()
       threadId = thread.id
+      console.log(`✅ [Discord] Created teams thread: ${threadId} in ${threadParentId}`)
+
+      // Add all members to the thread
+      const allMemberDiscordIds = Array.from(discordIds.values())
+      if (threadId && allMemberDiscordIds.length > 0) {
+        await addUsersToThread(threadId, allMemberDiscordIds)
+      }
+
+      // Send separate notification to the chat channel if using a forum
+      if (forumId && threadId && guildId) {
+        const threadUrl = `https://discord.com/channels/${guildId}/${threadId}`
+        const chatResp = await fetch(`${DISCORD_API_BASE}/channels/${channelId}/messages`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bot ${botToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            embeds: [
+              {
+                title: '🏁 Teams Assigned',
+                description: `Teams have been assigned for **${data.eventName}**!`,
+                color: 0x5865f2,
+                url: threadUrl,
+                fields: [
+                  {
+                    name: '🕐 Race Time',
+                    value: discordTimestamp,
+                    inline: true,
+                  },
+                  {
+                    name: '🔗 Discussion',
+                    value: `[View Team Thread](${threadUrl})`,
+                    inline: true,
+                  },
+                ],
+                timestamp: new Date().toISOString(),
+                footer: {
+                  text: appTitle,
+                },
+              },
+            ],
+          }),
+        })
+        if (chatResp.ok) {
+          console.log(`✅ [Discord] Posted thread link to chat channel ${channelId}`)
+        }
+      }
     }
 
     if (!threadId) {
       return { ok: false }
     }
 
-    const mentionSet = threadCreated ? allMentionIds : new Set(data.mentionRegistrationIds ?? [])
-    let postResponse = await postToThread(threadId, buildEmbeds(), mentionSet)
-    if (!postResponse.ok && postResponse.status === 404) {
-      // Thread deleted or inaccessible; create a new one.
-      threadId = null
-      threadCreated = true
-      const threadResponse = await fetch(`${DISCORD_API_BASE}/channels/${channelId}/threads`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bot ${botToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: threadName,
-          auto_archive_duration: 10080,
-        }),
-      })
+    if (!threadCreated) {
+      const mentionSet = new Set(data.mentionRegistrationIds ?? [])
+      const postResponse = await postToThread(threadId, buildEmbeds(), mentionSet)
+      if (!postResponse.ok && postResponse.status === 404) {
+        // Thread deleted or inaccessible; create a new one.
+        threadId = null
+        threadCreated = true
+        const embeds = buildEmbeds()
+        const discordIds = new Map<string, string>()
+        data.teams.forEach((team) => {
+          team.members.forEach((member) => {
+            if (member.registrationId && member.discordId) {
+              discordIds.set(member.registrationId, member.discordId)
+            }
+          })
+        })
+        data.unassigned?.forEach((member) => {
+          if (member.registrationId && member.discordId) {
+            discordIds.set(member.registrationId, member.discordId)
+          }
+        })
+        const mentionList = Array.from(allMentionIds)
+          .map((regId) => discordIds.get(regId))
+          .filter((id): id is string => Boolean(id))
+          .map((id) => `<@${id}>`)
+        const allowedIds = Array.from(allMentionIds)
+          .map((regId) => discordIds.get(regId))
+          .filter((id): id is string => Boolean(id))
+        const content = mentionList.length ? mentionList.join(' ') : undefined
 
-      if (!threadResponse.ok) {
-        const errorText = await threadResponse.text()
+        const threadResponse = await fetch(
+          `${DISCORD_API_BASE}/channels/${threadParentId}/threads`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bot ${botToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              name: threadName,
+              auto_archive_duration: 10080,
+              message: {
+                content,
+                embeds,
+                allowed_mentions: { users: allowedIds, parse: [] },
+              },
+            }),
+          }
+        )
+
+        if (!threadResponse.ok) {
+          const errorText = await threadResponse.text()
+          let errorBody = {}
+          try {
+            errorBody = JSON.parse(errorText)
+          } catch (_e) {
+            errorBody = { raw: errorText }
+          }
+          console.error(
+            `❌ [Discord] Failed to create thread in ${threadParentId} (fallback): ${threadResponse.status} ${threadResponse.statusText}`,
+            JSON.stringify(errorBody, null, 2)
+          )
+          return { ok: false }
+        }
+
+        const thread = await threadResponse.json()
+        threadId = thread.id
+        if (!threadId) {
+          return { ok: false }
+        }
+
+        // Send separate notification to the chat channel if using a forum
+        if (forumId && threadId && guildId) {
+          const threadUrl = `https://discord.com/channels/${guildId}/${threadId}`
+          await fetch(`${DISCORD_API_BASE}/channels/${channelId}/messages`, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bot ${botToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              embeds: [
+                {
+                  title: '🏁 Teams Assigned',
+                  description: `Teams have been assigned for **${data.eventName}**!`,
+                  color: 0x5865f2,
+                  url: threadUrl,
+                  fields: [
+                    {
+                      name: '🕐 Race Time',
+                      value: discordTimestamp,
+                      inline: true,
+                    },
+                    {
+                      name: '🔗 Discussion',
+                      value: `[View Team Thread](${threadUrl})`,
+                      inline: true,
+                    },
+                  ],
+                  timestamp: new Date().toISOString(),
+                  footer: {
+                    text: appTitle,
+                  },
+                },
+              ],
+            }),
+          })
+        }
+      } else if (!postResponse.ok) {
+        const errorText = await postResponse.text()
         console.error(
-          `Failed to create Discord thread: ${threadResponse.status} ${threadResponse.statusText}`,
+          `Failed to send Discord teams update: ${postResponse.status} ${postResponse.statusText}`,
           errorText
         )
-        return { ok: false }
+        return { ok: false, threadId: threadId ?? undefined }
       }
-
-      const thread = await threadResponse.json()
-      threadId = thread.id
-      if (!threadId) {
-        return { ok: false }
-      }
-      postResponse = await postToThread(threadId, buildEmbeds(), allMentionIds)
-    }
-
-    if (!postResponse.ok) {
-      const errorText = await postResponse.text()
-      console.error(
-        `Failed to send Discord teams update: ${postResponse.status} ${postResponse.statusText}`,
-        errorText
-      )
-      return { ok: false, threadId: threadId ?? undefined }
     }
 
     return { ok: true, threadId: threadId ?? undefined }
@@ -829,13 +1092,26 @@ export async function createTeamThread(options: {
   eventName: string
   raceStartTime: Date
   memberDiscordIds?: string[]
+  raceUrl?: string
+  track?: string
+  trackConfig?: string
+  tempValue?: number | null
+  precipChance?: number | null
+  carClassName?: string
+  members?: string[]
 }): Promise<string | null> {
   const botToken = process.env.DISCORD_BOT_TOKEN
   const channelId = process.env.DISCORD_NOTIFICATIONS_CHANNEL_ID
+  const forumId = process.env.DISCORD_EVENTS_FORUM_ID
 
-  if (!botToken || !channelId) {
+  if (!botToken || (!channelId && !forumId)) {
+    console.warn(
+      '⚠️ Discord team thread creation skipped: DISCORD_BOT_TOKEN and either DISCORD_NOTIFICATIONS_CHANNEL_ID or DISCORD_EVENTS_FORUM_ID must be configured'
+    )
     return null
   }
+
+  const threadParentId = forumId || channelId
 
   const cleanName = normalizeSeriesName(options.eventName)
   const dateLabel = new Intl.DateTimeFormat('en-US', {
@@ -849,7 +1125,7 @@ export async function createTeamThread(options: {
   }).format(options.raceStartTime)
   const threadName = `${options.teamName} • ${cleanName} (${dateLabel} - ${timeLabel})`
 
-  const threadResponse = await fetch(`${DISCORD_API_BASE}/channels/${channelId}/threads`, {
+  const threadResponse = await fetch(`${DISCORD_API_BASE}/channels/${threadParentId}/threads`, {
     method: 'POST',
     headers: {
       Authorization: `Bot ${botToken}`,
@@ -858,20 +1134,92 @@ export async function createTeamThread(options: {
     body: JSON.stringify({
       name: threadName,
       auto_archive_duration: 10080,
+      message: {
+        embeds: [
+          {
+            title: `🏎️ Team Thread: ${options.teamName}`,
+            description: `Official preparation and coordination thread for **${options.teamName}** in **${options.eventName}**.`,
+            color: 0x5865f2, // Blurple
+            url: options.raceUrl,
+            fields: [
+              {
+                name: '🏎️ Team',
+                value: options.teamName,
+                inline: true,
+              },
+              {
+                name: '🏁 Class',
+                value: options.carClassName || 'Unknown',
+                inline: true,
+              },
+              {
+                name: '🕐 Race Start',
+                value: `<t:${Math.floor(options.raceStartTime.getTime() / 1000)}:F>`,
+                inline: true,
+              },
+              ...(options.members?.length
+                ? [
+                    {
+                      name: '👥 Members',
+                      value: options.members.join('\n'),
+                      inline: false,
+                    },
+                  ]
+                : []),
+              ...(options.track
+                ? [
+                    {
+                      name: '🏟️ Track',
+                      value: options.trackConfig
+                        ? `${options.track} (${options.trackConfig})`
+                        : options.track,
+                      inline: true,
+                    },
+                  ]
+                : []),
+              ...(typeof options.tempValue === 'number'
+                ? [
+                    {
+                      name: '🌤️ Weather',
+                      value:
+                        typeof options.precipChance === 'number'
+                          ? `${options.tempValue}°F, ${options.precipChance}% Rain`
+                          : `${options.tempValue}°F`,
+                      inline: true,
+                    },
+                  ]
+                : []),
+            ],
+            timestamp: new Date().toISOString(),
+            footer: {
+              text: appTitle,
+            },
+          },
+        ],
+      },
     }),
   })
 
   if (!threadResponse.ok) {
     const errorText = await threadResponse.text()
+    let errorBody = {}
+    try {
+      errorBody = JSON.parse(errorText)
+    } catch (_e) {
+      errorBody = { raw: errorText }
+    }
     console.error(
-      `Failed to create team thread: ${threadResponse.status} ${threadResponse.statusText}`,
-      errorText
+      `❌ [Discord] Failed to create team thread: ${threadResponse.status} ${threadResponse.statusText}`,
+      JSON.stringify(errorBody, null, 2)
     )
     return null
   }
 
   const thread = await threadResponse.json()
   const threadId = thread.id ?? null
+  if (threadId) {
+    console.log(`✅ [Discord] Created team thread: ${threadId} in ${threadParentId}`)
+  }
   if (threadId && options.memberDiscordIds?.length) {
     await addUsersToThread(threadId, options.memberDiscordIds)
   }
