@@ -41,6 +41,25 @@ export interface TeamsAssignedNotificationData {
   mentionRegistrationIds?: string[]
 }
 
+export interface RegistrationNotificationData {
+  userName: string
+  userAvatarUrl?: string
+  eventName: string
+  raceStartTime: Date
+  carClassName: string
+  eventUrl: string
+  discordUser?: { id: string; name: string }
+}
+
+export interface OnboardingNotificationData {
+  userName: string
+  userAvatarUrl?: string
+  iracingCustomerId: string
+  iracingName?: string
+  profileUrl: string
+  discordUser?: { id: string; name: string }
+}
+
 export function normalizeSeriesName(name: string) {
   return name
     .replace(/\s[-–—]\s\d{4}.*$/i, '')
@@ -176,4 +195,98 @@ export function buildWeeklyScheduleEmbeds(events: WeeklyScheduleEvent[]) {
       color: 0x3498db, // Blue
     }
   })
+}
+
+export function buildRegistrationEmbed(data: RegistrationNotificationData, appTitle: string) {
+  const unixTimestamp = Math.floor(data.raceStartTime.getTime() / 1000)
+  const discordTimestamp = `<t:${unixTimestamp}:F>`
+
+  const embed: {
+    title: string
+    description: string
+    color: number
+    fields: Array<{ name: string; value: string; inline: boolean }>
+    url: string
+    timestamp: string
+    footer: { text: string }
+    thumbnail?: { url: string }
+  } = {
+    title: '🏁 New Race Registration',
+    description: data.discordUser
+      ? `<@${data.discordUser.id}> has registered for **${data.eventName}**`
+      : `**${data.userName}** has registered for **${data.eventName}**`,
+    color: 0x5865f2, // Discord blurple color
+    fields: [
+      {
+        name: '🏎️ Car Class',
+        value: data.carClassName,
+        inline: true,
+      },
+      {
+        name: '🕐 Race Time',
+        value: discordTimestamp,
+        inline: true,
+      },
+    ],
+    url: data.eventUrl,
+    timestamp: new Date().toISOString(),
+    footer: {
+      text: appTitle,
+    },
+  }
+
+  if (data.userAvatarUrl) {
+    embed.thumbnail = {
+      url: data.userAvatarUrl,
+    }
+  }
+
+  return embed
+}
+
+export function buildOnboardingEmbed(data: OnboardingNotificationData, appTitle: string) {
+  const embed: {
+    title: string
+    description: string
+    color: number
+    fields: Array<{ name: string; value: string; inline: boolean }>
+    url: string
+    timestamp: string
+    footer: { text: string }
+    thumbnail?: { url: string }
+  } = {
+    title: '👋 New User Onboarded',
+    description: data.discordUser
+      ? `<@${data.discordUser.id}> has completed the onboarding process.`
+      : `**${data.userName}** has completed the onboarding process.`,
+    color: 0x00ff00, // Green
+    fields: [
+      {
+        name: '🆔 iRacing ID',
+        value: data.iracingCustomerId,
+        inline: true,
+      },
+    ],
+    url: data.profileUrl,
+    timestamp: new Date().toISOString(),
+    footer: {
+      text: appTitle,
+    },
+  }
+
+  if (data.iracingName) {
+    embed.fields.push({
+      name: '🏎️ iRacing Name',
+      value: data.iracingName,
+      inline: true,
+    })
+  }
+
+  if (data.userAvatarUrl) {
+    embed.thumbnail = {
+      url: data.userAvatarUrl,
+    }
+  }
+
+  return embed
 }

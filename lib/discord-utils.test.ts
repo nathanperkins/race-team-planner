@@ -4,6 +4,8 @@ import {
   chunkLines,
   formatTeamLines,
   buildWeeklyScheduleEmbeds,
+  buildRegistrationEmbed,
+  buildOnboardingEmbed,
 } from './discord-utils'
 
 describe('Discord Utils', () => {
@@ -81,6 +83,76 @@ describe('Discord Utils', () => {
       expect(embeds[0].title).toBe('📅 Sunday Cup')
       expect(embeds[0].description).toContain('**Track:** Spa')
       expect(embeds[0].description).toContain('<@456>')
+    })
+  })
+
+  describe('buildRegistrationEmbed', () => {
+    const data = {
+      userName: 'Alice',
+      eventName: 'GT3 Challenge',
+      raceStartTime: new Date('2024-05-01T20:00:00Z'),
+      carClassName: 'GT3',
+      eventUrl: 'http://example.com',
+      discordUser: { id: '123', name: 'alice' },
+    }
+    const appTitle = 'Test App'
+
+    it('creates an embed for a registered Discord user', () => {
+      const embed = buildRegistrationEmbed(data, appTitle)
+      expect(embed.title).toBe('🏁 New Race Registration')
+      expect(embed.description).toBe('<@123> has registered for **GT3 Challenge**')
+      expect(embed.fields).toContainEqual({ name: '🏎️ Car Class', value: 'GT3', inline: true })
+      expect(embed.fields).toContainEqual({
+        name: '🕐 Race Time',
+        value: '<t:1714593600:F>',
+        inline: true,
+      })
+      expect(embed.footer.text).toBe(appTitle)
+    })
+
+    it('creates an embed for a manual user without Discord ID', () => {
+      const manualData = { ...data, discordUser: undefined }
+      const embed = buildRegistrationEmbed(manualData, appTitle)
+      expect(embed.description).toBe('**Alice** has registered for **GT3 Challenge**')
+    })
+
+    it('includes a thumbnail if userAvatarUrl is provided', () => {
+      const avatarData = { ...data, userAvatarUrl: 'http://avatar.com' }
+      const embed = buildRegistrationEmbed(avatarData, appTitle)
+      expect(embed.thumbnail?.url).toBe('http://avatar.com')
+    })
+  })
+
+  describe('buildOnboardingEmbed', () => {
+    const data = {
+      userName: 'Bob',
+      iracingCustomerId: '789',
+      profileUrl: 'http://profile.com',
+      discordUser: { id: '456', name: 'bob' },
+    }
+    const appTitle = 'Test App'
+
+    it('creates an onboarding embed with Discord ID', () => {
+      const embed = buildOnboardingEmbed(data, appTitle)
+      expect(embed.title).toBe('👋 New User Onboarded')
+      expect(embed.description).toBe('<@456> has completed the onboarding process.')
+      expect(embed.fields).toContainEqual({ name: '🆔 iRacing ID', value: '789', inline: true })
+    })
+
+    it('includes iRacing name if provided', () => {
+      const nameData = { ...data, iracingName: 'Bob Speedy' }
+      const embed = buildOnboardingEmbed(nameData, appTitle)
+      expect(embed.fields).toContainEqual({
+        name: '🏎️ iRacing Name',
+        value: 'Bob Speedy',
+        inline: true,
+      })
+    })
+
+    it('handles manual user without Discord ID', () => {
+      const manualData = { ...data, discordUser: undefined }
+      const embed = buildOnboardingEmbed(manualData, appTitle)
+      expect(embed.description).toBe('**Bob** has completed the onboarding process.')
     })
   })
 })

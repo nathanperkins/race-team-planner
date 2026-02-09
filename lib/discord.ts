@@ -1,7 +1,11 @@
 import { appTitle } from './config'
 import {
+  OnboardingNotificationData,
+  RegistrationNotificationData,
   TeamsAssignedNotificationData,
   WeeklyScheduleEvent,
+  buildOnboardingEmbed,
+  buildRegistrationEmbed,
   chunkLines,
   formatTeamLines,
   normalizeSeriesName,
@@ -235,24 +239,6 @@ export async function verifyEventsForum(): Promise<{ name: string } | null> {
     return null
   }
 }
-interface RegistrationNotificationData {
-  userName: string
-  userAvatarUrl?: string
-  eventName: string
-  raceStartTime: Date
-  carClassName: string
-  eventUrl: string
-  discordUser?: { id: string; name: string }
-}
-
-interface OnboardingNotificationData {
-  userName: string
-  userAvatarUrl?: string
-  iracingCustomerId: string
-  iracingName?: string
-  profileUrl: string
-  discordUser?: { id: string; name: string }
-}
 
 /**
  * Sends a Discord notification when a user registers for a race.
@@ -273,48 +259,7 @@ export async function sendRegistrationNotification(
   }
 
   try {
-    const unixTimestamp = Math.floor(data.raceStartTime.getTime() / 1000)
-    const discordTimestamp = `<t:${unixTimestamp}:F>`
-
-    const embed: {
-      title: string
-      description: string
-      color: number
-      fields: Array<{ name: string; value: string; inline: boolean }>
-      url: string
-      timestamp: string
-      footer: { text: string }
-      thumbnail?: { url: string }
-    } = {
-      title: '🏁 New Race Registration',
-      description: data.discordUser
-        ? `<@${data.discordUser.id}> has registered for **${data.eventName}**`
-        : `**${data.userName}** has registered for **${data.eventName}**`,
-      color: 0x5865f2, // Discord blurple color
-      fields: [
-        {
-          name: '🏎️ Car Class',
-          value: data.carClassName,
-          inline: true,
-        },
-        {
-          name: '🕐 Race Time',
-          value: discordTimestamp,
-          inline: true,
-        },
-      ],
-      url: data.eventUrl,
-      timestamp: new Date().toISOString(),
-      footer: {
-        text: appTitle,
-      },
-    }
-
-    if (data.userAvatarUrl) {
-      embed.thumbnail = {
-        url: data.userAvatarUrl,
-      }
-    }
+    const embed = buildRegistrationEmbed(data, appTitle)
 
     const response = await fetch(`${DISCORD_API_BASE}/channels/${channelId}/messages`, {
       method: 'POST',
@@ -365,48 +310,7 @@ export async function sendOnboardingNotification(
   }
 
   try {
-    const embed: {
-      title: string
-      description: string
-      color: number
-      fields: Array<{ name: string; value: string; inline: boolean }>
-      url: string
-      timestamp: string
-      footer: { text: string }
-      thumbnail?: { url: string }
-    } = {
-      title: '👋 New User Onboarded',
-      description: data.discordUser
-        ? `<@${data.discordUser.id}> has completed the onboarding process.`
-        : `**${data.userName}** has completed the onboarding process.`,
-      color: 0x00ff00, // Green
-      fields: [
-        {
-          name: '🆔 iRacing ID',
-          value: data.iracingCustomerId,
-          inline: true,
-        },
-      ],
-      url: data.profileUrl,
-      timestamp: new Date().toISOString(),
-      footer: {
-        text: appTitle,
-      },
-    }
-
-    if (data.iracingName) {
-      embed.fields.push({
-        name: '🏎️ iRacing Name',
-        value: data.iracingName,
-        inline: true,
-      })
-    }
-
-    if (data.userAvatarUrl) {
-      embed.thumbnail = {
-        url: data.userAvatarUrl,
-      }
-    }
+    const embed = buildOnboardingEmbed(data, appTitle)
 
     const response = await fetch(`${DISCORD_API_BASE}/channels/${channelId}/messages`, {
       method: 'POST',
