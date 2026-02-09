@@ -1,11 +1,12 @@
-import NextAuth from 'next-auth'
+import NextAuth, { type Session } from 'next-auth'
+import type { NextRequest } from 'next/server'
 import { authConfig } from '@/lib/auth.config'
 import { getOnboardingStatus, ONBOARDING_PATHS } from '@/lib/onboarding'
 
 // Use the base auth for middleware
 const { auth } = NextAuth(authConfig)
 
-export const proxy = auth((req) => {
+export const handleProxy = (req: NextRequest & { auth: Session | null }) => {
   const { nextUrl } = req
   const isLoggedIn = !!req.auth
   const session = req.auth
@@ -42,7 +43,9 @@ export const proxy = auth((req) => {
       return Response.redirect(new URL(targetPath, nextUrl))
     }
   }
-})
+}
+
+export const proxy = auth(handleProxy)
 
 export const config = {
   // Protect all routes except assets, api, and specific public pages
