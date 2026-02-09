@@ -7,6 +7,7 @@ import {
   verifyAdminRoles,
   verifyNotificationsChannel,
   verifyEventsForum,
+  sendRegistrationNotification,
 } from './discord'
 
 describe('checkGuildMembership', () => {
@@ -518,6 +519,89 @@ describe('verifyEventsForum', () => {
     expect(result).toBeNull()
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Failed to connect to Discord API during forum verification:'),
+      error
+    )
+  })
+})
+
+describe('sendRegistrationNotification', () => {
+  const botToken = 'fake-bot-token'
+  const channelId = 'fake-channel-id'
+  const data = {
+    userName: 'Alice',
+    eventName: 'GT3 Challenge',
+    raceStartTime: new Date('2024-05-01T20:00:00Z'),
+    carClassName: 'GT3',
+    eventUrl: 'http://example.com',
+    discordUser: { id: '123', name: 'alice' },
+  }
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn())
+    vi.stubEnv('DISCORD_BOT_TOKEN', botToken)
+    vi.stubEnv('DISCORD_NOTIFICATIONS_CHANNEL_ID', channelId)
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('returns false and warns if config is missing', async () => {
+    vi.stubEnv('DISCORD_BOT_TOKEN', '')
+    const result = await sendRegistrationNotification(data)
+    expect(result).toBe(false)
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('skipped'))
+  })
+
+  it('returns true when API returns 200 OK', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+    } as Response)
+
+    const result = await sendRegistrationNotification(data)
+
+    expect(result).toBe(true)
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining(`/channels/${channelId}/messages`),
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          Authorization: `Bot ${botToken}`,
+        }),
+      })
+    )
+  })
+
+  it('returns false and logs error when API returns error code', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      statusText: 'Bad Request',
+      text: async () => 'Error message',
+    } as Response)
+
+    const result = await sendRegistrationNotification(data)
+    expect(result).toBe(false)
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to send Discord registration notification: 400 Bad Request'),
+      'Error message'
+    )
+  })
+
+  it('returns false and logs error when fetch throws', async () => {
+    const error = new Error('Network fail')
+    vi.mocked(fetch).mockRejectedValueOnce(error)
+
+    const result = await sendRegistrationNotification(data)
+    expect(result).toBe(false)
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('Error sending Discord registration notification:'),
       error
     )
   })
