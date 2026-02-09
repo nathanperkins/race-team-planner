@@ -29,11 +29,12 @@ bd sync               # Commit and push changes
 1. **Focus**: Only work on **one epic or feature at a time**.
 2. **Start**: Run `bd ready` to find actionable work within your current epic.
 3. **Claim**: Use `bd update <id> --status=in_progress`.
-4. **Work**: Implement the task and update descriptions if needed.
-5. **Verify**: Once the epic or feature is complete, **stop and ask the user** if it is working correctly and which task to work on next.
-6. **Complete**: When the user has confirmed the feature is working correctly, use `bd close <id>` to close the task and `git commit -m "<description>"` to commit the change.
-7. **Document**: Update AGENTS.md with any information that would have made this session more efficient and check with the user before committing.
-8. **Sync**: Always run `bd sync` to sync beads at the end of the session.
+4. **Tests**: Use test-driven development. Add tests before implementing where possible. If not, add tests after. Architecture should be designed with testing in mind.
+5. **Work**: Implement the task and update descriptions if needed.
+6. **Verify**: Once the epic or feature is complete, **stop and ask the user** if it is working correctly and which task to work on next.
+7. **Complete**: When the user has confirmed the feature is working correctly, use `bd close <id>` to close the task and `git commit -m "<description>"` to commit the change.
+8. **Document**: Update AGENTS.md with any information that would have made this session more efficient and check with the user before committing.
+9. **Sync**: Always run `bd sync` to sync beads at the end of the session.
 
 ### Key Concepts
 
@@ -71,6 +72,8 @@ For full workflow details: `bd prime`
 
 ### Best Practices
 
+- Architecture should be designed with testing in mind.
+- Add tests before implementing where possible. If not, add tests after.
 - Only work on **one epic or feature at a time**.
 - Once an epic/feature is complete, stop and ask the user for the next task.
 - **Always ask the user** if a feature is working correctly before staging or committing any code changes.
