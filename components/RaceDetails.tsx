@@ -2029,7 +2029,9 @@ export default function RaceDetails({
           </div>
           {unassignedTiles.length > 0 && (
             <>
-              <div className={styles.teamGridSeparatorStandalone} aria-hidden />
+              {(assignedTiles.length > 0 || addTeamTile) && (
+                <div className={styles.teamGridSeparatorStandalone} aria-hidden />
+              )}
               <div className={styles.teamGrid}>{unassignedTiles}</div>
             </>
           )}
