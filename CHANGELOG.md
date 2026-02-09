@@ -1,25 +1,43 @@
 # Changelog
 
-All notable changes to this project are documented in this page.
+The most notable changes to this project are documented here.
 
-## Version 1.0 (2026-02-09)
+## Version 1.0 (2026-02-09) {#version-1.0}
 
-### Added
+All work completed by **Nathan Perkins** and **Steven Case**.
 
-- Changelog page and root `CHANGELOG.md` monitoring.
-- Feedback and bug reporting link in the sidebar (configured via `NEXT_PUBLIC_FEEDBACK_URL`).
-- Discord forum thread support for events and automated team discussion threads.
-- Confirmation modal for updating iRacing Customer ID in user profiles.
-- Discord event and thread links in race details with tooltips and grayed-out state for ungenerated threads.
+### Feedback Results
 
-### Fixed
+Thanks to our testers for helping us improve!
 
-- Extra separator line appearing in the unassigned drivers group.
-- Team separator visibility when no teams are assigned.
-- Mobile event filter toggle behavior.
+- **Jacob G** - Move driver count to timeslot.
+- **Alex V** - Redirect user to events page after onboarding.
+- **Max L** - Add a confirmation dialog when changing the iRacing ID.
 
-### Maintenance
+### Major Views
 
-- Added comprehensive unit tests for proxy, auth logic, and profile forms.
-- Updated documentation for Discord integration and production deployment.
-- Improved database backup frequency to hourly and optimized retention policies.
+- Events - List of upcoming events with sorting and filters.
+- Event Details - Race registration and team assignments.
+- Roster - User iRacing data and number of events.
+- Team Expectations - Expectations for racing events.
+- My Registrations - Registrations for the current user.
+- Profile - User profile and expectations.
+- Changelog - Log of changes to the application by version.
+- Report Feedback - Report feedback and bugs.
+- (Admin only) Team Picker - Assign racers to teams for a specific event.
+- (Admin only) Admin Panel - Manage events, teams, users, and notifications.
+
+### Notifications / Threads
+
+- New user onboarded notification.
+- New race registration notification.
+- Teams assigned notification.
+- Weekly upcoming events notification (sent on Wednesday at 8PM PST).
+- Discussion post (or thread) per registered event (created when teams are picked).
+- Discussion post (or thread) per registered team (created when teams are picked).
+
+### Features
+
+- Discord user login with with roles pulls from Discord server.
+- Automated sync to iRacing API for event, racer and team data.
+- Onboarding flow for new users with expectations and profile setup.

@@ -24,7 +24,7 @@ resource "google_cloud_scheduler_job" "sync_job" {
 resource "google_cloud_scheduler_job" "weekly_notification_job" {
   name             = "${var.app_name}-weekly-notification"
   description      = "Sends weekly race schedule notification on Wednesday at 8PM PST"
-  schedule         = "0 20 * * 3"
+  schedule         = "0 20 * * 3" # Wednesday at 8PM PST
   time_zone        = "America/Los_Angeles"
   attempt_deadline = "320s"
 
