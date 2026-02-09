@@ -660,6 +660,7 @@
   color: #e5e7eb;
   background-color: rgba(30, 58, 138, 0.15);
 }
+
 .teamModalSave {
   background: #2563eb;
   color: white;
@@ -811,8 +812,45 @@
 }
 
 .warningCancel:hover {
-  background: rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.28);
   color: #fff1f2;
+}
+
+.discordLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  transition:
+    color 0.2s ease,
+    transform 0.2s ease;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  text-decoration: none;
+  border: none;
+}
+
+.discordLink:hover {
+  color: #5865f2;
+  /* Discord blurple */
+  background: rgba(88, 101, 242, 0.1);
+  transform: scale(1.1);
+  text-decoration: none;
+  border: none;
+}
+
+.discordLinkInactive {
+  color: #374151;
+  cursor: default;
+  text-decoration: none;
+  border: none;
+}
+
+.discordLinkInactive:hover {
+  color: #374151;
+  background: transparent;
+  transform: none;
 }
 
 .teamInlineWarningOverlay {
@@ -1290,6 +1328,7 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
 .raceCardContent {
   position: relative;
 }

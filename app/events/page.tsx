@@ -366,6 +366,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
         userLicenseLevel={userLicenseLevel}
         initialEventId={params.eventId}
         teams={teams}
+        discordGuildId={process.env.DISCORD_GUILD_ID}
       />
     </main>
   )

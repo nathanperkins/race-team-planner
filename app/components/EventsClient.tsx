@@ -59,6 +59,7 @@ interface EventsClientProps {
   userLicenseLevel: LicenseLevel | null
   initialEventId?: string
   teams: Array<{ id: string; name: string; iracingTeamId: number | null; memberCount?: number }>
+  discordGuildId?: string
 }
 
 export default function EventsClient({
@@ -68,6 +69,7 @@ export default function EventsClient({
   userLicenseLevel,
   initialEventId,
   teams,
+  discordGuildId,
 }: EventsClientProps) {
   const router = useRouter()
   const [selectedEventId, setSelectedEventId] = useState<string | null>(initialEventId ?? null)
@@ -296,6 +298,7 @@ export default function EventsClient({
           userId={userId}
           userLicenseLevel={userLicenseLevel}
           teams={teams}
+          discordGuildId={discordGuildId}
         />
       )}
     </>

@@ -61,6 +61,7 @@ interface EventDetailModalProps {
   userId: string
   userLicenseLevel: LicenseLevel | null
   teams: Array<{ id: string; name: string; iracingTeamId: number | null; memberCount?: number }>
+  discordGuildId?: string
 }
 
 export default function EventDetailModal({
@@ -70,6 +71,7 @@ export default function EventDetailModal({
   userId,
   userLicenseLevel,
   teams,
+  discordGuildId,
 }: EventDetailModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
   const [allDrivers, setAllDrivers] = useState<Driver[]>([])
@@ -268,6 +270,7 @@ export default function EventDetailModal({
                     shortName: cc.shortName,
                   }))}
                   onDropdownToggle={(open) => handleDropdownToggle(race.id, open)}
+                  discordGuildId={discordGuildId}
                 />
               ))}
             </div>
