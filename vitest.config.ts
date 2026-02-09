@@ -7,6 +7,18 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      exclude: [
+        'node_modules/**',
+        '.next/**',
+        '*.config.{js,ts}',
+        'instrumentation.ts',
+        'prisma/**',
+        'app/api/**', // Often just wrappers for actions
+      ],
+    },
   },
   resolve: {
     alias: {
