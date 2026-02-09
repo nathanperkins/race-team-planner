@@ -14,6 +14,12 @@ const eslintConfig = defineConfig([
     'coverage/**',
     'next-env.d.ts',
   ]),
+  {
+    files: ['**/*.test.{js,jsx,ts,tsx}', '**/*.spec.{js,jsx,ts,tsx}'],
+    rules: {
+      '@next/next/no-img-element': 'off',
+    },
+  },
 ])
 
 export default eslintConfig
