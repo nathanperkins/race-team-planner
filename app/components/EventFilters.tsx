@@ -14,7 +14,6 @@ interface EventFiltersProps {
     racer?: string
     from?: string
     to?: string
-    sort?: string
     name?: string
   }
 }
@@ -78,7 +77,6 @@ export default function EventFilters({ carClasses, racers, currentFilters }: Eve
     currentFilters.racer,
     currentFilters.from,
     currentFilters.to,
-    currentFilters.sort && currentFilters.sort !== 'date' ? currentFilters.sort : null,
     currentFilters.name,
   ].filter(Boolean).length
 
@@ -246,27 +244,6 @@ export default function EventFilters({ carClasses, racers, currentFilters }: Eve
             value={currentFilters.to || ''}
             onChange={(e) => handleFilterChange('to', e.target.value)}
           />
-        </div>
-
-        <div className={styles.filterGroup}>
-          <label
-            htmlFor="sort"
-            className={styles.filterLabel}
-            data-tooltip="Sort events by date, name, or popularity."
-          >
-            Sort By
-          </label>
-          <select
-            id="sort"
-            className={styles.filterSelect}
-            value={currentFilters.sort || 'date'}
-            onChange={(e) => handleFilterChange('sort', e.target.value)}
-          >
-            <option value="date">Date (Earliest)</option>
-            <option value="dateDesc">Date (Latest)</option>
-            <option value="name">Name (A-Z)</option>
-            <option value="registrations">Most Registrations</option>
-          </select>
         </div>
 
         {activeFilterCount > 0 && (

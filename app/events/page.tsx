@@ -16,7 +16,6 @@ interface PageProps {
     racer?: string
     from?: string
     to?: string
-    sort?: string
     name?: string
     eventId?: string
   }>

@@ -10,12 +10,13 @@ All work completed by **Nathan Perkins** and **Steven Case**.
 
 ### Feedback Results
 
-Thanks to our testers for these suggestions!
+Thanks to our testers for these suggestions and bug reports!
 
 - **Jacob G** - Move driver count to the timeslot.
 - **Alex V** - Redirect users to the events page after onboarding.
 - **Max L** - Add a confirmation dialog when changing the iRacing ID.
 - **Alex V** - Open the user profile using the profile picture in the sidebar, instead of having a separate link.
+- **Chris E** - `Sort By` is broken in the events view. We have removed that feature for now.
 
 ### Major Views
 
