@@ -66,6 +66,8 @@ export async function register() {
         )
       } else if (process.env.DISCORD_EVENTS_FORUM_ID) {
         console.error('[Discord] Events Forum NOT FOUND ❌ (Check DISCORD_EVENTS_FORUM_ID in .env)')
+      } else {
+        console.log('[Discord] Events Forum: Not Configured (Optional) ⚠️')
       }
     } else {
       console.error('[Discord] Bot Token is INVALID ❌ (Received 401/Unauthorized)')
