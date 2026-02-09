@@ -6,6 +6,7 @@ import {
   verifyGuildAccess,
   verifyAdminRoles,
   verifyNotificationsChannel,
+  verifyEventsForum,
 } from './discord'
 
 describe('checkGuildMembership', () => {
@@ -441,6 +442,82 @@ describe('verifyNotificationsChannel', () => {
     expect(result).toBeNull()
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Failed to connect to Discord API during channel verification:'),
+      error
+    )
+  })
+})
+
+describe('verifyEventsForum', () => {
+  const botToken = 'fake-bot-token'
+  const forumId = 'fake-forum-id'
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn())
+    vi.stubEnv('DISCORD_BOT_TOKEN', botToken)
+    vi.stubEnv('DISCORD_EVENTS_FORUM_ID', forumId)
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('returns null if DISCORD_BOT_TOKEN is missing', async () => {
+    vi.stubEnv('DISCORD_BOT_TOKEN', '')
+    const result = await verifyEventsForum()
+    expect(result).toBeNull()
+  })
+
+  it('returns null if DISCORD_EVENTS_FORUM_ID is missing', async () => {
+    vi.stubEnv('DISCORD_EVENTS_FORUM_ID', '')
+    const result = await verifyEventsForum()
+    expect(result).toBeNull()
+  })
+
+  it('returns forum info when API returns 200 OK', async () => {
+    const mockForumData = {
+      name: 'events-forum',
+    }
+
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => mockForumData,
+    } as Response)
+
+    const result = await verifyEventsForum()
+
+    expect(result).toEqual({
+      name: mockForumData.name,
+    })
+  })
+
+  it('returns null and logs error when API returns error code', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      statusText: 'Not Found',
+      text: async () => 'Channel not found',
+    } as Response)
+
+    const result = await verifyEventsForum()
+    expect(result).toBeNull()
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('Discord Events Forum Access Failed: 404 Not Found'),
+      'Channel not found'
+    )
+  })
+
+  it('returns null and logs error when fetch throws', async () => {
+    const error = new Error('Network failure')
+    vi.mocked(fetch).mockRejectedValueOnce(error)
+
+    const result = await verifyEventsForum()
+    expect(result).toBeNull()
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to connect to Discord API during forum verification:'),
       error
     )
   })
