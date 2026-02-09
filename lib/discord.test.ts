@@ -8,6 +8,7 @@ import {
   verifyNotificationsChannel,
   verifyEventsForum,
   sendRegistrationNotification,
+  sendOnboardingNotification,
 } from './discord'
 
 describe('checkGuildMembership', () => {
@@ -602,6 +603,87 @@ describe('sendRegistrationNotification', () => {
     expect(result).toBe(false)
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Error sending Discord registration notification:'),
+      error
+    )
+  })
+})
+
+describe('sendOnboardingNotification', () => {
+  const botToken = 'fake-bot-token'
+  const channelId = 'fake-channel-id'
+  const data = {
+    userName: 'Bob',
+    iracingCustomerId: '789',
+    profileUrl: 'http://profile.com',
+    discordUser: { id: '456', name: 'bob' },
+  }
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn())
+    vi.stubEnv('DISCORD_BOT_TOKEN', botToken)
+    vi.stubEnv('DISCORD_NOTIFICATIONS_CHANNEL_ID', channelId)
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('returns false and warns if config is missing', async () => {
+    vi.stubEnv('DISCORD_BOT_TOKEN', '')
+    const result = await sendOnboardingNotification(data)
+    expect(result).toBe(false)
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('skipped'))
+  })
+
+  it('returns true when API returns 200 OK', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+    } as Response)
+
+    const result = await sendOnboardingNotification(data)
+
+    expect(result).toBe(true)
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining(`/channels/${channelId}/messages`),
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          Authorization: `Bot ${botToken}`,
+        }),
+      })
+    )
+  })
+
+  it('returns false and logs error when API returns error code', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      statusText: 'Forbidden',
+      text: async () => 'Missing Permissions',
+    } as Response)
+
+    const result = await sendOnboardingNotification(data)
+    expect(result).toBe(false)
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to send Discord onboarding notification: 403 Forbidden'),
+      'Missing Permissions'
+    )
+  })
+
+  it('returns false and logs error when fetch throws', async () => {
+    const error = new Error('Network timeout')
+    vi.mocked(fetch).mockRejectedValueOnce(error)
+
+    const result = await sendOnboardingNotification(data)
+    expect(result).toBe(false)
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('Error sending Discord onboarding notification:'),
       error
     )
   })
