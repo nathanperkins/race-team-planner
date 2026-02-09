@@ -372,3 +372,97 @@
   align-items: center;
   gap: 0.3rem;
 }
+
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  backdrop-filter: blur(4px);
+}
+
+.modalContent {
+  background-color: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 1rem;
+  padding: 2rem;
+  width: 90%;
+  max-width: 400px;
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.modalTitle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 1rem;
+}
+
+.modalText {
+  color: #cbd5e1;
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+}
+
+.modalHighlight {
+  color: #60a5fa;
+  font-weight: 600;
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 1.125rem;
+  background: rgba(59, 130, 246, 0.1);
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  text-align: center;
+}
+
+.modalActions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.modalCancelButton {
+  flex: 1;
+  background-color: transparent;
+  border: 1px solid #475569;
+  color: #94a3b8;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.modalCancelButton:hover {
+  background-color: #334155;
+  color: white;
+  text-decoration: none;
+}
+
+.confirmButton {
+  flex: 1;
+  background-color: #2563eb;
+  border: 1px solid #2563eb;
+  color: white;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
+  font-size: 0.875rem;
+}
+
+.confirmButton:hover {
+  background-color: #1d4ed8;
+}

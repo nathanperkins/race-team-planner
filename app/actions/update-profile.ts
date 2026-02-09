@@ -128,3 +128,24 @@ export async function updateProfile(formData: FormData) {
     return { success: false, error: message }
   }
 }
+
+export async function validateCustomerId(customerId: number) {
+  const session = await auth()
+  if (!session || !session.user?.id) {
+    return { success: false, error: 'Not authenticated' }
+  }
+
+  try {
+    const { fetchDriverStats } = await import('@/lib/iracing')
+    const memberInfo = await fetchDriverStats(customerId)
+
+    if (!memberInfo) {
+      return { success: false, error: 'Customer ID not found in iRacing.' }
+    }
+
+    return { success: true, name: memberInfo.displayName }
+  } catch (error) {
+    console.error('Validate customer ID error:', error)
+    return { success: false, error: 'Failed to validate iRacing Customer ID.' }
+  }
+}
