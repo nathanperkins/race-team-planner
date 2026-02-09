@@ -148,6 +148,12 @@ function MainSection({
         isActive={checkActive('/profile')}
         onClick={onLinkClick}
       />
+      <NavLink
+        href="/changelog"
+        label="Changelog"
+        isActive={checkActive('/changelog')}
+        onClick={onLinkClick}
+      />
 
       {process.env.NEXT_PUBLIC_FEEDBACK_URL && (
         <ExternalNavLink

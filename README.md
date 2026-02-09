@@ -4,6 +4,10 @@ A team planner for endurance races in iRacing, designed to make it easy for comm
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for a history of changes to this project.
+
 ## Prerequisites
 
 Before running the project, ensure you have the following installed:

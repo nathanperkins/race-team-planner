@@ -26,6 +26,8 @@
     "prisma-field-encryption": "^1.6.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "remark": "^15.0.1",
+    "remark-html": "^16.0.1",
     "zod": "^4.3.5"
   },
   "devDependencies": {
