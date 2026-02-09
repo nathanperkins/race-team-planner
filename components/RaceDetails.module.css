@@ -827,8 +827,6 @@
   cursor: pointer;
   padding: 4px;
   border-radius: 6px;
-  text-decoration: none;
-  border: none;
 }
 
 .discordLink:hover {
@@ -836,15 +834,11 @@
   /* Discord blurple */
   background: rgba(88, 101, 242, 0.1);
   transform: scale(1.1);
-  text-decoration: none;
-  border: none;
 }
 
 .discordLinkInactive {
   color: #374151;
   cursor: default;
-  text-decoration: none;
-  border: none;
 }
 
 .discordLinkInactive:hover {
