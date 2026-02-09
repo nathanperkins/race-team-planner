@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { checkGuildMembership, GuildMembershipStatus } from './discord'
+import { checkGuildMembership, GuildMembershipStatus, verifyBotToken } from './discord'
 
 describe('checkGuildMembership', () => {
   const userId = '123456789'
@@ -98,6 +98,84 @@ describe('checkGuildMembership', () => {
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Failed to check Discord guild membership'),
       expect.any(Error)
+    )
+  })
+})
+
+describe('verifyBotToken', () => {
+  const botToken = 'fake-bot-token'
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn())
+    vi.stubEnv('DISCORD_BOT_TOKEN', botToken)
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('returns null if DISCORD_BOT_TOKEN is missing', async () => {
+    vi.stubEnv('DISCORD_BOT_TOKEN', '')
+    const result = await verifyBotToken()
+    expect(result).toBeNull()
+  })
+
+  it('returns bot info when API returns 200 OK', async () => {
+    const mockBotData = {
+      id: 'bot123',
+      username: 'TestBot',
+    }
+
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => mockBotData,
+    } as Response)
+
+    const result = await verifyBotToken()
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/users/@me'),
+      expect.objectContaining({
+        headers: {
+          Authorization: `Bot ${botToken}`,
+        },
+      })
+    )
+    expect(result).toEqual({
+      id: mockBotData.id,
+      name: mockBotData.username,
+    })
+  })
+
+  it('returns null and logs error when API returns error code', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+      statusText: 'Unauthorized',
+      text: async () => 'Invalid Token',
+    } as Response)
+
+    const result = await verifyBotToken()
+    expect(result).toBeNull()
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('Discord Token Verification Failed: 401 Unauthorized'),
+      'Invalid Token'
+    )
+  })
+
+  it('returns null and logs error when fetch throws', async () => {
+    const error = new Error('Network failure')
+    vi.mocked(fetch).mockRejectedValueOnce(error)
+
+    const result = await verifyBotToken()
+    expect(result).toBeNull()
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to connect to Discord API during verification:'),
+      error
     )
   })
 })
