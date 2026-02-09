@@ -5,6 +5,7 @@ import {
   verifyBotToken,
   verifyGuildAccess,
   verifyAdminRoles,
+  verifyNotificationsChannel,
 } from './discord'
 
 describe('checkGuildMembership', () => {
@@ -356,6 +357,90 @@ describe('verifyAdminRoles', () => {
     expect(result).toEqual([])
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('❌ Failed to connect to Discord API during role verification:'),
+      error
+    )
+  })
+})
+
+describe('verifyNotificationsChannel', () => {
+  const botToken = 'fake-bot-token'
+  const channelId = 'fake-channel-id'
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn())
+    vi.stubEnv('DISCORD_BOT_TOKEN', botToken)
+    vi.stubEnv('DISCORD_NOTIFICATIONS_CHANNEL_ID', channelId)
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('returns null if DISCORD_BOT_TOKEN is missing', async () => {
+    vi.stubEnv('DISCORD_BOT_TOKEN', '')
+    const result = await verifyNotificationsChannel()
+    expect(result).toBeNull()
+  })
+
+  it('returns null if DISCORD_NOTIFICATIONS_CHANNEL_ID is missing', async () => {
+    vi.stubEnv('DISCORD_NOTIFICATIONS_CHANNEL_ID', '')
+    const result = await verifyNotificationsChannel()
+    expect(result).toBeNull()
+  })
+
+  it('returns channel info when API returns 200 OK', async () => {
+    const mockChannelData = {
+      name: 'notifications-channel',
+    }
+
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => mockChannelData,
+    } as Response)
+
+    const result = await verifyNotificationsChannel()
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining(`/channels/${channelId}`),
+      expect.objectContaining({
+        headers: {
+          Authorization: `Bot ${botToken}`,
+        },
+      })
+    )
+    expect(result).toEqual({
+      name: mockChannelData.name,
+    })
+  })
+
+  it('returns null and logs error when API returns error code', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      statusText: 'Forbidden',
+      text: async () => 'Missing Permissions',
+    } as Response)
+
+    const result = await verifyNotificationsChannel()
+    expect(result).toBeNull()
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('Discord Notifications Channel Access Failed: 403 Forbidden'),
+      'Missing Permissions'
+    )
+  })
+
+  it('returns null and logs error when fetch throws', async () => {
+    const error = new Error('Network failure')
+    vi.mocked(fetch).mockRejectedValueOnce(error)
+
+    const result = await verifyNotificationsChannel()
+    expect(result).toBeNull()
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to connect to Discord API during channel verification:'),
       error
     )
   })
