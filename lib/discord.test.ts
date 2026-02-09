@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { checkGuildMembership, GuildMembershipStatus, verifyBotToken } from './discord'
+import {
+  checkGuildMembership,
+  GuildMembershipStatus,
+  verifyBotToken,
+  verifyGuildAccess,
+} from './discord'
 
 describe('checkGuildMembership', () => {
   const userId = '123456789'
@@ -175,6 +180,90 @@ describe('verifyBotToken', () => {
     expect(result).toBeNull()
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Failed to connect to Discord API during verification:'),
+      error
+    )
+  })
+})
+
+describe('verifyGuildAccess', () => {
+  const botToken = 'fake-bot-token'
+  const guildId = 'fake-guild-id'
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn())
+    vi.stubEnv('DISCORD_BOT_TOKEN', botToken)
+    vi.stubEnv('DISCORD_GUILD_ID', guildId)
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('returns null if DISCORD_BOT_TOKEN is missing', async () => {
+    vi.stubEnv('DISCORD_BOT_TOKEN', '')
+    const result = await verifyGuildAccess()
+    expect(result).toBeNull()
+  })
+
+  it('returns null if DISCORD_GUILD_ID is missing', async () => {
+    vi.stubEnv('DISCORD_GUILD_ID', '')
+    const result = await verifyGuildAccess()
+    expect(result).toBeNull()
+  })
+
+  it('returns guild info when API returns 200 OK', async () => {
+    const mockGuildData = {
+      name: 'Test Guild',
+    }
+
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => mockGuildData,
+    } as Response)
+
+    const result = await verifyGuildAccess()
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining(`/guilds/${guildId}`),
+      expect.objectContaining({
+        headers: {
+          Authorization: `Bot ${botToken}`,
+        },
+      })
+    )
+    expect(result).toEqual({
+      name: mockGuildData.name,
+    })
+  })
+
+  it('returns null and logs error when API returns error code', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      statusText: 'Forbidden',
+      text: async () => 'Missing Access',
+    } as Response)
+
+    const result = await verifyGuildAccess()
+    expect(result).toBeNull()
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('Discord Guild Access Failed: 403 Forbidden'),
+      'Missing Access'
+    )
+  })
+
+  it('returns null and logs error when fetch throws', async () => {
+    const error = new Error('Network failure')
+    vi.mocked(fetch).mockRejectedValueOnce(error)
+
+    const result = await verifyGuildAccess()
+    expect(result).toBeNull()
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to connect to Discord API during guild verification:'),
       error
     )
   })
