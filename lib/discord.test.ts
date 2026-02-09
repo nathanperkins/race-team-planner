@@ -4,6 +4,7 @@ import {
   GuildMembershipStatus,
   verifyBotToken,
   verifyGuildAccess,
+  verifyAdminRoles,
 } from './discord'
 
 describe('checkGuildMembership', () => {
@@ -264,6 +265,97 @@ describe('verifyGuildAccess', () => {
     expect(result).toBeNull()
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Failed to connect to Discord API during guild verification:'),
+      error
+    )
+  })
+})
+
+describe('verifyAdminRoles', () => {
+  const botToken = 'fake-bot-token'
+  const guildId = 'fake-guild-id'
+  const adminRoleIds = 'role1,role2'
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn())
+    vi.stubEnv('DISCORD_BOT_TOKEN', botToken)
+    vi.stubEnv('DISCORD_GUILD_ID', guildId)
+    vi.stubEnv('DISCORD_ADMIN_ROLE_IDS', adminRoleIds)
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('returns empty array if DISCORD_BOT_TOKEN is missing', async () => {
+    vi.stubEnv('DISCORD_BOT_TOKEN', '')
+    const result = await verifyAdminRoles()
+    expect(result).toEqual([])
+  })
+
+  it('returns found role names when API returns 200 OK', async () => {
+    const mockRoles = [
+      { id: 'role1', name: 'Admin' },
+      { id: 'role2', name: 'Moderator' },
+      { id: 'role3', name: 'User' },
+    ]
+
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => mockRoles,
+    } as Response)
+
+    const result = await verifyAdminRoles()
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining(`/guilds/${guildId}/roles`),
+      expect.objectContaining({
+        headers: {
+          Authorization: `Bot ${botToken}`,
+        },
+      })
+    )
+    expect(result).toEqual(['Admin', 'Moderator'])
+  })
+
+  it('returns empty array when no roles match', async () => {
+    const mockRoles = [{ id: 'role3', name: 'User' }]
+
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => mockRoles,
+    } as Response)
+
+    const result = await verifyAdminRoles()
+    expect(result).toEqual([])
+  })
+
+  it('returns empty array and logs error when API returns error code', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+      statusText: 'Unauthorized',
+    } as Response)
+
+    const result = await verifyAdminRoles()
+    expect(result).toEqual([])
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('❌ Discord Admin Role Verification Failed: 401')
+    )
+  })
+
+  it('returns empty array and logs error when fetch throws', async () => {
+    const error = new Error('Network failure')
+    vi.mocked(fetch).mockRejectedValueOnce(error)
+
+    const result = await verifyAdminRoles()
+    expect(result).toEqual([])
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('❌ Failed to connect to Discord API during role verification:'),
       error
     )
   })
