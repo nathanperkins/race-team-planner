@@ -2,7 +2,9 @@
 
 The most notable changes to this project are documented here.
 
-## Version 1.0 (2026-02-09) {#version-1.0}
+## Version 1.0 {#version-1.0}
+
+**Released on <time datetime="2026-02-09">February 9, 2026</time>**
 
 All work completed by **Nathan Perkins** and **Steven Case**.
 
@@ -38,6 +40,6 @@ Thanks to our testers for helping us improve!
 
 ### Features
 
-- Discord user login with with roles pulls from Discord server.
+- Discord user login with with roles pulled from Discord server.
 - Automated sync to iRacing API for event, racer and team data.
 - Onboarding flow for new users with expectations and profile setup.

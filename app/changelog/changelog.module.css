@@ -26,6 +26,13 @@
   color: #e5e5e5;
 }
 
+.content :global(h2),
+.content :global(h3) {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .content :global(h2) {
   font-size: 1.75rem;
   margin-top: 2.5rem;
@@ -40,7 +47,37 @@
   margin-top: 2rem;
   margin-bottom: 0.75rem;
   color: #5865f2;
-  /* Matching the primary color seen in sidebar */
+}
+
+.content :global(.anchor-link) {
+  opacity: 0;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  text-decoration: none;
+  font-size: 0.7em;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.content :global(h2:hover .anchor-link),
+.content :global(h3:hover .anchor-link) {
+  opacity: 0.4;
+}
+
+.content :global(.anchor-link:hover) {
+  opacity: 1 !important;
+  background-color: #ffffff10;
+}
+
+.content :global(.anchor-link .icon) {
+  display: inline-block;
+  transition: transform 0.1s ease;
+}
+
+.content :global(.anchor-link:active .icon) {
+  transform: scale(0.9);
 }
 
 .content :global(ul) {
