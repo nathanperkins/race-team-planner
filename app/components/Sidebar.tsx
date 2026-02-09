@@ -86,19 +86,23 @@ export default function Sidebar({ onLinkClick, session: propSession }: SidebarPr
             onLinkClick={onLinkClick}
           />
         )}
+      </nav>
 
+      <div className={styles.footer}>
         {session.user.role === 'ADMIN' && (
           <NavLink
             href="/admin"
             label="Admin Panel"
             isActive={checkActive('/admin')}
             onClick={onLinkClick}
+            className={styles.adminLink}
           />
         )}
-      </nav>
-
-      <div className={styles.footer}>
-        <UserSection user={session.user} />
+        <UserSection
+          user={session.user}
+          isActive={checkActive('/profile')}
+          onLinkClick={onLinkClick}
+        />
       </div>
     </div>
   )
@@ -140,12 +144,6 @@ function MainSection({
         href="/expectations"
         label="Team Expectations"
         isActive={checkActive('/expectations')}
-        onClick={onLinkClick}
-      />
-      <NavLink
-        href="/profile"
-        label="My Profile"
-        isActive={checkActive('/profile')}
         onClick={onLinkClick}
       />
       <NavLink
@@ -202,21 +200,35 @@ function OnboardingSection({
   )
 }
 
-function UserSection({ user }: { user: Session['user'] }) {
+function UserSection({
+  user,
+  isActive,
+  onLinkClick,
+}: {
+  user: Session['user']
+  isActive: boolean
+  onLinkClick?: () => void
+}) {
   return (
     <div className={styles.userSection}>
-      <div className={styles.userInfo}>
-        {user?.image && (
-          <Image
-            src={user.image}
-            alt={user.name || 'User'}
-            width={32}
-            height={32}
-            className={styles.avatar}
-          />
-        )}
-        <span className={styles.welcome}>{user?.name}</span>
-      </div>
+      <Link
+        href="/profile"
+        className={`${styles.profileLink} ${isActive ? styles.activeProfileLink : ''}`}
+        onClick={onLinkClick}
+      >
+        <div className={styles.userInfo}>
+          {user?.image && (
+            <Image
+              src={user.image}
+              alt={user.name || 'User'}
+              width={32}
+              height={32}
+              className={styles.avatar}
+            />
+          )}
+          <span className={styles.welcome}>{user?.name}</span>
+        </div>
+      </Link>
       <button onClick={() => signOut({ callbackUrl: '/' })} className={styles.signOutButton}>
         Sign Out
       </button>

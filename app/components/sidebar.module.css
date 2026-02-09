@@ -173,6 +173,13 @@
   margin-top: auto;
   border-top: 1px solid #333;
   padding-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.adminLink {
+  margin-bottom: 0.25rem;
 }
 
 .userSection {
@@ -185,7 +192,32 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin-bottom: 0.25rem;
+}
+
+.profileLink {
+  display: block;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+  color: #a1a1a1;
+}
+
+.profileLink:hover {
+  background-color: #1a1a1a;
+  color: var(--foreground);
+}
+
+.profileLink:hover .welcome {
+  color: var(--foreground);
+}
+
+.activeProfileLink {
+  background-color: #1a1a1a;
+  color: var(--foreground);
+}
+
+.activeProfileLink .welcome {
+  color: var(--foreground);
 }
 
 .avatar {
@@ -196,7 +228,8 @@
 .welcome {
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--foreground);
+  color: #a1a1a1;
+  transition: color 0.2s;
 }
 
 .signOutButton {
