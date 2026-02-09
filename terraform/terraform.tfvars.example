@@ -20,6 +20,7 @@ discord_bot_token        = "your-discord-bot-token"
 discord_guild_id         = "your-discord-server-id"
 discord_admin_role_ids   = "role_id1,role_id2" # Comma-separated admin role IDs
 discord_notifications_channel_id = "your-discord-channel-id"
+discord_events_forum_id          = "your-discord-forum-id"
 
  # iRacing
  iracing_username         = "your-iracing-email"

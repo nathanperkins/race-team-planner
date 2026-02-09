@@ -72,7 +72,8 @@ will use a mock data set suitable for local development.
     - Enable Developer Mode in Discord (User Settings → Advanced → Developer Mode).
     - Right-click the channel where you want notifications sent and select "Copy ID".
     - Set `DISCORD_NOTIFICATIONS_CHANNEL_ID` to this channel ID.
-    - **Note**: The bot must have permission to send messages in this channel.
+    - Set `DISCORD_EVENTS_FORUM_ID` to the ID of the forum channel where event and team discussion threads should be created.
+    - **Note**: The bot must have permission to send messages and create threads in these channels.
 
 - **iRacing Data API**:
   - Follow the setup guide: [iRacing Data API Documentation](https://forums.iracing.com/discussion/15068/general-availability-of-data-api).

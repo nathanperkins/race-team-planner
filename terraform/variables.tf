@@ -68,6 +68,12 @@ variable "discord_notifications_channel_id" {
   default     = ""
 }
 
+variable "discord_events_forum_id" {
+  description = "The Discord Forum ID where event threads should be created"
+  type        = string
+  default     = ""
+}
+
 variable "iracing_username" {
   description = "iRacing Username for API synchronization"
   type        = string
