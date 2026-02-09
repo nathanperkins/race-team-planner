@@ -32,3 +32,4 @@ discord_events_forum_id          = "your-discord-forum-id"
  cron_secret              = ""  # Secret for authenticating cron jobs
  backup_encryption_key    = ""  # GPG passphrase for encrypting backups (generate a strong random string)
  domain_name              = ""  # e.g. planner.example.com (optional)
+ feedback_url             = ""  # URL for feedback and bugs (optional)

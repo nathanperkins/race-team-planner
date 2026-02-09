@@ -30,6 +30,28 @@ function NavLink({ href, label, isActive, onClick, className = '', disabled }: N
   )
 }
 
+function ExternalNavLink({
+  href,
+  label,
+  onClick,
+}: {
+  href: string
+  label: string
+  onClick?: () => void
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={styles.link}
+      onClick={onClick}
+    >
+      {label}
+    </a>
+  )
+}
+
 interface SidebarProps {
   onLinkClick?: () => void
   session?: Session | null
@@ -126,6 +148,14 @@ function MainSection({
         isActive={checkActive('/profile')}
         onClick={onLinkClick}
       />
+
+      {process.env.NEXT_PUBLIC_FEEDBACK_URL && (
+        <ExternalNavLink
+          href={process.env.NEXT_PUBLIC_FEEDBACK_URL}
+          label="Report Feedback / Bugs"
+          onClick={onLinkClick}
+        />
+      )}
     </>
   )
 }

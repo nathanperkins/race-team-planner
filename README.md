@@ -89,6 +89,10 @@ will use a mock data set suitable for local development.
   - Set `APP_TITLE` to customize the application name displayed in the title bar, sidebar, and login page.
   - Default: `Race Team Planner`
 
+- **Feedback & Bug Reporting**:
+  - Set `NEXT_PUBLIC_FEEDBACK_URL` to a full URL (e.g., Discord forum post or GitHub issues) to add a link in the sidebar for community feedback.
+  - If unset, the link will not be shown.
+
 ### Database Backups
 
 Automated encrypted backups are configured in production via Cloud Run Jobs and Cloud Scheduler.

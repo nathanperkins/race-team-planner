@@ -152,3 +152,9 @@ variable "app_title" {
   type        = string
   default     = "Race Team Planner"
 }
+
+variable "feedback_url" {
+  description = "The URL for reporting feedback and bugs"
+  type        = string
+  default     = ""
+}
