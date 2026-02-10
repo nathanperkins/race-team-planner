@@ -3,8 +3,6 @@ import { authConfig } from './auth.config'
 import { SESSION_VERSION } from '@/lib/config'
 import { UserRole } from '@prisma/client'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 describe('auth.config', () => {
   describe('callbacks', () => {
     describe('authorized', () => {

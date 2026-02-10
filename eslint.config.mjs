@@ -18,6 +18,7 @@ const eslintConfig = defineConfig([
     files: ['**/*.test.{js,jsx,ts,tsx}', '**/*.spec.{js,jsx,ts,tsx}'],
     rules: {
       '@next/next/no-img-element': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
     },
   },
 ])

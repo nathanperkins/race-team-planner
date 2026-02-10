@@ -9,8 +9,6 @@ import { CURRENT_EXPECTATIONS_VERSION, SESSION_VERSION } from '@/lib/config'
 import prisma from '@/lib/prisma'
 import { UserRole } from '@prisma/client'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 vi.mock('@/lib/prisma', () => ({
   default: {
     user: {

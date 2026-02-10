@@ -2,9 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { handleProxy } from './proxy'
 import { getOnboardingStatus, OnboardingStatus } from '@/lib/onboarding'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unused-vars */
-
 vi.mock('next-auth', () => ({
   default: vi.fn(() => ({
     auth: vi.fn((handler) => handler),
@@ -62,6 +59,8 @@ describe('proxy', () => {
       auth: { user: { name: 'Alice' } }, // Missing id
     } as any
     const result = handleProxy(req)
+    expect(result).toBeDefined()
+    expect(result?.ok).toBeFalsy()
     expect(mockRedirect).toHaveBeenCalled()
     expect(mockRedirect.mock.calls[0][0].toString()).toContain('/login?reason=stale_session')
   })

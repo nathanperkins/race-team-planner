@@ -24,6 +24,7 @@ import {
   LicenseLevel,
 } from '@/lib/utils'
 import { Prisma } from '@prisma/client'
+import { getIracingSeasonInfo } from '@/lib/season-utils'
 import styles from './EventDetailModal.module.css'
 
 type EventWithRaces = Prisma.EventGetPayload<{
@@ -104,15 +105,7 @@ export default function EventDetailModal({
     }
   }, [isAdmin])
 
-  // Calculate ISO week number
-  const getWeekNumber = (date: Date): number => {
-    const d = new Date(date)
-    d.setHours(0, 0, 0, 0)
-    d.setDate(d.getDate() + 4 - (d.getDay() || 7))
-    const yearStart = new Date(d.getFullYear(), 0, 1)
-    const weekNum = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
-    return weekNum
-  }
+  const seasonInfo = getIracingSeasonInfo(event.startTime)
 
   // Close on backdrop click
   const handleBackdropClick = (e: React.MouseEvent) => {
@@ -182,9 +175,8 @@ export default function EventDetailModal({
                   {event.trackConfig && ` - ${event.trackConfig}`}
                 </div>
                 <div className={styles.eventMeta}>
-                  {new Date(event.startTime).getFullYear()} • Season{' '}
-                  {Math.floor(new Date(event.startTime).getMonth() / 3) + 1} • Week{' '}
-                  {getWeekNumber(event.startTime)}
+                  {seasonInfo.seasonYear} • Season {seasonInfo.seasonQuarter} • Week{' '}
+                  {seasonInfo.raceWeek}
                 </div>
               </div>
             </div>
