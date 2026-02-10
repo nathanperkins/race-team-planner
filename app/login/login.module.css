@@ -201,3 +201,21 @@
     transform: translateY(0);
   }
 }
+
+.footer {
+  margin-top: 3rem;
+  font-size: 0.875rem;
+  color: #64748b;
+  text-align: center;
+  animation: fadeIn 1.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}

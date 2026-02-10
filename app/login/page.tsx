@@ -66,6 +66,9 @@ export default async function LoginPage() {
         <h2 className={styles.title}>Sign In</h2>
         {getLoginElements()}
       </div>
+      <footer className={styles.footer}>
+        &copy; {new Date().getFullYear()} Nathan Perkins & Steven Case. All rights reserved.
+      </footer>
     </div>
   )
 }

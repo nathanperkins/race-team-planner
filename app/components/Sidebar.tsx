@@ -103,6 +103,9 @@ export default function Sidebar({ onLinkClick, session: propSession }: SidebarPr
           isActive={checkActive('/profile')}
           onLinkClick={onLinkClick}
         />
+        <div className={styles.copyright}>
+          &copy; {new Date().getFullYear()} Nathan Perkins & Steven Case
+        </div>
       </div>
     </div>
   )

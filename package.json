@@ -1,7 +1,13 @@
 {
-  "name": "temp_app",
+  "name": "iracing-team-planner",
   "version": "0.1.0",
   "private": true,
+  "author": "Nathan Perkins and Steven Case",
+  "contributors": [
+    "Nathan Perkins",
+    "Steven Case"
+  ],
+  "license": "UNLICENSED",
   "scripts": {
     "dev": "next dev --turbo",
     "build": "next build",

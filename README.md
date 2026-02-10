@@ -162,3 +162,11 @@ Before submitting changes, run the following to ensure code quality. **Note**: T
 ## Deployment
 
 For instructions on how to deploy this application to Google Cloud Platform, please see [DEPLOYMENT.md](DEPLOYMENT.md).
+
+## License
+
+Copyright (c) 2026 Nathan Perkins and Steven Case. All rights reserved.
+See [LICENSE](LICENSE) for details.
+
+By contributing to this project,
+you agree that your contributions are assigned to the copyright holders.
