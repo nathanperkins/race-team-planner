@@ -826,8 +826,10 @@
   justify-content: center;
   color: #9ca3af;
   transition:
-    color 0.2s ease,
-    transform 0.2s ease;
+    color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.2s ease;
   cursor: pointer;
   padding: 4px;
   border-radius: 6px;
@@ -836,19 +838,22 @@
 .discordLink:hover {
   color: #5865f2;
   /* Discord blurple */
-  background: rgba(88, 101, 242, 0.1);
-  transform: scale(1.1);
+  background: rgba(88, 101, 242, 0.15);
+  transform: scale(1.2);
+  box-shadow: 0 0 12px rgba(88, 101, 242, 0.25);
 }
 
 .discordLinkInactive {
   color: #374151;
   cursor: default;
+  opacity: 0.5;
 }
 
 .discordLinkInactive:hover {
   color: #374151;
   background: transparent;
   transform: none;
+  box-shadow: none;
 }
 
 .teamInlineWarningOverlay {
