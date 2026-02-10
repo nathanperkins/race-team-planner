@@ -55,9 +55,10 @@ function ExternalNavLink({
 interface SidebarProps {
   onLinkClick?: () => void
   session?: Session | null
+  feedbackUrl?: string
 }
 
-export default function Sidebar({ onLinkClick, session: propSession }: SidebarProps) {
+export default function Sidebar({ onLinkClick, session: propSession, feedbackUrl }: SidebarProps) {
   const pathname = usePathname()
   const { data: hookSession } = useSession()
   const session = propSession || hookSession
@@ -78,7 +79,12 @@ export default function Sidebar({ onLinkClick, session: propSession }: SidebarPr
     <div className={styles.navWrapper}>
       <nav className={styles.nav}>
         {isSetupComplete ? (
-          <MainSection userId={userId} checkActive={checkActive} onLinkClick={onLinkClick} />
+          <MainSection
+            userId={userId}
+            checkActive={checkActive}
+            onLinkClick={onLinkClick}
+            feedbackUrl={feedbackUrl}
+          />
         ) : (
           <OnboardingSection
             status={onboardingStatus}
@@ -115,10 +121,12 @@ function MainSection({
   userId,
   checkActive,
   onLinkClick,
+  feedbackUrl,
 }: {
   userId: string
   checkActive: (p: string) => boolean
   onLinkClick?: () => void
+  feedbackUrl?: string
 }) {
   return (
     <>
@@ -156,12 +164,8 @@ function MainSection({
         onClick={onLinkClick}
       />
 
-      {process.env.NEXT_PUBLIC_FEEDBACK_URL && (
-        <ExternalNavLink
-          href={process.env.NEXT_PUBLIC_FEEDBACK_URL}
-          label="Report Feedback / Bugs"
-          onClick={onLinkClick}
-        />
+      {feedbackUrl && (
+        <ExternalNavLink href={feedbackUrl} label="Report Feedback / Bugs" onClick={onLinkClick} />
       )}
     </>
   )

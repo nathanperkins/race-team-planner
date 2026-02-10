@@ -29,7 +29,7 @@ DISCORD_EVENTS_FORUM_ID="${var.discord_events_forum_id}"
 CRON_SECRET="${var.cron_secret}"
 BACKUP_ENCRYPTION_KEY="${var.backup_encryption_key}"
 APP_TITLE="${var.app_title}"
-NEXT_PUBLIC_FEEDBACK_URL="${var.feedback_url}"
+FEEDBACK_URL="${var.feedback_url}"
 EOT
 }
 

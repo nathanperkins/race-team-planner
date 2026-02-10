@@ -1,4 +1,4 @@
-import { features, appTitle } from '@/lib/config'
+import { features, appTitle, feedbackUrl } from '@/lib/config'
 
 export async function register() {
   console.log(`🚧 ${appTitle} Startup 🚧`)
@@ -10,7 +10,7 @@ export async function register() {
   console.log(`[Feature] Mock Auth: ${features.mockAuth ? 'Enabled (Dev Mode) ✅' : 'Disabled ❌'}`)
   console.log(`[Feature] iRacing Sync: ${features.iracingSync ? 'Enabled ✅' : 'Disabled ❌'}`)
   if (features.feedback) {
-    console.log(`[Notice] Feedback URL is CONFIGURED: ${process.env.NEXT_PUBLIC_FEEDBACK_URL} 📢`)
+    console.log(`[Notice] Feedback URL is CONFIGURED: ${feedbackUrl} 📢`)
   } else {
     console.log('[Notice] Feedback URL is NOT configured (Optional) ⚠️')
   }

@@ -11,9 +11,15 @@ interface LayoutWrapperProps {
   children: React.ReactNode
   session: Session | null
   appTitle: string
+  feedbackUrl?: string
 }
 
-export default function LayoutWrapper({ children, session, appTitle }: LayoutWrapperProps) {
+export default function LayoutWrapper({
+  children,
+  session,
+  appTitle,
+  feedbackUrl,
+}: LayoutWrapperProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen)
@@ -46,7 +52,11 @@ export default function LayoutWrapper({ children, session, appTitle }: LayoutWra
                   <X size={24} />
                 </button>
               </div>
-              <Sidebar onLinkClick={() => setIsSidebarOpen(false)} session={session} />
+              <Sidebar
+                onLinkClick={() => setIsSidebarOpen(false)}
+                session={session}
+                feedbackUrl={feedbackUrl}
+              />
             </aside>
 
             {/* Mobile Header */}
