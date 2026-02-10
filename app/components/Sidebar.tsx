@@ -10,14 +10,23 @@ import { getOnboardingStatus, OnboardingStatus } from '@/lib/onboarding'
 
 interface NavLinkProps {
   href: string
-  label: string
+  label?: string
+  children?: React.ReactNode
   isActive: boolean
   onClick?: () => void
   className?: string
   disabled?: boolean
 }
 
-function NavLink({ href, label, isActive, onClick, className = '', disabled }: NavLinkProps) {
+function NavLink({
+  href,
+  label,
+  children,
+  isActive,
+  onClick,
+  className = '',
+  disabled,
+}: NavLinkProps) {
   return (
     <Link
       href={href}
@@ -25,8 +34,24 @@ function NavLink({ href, label, isActive, onClick, className = '', disabled }: N
       onClick={disabled ? undefined : onClick}
       aria-disabled={disabled}
     >
-      {label}
+      {label || children}
     </Link>
+  )
+}
+
+function SidebarButton({
+  onClick,
+  children,
+  className = '',
+}: {
+  onClick: () => void
+  children: React.ReactNode
+  className?: string
+}) {
+  return (
+    <button onClick={onClick} className={`${styles.link} ${styles.sidebarButton} ${className}`}>
+      {children}
+    </button>
   )
 }
 
@@ -95,18 +120,10 @@ export default function Sidebar({ onLinkClick, session: propSession, feedbackUrl
       </nav>
 
       <div className={styles.footer}>
-        {session.user.role === 'ADMIN' && (
-          <NavLink
-            href="/admin"
-            label="Admin Panel"
-            isActive={checkActive('/admin')}
-            onClick={onLinkClick}
-            className={styles.adminLink}
-          />
-        )}
         <UserSection
           user={session.user}
           isActive={checkActive('/profile')}
+          checkActive={checkActive}
           onLinkClick={onLinkClick}
         />
         <div className={styles.copyright}>
@@ -210,19 +227,17 @@ function OnboardingSection({
 function UserSection({
   user,
   isActive,
+  checkActive,
   onLinkClick,
 }: {
   user: Session['user']
   isActive: boolean
+  checkActive: (path: string) => boolean
   onLinkClick?: () => void
 }) {
   return (
     <div className={styles.userSection}>
-      <Link
-        href="/profile"
-        className={`${styles.profileLink} ${isActive ? styles.activeProfileLink : ''}`}
-        onClick={onLinkClick}
-      >
+      <NavLink href="/profile" isActive={isActive} onClick={onLinkClick}>
         <div className={styles.userInfo}>
           {user?.image && (
             <Image
@@ -235,10 +250,17 @@ function UserSection({
           )}
           <span className={styles.welcome}>{user?.name}</span>
         </div>
-      </Link>
-      <button onClick={() => signOut({ callbackUrl: '/' })} className={styles.signOutButton}>
-        Sign Out
-      </button>
+      </NavLink>
+      {user.role === 'ADMIN' && (
+        <NavLink
+          href="/admin"
+          label="Admin Panel"
+          isActive={checkActive('/admin')}
+          onClick={onLinkClick}
+          className={styles.adminLink}
+        />
+      )}
+      <SidebarButton onClick={() => signOut({ callbackUrl: '/' })}>Sign Out</SidebarButton>
     </div>
   )
 }

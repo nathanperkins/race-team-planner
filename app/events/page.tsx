@@ -7,8 +7,6 @@ import EventsClient from '../components/EventsClient'
 import { Prisma } from '@prisma/client'
 import { getLicenseLevelFromName } from '@/lib/utils'
 
-import { appLocale } from '@/lib/config'
-
 import styles from './events.module.css'
 
 interface PageProps {
