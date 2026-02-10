@@ -47,6 +47,9 @@ interface EventsClientProps {
     weekStart: Date
     weekEnd: Date
     weekNumber: number
+    seasonYear?: number
+    seasonQuarter?: number
+    official?: boolean
     events: EventWithRaces[]
     meta: {
       events: number
@@ -102,7 +105,9 @@ export default function EventsClient({
           >
             <div className={styles.weekHeader}>
               <div className={styles.weekTitle}>
-                <div className={styles.wk}>Week {week.weekNumber}</div>
+                <div className={styles.wk}>
+                  {`${week.seasonYear} - Season ${week.seasonQuarter} - Week ${week.weekNumber}`}
+                </div>
                 <div className={styles.range}>
                   {week.weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} –{' '}
                   {week.weekEnd.toLocaleDateString('en-US', {

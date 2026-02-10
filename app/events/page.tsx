@@ -8,6 +8,7 @@ import { Prisma } from '@prisma/client'
 import { getLicenseLevelFromName } from '@/lib/utils'
 
 import styles from './events.module.css'
+import { getIracingSeasonInfo } from '@/lib/season-utils'
 
 interface PageProps {
   searchParams: Promise<{
@@ -25,6 +26,9 @@ interface WeekGroup {
   weekStart: Date
   weekEnd: Date
   weekNumber: number
+  seasonYear?: number
+  seasonQuarter?: number
+  official?: boolean
   events: EventWithRaces[]
   meta: {
     events: number
@@ -202,43 +206,24 @@ export default async function EventsPage({ searchParams }: PageProps) {
     },
   })
 
-  // Group events by week (ISO week)
-  function getISOWeekKey(date: Date): string {
-    const d = new Date(date)
-    d.setHours(0, 0, 0, 0)
-    d.setDate(d.getDate() + 4 - (d.getDay() || 7))
-    const yearStart = new Date(d.getFullYear(), 0, 1)
-    const weekNum = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
-    return `${d.getFullYear()}-W${weekNum}`
-  }
-
-  function getWeekEnd(date: Date): Date {
-    const start = getWeekStart(date)
-    const end = new Date(start)
-    end.setDate(end.getDate() + 6)
-    return end
-  }
-
-  function getWeekNumber(date: Date): number {
-    const d = new Date(date)
-    d.setHours(0, 0, 0, 0)
-    d.setDate(d.getDate() + 4 - (d.getDay() || 7))
-    const yearStart = new Date(d.getFullYear(), 0, 1)
-    const weekNum = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
-    return weekNum
-  }
-
+  // Group events by Season Info
+  // We use a Map to group by a unique key (S{Year}Q{Quarter}W{Week})
+  // But we want to preserve the order based on time.
   const weekMap = new Map<string, WeekGroup>()
 
   events.forEach((event) => {
-    const weekKey = getISOWeekKey(event.startTime)
-    const weekStart = getWeekStart(event.startTime)
+    const seasonInfo = getIracingSeasonInfo(event.startTime)
+
+    const weekKey = `S${seasonInfo.seasonYear}-Q${seasonInfo.seasonQuarter}-W${seasonInfo.raceWeek}`
 
     if (!weekMap.has(weekKey)) {
       weekMap.set(weekKey, {
-        weekStart,
-        weekEnd: getWeekEnd(weekStart),
-        weekNumber: getWeekNumber(event.startTime),
+        weekStart: seasonInfo.weekStart,
+        weekEnd: seasonInfo.weekEnd,
+        weekNumber: seasonInfo.raceWeek,
+        seasonYear: seasonInfo.seasonYear,
+        seasonQuarter: seasonInfo.seasonQuarter,
+        official: true, // Calculated weeks are "official" in terms of schedule
         events: [],
         meta: {
           events: 0,
@@ -252,6 +237,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
     week.events.push(event)
     week.meta.events++
     week.meta.tracks.add(event.track)
+    event.carClasses.forEach((cc) => week.meta.classes.add(cc.shortName))
   })
 
   const weeks = Array.from(weekMap.values()).sort(
