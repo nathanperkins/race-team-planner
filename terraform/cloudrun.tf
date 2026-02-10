@@ -29,6 +29,14 @@ resource "google_cloud_run_v2_service" "default" {
         value = "true"
       }
 
+      resources {
+        limits = {
+          cpu    = "1000m"
+          memory = "512Mi"
+        }
+        startup_cpu_boost = true
+      }
+
       volume_mounts {
         name       = "secrets"
         mount_path = "/secrets"
