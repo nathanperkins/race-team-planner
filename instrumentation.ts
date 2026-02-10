@@ -9,6 +9,11 @@ export async function register() {
   )
   console.log(`[Feature] Mock Auth: ${features.mockAuth ? 'Enabled (Dev Mode) ✅' : 'Disabled ❌'}`)
   console.log(`[Feature] iRacing Sync: ${features.iracingSync ? 'Enabled ✅' : 'Disabled ❌'}`)
+  if (features.feedback) {
+    console.log(`[Notice] Feedback URL is CONFIGURED: ${process.env.NEXT_PUBLIC_FEEDBACK_URL} 📢`)
+  } else {
+    console.log('[Notice] Feedback URL is NOT configured (Optional) ⚠️')
+  }
 
   if (features.discordMembership) {
     const {
