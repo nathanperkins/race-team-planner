@@ -7,6 +7,8 @@ import EventsClient from '../components/EventsClient'
 import { Prisma } from '@prisma/client'
 import { getLicenseLevelFromName } from '@/lib/utils'
 
+import { appLocale } from '@/lib/config'
+
 import styles from './events.module.css'
 
 interface PageProps {
@@ -350,7 +352,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
             style={{ margin: '4px 0 0 0', fontSize: '0.875rem', color: 'rgba(234, 240, 255, 0.6)' }}
           >
             Times shown in{' '}
-            {new Date().toLocaleString('en-US', { timeZoneName: 'short' }).split(' ').pop()}
+            {new Date().toLocaleString(appLocale, { timeZoneName: 'short' }).split(' ').pop()}
           </p>
           <LastSyncStatus />
         </div>

@@ -158,3 +158,15 @@ variable "feedback_url" {
   type        = string
   default     = ""
 }
+
+variable "app_locale" {
+  description = "The locale to use for server-side formatting"
+  type        = string
+  default     = ""
+}
+
+variable "app_timezone" {
+  description = "The timezone to use for server-side formatting (e.g. UTC, America/New_York)"
+  type        = string
+  default     = ""
+}

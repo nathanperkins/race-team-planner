@@ -1,7 +1,9 @@
-import { features, appTitle, feedbackUrl } from '@/lib/config'
+import { features, appTitle, feedbackUrl, appLocale, appTimeZone } from '@/lib/config'
 
 export async function register() {
   console.log(`🚧 ${appTitle} Startup 🚧`)
+  console.log(`[Config] Locale: ${appLocale}`)
+  console.log(`[Config] Timezone: ${appTimeZone || 'Default (America/Los_Angeles)'}`)
 
   console.log(`[Feature] Discord Auth: ${features.discordAuth ? 'Enabled ✅' : 'Disabled ❌'}`)
   console.log(

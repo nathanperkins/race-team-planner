@@ -1,4 +1,4 @@
-import { appTitle } from './config'
+import { appTitle, appLocale, appTimeZone } from './config'
 import {
   OnboardingNotificationData,
   RegistrationNotificationData,
@@ -429,14 +429,16 @@ export async function sendTeamsAssignedNotification(
     const unixTimestamp = Math.floor(data.raceStartTime.getTime() / 1000)
     const discordTimestamp = `<t:${unixTimestamp}:F>`
     const cleanName = normalizeSeriesName(data.eventName)
-    const dateLabel = new Intl.DateTimeFormat('en-US', {
+    const dateLabel = new Intl.DateTimeFormat(appLocale, {
       month: 'numeric',
       day: 'numeric',
+      timeZone: appTimeZone,
     }).format(data.raceStartTime)
-    const timeLabel = new Intl.DateTimeFormat('en-US', {
+    const timeLabel = new Intl.DateTimeFormat(appLocale, {
       hour: 'numeric',
       minute: '2-digit',
       timeZoneName: 'short',
+      timeZone: appTimeZone,
     }).format(data.raceStartTime)
     const threadName = `${cleanName} (${dateLabel} - ${timeLabel})`
     const allMentionIds = new Set<string>()
@@ -864,14 +866,16 @@ export async function createTeamThread(options: {
   const threadParentId = forumId || channelId
 
   const cleanName = normalizeSeriesName(options.eventName)
-  const dateLabel = new Intl.DateTimeFormat('en-US', {
+  const dateLabel = new Intl.DateTimeFormat(appLocale, {
     month: 'numeric',
     day: 'numeric',
+    timeZone: appTimeZone,
   }).format(options.raceStartTime)
-  const timeLabel = new Intl.DateTimeFormat('en-US', {
+  const timeLabel = new Intl.DateTimeFormat(appLocale, {
     hour: 'numeric',
     minute: '2-digit',
     timeZoneName: 'short',
+    timeZone: appTimeZone,
   }).format(options.raceStartTime)
   const threadName = `${options.teamName} • ${cleanName} (${dateLabel} - ${timeLabel})`
 

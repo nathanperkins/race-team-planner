@@ -29,6 +29,8 @@ DISCORD_EVENTS_FORUM_ID="${var.discord_events_forum_id}"
 CRON_SECRET="${var.cron_secret}"
 BACKUP_ENCRYPTION_KEY="${var.backup_encryption_key}"
 APP_TITLE="${var.app_title}"
+APP_LOCALE="${var.app_locale}"
+APP_TIMEZONE="${var.app_timezone}"
 FEEDBACK_URL="${var.feedback_url}"
 EOT
 }
