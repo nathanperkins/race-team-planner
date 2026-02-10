@@ -348,12 +348,6 @@ export default async function EventsPage({ searchParams }: PageProps) {
       <div className={styles.topRow}>
         <div className={styles.titleGroup}>
           <h1>Upcoming Events</h1>
-          <p
-            style={{ margin: '4px 0 0 0', fontSize: '0.875rem', color: 'rgba(234, 240, 255, 0.6)' }}
-          >
-            Times shown in{' '}
-            {new Date().toLocaleString(appLocale, { timeZoneName: 'short' }).split(' ').pop()}
-          </p>
           <LastSyncStatus />
         </div>
       </div>
