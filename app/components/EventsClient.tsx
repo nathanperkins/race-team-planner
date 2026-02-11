@@ -63,6 +63,21 @@ interface EventsClientProps {
   initialEventId?: string
   teams: Array<{ id: string; name: string; iracingTeamId: number | null; memberCount?: number }>
   discordGuildId?: string
+  eligibleFilter?: boolean
+}
+
+function eligibleWeeks(userLicenseLevel: LicenseLevel | null, eligibleFilter: boolean | undefined) {
+  return function(week: { events: EventWithRaces[] }) {
+    return week.events.some(eligibleEvents(userLicenseLevel, eligibleFilter))
+  }
+}
+
+function eligibleEvents(userLicenseLevel: LicenseLevel | null, eligibleFilter: boolean | undefined) {
+  return function(event: EventWithRaces) {
+    if (!eligibleFilter) return true
+    const license = getLicenseForId(event.id, event.licenseGroup)
+    return isLicenseEligible(userLicenseLevel, license)
+  }
 }
 
 export default function EventsClient({
@@ -73,6 +88,7 @@ export default function EventsClient({
   initialEventId,
   teams,
   discordGuildId,
+  eligibleFilter,
 }: EventsClientProps) {
   const router = useRouter()
   const [selectedEventId, setSelectedEventId] = useState<string | null>(initialEventId ?? null)
@@ -98,7 +114,7 @@ export default function EventsClient({
   return (
     <>
       <div className={styles.weekGrid}>
-        {weeks.map((week, idx) => (
+        {weeks.filter(eligibleWeeks(userLicenseLevel, eligibleFilter)).map((week, idx) => (
           <div
             key={week.weekNumber}
             className={`${styles.weekTile} ${idx % 2 === 1 ? styles.alt : ''}`}
@@ -124,7 +140,7 @@ export default function EventsClient({
             </div>
 
             <div className={styles.weekBody}>
-              {week.events.map((event) => {
+              {week.events.filter(eligibleEvents(userLicenseLevel, eligibleFilter)).map((event) => {
                 const license = getLicenseForId(event.id, event.licenseGroup)
                 const isEligible = isLicenseEligible(userLicenseLevel, license)
                 const lastRaceEnd = event.races.reduce<Date | null>((latest, race) => {

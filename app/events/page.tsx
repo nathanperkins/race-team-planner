@@ -368,6 +368,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
         initialEventId={params.eventId}
         teams={teams}
         discordGuildId={process.env.DISCORD_GUILD_ID}
+        eligibleFilter={params.eligible === 'true'}
       />
     </main>
   )
