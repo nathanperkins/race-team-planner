@@ -63,21 +63,6 @@ interface EventsClientProps {
   initialEventId?: string
   teams: Array<{ id: string; name: string; iracingTeamId: number | null; memberCount?: number }>
   discordGuildId?: string
-  eligibleFilter?: boolean
-}
-
-function eligibleWeeks(userLicenseLevel: LicenseLevel | null, eligibleFilter: boolean | undefined) {
-  return function(week: { events: EventWithRaces[] }) {
-    return week.events.some(eligibleEvents(userLicenseLevel, eligibleFilter))
-  }
-}
-
-function eligibleEvents(userLicenseLevel: LicenseLevel | null, eligibleFilter: boolean | undefined) {
-  return function(event: EventWithRaces) {
-    if (!eligibleFilter) return true
-    const license = getLicenseForId(event.id, event.licenseGroup)
-    return isLicenseEligible(userLicenseLevel, license)
-  }
 }
 
 export default function EventsClient({
@@ -88,7 +73,6 @@ export default function EventsClient({
   initialEventId,
   teams,
   discordGuildId,
-  eligibleFilter,
 }: EventsClientProps) {
   const router = useRouter()
   const [selectedEventId, setSelectedEventId] = useState<string | null>(initialEventId ?? null)
@@ -114,7 +98,7 @@ export default function EventsClient({
   return (
     <>
       <div className={styles.weekGrid}>
-        {weeks.filter(eligibleWeeks(userLicenseLevel, eligibleFilter)).map((week, idx) => (
+        {weeks.map((week, idx) => (
           <div
             key={week.weekNumber}
             className={`${styles.weekTile} ${idx % 2 === 1 ? styles.alt : ''}`}
@@ -134,13 +118,10 @@ export default function EventsClient({
                 </div>
                 <div className={styles.meta}>{week.meta.events} events</div>
               </div>
-              <div className={styles.weekBadge}>
-                <div className={styles.pill}>W{week.weekNumber}</div>
-              </div>
             </div>
 
             <div className={styles.weekBody}>
-              {week.events.filter(eligibleEvents(userLicenseLevel, eligibleFilter)).map((event) => {
+              {week.events.map((event) => {
                 const license = getLicenseForId(event.id, event.licenseGroup)
                 const isEligible = isLicenseEligible(userLicenseLevel, license)
                 const lastRaceEnd = event.races.reduce<Date | null>((latest, race) => {
@@ -179,9 +160,10 @@ export default function EventsClient({
                     <div className={styles.eventLeft}>
                       <div className={styles.eventTopLine}>
                         <div className={styles.eventTitleGroup}>
-                          <div className={styles.eventName} title={event.name}>
-                            {getSeriesNameOnly(event.name)}
+                          <div className={styles.eventTrack} title={event.name}>
+                            {event.track}
                           </div>
+                          <div className={styles.trackConfig}>{event.trackConfig || ''}</div>
                           {event.durationMins && (
                             <span className={styles.durationPill}>
                               <Timer size={12} />
@@ -191,11 +173,25 @@ export default function EventsClient({
                         </div>
                       </div>
 
-                      <div className={styles.eventTrack}>
+                      <div className={styles.eventName}>
                         <span className={styles.trackDot}></span>
-                        {event.track}
+                        {getSeriesNameOnly(event.name)}
                       </div>
-                      <div className={styles.trackConfig}>{event.trackConfig || ''}</div>
+                      
+                      <div className={styles.subRow}>
+                        <div className={styles.classPills}>
+                          {event.carClasses
+                            .map((carClass) => carClass.shortName)
+                            .filter(Boolean)
+                            .slice(0, 3)
+                            .map((carClass) => (
+                              <div key={carClass} className={styles.classPill}>
+                                {carClass}
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+
                       <div className={`${styles.eventRight} ${styles.eventRightMobile}`}>
                         <div className={styles.eventRightTop}>
                           {isLive && (
@@ -227,45 +223,43 @@ export default function EventsClient({
                         </div>
                       </div>
 
-                      <div className={styles.racePills}>
+                      <div className={styles.timeslotVisualization}>
                         {event.races.map((race) => {
-                          const isRaceCompleted = now > new Date(race.startTime)
+                          const eventDurationHours = Math.ceil((event.durationMins || 60) / 60)
+                          const registrationCount = race.registrations.length
+                          const fillPercentage = Math.min(
+                            (2 * registrationCount / eventDurationHours) * 100,
+                            100
+                          )
                           return (
-                            <div
-                              key={race.id}
-                              className={`${styles.racePill} ${
-                                isRaceCompleted ? styles.racePillCompleted : ''
-                              }`}
-                            >
-                              {new Date(race.startTime).toLocaleDateString('en-US', {
-                                month: 'numeric',
-                                day: 'numeric',
-                              })}{' '}
-                              •{' '}
-                              {new Date(race.startTime).toLocaleTimeString('en-US', {
-                                hour: 'numeric',
-                                minute: '2-digit',
-                              })}
-                              <span className={styles.racePillCount}>
-                                <User size={12} />
-                                {race.registrations.length}
-                              </span>
+                            <div key={race.id} className={styles.timeslotRow}>
+                              <div className={styles.timeslotTime}>
+                                {new Date(race.startTime).toLocaleDateString('en-US', {
+                                  month: 'numeric',
+                                  day: 'numeric',
+                                })}
+                                {' '}•{' '}
+                                {new Date(race.startTime).toLocaleTimeString('en-US', {
+                                  hour: 'numeric',
+                                  minute: '2-digit',
+                                })}
+                                <span className={styles.timeslotCount}>
+                                  <User size={12} />
+                                  {registrationCount}
+                                </span>
+                              </div>
+                              <div className={styles.utilizationBar}>
+                                <div
+                                  className={styles.utilizationFill}
+                                  style={{
+                                    width: `${fillPercentage}%`,
+                                  }}
+                                  title={`${registrationCount} registered / ${eventDurationHours} available slots`}
+                                ></div>
+                              </div>
                             </div>
                           )
                         })}
-                      </div>
-                      <div className={styles.subRow}>
-                        <div className={styles.classPills}>
-                          {event.carClasses
-                            .map((carClass) => carClass.shortName)
-                            .filter(Boolean)
-                            .slice(0, 3)
-                            .map((carClass) => (
-                              <div key={carClass} className={styles.classPill}>
-                                {carClass}
-                              </div>
-                            ))}
-                        </div>
                       </div>
                     </div>
 
