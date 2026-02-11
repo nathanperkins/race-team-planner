@@ -115,42 +115,39 @@ const MOCK_MEMBER_INFO: IRacingMemberInfo = {
 
 // Mock license data that varies by timestamp for testing
 function getMockMemberInfo(custId: number): IRacingMemberInfo {
-  // Use timestamp as seed for randomized license assignment on each login
-  const seed = Math.floor(new Date().getTime() / 1000)
-  const random = Math.abs(seed % 1000) / 1000
-  
   const licenseVariants = [
     { groupName: 'Class A', irating: 2500, licenseLevel: 19 },
     { groupName: 'Class B', irating: 1800, licenseLevel: 13 },
     { groupName: 'Class C', irating: 1200, licenseLevel: 7 },
     { groupName: 'Class D', irating: 800, licenseLevel: 4 },
   ]
-  
-  const variantIndex = Math.floor(random * licenseVariants.length)
+
+  const irating = Math.ceil(custId / 100)
+
+  const licenseIndex = licenseVariants.findIndex((v) => irating >= v.irating)
+  const variantIndex = licenseIndex !== -1 ? licenseIndex : licenseVariants.length - 1
   const variant = licenseVariants[variantIndex]
-  
+
   console.log(`[Mock iRacing] custId=${custId} → ${variant.groupName} (irating=${variant.irating})`)
-  
+
   return {
+    ...MOCK_MEMBER_INFO,
     custId,
     displayName: `Local Dev User ${custId}`,
     licenses: {
       sports_car: {
-        categoryId: 5,
-        category: 'sports_car',
-        categoryName: 'Sports Car',
+        ...MOCK_MEMBER_INFO.licenses.sports_car,
         licenseLevel: variant.licenseLevel,
-        safetyRating: 3.5,
-        cpi: 80.0,
         irating: variant.irating,
-        ttRating: 1350,
-        mprNumRaces: 0,
-        color: '0153db',
         groupName: variant.groupName,
         groupId: 5 - variantIndex,
-        proPromotable: false,
-        seq: 2,
-        mprNumTts: 0,
+      },
+      formula_car: {
+        ...MOCK_MEMBER_INFO.licenses.formula_car,
+        licenseLevel: variant.licenseLevel,
+        irating: variant.irating,
+        groupName: variant.groupName,
+        groupId: 5 - variantIndex,
       },
     },
   }

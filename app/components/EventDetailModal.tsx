@@ -151,7 +151,10 @@ export default function EventDetailModal({
 
           {!isEligible && (
             <div className={styles.warningBanner}>
-              <span>You don't meet the license requirements for this event ({license}). Registration is still allowed.</span>
+              <span>
+                You don&apos;t meet the license requirements for this event ({license}).
+                Registration is still allowed.
+              </span>
             </div>
           )}
 
@@ -168,7 +171,7 @@ export default function EventDetailModal({
                       backgroundColor: `${licenseColor}30`,
                     }}
                   >
-                    {(isEligible) ? <ShieldCheck size={18} /> : <ShieldX size={18} color="#ef4444" />}
+                    {isEligible ? <ShieldCheck size={18} /> : <ShieldX size={18} color="#ef4444" />}
                     {license}
                   </div>
                 </div>
