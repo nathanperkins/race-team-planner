@@ -14,10 +14,10 @@
     "start": "next start",
     "lint": "eslint",
     "format": "prettier --write .",
-    "postinstall": "prisma generate",
+    "prepare": "prisma generate",
     "generate-secret": "node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\"",
-    "setup-env": "npx ts-node scripts/setup-env.ts",
-    "prepare": "husky",
+    "setup-env": "npx tsx scripts/setup-env.ts",
+    "postinstall": "husky && npm run setup-env",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage"
