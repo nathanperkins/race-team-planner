@@ -117,6 +117,6 @@ export function getSeriesNameOnly(eventName: string): string {
 export function isLicenseEligible(userLicenseLevel: LicenseLevel | null, license: string): boolean {
   const requiredLicenseLevel = getLicenseLevelFromName(license)
   return requiredLicenseLevel === null
-      ? true
-      : userLicenseLevel !== null && userLicenseLevel >= requiredLicenseLevel
+    ? true
+    : userLicenseLevel !== null && userLicenseLevel >= requiredLicenseLevel
 }

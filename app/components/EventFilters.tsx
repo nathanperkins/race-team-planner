@@ -102,13 +102,13 @@ export default function EventFilters({ carClasses, racers, currentFilters }: Eve
           >
             Eligible
           </label>
-            <input
-              id="eligible"
-              type="checkbox"
-              className={styles.filterCheckbox}
-              checked={currentFilters.eligible === 'true'}
-              onChange={(e) => handleFilterChange('eligible', e.target.checked ? 'true' : '')}
-            />          
+          <input
+            id="eligible"
+            type="checkbox"
+            className={styles.filterCheckbox}
+            checked={currentFilters.eligible === 'true'}
+            onChange={(e) => handleFilterChange('eligible', e.target.checked ? 'true' : '')}
+          />
         </div>
 
         <div className={styles.filterGroup}>
