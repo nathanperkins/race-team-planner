@@ -113,6 +113,49 @@ const MOCK_MEMBER_INFO: IRacingMemberInfo = {
   },
 }
 
+// Mock license data that varies by timestamp for testing
+function getMockMemberInfo(custId: number): IRacingMemberInfo {
+  // Use timestamp as seed for randomized license assignment on each login
+  const seed = Math.floor(new Date().getTime() / 1000)
+  const random = Math.abs(seed % 1000) / 1000
+  
+  const licenseVariants = [
+    { groupName: 'Class A', irating: 2500, licenseLevel: 19 },
+    { groupName: 'Class B', irating: 1800, licenseLevel: 13 },
+    { groupName: 'Class C', irating: 1200, licenseLevel: 7 },
+    { groupName: 'Class D', irating: 800, licenseLevel: 4 },
+  ]
+  
+  const variantIndex = Math.floor(random * licenseVariants.length)
+  const variant = licenseVariants[variantIndex]
+  
+  console.log(`[Mock iRacing] custId=${custId} → ${variant.groupName} (irating=${variant.irating})`)
+  
+  return {
+    custId,
+    displayName: `Local Dev User ${custId}`,
+    licenses: {
+      sports_car: {
+        categoryId: 5,
+        category: 'sports_car',
+        categoryName: 'Sports Car',
+        licenseLevel: variant.licenseLevel,
+        safetyRating: 3.5,
+        cpi: 80.0,
+        irating: variant.irating,
+        ttRating: 1350,
+        mprNumRaces: 0,
+        color: '0153db',
+        groupName: variant.groupName,
+        groupId: 5 - variantIndex,
+        proPromotable: false,
+        seq: 2,
+        mprNumTts: 0,
+      },
+    },
+  }
+}
+
 const MOCK_EVENTS: IRacingEvent[] = [
   {
     name: 'iRacing Bathurst 12 Hour (Mock)',
@@ -383,7 +426,7 @@ export async function fetchDriverStats(custId: number): Promise<IRacingMemberInf
   const token = await getAccessToken()
   if (!token) {
     if (process.env.NODE_ENV === 'development') {
-      return MOCK_MEMBER_INFO
+      return getMockMemberInfo(custId)
     }
     throw new Error('Failed to authenticate with iRacing API')
   }

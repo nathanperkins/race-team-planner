@@ -326,7 +326,6 @@
   display: flex;
   flex-wrap: wrap;
   gap: 1.5rem;
-  align-items: flex-end;
   width: 100%;
 }
 
@@ -428,6 +427,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  justify-content: space-between;
 }
 
 .filterLabel {
@@ -483,7 +483,8 @@
 }
 
 .filterSelect,
-.filterInput {
+.filterInput,
+.filterCheckbox {
   background-color: #111827;
   border: 1px solid #374151;
   color: white;
@@ -584,8 +585,12 @@
   background-color: #374151;
 }
 
-.checkbox {
-  margin-right: 0.5rem;
+.filterCheckbox {
+  width: 1.5rem;
+  height: 1.5rem;
+  cursor: pointer;
+  margin: 0.5rem 0;
+  accent-color: #3b82f6;
 }
 
 .liveBadge {

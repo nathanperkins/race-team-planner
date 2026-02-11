@@ -218,6 +218,18 @@
   opacity: 0.65;
 }
 
+.eventRowIneligible {
+  border-color: rgba(156, 163, 175, 0.3) !important;
+}
+
+.eventRowIneligible .trackDot {
+  filter: grayscale(1);
+}
+
+.eventRowIneligible .licenseBadge {
+  filter: grayscale(1);
+}
+
 .eventRowOverlay {
   position: absolute;
   inset: 0;
