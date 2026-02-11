@@ -62,4 +62,3 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
     return NextResponse.json({ error: 'Failed to fetch driver details' }, { status: 500 })
   }
 }
-

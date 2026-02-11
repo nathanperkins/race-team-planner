@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createEventDiscussionThread, createTeamThread, sendTeamsAssignedNotification } from './discord'
+import {
+  createEventDiscussionThread,
+  createTeamThread,
+  sendTeamsAssignedNotification,
+} from './discord'
 
 describe('discord thread recovery', () => {
   beforeEach(() => {

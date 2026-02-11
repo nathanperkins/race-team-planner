@@ -270,9 +270,14 @@ describe('sendTeamsAssignmentNotification', () => {
 
     vi.mocked(prisma.race.findUnique).mockResolvedValue(mockRace as any)
     vi.mocked(prisma.registration.findMany).mockResolvedValue(mockRegistrations as any)
-    vi.mocked(prisma.race.findFirst).mockResolvedValue({ discordTeamsThreadId: 'shared-event-thread' } as any)
+    vi.mocked(prisma.race.findFirst).mockResolvedValue({
+      discordTeamsThreadId: 'shared-event-thread',
+    } as any)
     vi.mocked(createTeamThread).mockResolvedValue('team-thread-1')
-    vi.mocked(sendDiscordNotification).mockResolvedValue({ ok: true, threadId: 'shared-event-thread' })
+    vi.mocked(sendDiscordNotification).mockResolvedValue({
+      ok: true,
+      threadId: 'shared-event-thread',
+    })
 
     await sendTeamsAssignmentNotification(raceId)
 
@@ -294,7 +299,10 @@ describe('registerForRace', () => {
     vi.mocked(prisma.registration.update).mockResolvedValue({} as any)
     vi.mocked(prisma.registration.findFirst).mockResolvedValue({
       user: { name: 'User 1', image: null, accounts: [{ providerAccountId: 'discord-1' }] },
-      race: { startTime: new Date('2026-02-11T20:00:00Z'), event: { id: 'event-123', name: 'GT3' } },
+      race: {
+        startTime: new Date('2026-02-11T20:00:00Z'),
+        event: { id: 'event-123', name: 'GT3' },
+      },
       carClass: { name: 'GT3' },
     } as any)
     vi.mocked(prisma.user.findUnique).mockResolvedValue({ expectationsVersion: 1 } as any)
@@ -406,7 +414,11 @@ describe('adminRegisterDriver', () => {
         id: 'reg-created',
         teamId: null,
         team: null,
-        user: { name: 'New Driver', accounts: [{ providerAccountId: 'discord-2' }], racerStats: [] },
+        user: {
+          name: 'New Driver',
+          accounts: [{ providerAccountId: 'discord-2' }],
+          racerStats: [],
+        },
         manualDriver: null,
         carClass: { name: 'GT3', shortName: 'GT3' },
       },

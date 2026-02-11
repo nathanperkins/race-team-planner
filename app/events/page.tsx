@@ -209,7 +209,9 @@ export default async function EventsPage({ searchParams }: PageProps) {
   // Event discussion threads are event-level; mirror the first available thread ID
   // across all timeslots for display consistency.
   events.forEach((event) => {
-    const eventThreadId = event.races.find((race) => race.discordTeamsThreadId)?.discordTeamsThreadId
+    const eventThreadId = event.races.find(
+      (race) => race.discordTeamsThreadId
+    )?.discordTeamsThreadId
     if (!eventThreadId) return
     event.races.forEach((race) => {
       race.discordTeamsThreadId = race.discordTeamsThreadId ?? eventThreadId

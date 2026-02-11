@@ -625,15 +625,17 @@ export async function sendTeamsAssignedNotification(
       } else {
         const messages = await messagesResponse.json()
         const existingTeamsMessage = Array.isArray(messages)
-          ? messages.find((message: any) => {
-              const embeds = Array.isArray(message?.embeds) ? message.embeds : []
-              const hasTeamsEmbed = embeds.some(
-                (embed: any) =>
-                  typeof embed?.title === 'string' && embed.title.startsWith('🏁 Teams Assigned')
-              )
-              const isBotMessage = message?.author?.bot !== false
-              return hasTeamsEmbed && isBotMessage
-            })
+          ? messages.find(
+              (message: { embeds?: Array<{ title?: string }>; author?: { bot?: boolean } }) => {
+                const embeds = Array.isArray(message?.embeds) ? message.embeds : []
+                const hasTeamsEmbed = embeds.some(
+                  (embed: { title?: string }) =>
+                    typeof embed?.title === 'string' && embed.title.startsWith('🏁 Teams Assigned')
+                )
+                const isBotMessage = message?.author?.bot !== false
+                return hasTeamsEmbed && isBotMessage
+              }
+            )
           : null
 
         if (existingTeamsMessage?.id) {
@@ -954,7 +956,7 @@ export async function createEventDiscussionThread(options: {
   trackConfig?: string
   tempValue?: number | null
   precipChance?: number | null
-  existingThreadId?: string
+  existingThreadId?: string | null
 }): Promise<string | null> {
   const botToken = process.env.DISCORD_BOT_TOKEN
   const channelId = process.env.DISCORD_NOTIFICATIONS_CHANNEL_ID
@@ -1072,7 +1074,7 @@ export async function createTeamThread(options: {
   teamName: string
   eventName: string
   raceStartTime: Date
-  existingThreadId?: string
+  existingThreadId?: string | null
   memberDiscordIds?: string[]
   raceUrl?: string
   track?: string

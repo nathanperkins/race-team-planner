@@ -1487,8 +1487,7 @@ export default function RaceDetails({
           ? {
               id: driver.id,
               name: name || 'Manual Driver',
-              irating:
-                driverDetails && driverDetails.type === 'manual' ? driverDetails.irating : 0,
+              irating: driverDetails && driverDetails.type === 'manual' ? driverDetails.irating : 0,
               image: image || null,
             }
           : null,
@@ -2230,7 +2229,9 @@ export default function RaceDetails({
                   registrationId={currentUserRegistration.id}
                   onConfirmingChange={setIsDropConfirming}
                   variant="full"
-                  isAssignedToTeam={!!(currentUserRegistration.teamId ?? currentUserRegistration.team?.id)}
+                  isAssignedToTeam={
+                    !!(currentUserRegistration.teamId ?? currentUserRegistration.team?.id)
+                  }
                 />
               ) : (
                 <QuickRegistration
@@ -2253,14 +2254,17 @@ export default function RaceDetails({
           </div>
         )}
 
-        {!isRaceCompleted && !isAdmin && (
-          isUserRegistered && currentUserRegistration ? (
+        {!isRaceCompleted &&
+          !isAdmin &&
+          (isUserRegistered && currentUserRegistration ? (
             <div className={styles.registrationActionContainer}>
               <DropRegistrationButton
                 registrationId={currentUserRegistration.id}
                 onConfirmingChange={setIsDropConfirming}
                 variant="full"
-                isAssignedToTeam={!!(currentUserRegistration.teamId ?? currentUserRegistration.team?.id)}
+                isAssignedToTeam={
+                  !!(currentUserRegistration.teamId ?? currentUserRegistration.team?.id)
+                }
               />
             </div>
           ) : (
@@ -2269,8 +2273,7 @@ export default function RaceDetails({
               carClasses={carClasses}
               onDropdownToggle={setIsRegisterOpen}
             />
-          )
-        )}
+          ))}
 
         {isTeamModalOpen && canAssignTeams && (
           <div className={styles.teamModalOverlay} onClick={handleCloseTeamModal}>
