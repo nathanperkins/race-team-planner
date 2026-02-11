@@ -15,6 +15,7 @@ interface EventFiltersProps {
     from?: string
     to?: string
     name?: string
+    eligible?: string
   }
 }
 
@@ -78,6 +79,7 @@ export default function EventFilters({ carClasses, racers, currentFilters }: Eve
     currentFilters.from,
     currentFilters.to,
     currentFilters.name,
+    currentFilters.eligible,
   ].filter(Boolean).length
 
   return (
@@ -92,6 +94,23 @@ export default function EventFilters({ carClasses, racers, currentFilters }: Eve
       </button>
 
       <div className={`${styles.filterContent} ${isExpanded ? styles.isExpanded : ''}`}>
+        <div className={styles.filterGroup}>
+          <label
+            htmlFor="eligible"
+            className={styles.filterLabel}
+            data-tooltip="Show only events where you meet the license requirements."
+          >
+            Eligible
+          </label>
+            <input
+              id="eligible"
+              type="checkbox"
+              className={styles.filterCheckbox}
+              checked={currentFilters.eligible === 'true'}
+              onChange={(e) => handleFilterChange('eligible', e.target.checked ? 'true' : '')}
+            />          
+        </div>
+
         <div className={styles.filterGroup}>
           <label
             htmlFor="name"

@@ -113,3 +113,10 @@ export function getSeriesNameOnly(eventName: string): string {
     .replace(/\s*-\s*20\d{2}\b.*$/i, '') // Remove year and everything after it
     .trim()
 }
+
+export function isLicenseEligible(userLicenseLevel: LicenseLevel | null, license: string): boolean {
+  const requiredLicenseLevel = getLicenseLevelFromName(license)
+  return requiredLicenseLevel === null
+      ? true
+      : userLicenseLevel !== null && userLicenseLevel >= requiredLicenseLevel
+}

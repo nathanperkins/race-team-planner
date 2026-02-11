@@ -5,7 +5,7 @@ import EventFilters from '../components/EventFilters'
 import LastSyncStatus from '@/components/LastSyncStatus'
 import EventsClient from '../components/EventsClient'
 import { Prisma } from '@prisma/client'
-import { getLicenseLevelFromName } from '@/lib/utils'
+import { getLicenseLevelFromName, getLicenseForId, isLicenseEligible } from '@/lib/utils'
 
 import styles from './events.module.css'
 import { getIracingSeasonInfo } from '@/lib/season-utils'
@@ -18,6 +18,7 @@ interface PageProps {
     from?: string
     to?: string
     name?: string
+    eligible?: string
     eventId?: string
   }>
 }
@@ -59,6 +60,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
   const session = await auth()
   if (!session) redirect('/login')
 
+  // TODO (kaelan): Convert to hook
   const params = await searchParams
 
   const currentUser = await prisma.user.findUnique({
@@ -177,7 +179,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
     }
   }
 
-  const events: EventWithRaces[] = await prisma.event.findMany({
+  let events: EventWithRaces[] = await prisma.event.findMany({
     where,
     include: {
       carClasses: true,
@@ -217,6 +219,14 @@ export default async function EventsPage({ searchParams }: PageProps) {
       race.discordTeamsThreadId = race.discordTeamsThreadId ?? eventThreadId
     })
   })
+
+  // Apply eligible filter if requested
+  if (params.eligible === 'true') {
+    events = events.filter((event) => {
+      const license = getLicenseForId(event.id, event.licenseGroup)
+      return isLicenseEligible(userLicenseLevel, license)
+    })
+  }
 
   // Group events by Season Info
   // We use a Map to group by a unique key (S{Year}Q{Quarter}W{Week})

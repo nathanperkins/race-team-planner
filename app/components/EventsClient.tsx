@@ -10,7 +10,7 @@ import {
   getLicenseColor,
   formatDuration,
   getSeriesNameOnly,
-  getLicenseLevelFromName,
+  isLicenseEligible,
   LicenseLevel,
 } from '@/lib/utils'
 import type { CSSProperties } from 'react'
@@ -126,11 +126,7 @@ export default function EventsClient({
             <div className={styles.weekBody}>
               {week.events.map((event) => {
                 const license = getLicenseForId(event.id, event.licenseGroup)
-                const requiredLicenseLevel = getLicenseLevelFromName(license)
-                const isEligible =
-                  requiredLicenseLevel === null
-                    ? true
-                    : userLicenseLevel !== null && userLicenseLevel >= requiredLicenseLevel
+                const isEligible = isLicenseEligible(userLicenseLevel, license)
                 const lastRaceEnd = event.races.reduce<Date | null>((latest, race) => {
                   const end = new Date(race.endTime)
                   if (!latest || end > latest) return end
@@ -154,7 +150,9 @@ export default function EventsClient({
                   <button
                     key={event.id}
                     onClick={() => handleSelectEvent(event)}
-                    className={`${styles.eventRow} ${isCompleted ? styles.eventRowCompleted : ''}`}
+                    className={`${styles.eventRow} ${isCompleted ? styles.eventRowCompleted : ''} ${
+                      !isEligible ? styles.eventRowIneligible : ''
+                    }`}
                     style={licenseStyle}
                   >
                     {isCompleted && (

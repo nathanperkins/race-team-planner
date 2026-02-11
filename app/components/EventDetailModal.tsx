@@ -20,7 +20,7 @@ import {
   getLicenseColor,
   formatDuration,
   getSeriesNameOnly,
-  getLicenseLevelFromName,
+  isLicenseEligible,
   LicenseLevel,
 } from '@/lib/utils'
 import { Prisma } from '@prisma/client'
@@ -80,11 +80,7 @@ export default function EventDetailModal({
 
   const license = getLicenseForId(event.id, event.licenseGroup)
   const licenseColor = getLicenseColor(license)
-  const requiredLicenseLevel = getLicenseLevelFromName(license)
-  const isEligible =
-    requiredLicenseLevel === null
-      ? true
-      : userLicenseLevel !== null && userLicenseLevel >= requiredLicenseLevel
+  const isEligible = isLicenseEligible(userLicenseLevel, license)
 
   const isAnyDropdownOpen = Object.values(openDropdowns).some(Boolean)
 
@@ -153,6 +149,12 @@ export default function EventDetailModal({
             </button>
           </div>
 
+          {!isEligible && (
+            <div className={styles.warningBanner}>
+              <span>You don't meet the license requirements for this event ({license}). Registration is still allowed.</span>
+            </div>
+          )}
+
           <div className={styles.content}>
             <div className={styles.titleRow}>
               <div>
@@ -166,7 +168,7 @@ export default function EventDetailModal({
                       backgroundColor: `${licenseColor}30`,
                     }}
                   >
-                    {isEligible ? <ShieldCheck size={18} /> : <ShieldX size={18} color="#ef4444" />}
+                    {(isEligible) ? <ShieldCheck size={18} /> : <ShieldX size={18} color="#ef4444" />}
                     {license}
                   </div>
                 </div>
