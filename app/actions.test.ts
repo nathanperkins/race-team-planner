@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { adminRegisterDriver, registerForRace, sendTeamsAssignmentNotification } from './actions'
+import {
+  adminRegisterDriver,
+  registerForRace,
+  sendTeamsAssignmentNotification,
+  updateRegistrationCarClass,
+} from './actions'
 import prisma from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import {
@@ -421,5 +426,39 @@ describe('adminRegisterDriver', () => {
       })
     )
     expect(sendDiscordNotification).toHaveBeenCalled()
+  })
+})
+
+describe('updateRegistrationCarClass', () => {
+  it('allows non-admin unassigned users to swap class after teams are assigned', async () => {
+    vi.clearAllMocks()
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'user-1', role: 'USER' } } as any)
+    vi.mocked(prisma.registration.findUnique).mockResolvedValue({
+      id: 'reg-1',
+      userId: 'user-1',
+      teamId: null,
+      raceId: 'race-1',
+      race: {
+        teamsAssigned: true,
+        endTime: new Date('2027-01-01T12:00:00Z'),
+        startTime: new Date('2027-01-01T10:00:00Z'),
+        eventId: 'event-1',
+        maxDriversPerTeam: null,
+        teamAssignmentStrategy: 'BALANCED_IRATING',
+      },
+    } as any)
+    vi.mocked(prisma.registration.update).mockResolvedValue({} as any)
+
+    const formData = new FormData()
+    formData.set('registrationId', 'reg-1')
+    formData.set('carClassId', 'class-2')
+
+    const result = await updateRegistrationCarClass({ message: '', timestamp: 0 }, formData)
+
+    expect(result.message).toBe('Success')
+    expect(prisma.registration.update).toHaveBeenCalledWith({
+      where: { id: 'reg-1' },
+      data: { carClassId: 'class-2', teamId: null },
+    })
   })
 })

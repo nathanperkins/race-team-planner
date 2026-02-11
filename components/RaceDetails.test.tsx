@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import RaceDetails from './RaceDetails'
 import React from 'react'
@@ -127,5 +127,169 @@ describe('RaceDetails', () => {
 
     const separators = container.getElementsByClassName(styles.teamGridSeparatorStandalone)
     expect(separators.length).toBe(1)
+  })
+
+  it('does not show standalone admin drop controls on the race card', () => {
+    const mockRace = {
+      id: 'race-3',
+      startTime: new Date('2024-01-01T10:00:00Z'),
+      endTime: new Date('2024-01-01T12:00:00Z'),
+      teamsAssigned: true,
+      maxDriversPerTeam: 2,
+      teamAssignmentStrategy: 'BALANCED_IRATING' as const,
+      registrations: [
+        {
+          id: 'reg-1',
+          carClass: { id: 'class-1', name: 'Class 1', shortName: 'C1' },
+          userId: 'user-2',
+          user: {
+            name: 'User 2',
+            image: null,
+            racerStats: [],
+          },
+          manualDriver: null,
+          teamId: null,
+          team: null,
+        },
+      ],
+      discordTeamsThreadId: null,
+      discordTeamThreads: null,
+    }
+
+    render(
+      <RaceDetails
+        race={mockRace}
+        userId="admin-user"
+        isAdmin
+        carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
+        teams={[]}
+        allDrivers={[]}
+      />
+    )
+
+    expect(screen.queryByTestId('drop-registration-button')).not.toBeInTheDocument()
+  })
+
+  it('shows drop control instead of register control when admin is registered', () => {
+    const mockRace = {
+      id: 'race-4',
+      startTime: new Date('2027-01-01T10:00:00Z'),
+      endTime: new Date('2027-01-01T12:00:00Z'),
+      teamsAssigned: false,
+      maxDriversPerTeam: 2,
+      teamAssignmentStrategy: 'BALANCED_IRATING' as const,
+      registrations: [
+        {
+          id: 'reg-admin',
+          carClass: { id: 'class-1', name: 'Class 1', shortName: 'C1' },
+          userId: 'admin-user',
+          user: {
+            name: 'Admin User',
+            image: null,
+            racerStats: [],
+          },
+          manualDriver: null,
+          teamId: null,
+          team: null,
+        },
+      ],
+      discordTeamsThreadId: null,
+      discordTeamThreads: null,
+    }
+
+    render(
+      <RaceDetails
+        race={mockRace}
+        userId="admin-user"
+        isAdmin
+        carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
+        teams={[]}
+        allDrivers={[]}
+      />
+    )
+
+    expect(screen.getByTestId('drop-registration-button')).toBeInTheDocument()
+    expect(screen.queryByTestId('quick-registration')).not.toBeInTheDocument()
+  })
+
+  it('shows only one drop control for a registered non-admin user', () => {
+    const mockRace = {
+      id: 'race-5',
+      startTime: new Date('2027-01-01T10:00:00Z'),
+      endTime: new Date('2027-01-01T12:00:00Z'),
+      teamsAssigned: false,
+      maxDriversPerTeam: 2,
+      teamAssignmentStrategy: 'BALANCED_IRATING' as const,
+      registrations: [
+        {
+          id: 'reg-user',
+          carClass: { id: 'class-1', name: 'Class 1', shortName: 'C1' },
+          userId: 'user-1',
+          user: {
+            name: 'User 1',
+            image: null,
+            racerStats: [],
+          },
+          manualDriver: null,
+          teamId: null,
+          team: null,
+        },
+      ],
+      discordTeamsThreadId: null,
+      discordTeamThreads: null,
+    }
+
+    render(
+      <RaceDetails
+        race={mockRace}
+        userId="user-1"
+        carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
+        teams={[]}
+        allDrivers={[]}
+      />
+    )
+
+    expect(screen.queryByTestId('quick-registration')).not.toBeInTheDocument()
+    expect(screen.getAllByTestId('drop-registration-button')).toHaveLength(1)
+  })
+
+  it('hides swap control when registered user is already assigned to a team', () => {
+    const mockRace = {
+      id: 'race-6',
+      startTime: new Date('2027-01-01T10:00:00Z'),
+      endTime: new Date('2027-01-01T12:00:00Z'),
+      teamsAssigned: true,
+      maxDriversPerTeam: 2,
+      teamAssignmentStrategy: 'BALANCED_IRATING' as const,
+      registrations: [
+        {
+          id: 'reg-user',
+          carClass: { id: 'class-1', name: 'Class 1', shortName: 'C1' },
+          userId: 'user-1',
+          user: {
+            name: 'User 1',
+            image: null,
+            racerStats: [],
+          },
+          manualDriver: null,
+          teamId: 'team-1',
+          team: { id: 'team-1', name: 'Team 1' },
+        },
+      ],
+      discordTeamsThreadId: null,
+      discordTeamThreads: null,
+    }
+
+    render(
+      <RaceDetails
+        race={mockRace}
+        userId="user-1"
+        carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
+        teams={[{ id: 'team-1', name: 'Team 1', iracingTeamId: null, memberCount: 1 }]}
+        allDrivers={[]}
+      />
+    )
+
+    expect(screen.getByTestId('drop-registration-button')).toBeInTheDocument()
   })
 })

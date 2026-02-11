@@ -143,7 +143,10 @@ export default async function UserRegistrationsPage({ params }: Props) {
                         {new Date() > reg.race.endTime ? (
                           <span className={styles.completedText}>Completed</span>
                         ) : (
-                          <DropRegistrationButton registrationId={reg.id} />
+                          <DropRegistrationButton
+                            registrationId={reg.id}
+                            isAssignedToTeam={!!reg.team}
+                          />
                         )}
                       </td>
                     )}

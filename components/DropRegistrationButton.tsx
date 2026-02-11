@@ -3,18 +3,26 @@
 import { useState } from 'react'
 import { deleteRegistration } from '@/app/actions'
 import styles from './DropRegistrationButton.module.css'
-import { Trash2, AlertCircle, Loader2 } from 'lucide-react'
+import { Trash2, Check, X, Loader2 } from 'lucide-react'
 
 interface Props {
   registrationId: string
   className?: string
   onConfirmingChange?: (confirming: boolean) => void
+  variant?: 'icon' | 'full'
+  isAssignedToTeam?: boolean
+  confirmStyle?: 'modal' | 'inline'
+  onConfirmDrop?: () => Promise<void> | void
 }
 
 export default function DropRegistrationButton({
   registrationId,
   className,
   onConfirmingChange,
+  variant = 'icon',
+  isAssignedToTeam = false,
+  confirmStyle = 'modal',
+  onConfirmDrop,
 }: Props) {
   const [status, setStatus] = useState<'idle' | 'confirming' | 'deleting'>('idle')
 
@@ -31,7 +39,11 @@ export default function DropRegistrationButton({
 
     setStatus('deleting')
     try {
-      await deleteRegistration(registrationId)
+      if (onConfirmDrop) {
+        await onConfirmDrop()
+      } else {
+        await deleteRegistration(registrationId)
+      }
       // Redirect happens on server, so we might unmount.
       // If no redirect, we just stay here, but usually component will unmount or re-render.
     } catch (error) {
@@ -58,7 +70,9 @@ export default function DropRegistrationButton({
 
   if (status === 'deleting') {
     return (
-      <span className={styles.dropWrapper}>
+      <span
+        className={`${styles.dropWrapper} ${variant === 'full' ? styles.fullWidthWrapper : ''}`}
+      >
         <button className={`${styles.button} ${styles.deleting} ${className || ''}`} disabled>
           <Loader2 className={styles.spinner} size={14} />
           <span>Dropping...</span>
@@ -67,33 +81,79 @@ export default function DropRegistrationButton({
     )
   }
 
-  if (status === 'confirming') {
-    return (
-      <span className={styles.dropWrapper}>
-        <span className={styles.placeholder} aria-hidden="true" />
-        <div className={`${styles.confirmGroup} ${className || ''}`}>
-          <button className={styles.confirmButton} onClick={handleConfirmClick}>
-            <AlertCircle size={14} />
-            <span>Confirm Drop</span>
-          </button>
-          <button className={styles.cancelButton} onClick={handleCancel} title="Cancel">
-            X
-          </button>
-        </div>
-      </span>
-    )
-  }
-
   return (
-    <span className={styles.dropWrapper}>
-      <button
-        className={`${styles.button} ${styles.iconOnly} ${className || ''}`}
-        onClick={handleInitialClick}
-        aria-label="Drop registration"
-        title="Drop"
+    <>
+      <span
+        className={`${styles.dropWrapper} ${variant === 'full' ? styles.fullWidthWrapper : ''} ${
+          status === 'confirming' && confirmStyle === 'inline' ? styles.confirmingInline : ''
+        }`}
       >
-        <Trash2 size={14} />
-      </button>
-    </span>
+        <button
+          className={`${styles.button} ${variant === 'icon' ? styles.iconOnly : styles.fullWidthButton} ${className || ''} ${
+            status === 'confirming' && confirmStyle === 'inline' ? styles.hiddenTrigger : ''
+          }`}
+          onClick={handleInitialClick}
+          aria-label="Drop registration"
+          title="Drop"
+        >
+          <Trash2 size={14} />
+          {variant === 'full' && <span>Drop</span>}
+        </button>
+
+        {status === 'confirming' && confirmStyle === 'inline' && (
+          <div className={`${styles.confirmGroup} ${styles.confirmGroupFloating}`}>
+            <button className={styles.confirmButton} onClick={handleConfirmClick}>
+              <Check size={14} />
+              <span>Confirm Drop</span>
+            </button>
+            <button className={styles.cancelButton} onClick={handleCancel} title="Cancel">
+              <X size={14} />
+            </button>
+          </div>
+        )}
+      </span>
+
+      {status === 'confirming' && confirmStyle === 'inline' && (
+        <div
+          className={styles.inlineBlocker}
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+          }}
+          aria-hidden="true"
+        />
+      )}
+
+      {status === 'confirming' && confirmStyle === 'modal' && (
+        <div className={styles.warningModalOverlay} onClick={handleCancel}>
+          <div className={styles.warningModal} onClick={(e) => e.stopPropagation()}>
+            <h4 className={styles.warningModalTitle}>Confirm Drop</h4>
+            <p className={styles.warningModalMessage}>
+              {isAssignedToTeam
+                ? 'You are assigned to a team! Are you sure you want to unregister? Your teammates need you!'
+                : 'Are you sure you want to unregister from this event?'}
+            </p>
+            <div className={styles.warningModalActions}>
+              <button
+                type="button"
+                className={styles.warningConfirm}
+                onClick={handleConfirmClick}
+                aria-label="Confirm drop"
+              >
+                <Check size={16} />
+              </button>
+              <button
+                type="button"
+                className={styles.warningCancel}
+                onClick={handleCancel}
+                aria-label="Cancel drop"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }

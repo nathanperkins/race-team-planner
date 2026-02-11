@@ -19,6 +19,12 @@ type State = {
   timestamp?: number
 }
 
+function isRegistrationUserForeignKeyError(error: unknown): boolean {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError)) return false
+  if (error.code !== 'P2003') return false
+  return JSON.stringify(error.meta ?? {}).includes('Registration_userId_fkey')
+}
+
 async function getAutoTeamId(
   raceId: string,
   carClassId: string,
@@ -479,6 +485,12 @@ export async function registerForRace(prevState: State, formData: FormData) {
     return { message: 'Success' }
   } catch (e) {
     console.error('Registration error:', e)
+    if (isRegistrationUserForeignKeyError(e)) {
+      return {
+        message:
+          'Your account could not be found in the database. Please sign out, sign back in, and try again.',
+      }
+    }
     return { message: 'Failed to register. You might be already registered for this race.' }
   }
 }
@@ -571,7 +583,8 @@ export async function updateRegistrationCarClass(prevState: State, formData: For
       return { message: 'Unauthorized', timestamp: Date.now() }
     }
 
-    if (!isAdmin && registration.race.teamsAssigned) {
+    // Once teams are assigned, non-admin users can still change class while unassigned.
+    if (!isAdmin && registration.race.teamsAssigned && registration.teamId) {
       return { message: 'Teams are already assigned for this race', timestamp: Date.now() }
     }
 
@@ -965,6 +978,17 @@ export async function saveRaceEdits(formData: FormData) {
           : null
 
         if (addition.userId) {
+          const userExists = await prisma.user.findUnique({
+            where: { id: addition.userId },
+            select: { id: true },
+          })
+          if (!userExists) {
+            return {
+              message:
+                'One of the selected drivers no longer exists. Please refresh and try again.',
+            }
+          }
+
           const existing = await prisma.registration.findUnique({
             where: { userId_raceId: { userId: addition.userId, raceId } },
             select: { id: true },
@@ -1095,6 +1119,11 @@ export async function saveRaceEdits(formData: FormData) {
       }
       if (error.code === 'P1002') {
         return { message: 'Database connection timed out' }
+      }
+      if (isRegistrationUserForeignKeyError(error)) {
+        return {
+          message: 'One of the selected drivers no longer exists. Please refresh and try again.',
+        }
       }
     }
     const message =
@@ -1552,6 +1581,13 @@ export async function adminRegisterDriver(prevState: State, formData: FormData) 
     return { message: 'Success', timestamp: Date.now(), registration }
   } catch (e) {
     console.error('Admin register driver error:', e)
+    if (isRegistrationUserForeignKeyError(e)) {
+      return {
+        message:
+          'Selected user no longer exists in the database. Please refresh driver search and try again.',
+        timestamp: Date.now(),
+      }
+    }
     return { message: 'Failed to register driver', timestamp: Date.now() }
   }
 }
