@@ -177,7 +177,7 @@ export default function EventsClient({
                         <span className={styles.trackDot}></span>
                         {getSeriesNameOnly(event.name)}
                       </div>
-                      
+
                       <div className={styles.subRow}>
                         <div className={styles.classPills}>
                           {event.carClasses
@@ -228,7 +228,7 @@ export default function EventsClient({
                           const eventDurationHours = Math.ceil((event.durationMins || 60) / 60)
                           const registrationCount = race.registrations.length
                           const fillPercentage = Math.min(
-                            (2 * registrationCount / eventDurationHours) * 100,
+                            ((2 * registrationCount) / eventDurationHours) * 100,
                             100
                           )
                           return (
@@ -237,8 +237,8 @@ export default function EventsClient({
                                 {new Date(race.startTime).toLocaleDateString('en-US', {
                                   month: 'numeric',
                                   day: 'numeric',
-                                })}
-                                {' '}•{' '}
+                                })}{' '}
+                                •{' '}
                                 {new Date(race.startTime).toLocaleTimeString('en-US', {
                                   hour: 'numeric',
                                   minute: '2-digit',
