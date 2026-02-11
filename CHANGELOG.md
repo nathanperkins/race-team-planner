@@ -17,6 +17,10 @@ Thanks to our testers for these suggestions and bug reports!
 - **Max L** - Add a confirmation dialog when changing the iRacing ID.
 - **Alex V** - Open the user profile using the profile picture in the sidebar, instead of having a separate link.
 - **Chris E** - `Sort By` is broken in the events view. We have removed that feature for now.
+- **Jason** - Write the event and team thread titles with pacific time instead of UTC.
+- **Alex V** - Remove redundant and inaccurate "times shown in UTC" message on events page.
+- **Alex V** - Fix alignment on sign out button.
+- **Alex V** - Fix incorrect week numbers for events list.
 
 ### Major Views
 
