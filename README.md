@@ -23,22 +23,16 @@ Before running the project, ensure you have the following installed:
    docker-compose up -d
    ```
 
-2. **Initialize Environment**
-   Run the setup script to create your `.env` file and generate secure keys automatically:
-
-   ```bash
-   npm run setup-env
-   ```
-
-3. **Install Dependencies**
+2. **Install Dependencies, Setup Environment**
 
    ```bash
    npm install
    ```
 
-   > **Important**: This must be run _before_ setting up the environment. It also initializes Git hooks via Husky.
+   > **Important**: This will initialize git hooks using husky, generate DB migrations with
+   > Prisma, and create your .env file with secure random values for secrets. If you need to reset your environment, you can run `npm run setup-env` again.
 
-4. **Initialize Database**
+3. **Initialize Database**
    Run migrations to set up the schema and seed data:
 
    ```bash
@@ -46,7 +40,7 @@ Before running the project, ensure you have the following installed:
    npx prisma db seed
    ```
 
-5. **Start the Application**
+4. **Start the Application**
    Run the development server:
    ```bash
    npm run dev
