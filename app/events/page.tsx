@@ -206,6 +206,16 @@ export default async function EventsPage({ searchParams }: PageProps) {
     },
   })
 
+  // Event discussion threads are event-level; mirror the first available thread ID
+  // across all timeslots for display consistency.
+  events.forEach((event) => {
+    const eventThreadId = event.races.find((race) => race.discordTeamsThreadId)?.discordTeamsThreadId
+    if (!eventThreadId) return
+    event.races.forEach((race) => {
+      race.discordTeamsThreadId = race.discordTeamsThreadId ?? eventThreadId
+    })
+  })
+
   // Group events by Season Info
   // We use a Map to group by a unique key (S{Year}Q{Quarter}W{Week})
   // But we want to preserve the order based on time.

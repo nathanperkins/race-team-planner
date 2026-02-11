@@ -579,6 +579,34 @@ describe('sendRegistrationNotification', () => {
     )
   })
 
+  it('posts to both notification channel and event thread when threadId is provided', async () => {
+    const withThread = { ...data, threadId: 'event-thread-123' }
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+      } as Response)
+
+    const result = await sendRegistrationNotification(withThread)
+
+    expect(result).toBe(true)
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(fetch).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining(`/channels/${channelId}/messages`),
+      expect.any(Object)
+    )
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('/channels/event-thread-123/messages'),
+      expect.any(Object)
+    )
+  })
+
   it('returns false and logs error when API returns error code', async () => {
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: false,

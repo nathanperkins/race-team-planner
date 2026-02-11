@@ -320,9 +320,20 @@ export async function registerForRace(prevState: State, formData: FormData) {
       startTime: true,
       endTime: true,
       eventId: true,
+      discordTeamsThreadId: true,
       maxDriversPerTeam: true,
       teamsAssigned: true,
       teamAssignmentStrategy: true,
+      event: {
+        select: {
+          id: true,
+          name: true,
+          track: true,
+          trackConfig: true,
+          tempValue: true,
+          precipChance: true,
+        },
+      },
     },
   })
 
@@ -372,6 +383,37 @@ export async function registerForRace(prevState: State, formData: FormData) {
 
     // Send Discord notification (non-blocking)
     try {
+      const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+      // Ensure event-level discussion thread exists as soon as the first driver signs up.
+      const existingEventThread = await prisma.race.findFirst({
+        where: {
+          eventId: race.eventId,
+          NOT: { discordTeamsThreadId: null },
+        },
+        select: {
+          discordTeamsThreadId: true,
+        },
+      })
+
+      const { createEventDiscussionThread } = await import('@/lib/discord')
+      const discussionThreadId = await createEventDiscussionThread({
+        eventName: race.event.name,
+        eventStartTime: race.startTime,
+        eventUrl: `${baseUrl}/events?eventId=${race.event.id}`,
+        track: race.event.track,
+        trackConfig: race.event.trackConfig ?? undefined,
+        tempValue: race.event.tempValue,
+        precipChance: race.event.precipChance,
+        existingThreadId: existingEventThread?.discordTeamsThreadId ?? race.discordTeamsThreadId,
+      })
+
+      if (discussionThreadId) {
+        await prisma.race.updateMany({
+          where: { eventId: race.eventId },
+          data: { discordTeamsThreadId: discussionThreadId },
+        })
+      }
+
       const registrationData = await prisma.registration.findFirst({
         where: {
           userId: session.user.id,
@@ -409,7 +451,6 @@ export async function registerForRace(prevState: State, formData: FormData) {
 
       if (registrationData && registrationData.user) {
         const { sendRegistrationNotification } = await import('@/lib/discord')
-        const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
 
         const discordAccount = registrationData.user.accounts[0]
 
@@ -426,6 +467,7 @@ export async function registerForRace(prevState: State, formData: FormData) {
                 name: registrationData.user.name || 'Unknown',
               }
             : undefined,
+          threadId: discussionThreadId,
         })
       }
     } catch (notificationError) {
@@ -1088,6 +1130,7 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
     const raceWithEvent = await prisma.race.findUnique({
       where: { id: raceId },
       select: {
+        id: true,
         startTime: true,
         discordTeamsThreadId: true,
         discordTeamsSnapshot: true,
@@ -1214,12 +1257,13 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
       const memberDiscordIds = team.members
         .map((member) => member.discordId)
         .filter((id): id is string => Boolean(id))
-      if (teamThreads[teamId]) continue
       try {
+        const existingThreadId = teamThreads[teamId]
         const threadId = await createTeamThread({
           teamName: team.name,
           eventName: raceWithEvent.event.name,
           raceStartTime: raceWithEvent.startTime,
+          existingThreadId,
           memberDiscordIds,
           raceUrl,
           track: raceWithEvent.event.track,
@@ -1282,6 +1326,13 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
     }
 
     const { sendTeamsAssignedNotification } = await import('@/lib/discord')
+    const eventThread = await prisma.race.findFirst({
+      where: {
+        eventId: raceWithEvent.event.id,
+        NOT: { discordTeamsThreadId: null },
+      },
+      select: { discordTeamsThreadId: true },
+    })
     const notification = await sendTeamsAssignedNotification({
       eventName: raceWithEvent.event.name,
       raceStartTime: raceWithEvent.startTime,
@@ -1292,7 +1343,7 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
       precipChance: raceWithEvent.event.precipChance,
       teams: teamsList,
       unassigned: unassigned.length > 0 ? unassigned : undefined,
-      threadId: raceWithEvent.discordTeamsThreadId,
+      threadId: eventThread?.discordTeamsThreadId ?? raceWithEvent.discordTeamsThreadId,
       mentionRegistrationIds: Array.from(mentionRegistrationIds),
     })
 
@@ -1300,17 +1351,29 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
       await prisma.race.update({
         where: { id: raceId },
         data: {
-          discordTeamsThreadId: notification.threadId ?? raceWithEvent.discordTeamsThreadId ?? null,
           discordTeamsSnapshot: currentSnapshot,
           discordTeamThreads: teamThreads,
         },
       })
+
+      const discussionThreadId =
+        notification.threadId ??
+        eventThread?.discordTeamsThreadId ??
+        raceWithEvent.discordTeamsThreadId ??
+        null
+      if (discussionThreadId) {
+        await prisma.race.updateMany({
+          where: { eventId: raceWithEvent.event.id },
+          data: { discordTeamsThreadId: discussionThreadId },
+        })
+      }
     } else if (
       notification.threadId &&
-      notification.threadId !== raceWithEvent.discordTeamsThreadId
+      notification.threadId !==
+        (eventThread?.discordTeamsThreadId ?? raceWithEvent.discordTeamsThreadId)
     ) {
-      await prisma.race.update({
-        where: { id: raceId },
+      await prisma.race.updateMany({
+        where: { eventId: raceWithEvent.event.id },
         data: { discordTeamsThreadId: notification.threadId },
       })
     }
@@ -1474,6 +1537,17 @@ export async function adminRegisterDriver(prevState: State, formData: FormData) 
         },
       },
     })
+
+    if (race.teamsAssigned) {
+      try {
+        await sendTeamsAssignmentNotification(raceId)
+      } catch (notificationError) {
+        console.error(
+          'Failed to refresh teams assigned notification after adding driver:',
+          notificationError
+        )
+      }
+    }
 
     return { message: 'Success', timestamp: Date.now(), registration }
   } catch (e) {

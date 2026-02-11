@@ -49,6 +49,7 @@ export interface RegistrationNotificationData {
   carClassName: string
   eventUrl: string
   discordUser?: { id: string; name: string }
+  threadId?: string | null
 }
 
 export interface OnboardingNotificationData {
