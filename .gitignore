@@ -54,4 +54,5 @@ next-env.d.ts
 # bv (beads viewer) local config and caches
 .bv/
 .beads/*.jsonl
-.beads/
+.beads/*
+!.beads/README.md
