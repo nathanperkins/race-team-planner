@@ -2,10 +2,13 @@
 
 ## Issue Tracking
 
-This project uses **bd (beads)** and [beads_viewer](https://github.com/Dicklesworthstone/beads_viewer) for issue tracking.
+This project uses **bd (beads)** and [beads_viewer](https://github.com/Dicklesworthstone/beads_viewer) for local agent work and issue tracking.
 Issues are stored in `.beads/` and are local-only (not tracked in git).
 
 Run `bd prime` for workflow context, or install hooks (`bd hooks install`) for auto-injection.
+
+Some issues are shared upstream using GitHub issues. Use the `gh` command to
+view and update them when requested by the user.
 
 ### Essential Commands
 
