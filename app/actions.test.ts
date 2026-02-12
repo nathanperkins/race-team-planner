@@ -49,14 +49,11 @@ vi.mock('next/cache', () => ({
 }))
 
 // Mock discord
-vi.mock('@/lib/discord', () => ({
+vi.mock('@/lib/discord', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/discord')>()),
   createEventDiscussionThread: vi.fn(),
   createTeamThread: vi.fn(),
   addUsersToThread: vi.fn(),
-  buildTeamThreadLink: vi.fn(
-    ({ guildId, threadId }: { guildId: string; threadId: string }) =>
-      `discord://-/channels/${guildId}/${threadId}`
-  ),
   sendRegistrationNotification: vi.fn(),
   sendTeamsAssignedNotification: vi.fn(),
 }))
@@ -140,7 +137,7 @@ describe('sendTeamsAssignmentNotification', () => {
         teams: expect.arrayContaining([
           expect.objectContaining({
             name: 'Team One',
-            threadUrl: 'discord://-/channels/guild-123/team-thread-1',
+            threadUrl: 'https://discord.com/channels/guild-123/team-thread-1',
           }),
         ]),
       })
@@ -193,11 +190,11 @@ describe('sendTeamsAssignmentNotification', () => {
         teams: expect.arrayContaining([
           expect.objectContaining({
             name: 'Team One',
-            threadUrl: 'discord://-/channels/guild-123/team-thread-1',
+            threadUrl: 'https://discord.com/channels/guild-123/team-thread-1',
           }),
           expect.objectContaining({
             name: 'Team Two',
-            threadUrl: 'discord://-/channels/guild-123/team-thread-2',
+            threadUrl: 'https://discord.com/channels/guild-123/team-thread-2',
           }),
         ]),
       })
@@ -246,7 +243,7 @@ describe('sendTeamsAssignmentNotification', () => {
         teams: expect.arrayContaining([
           expect.objectContaining({
             name: 'Team One',
-            threadUrl: 'discord://-/channels/guild-123/replacement-thread-id',
+            threadUrl: 'https://discord.com/channels/guild-123/replacement-thread-id',
           }),
         ]),
       })

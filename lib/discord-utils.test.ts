@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
+  buildDiscordAppLink,
+  buildDiscordWebLink,
   normalizeSeriesName,
   chunkLines,
   formatTeamLines,
@@ -9,6 +11,22 @@ import {
 } from './discord-utils'
 
 describe('Discord Utils', () => {
+  describe('buildDiscordAppLink', () => {
+    it('returns a discord:// deep link', () => {
+      expect(buildDiscordAppLink({ guildId: 'g1', threadId: 't1' })).toBe(
+        'discord://-/channels/g1/t1'
+      )
+    })
+  })
+
+  describe('buildDiscordWebLink', () => {
+    it('returns an https://discord.com link', () => {
+      expect(buildDiscordWebLink({ guildId: 'g1', threadId: 't1' })).toBe(
+        'https://discord.com/channels/g1/t1'
+      )
+    })
+  })
+
   describe('normalizeSeriesName', () => {
     it('removes season and week suffix', () => {
       expect(normalizeSeriesName('GT3 Fanatic Series - 2024 Season 1')).toBe('GT3 Fanatic Series')

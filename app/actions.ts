@@ -1279,7 +1279,7 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
 
     const teamThreads = (raceWithEvent.discordTeamThreads as Record<string, string> | null) ?? {}
     const guildId = process.env.DISCORD_GUILD_ID
-    const { addUsersToThread, buildTeamThreadLink, createTeamThread } =
+    const { addUsersToThread, buildDiscordWebLink, createTeamThread } =
       await import('@/lib/discord')
 
     for (const [teamId, team] of teamsMap.entries()) {
@@ -1325,7 +1325,7 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
       const avgSof = team.members.length ? Math.round(total / team.members.length) : 0
       const carClassName = team.carClassName || team.members[0]?.carClass
       const threadId = teamThreads[teamId]
-      const threadUrl = guildId && threadId ? buildTeamThreadLink({ guildId, threadId }) : undefined
+      const threadUrl = guildId && threadId ? buildDiscordWebLink({ guildId, threadId }) : undefined
       return { ...team, avgSof, carClassName, threadUrl }
     })
     teamsList.sort((a, b) => a.name.localeCompare(b.name))

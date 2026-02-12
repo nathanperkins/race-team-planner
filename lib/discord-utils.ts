@@ -61,6 +61,20 @@ export interface OnboardingNotificationData {
   discordUser?: { id: string; name: string }
 }
 
+/** Build a `discord://-/channels/...` deep link that opens the Discord
+ * desktop/mobile app.  Use this for links displayed on web pages (e.g.
+ * RaceDetails) so that they open the app instead of the browser. */
+export function buildDiscordAppLink(options: { guildId: string; threadId: string }) {
+  return `discord://-/channels/${options.guildId}/${options.threadId}`
+}
+
+/** Build an `https://discord.com/channels/...` link that works well within any
+ * Discord client.  Use this for links embedded in Discord notifications so they
+ * render as clickable links appropriately within the same platform. */
+export function buildDiscordWebLink(options: { guildId: string; threadId: string }) {
+  return `https://discord.com/channels/${options.guildId}/${options.threadId}`
+}
+
 export function normalizeSeriesName(name: string) {
   return name
     .replace(/\s[-–—]\s\d{4}.*$/i, '')

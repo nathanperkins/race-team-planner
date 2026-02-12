@@ -13,6 +13,7 @@ import {
   X,
 } from 'lucide-react'
 import Image from 'next/image'
+import { buildDiscordAppLink } from '@/lib/discord-utils'
 import { Prisma } from '@prisma/client'
 import {
   type DragEvent,
@@ -1900,7 +1901,7 @@ export default function RaceDetails({
                       if (guildId && threadId) {
                         return (
                           <a
-                            href={`discord://-/channels/${guildId}/${threadId}`}
+                            href={buildDiscordAppLink({ guildId, threadId })}
                             className={styles.discordLink}
                             title="Join the team discussion on Discord"
                             onClick={(e) => e.stopPropagation()}
@@ -2179,7 +2180,7 @@ export default function RaceDetails({
             if (guildId && threadId) {
               return (
                 <a
-                  href={`discord://-/channels/${guildId}/${threadId}`}
+                  href={buildDiscordAppLink({ guildId, threadId })}
                   className={styles.discordLink}
                   title="Join the event discussion in Discord"
                 >

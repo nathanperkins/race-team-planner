@@ -4,6 +4,7 @@ import {
   RegistrationNotificationData,
   TeamsAssignedNotificationData,
   WeeklyScheduleEvent,
+  buildDiscordWebLink,
   buildOnboardingEmbed,
   buildRegistrationEmbed,
   chunkLines,
@@ -743,7 +744,7 @@ export async function sendTeamsAssignedNotification(
 
       // Send separate notification to the chat channel if using a forum
       if (forumId && threadId && guildId) {
-        const threadUrl = `discord://-/channels/${guildId}/${threadId}`
+        const threadUrl = buildDiscordWebLink({ guildId, threadId })
         const chatResp = await fetch(`${DISCORD_API_BASE}/channels/${channelId}/messages`, {
           method: 'POST',
           headers: {
@@ -860,7 +861,7 @@ export async function sendTeamsAssignedNotification(
 
         // Send separate notification to the chat channel if using a forum
         if (forumId && threadId && guildId) {
-          const threadUrl = `discord://-/channels/${guildId}/${threadId}`
+          const threadUrl = buildDiscordWebLink({ guildId, threadId })
           await fetch(`${DISCORD_API_BASE}/channels/${channelId}/messages`, {
             method: 'POST',
             headers: {
@@ -944,9 +945,7 @@ export async function addUsersToThread(threadId: string, discordUserIds: string[
   }
 }
 
-export function buildTeamThreadLink(options: { guildId: string; threadId: string }) {
-  return `discord://-/channels/${options.guildId}/${options.threadId}`
-}
+export { buildDiscordAppLink, buildDiscordWebLink } from './discord-utils'
 
 export async function createEventDiscussionThread(options: {
   eventName: string
