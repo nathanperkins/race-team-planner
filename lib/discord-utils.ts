@@ -266,11 +266,12 @@ export function buildTeamsAssignedEmbeds(
     eventInfoLines.push('')
   }
 
-  if (carClasses.length > 0) {
-    eventInfoLines.push(`**🏁 Classes:**`)
-    carClasses.forEach((carClass) => {
-      eventInfoLines.push(`• ${carClass}`)
-    })
+  if (typeof data.tempValue === 'number') {
+    let weather = `${data.tempValue}°F`
+    if (typeof data.precipChance === 'number') {
+      weather += `, ${data.precipChance}% Rain`
+    }
+    eventInfoLines.push(`**🌤️ Weather:** ${weather}`)
     eventInfoLines.push('')
   }
 
@@ -281,12 +282,11 @@ export function buildTeamsAssignedEmbeds(
   })
   eventInfoLines.push('')
 
-  if (typeof data.tempValue === 'number') {
-    let weather = `${data.tempValue}°F`
-    if (typeof data.precipChance === 'number') {
-      weather += `, ${data.precipChance}% Rain`
-    }
-    eventInfoLines.push(`**🌤️ Weather:** ${weather}`)
+  if (carClasses.length > 0) {
+    eventInfoLines.push(`**🏎 Classes:**`)
+    carClasses.forEach((carClass) => {
+      eventInfoLines.push(`• ${carClass}`)
+    })
     eventInfoLines.push('')
   }
 
@@ -297,7 +297,7 @@ export function buildTeamsAssignedEmbeds(
   return chunks.map((chunk, index) => {
     const seriesName = normalizeSeriesName(data.eventName)
     const title =
-      index === 0 ? `🏎️ Event Thread: ${seriesName}` : `🏎️ Event Thread: ${seriesName} (cont.)`
+      index === 0 ? `🏁 Event Thread: ${seriesName}` : `🏁 Event Thread: ${seriesName} (cont.)`
 
     // Add official description before event info for first chunk
     let description = chunk
