@@ -264,6 +264,11 @@ export default function EventsClient({
                         <div
                           className={styles.licenseBadge}
                           title={`License ${license}`}
+                          data-tooltip={
+                            !isEligible
+                              ? 'You do not meet the license requirements for this event'
+                              : undefined
+                          }
                           style={{
                             borderColor: getLicenseColor(license),
                             color: getLicenseColor(license),
