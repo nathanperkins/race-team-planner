@@ -11,14 +11,8 @@ export interface WeeklyScheduleEvent {
   eventUrl: string
 }
 
-export interface TeamsAssignedNotificationData {
-  eventName: string
+export interface RaceTimeslotData {
   raceStartTime: Date
-  raceUrl: string
-  track?: string
-  trackConfig?: string
-  tempValue?: number | null
-  precipChance?: number | null
   teams: Array<{
     name: string
     carClassName?: string
@@ -37,8 +31,21 @@ export interface TeamsAssignedNotificationData {
     discordId?: string
     registrationId?: string
   }>
+}
+
+export interface TeamsAssignedNotificationData {
+  eventName: string
+  raceUrl: string
+  track?: string
+  trackConfig?: string
+  tempValue?: number | null
+  precipChance?: number | null
+  carClasses: string[]
+  timeslots: RaceTimeslotData[]
   threadId?: string | null
   mentionRegistrationIds?: string[]
+  sendChatNotification?: boolean
+  chatNotificationLabel?: string
 }
 
 export interface RegistrationNotificationData {
@@ -121,8 +128,8 @@ export function chunkLines(lines: string[], maxLength = 1800) {
 }
 
 export function formatTeamLines(
-  teams: TeamsAssignedNotificationData['teams'],
-  unassigned: TeamsAssignedNotificationData['unassigned']
+  teams: RaceTimeslotData['teams'],
+  unassigned: RaceTimeslotData['unassigned']
 ) {
   const lines: string[] = []
   teams.forEach((team) => {
@@ -154,6 +161,209 @@ export function formatTeamLines(
   }
 
   return lines
+}
+
+export function formatMultiTimeslotTeamLines(
+  timeslots: RaceTimeslotData[],
+  options?: { locale?: string; timeZone?: string }
+) {
+  const locale = options?.locale ?? 'en-US'
+  const timeZone = options?.timeZone ?? 'America/Los_Angeles'
+  const lines: string[] = []
+
+  for (const slot of timeslots) {
+    const timeLabel = new Intl.DateTimeFormat(locale, {
+      hour: 'numeric',
+      minute: '2-digit',
+      timeZoneName: 'short',
+      timeZone,
+    }).format(slot.raceStartTime)
+
+    lines.push(`━━━━━━━━━━━━━━━━━━━━`)
+    lines.push(`⏰ **${timeLabel}**`)
+    lines.push(`━━━━━━━━━━━━━━━━━━━━`)
+    lines.push('')
+
+    const teamLines = formatTeamLines(slot.teams, slot.unassigned)
+    if (teamLines.length === 0) {
+      lines.push('_No teams or drivers assigned yet._')
+      lines.push('')
+    } else {
+      lines.push(...teamLines)
+    }
+  }
+
+  return lines
+}
+
+/** Collect a map of registrationId → discordId from all timeslots. */
+export function collectDiscordIds(timeslots: RaceTimeslotData[]): Map<string, string> {
+  const ids = new Map<string, string>()
+  for (const slot of timeslots) {
+    for (const team of slot.teams) {
+      for (const member of team.members) {
+        if (member.registrationId && member.discordId) {
+          ids.set(member.registrationId, member.discordId)
+        }
+      }
+    }
+    if (slot.unassigned) {
+      for (const member of slot.unassigned) {
+        if (member.registrationId && member.discordId) {
+          ids.set(member.registrationId, member.discordId)
+        }
+      }
+    }
+  }
+  return ids
+}
+
+/** Build a Discord thread name for an event (date only, no specific time). */
+export function buildEventThreadName(
+  eventName: string,
+  firstStartTime: Date,
+  options?: { locale?: string; timeZone?: string }
+): string {
+  const locale = options?.locale ?? 'en-US'
+  const timeZone = options?.timeZone ?? 'America/Los_Angeles'
+  const cleanName = normalizeSeriesName(eventName)
+  const dateLabel = new Intl.DateTimeFormat(locale, {
+    month: 'numeric',
+    day: 'numeric',
+    timeZone,
+  }).format(firstStartTime)
+  return `${cleanName} (${dateLabel})`
+}
+
+/** Format race times as Discord timestamps. */
+export function formatRaceTimesValue(timeslots: RaceTimeslotData[]): string {
+  return timeslots
+    .map((slot) => {
+      const unix = Math.floor(slot.raceStartTime.getTime() / 1000)
+      return `<t:${unix}:F>`
+    })
+    .join('\n')
+}
+
+/** Build embeds for teams assigned notification. */
+export function buildTeamsAssignedEmbeds(
+  data: TeamsAssignedNotificationData,
+  appTitle: string,
+  options?: { locale?: string; timeZone?: string }
+) {
+  const locale = options?.locale ?? 'en-US'
+  const timeZone = options?.timeZone ?? 'America/Los_Angeles'
+
+  const carClasses = [...data.carClasses].sort()
+
+  // Build event info header
+  const eventInfoLines: string[] = []
+  eventInfoLines.push(`**🏎️ Event:** ${data.eventName}`)
+  eventInfoLines.push('')
+
+  if (data.track) {
+    let trackVal = data.track
+    if (data.trackConfig) trackVal += ` (${data.trackConfig})`
+    eventInfoLines.push(`**🏟️ Track:** ${trackVal}`)
+    eventInfoLines.push('')
+  }
+
+  if (carClasses.length > 0) {
+    eventInfoLines.push(`**🏁 Classes:**`)
+    carClasses.forEach((carClass) => {
+      eventInfoLines.push(`• ${carClass}`)
+    })
+    eventInfoLines.push('')
+  }
+
+  eventInfoLines.push(`**🕐 Race Times:**`)
+  data.timeslots.forEach((slot) => {
+    const unix = Math.floor(slot.raceStartTime.getTime() / 1000)
+    eventInfoLines.push(`• <t:${unix}:F>`)
+  })
+  eventInfoLines.push('')
+
+  if (typeof data.tempValue === 'number') {
+    let weather = `${data.tempValue}°F`
+    if (typeof data.precipChance === 'number') {
+      weather += `, ${data.precipChance}% Rain`
+    }
+    eventInfoLines.push(`**🌤️ Weather:** ${weather}`)
+    eventInfoLines.push('')
+  }
+
+  const teamLines = formatMultiTimeslotTeamLines(data.timeslots, { locale, timeZone })
+  const allLines = [...eventInfoLines, ...teamLines]
+  const chunks = chunkLines(allLines, 3800)
+
+  return chunks.map((chunk, index) => {
+    const seriesName = normalizeSeriesName(data.eventName)
+    const title =
+      index === 0 ? `🏎️ Event Thread: ${seriesName}` : `🏎️ Event Thread: ${seriesName} (cont.)`
+
+    // Add official description before event info for first chunk
+    let description = chunk
+    if (index === 0) {
+      const officialDesc = `Official preparation and coordination thread for **${seriesName}**.\n\n`
+      description = officialDesc + chunk
+    }
+
+    const embed: {
+      title: string
+      description: string
+      color: number
+      url: string
+      timestamp: string
+      footer: { text: string }
+    } = {
+      title,
+      description,
+      color: 0x5865f2, // Blurple
+      url: data.raceUrl,
+      timestamp: new Date().toISOString(),
+      footer: {
+        text: appTitle,
+      },
+    }
+
+    return embed
+  })
+}
+
+/** Build a chat channel notification for teams assigned (forum-based setups). */
+export function buildTeamsAssignedChatNotification(
+  eventName: string,
+  timeslots: RaceTimeslotData[],
+  threadUrl: string,
+  title: string,
+  appTitle: string
+): Record<string, unknown> {
+  return {
+    embeds: [
+      {
+        title,
+        description: `Teams have been assigned for **${eventName}**!`,
+        color: 0x5865f2,
+        url: threadUrl,
+        fields: [
+          {
+            name: '🕐 Race Times',
+            value: formatRaceTimesValue(timeslots),
+            inline: true,
+          },
+          {
+            name: '🔗 Discussion',
+            value: `[View Event Thread](${threadUrl})`,
+            inline: true,
+          },
+        ],
+        timestamp: new Date().toISOString(),
+        footer: {
+          text: appTitle,
+        },
+      },
+    ],
+  }
 }
 
 export function buildWeeklyScheduleEmbeds(events: WeeklyScheduleEvent[]) {

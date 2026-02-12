@@ -5,10 +5,12 @@ import {
   TeamsAssignedNotificationData,
   WeeklyScheduleEvent,
   buildDiscordWebLink,
+  buildEventThreadName,
   buildOnboardingEmbed,
   buildRegistrationEmbed,
-  chunkLines,
-  formatTeamLines,
+  buildTeamsAssignedChatNotification,
+  buildTeamsAssignedEmbeds,
+  collectDiscordIds,
   normalizeSeriesName,
 } from './discord-utils'
 
@@ -473,99 +475,21 @@ export async function sendTeamsAssignedNotification(
   const threadParentId = forumId || channelId
 
   try {
-    const unixTimestamp = Math.floor(data.raceStartTime.getTime() / 1000)
-    const discordTimestamp = `<t:${unixTimestamp}:F>`
-    const cleanName = normalizeSeriesName(data.eventName)
-    const dateLabel = new Intl.DateTimeFormat(appLocale, {
-      month: 'numeric',
-      day: 'numeric',
+    // Use the first timeslot's start time for date label / thread name
+    const firstStartTime = data.timeslots[0]?.raceStartTime ?? new Date()
+    const threadName = buildEventThreadName(data.eventName, firstStartTime, {
+      locale: appLocale,
       timeZone: appTimeZone,
-    }).format(data.raceStartTime)
-    const timeLabel = new Intl.DateTimeFormat(appLocale, {
-      hour: 'numeric',
-      minute: '2-digit',
-      timeZoneName: 'short',
-      timeZone: appTimeZone,
-    }).format(data.raceStartTime)
-    const threadName = `${cleanName} (${dateLabel} - ${timeLabel})`
-    const allMentionIds = new Set<string>()
-    data.teams.forEach((team) => {
-      team.members.forEach((member) => {
-        if (member.registrationId && member.discordId) {
-          allMentionIds.add(member.registrationId)
-        }
-      })
     })
-    data.unassigned?.forEach((member) => {
-      if (member.registrationId && member.discordId) {
-        allMentionIds.add(member.registrationId)
-      }
-    })
-    const buildEmbeds = () => {
-      const lines = formatTeamLines(data.teams, data.unassigned)
-      const chunks = chunkLines(lines, 3800)
-      return chunks.map((chunk, index) => {
-        const embed: {
-          title: string
-          description: string
-          color: number
-          url: string
-          timestamp: string
-          footer: { text: string }
-          fields?: Array<{ name: string; value: string; inline: boolean }>
-        } = {
-          title: index === 0 ? '🏁 Teams Assigned' : '🏁 Teams Assigned (cont.)',
-          description: chunk,
-          color: 0x5865f2, // Blurple
-          url: data.raceUrl,
-          timestamp: new Date().toISOString(),
-          footer: {
-            text: appTitle,
-          },
-        }
 
-        if (index === 0) {
-          const fields = [
-            {
-              name: '🏎️ Event',
-              value: data.eventName,
-              inline: true,
-            },
-            {
-              name: '🕐 Race Time',
-              value: discordTimestamp,
-              inline: true,
-            },
-          ]
+    const allDiscordIds = collectDiscordIds(data.timeslots)
+    const allMentionIds = new Set<string>(allDiscordIds.keys())
 
-          if (data.track) {
-            let trackVal = data.track
-            if (data.trackConfig) trackVal += ` (${data.trackConfig})`
-            fields.push({
-              name: '🏟️ Track',
-              value: trackVal,
-              inline: true,
-            })
-          }
+    const buildEmbeds = () =>
+      buildTeamsAssignedEmbeds(data, appTitle, { locale: appLocale, timeZone: appTimeZone })
 
-          if (typeof data.tempValue === 'number') {
-            let weather = `${data.tempValue}°F`
-            if (typeof data.precipChance === 'number') {
-              weather += `, ${data.precipChance}% Rain`
-            }
-            fields.push({
-              name: '🌤️ Weather',
-              value: weather,
-              inline: true,
-            })
-          }
-
-          embed.fields = fields
-        }
-
-        return embed
-      })
-    }
+    const buildChatNotification = (threadUrl: string, title: string): Record<string, unknown> =>
+      buildTeamsAssignedChatNotification(data.eventName, data.timeslots, threadUrl, title, appTitle)
 
     let threadId = data.threadId ?? null
     if (threadId) {
@@ -581,26 +505,13 @@ export async function sendTeamsAssignedNotification(
       embeds: ReturnType<typeof buildEmbeds>,
       mentionSet: Set<string>
     ) => {
-      const allDiscordIds = new Map<string, string>()
-      data.teams.forEach((team) => {
-        team.members.forEach((member) => {
-          if (member.registrationId && member.discordId) {
-            allDiscordIds.set(member.registrationId, member.discordId)
-          }
-        })
-      })
-      data.unassigned?.forEach((member) => {
-        if (member.registrationId && member.discordId) {
-          allDiscordIds.set(member.registrationId, member.discordId)
-        }
-      })
       const mentionList = Array.from(mentionSet)
         .map((regId) => allDiscordIds.get(regId))
-        .filter((id): id is string => Boolean(id))
-        .map((id) => `<@${id}>`)
+        .filter((did): did is string => Boolean(did))
+        .map((did) => `<@${did}>`)
       const allowedIds = Array.from(mentionSet)
         .map((regId) => allDiscordIds.get(regId))
-        .filter((id): id is string => Boolean(id))
+        .filter((did): did is string => Boolean(did))
       const content = mentionList.length ? mentionList.join(' ') : undefined
       const payload = {
         content,
@@ -674,30 +585,16 @@ export async function sendTeamsAssignedNotification(
       return resp
     }
 
-    let threadCreated = false
-    if (!threadId) {
-      threadCreated = true
+    /** Creates a new thread and returns its ID, or null on failure. */
+    const createNewThread = async (): Promise<string | null> => {
       const embeds = buildEmbeds()
-      const discordIds = new Map<string, string>()
-      data.teams.forEach((team) => {
-        team.members.forEach((member) => {
-          if (member.registrationId && member.discordId) {
-            discordIds.set(member.registrationId, member.discordId)
-          }
-        })
-      })
-      data.unassigned?.forEach((member) => {
-        if (member.registrationId && member.discordId) {
-          discordIds.set(member.registrationId, member.discordId)
-        }
-      })
       const mentionList = Array.from(allMentionIds)
-        .map((regId) => discordIds.get(regId))
-        .filter((id): id is string => Boolean(id))
-        .map((id) => `<@${id}>`)
+        .map((regId) => allDiscordIds.get(regId))
+        .filter((did): did is string => Boolean(did))
+        .map((did) => `<@${did}>`)
       const allowedIds = Array.from(allMentionIds)
-        .map((regId) => discordIds.get(regId))
-        .filter((id): id is string => Boolean(id))
+        .map((regId) => allDiscordIds.get(regId))
+        .filter((did): did is string => Boolean(did))
       const content = mentionList.length ? mentionList.join(' ') : undefined
 
       const threadResponse = await fetch(`${DISCORD_API_BASE}/channels/${threadParentId}/threads`, {
@@ -729,63 +626,47 @@ export async function sendTeamsAssignedNotification(
           `❌ [Discord] Failed to create thread in ${threadParentId}: ${threadResponse.status} ${threadResponse.statusText}`,
           JSON.stringify(errorBody, null, 2)
         )
-        return { ok: false }
+        return null
       }
 
       const thread = await threadResponse.json()
-      threadId = thread.id
-      console.log(`✅ [Discord] Created teams thread: ${threadId} in ${threadParentId}`)
-
-      // Add all members to the thread
-      const allMemberDiscordIds = Array.from(discordIds.values())
-      if (threadId && allMemberDiscordIds.length > 0) {
-        await addUsersToThread(threadId, allMemberDiscordIds)
-      }
-
-      // Send separate notification to the chat channel if using a forum
-      if (forumId && threadId && guildId) {
-        const threadUrl = buildDiscordWebLink({ guildId, threadId })
-        const chatResp = await fetch(`${DISCORD_API_BASE}/channels/${channelId}/messages`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bot ${botToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            embeds: [
-              {
-                title: '🏁 Teams Assigned',
-                description: `Teams have been assigned for **${data.eventName}**!`,
-                color: 0x5865f2,
-                url: threadUrl,
-                fields: [
-                  {
-                    name: '🕐 Race Time',
-                    value: discordTimestamp,
-                    inline: true,
-                  },
-                  {
-                    name: '🔗 Discussion',
-                    value: `[View Team Thread](${threadUrl})`,
-                    inline: true,
-                  },
-                ],
-                timestamp: new Date().toISOString(),
-                footer: {
-                  text: appTitle,
-                },
-              },
-            ],
-          }),
-        })
-        if (chatResp.ok) {
-          console.log(`✅ [Discord] Posted thread link to chat channel ${channelId}`)
+      const newId = (thread.id as string) ?? null
+      if (newId) {
+        console.log(`✅ [Discord] Created teams thread: ${newId} in ${threadParentId}`)
+        const allMemberDiscordIds = Array.from(allDiscordIds.values())
+        if (allMemberDiscordIds.length > 0) {
+          await addUsersToThread(newId, allMemberDiscordIds)
         }
+      }
+      return newId
+    }
+
+    /** Send a chat channel notification (for forum-based setups). */
+    const sendChatChannelNotification = async (
+      newThreadId: string,
+      title: string
+    ): Promise<void> => {
+      if (!forumId || !guildId) return
+      const threadUrl = buildDiscordWebLink({ guildId, threadId: newThreadId })
+      const chatResp = await fetch(`${DISCORD_API_BASE}/channels/${channelId}/messages`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bot ${botToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(buildChatNotification(threadUrl, title)),
+      })
+      if (chatResp.ok) {
+        console.log(`✅ [Discord] Posted thread link to chat channel ${channelId}`)
       }
     }
 
+    let threadCreated = false
     if (!threadId) {
-      return { ok: false }
+      threadCreated = true
+      threadId = await createNewThread()
+      if (!threadId) return { ok: false }
+      await sendChatChannelNotification(threadId, '🏁 Teams Assigned')
     }
 
     if (!threadCreated) {
@@ -793,109 +674,10 @@ export async function sendTeamsAssignedNotification(
       const postResponse = await upsertThreadMessage(threadId, buildEmbeds(), mentionSet)
       if (!postResponse.ok && postResponse.status === 404) {
         // Thread deleted or inaccessible; create a new one.
-        threadId = null
         threadCreated = true
-        const embeds = buildEmbeds()
-        const discordIds = new Map<string, string>()
-        data.teams.forEach((team) => {
-          team.members.forEach((member) => {
-            if (member.registrationId && member.discordId) {
-              discordIds.set(member.registrationId, member.discordId)
-            }
-          })
-        })
-        data.unassigned?.forEach((member) => {
-          if (member.registrationId && member.discordId) {
-            discordIds.set(member.registrationId, member.discordId)
-          }
-        })
-        const mentionList = Array.from(allMentionIds)
-          .map((regId) => discordIds.get(regId))
-          .filter((id): id is string => Boolean(id))
-          .map((id) => `<@${id}>`)
-        const allowedIds = Array.from(allMentionIds)
-          .map((regId) => discordIds.get(regId))
-          .filter((id): id is string => Boolean(id))
-        const content = mentionList.length ? mentionList.join(' ') : undefined
-
-        const threadResponse = await fetch(
-          `${DISCORD_API_BASE}/channels/${threadParentId}/threads`,
-          {
-            method: 'POST',
-            headers: {
-              Authorization: `Bot ${botToken}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              name: threadName,
-              auto_archive_duration: 10080,
-              message: {
-                content,
-                embeds,
-                allowed_mentions: { users: allowedIds, parse: [] },
-              },
-            }),
-          }
-        )
-
-        if (!threadResponse.ok) {
-          const errorText = await threadResponse.text()
-          let errorBody = {}
-          try {
-            errorBody = JSON.parse(errorText)
-          } catch {
-            errorBody = { raw: errorText }
-          }
-          console.error(
-            `❌ [Discord] Failed to create thread in ${threadParentId} (fallback): ${threadResponse.status} ${threadResponse.statusText}`,
-            JSON.stringify(errorBody, null, 2)
-          )
-          return { ok: false }
-        }
-
-        const thread = await threadResponse.json()
-        threadId = thread.id
-        if (!threadId) {
-          return { ok: false }
-        }
-
-        // Send separate notification to the chat channel if using a forum
-        if (forumId && threadId && guildId) {
-          const threadUrl = buildDiscordWebLink({ guildId, threadId })
-          await fetch(`${DISCORD_API_BASE}/channels/${channelId}/messages`, {
-            method: 'POST',
-            headers: {
-              Authorization: `Bot ${botToken}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              embeds: [
-                {
-                  title: '🏁 Teams Assigned',
-                  description: `Teams have been assigned for **${data.eventName}**!`,
-                  color: 0x5865f2,
-                  url: threadUrl,
-                  fields: [
-                    {
-                      name: '🕐 Race Time',
-                      value: discordTimestamp,
-                      inline: true,
-                    },
-                    {
-                      name: '🔗 Discussion',
-                      value: `[View Team Thread](${threadUrl})`,
-                      inline: true,
-                    },
-                  ],
-                  timestamp: new Date().toISOString(),
-                  footer: {
-                    text: appTitle,
-                  },
-                },
-              ],
-            }),
-          })
-        }
+        threadId = await createNewThread()
+        if (!threadId) return { ok: false }
+        await sendChatChannelNotification(threadId, '🏁 Teams Assigned')
       } else if (!postResponse.ok) {
         const errorText = await postResponse.text()
         console.error(
@@ -903,6 +685,12 @@ export async function sendTeamsAssignedNotification(
           errorText
         )
         return { ok: false, threadId: threadId ?? undefined }
+      } else if (data.sendChatNotification && threadId) {
+        // Thread already existed but caller requested a chat notification (e.g. 2nd+ timeslot)
+        await sendChatChannelNotification(
+          threadId,
+          data.chatNotificationLabel ?? '🏁 Teams Updated'
+        )
       }
     }
 
@@ -982,13 +770,10 @@ export async function createEventDiscussionThread(options: {
   }
 
   const threadParentId = forumId || channelId
-  const cleanName = normalizeSeriesName(options.eventName)
-  const dateLabel = new Intl.DateTimeFormat(appLocale, {
-    month: 'numeric',
-    day: 'numeric',
+  const threadName = buildEventThreadName(options.eventName, options.eventStartTime, {
+    locale: appLocale,
     timeZone: appTimeZone,
-  }).format(options.eventStartTime)
-  const threadName = `${cleanName} (${dateLabel})`
+  })
 
   const threadResponse = await fetch(`${DISCORD_API_BASE}/channels/${threadParentId}/threads`, {
     method: 'POST',

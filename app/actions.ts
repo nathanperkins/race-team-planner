@@ -1132,6 +1132,115 @@ export async function saveRaceEdits(formData: FormData) {
   }
 }
 
+type RegistrationRow = {
+  id: string
+  teamId: string | null
+  team: { id: string; name: string } | null
+  carClass: { name: string; shortName: string | null }
+  user: {
+    name: string | null
+    accounts: Array<{ providerAccountId: string }>
+    racerStats: Array<{ categoryId: number; category: string; irating: number }>
+  } | null
+  manualDriver: { name: string; irating: number | null } | null
+}
+
+function getPreferredRating(
+  stats: Array<{ categoryId: number; category: string; irating: number }> | null | undefined
+) {
+  if (!stats || stats.length === 0) return null
+  const preferred =
+    stats.find((s) => s.categoryId === 5) ||
+    stats.find((s) => s.category?.toLowerCase() === 'sports car') ||
+    stats[0]
+  return preferred?.irating ?? null
+}
+
+/** Build teams list and unassigned list from registrations for a single race. */
+function buildTeamsFromRegistrations(
+  registrations: RegistrationRow[],
+  teamThreads: Record<string, string>,
+  guildId: string | undefined,
+  buildDiscordWebLink: (opts: { guildId: string; threadId: string }) => string
+) {
+  const teamsMap = new Map<
+    string,
+    {
+      name: string
+      members: Array<{
+        name: string
+        carClass: string
+        discordId?: string
+        registrationId?: string
+        rating: number
+      }>
+      carClassName?: string
+    }
+  >()
+  const unassigned: Array<{
+    name: string
+    carClass: string
+    discordId?: string
+    registrationId?: string
+    rating: number
+  }> = []
+
+  registrations.forEach((reg) => {
+    const driverName = reg.user?.name || reg.manualDriver?.name || 'Driver'
+    const carClassName = reg.carClass.shortName || reg.carClass.name
+    const discordId = reg.user?.accounts?.[0]?.providerAccountId
+    const rating =
+      getPreferredRating(
+        (
+          reg.user as {
+            racerStats?: Array<{ categoryId: number; category: string; irating: number }>
+          } | null
+        )?.racerStats
+      ) ??
+      reg.manualDriver?.irating ??
+      0
+    if (reg.teamId && reg.team) {
+      const existing = teamsMap.get(reg.teamId) || {
+        name: reg.team.name,
+        members: [],
+      }
+      existing.members.push({
+        name: driverName,
+        carClass: carClassName,
+        discordId,
+        registrationId: reg.id,
+        rating,
+      })
+      if (!existing.carClassName) {
+        existing.carClassName = carClassName
+      }
+      teamsMap.set(reg.teamId, existing)
+    } else {
+      unassigned.push({
+        name: driverName,
+        carClass: carClassName,
+        discordId,
+        registrationId: reg.id,
+        rating,
+      })
+    }
+  })
+
+  const teamsList = Array.from(teamsMap.entries()).map(([teamId, team]) => {
+    const total = team.members.reduce((sum, member) => sum + member.rating, 0)
+    const avgSof = team.members.length ? Math.round(total / team.members.length) : 0
+    const carClassName = team.carClassName || team.members[0]?.carClass
+    const threadId = teamThreads[teamId]
+    const threadUrl = guildId && threadId ? buildDiscordWebLink({ guildId, threadId }) : undefined
+    return { ...team, avgSof, carClassName, threadUrl }
+  })
+  teamsList.sort((a, b) => a.name.localeCompare(b.name))
+  teamsList.forEach((team) => team.members.sort((a, b) => a.name.localeCompare(b.name)))
+  unassigned.sort((a, b) => a.name.localeCompare(b.name))
+
+  return { teamsMap, teamsList, unassigned }
+}
+
 /**
  * Orchestration layer for team assignment notifications.
  * This function handles the "Business Logic":
@@ -1172,6 +1281,8 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
             trackConfig: true,
             tempValue: true,
             precipChance: true,
+            carClasses: { select: { name: true } },
+            customCarClasses: true,
           },
         },
       },
@@ -1180,98 +1291,30 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
       return { message: 'Race not found' }
     }
 
-    const registrations = await prisma.registration.findMany({
-      where: { raceId },
-      include: {
-        team: { select: { name: true, id: true } },
-        carClass: { select: { name: true, shortName: true } },
-        user: {
-          select: {
-            name: true,
-            accounts: { where: { provider: 'discord' }, select: { providerAccountId: true } },
-            racerStats: { select: { categoryId: true, category: true, irating: true } },
+    const registrationInclude = {
+      team: { select: { name: true, id: true } },
+      carClass: { select: { name: true, shortName: true } },
+      user: {
+        select: {
+          name: true,
+          accounts: {
+            where: { provider: 'discord' as const },
+            select: { providerAccountId: true },
           },
+          racerStats: { select: { categoryId: true, category: true, irating: true } },
         },
-        manualDriver: { select: { name: true, irating: true } },
       },
-    })
-
-    const teamsMap = new Map<
-      string,
-      {
-        name: string
-        members: Array<{
-          name: string
-          carClass: string
-          discordId?: string
-          registrationId?: string
-          rating: number
-        }>
-        carClassName?: string
-        avgSof?: number
-      }
-    >()
-    const unassigned: Array<{
-      name: string
-      carClass: string
-      discordId?: string
-      registrationId?: string
-      rating: number
-    }> = []
-    const currentSnapshot: Record<string, string | null> = {}
-
-    const getPreferredRating = (
-      stats: Array<{ categoryId: number; category: string; irating: number }> | null | undefined
-    ) => {
-      if (!stats || stats.length === 0) return null
-      const preferred =
-        stats.find((s) => s.categoryId === 5) ||
-        stats.find((s) => s.category?.toLowerCase() === 'sports car') ||
-        stats[0]
-      return preferred?.irating ?? null
+      manualDriver: { select: { name: true, irating: true } },
     }
 
+    const registrations = await prisma.registration.findMany({
+      where: { raceId },
+      include: registrationInclude,
+    })
+
+    const currentSnapshot: Record<string, string | null> = {}
     registrations.forEach((reg) => {
-      const driverName = reg.user?.name || reg.manualDriver?.name || 'Driver'
-      const carClassName = reg.carClass.shortName || reg.carClass.name
-      const discordId = reg.user?.accounts?.[0]?.providerAccountId
-      const rating =
-        getPreferredRating(
-          (
-            reg.user as {
-              racerStats?: Array<{ categoryId: number; category: string; irating: number }>
-            } | null
-          )?.racerStats
-        ) ??
-        reg.manualDriver?.irating ??
-        0
-      const teamId = reg.teamId ?? reg.team?.id ?? null
-      currentSnapshot[reg.id] = teamId
-      if (reg.teamId && reg.team) {
-        const existing = teamsMap.get(reg.teamId) || {
-          name: reg.team.name,
-          members: [],
-        }
-        existing.members.push({
-          name: driverName,
-          carClass: carClassName,
-          discordId,
-          registrationId: reg.id,
-          rating,
-        })
-        if (!existing.carClassName) {
-          existing.carClassName = carClassName
-        }
-        teamsMap.set(reg.teamId, existing)
-      } else {
-        unassigned.push({
-          name: driverName,
-          carClass: carClassName,
-          discordId,
-          registrationId: reg.id,
-          rating,
-        })
-      }
+      currentSnapshot[reg.id] = reg.teamId ?? reg.team?.id ?? null
     })
 
     const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
@@ -1281,6 +1324,13 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
     const guildId = process.env.DISCORD_GUILD_ID
     const { addUsersToThread, buildDiscordWebLink, createTeamThread } =
       await import('@/lib/discord')
+
+    const { teamsMap, teamsList, unassigned } = buildTeamsFromRegistrations(
+      registrations as RegistrationRow[],
+      teamThreads,
+      guildId,
+      buildDiscordWebLink
+    )
 
     for (const [teamId, team] of teamsMap.entries()) {
       const memberDiscordIds = team.members
@@ -1320,18 +1370,15 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
       await addUsersToThread(threadId, memberDiscordIds)
     }
 
-    const teamsList = Array.from(teamsMap.entries()).map(([teamId, team]) => {
-      const total = team.members.reduce((sum, member) => sum + member.rating, 0)
-      const avgSof = team.members.length ? Math.round(total / team.members.length) : 0
-      const carClassName = team.carClassName || team.members[0]?.carClass
-      const threadId = teamThreads[teamId]
-      const threadUrl = guildId && threadId ? buildDiscordWebLink({ guildId, threadId }) : undefined
-      return { ...team, avgSof, carClassName, threadUrl }
-    })
-    teamsList.sort((a, b) => a.name.localeCompare(b.name))
-    teamsList.forEach((team) => team.members.sort((a, b) => a.name.localeCompare(b.name)))
-    unassigned.sort((a, b) => a.name.localeCompare(b.name))
+    // Update thread URLs in teamsList after creating threads
+    for (const team of teamsList) {
+      const teamId = Array.from(teamsMap.entries()).find(([, t]) => t.name === team.name)?.[0]
+      if (teamId && teamThreads[teamId] && guildId) {
+        team.threadUrl = buildDiscordWebLink({ guildId, threadId: teamThreads[teamId] })
+      }
+    }
 
+    // Determine mentions: only users whose assignments changed in the current race
     const previousSnapshot =
       (raceWithEvent.discordTeamsSnapshot as Record<string, string | null> | null) ?? null
     const mentionRegistrationIds = new Set<string>()
@@ -1354,7 +1401,61 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
       })
     }
 
-    const { sendTeamsAssignedNotification } = await import('@/lib/discord')
+    // Build timeslots: current race + all other races in the event
+    const siblingRaces = await prisma.race.findMany({
+      where: {
+        eventId: raceWithEvent.event.id,
+        id: { not: raceId },
+      },
+      select: { id: true, startTime: true, discordTeamThreads: true, teamsAssigned: true },
+      orderBy: { startTime: 'asc' },
+    })
+
+    const timeslots: Array<{
+      raceStartTime: Date
+      teams: typeof teamsList
+      unassigned?: typeof unassigned
+    }> = []
+
+    // Add current race timeslot
+    timeslots.push({
+      raceStartTime: raceWithEvent.startTime,
+      teams: teamsList,
+      unassigned: unassigned.length > 0 ? unassigned : undefined,
+    })
+
+    // Add sibling race timeslots
+    for (const sibling of siblingRaces) {
+      if (sibling.teamsAssigned) {
+        const siblingRegs = await prisma.registration.findMany({
+          where: { raceId: sibling.id },
+          include: registrationInclude,
+        })
+        const siblingThreads = (sibling.discordTeamThreads as Record<string, string> | null) ?? {}
+        const { teamsList: sibTeams, unassigned: sibUnassigned } = buildTeamsFromRegistrations(
+          siblingRegs as RegistrationRow[],
+          siblingThreads,
+          guildId,
+          buildDiscordWebLink
+        )
+        timeslots.push({
+          raceStartTime: sibling.startTime,
+          teams: sibTeams,
+          unassigned: sibUnassigned.length > 0 ? sibUnassigned : undefined,
+        })
+      } else {
+        // Show empty timeslot for races without teams assigned yet
+        timeslots.push({
+          raceStartTime: sibling.startTime,
+          teams: [],
+        })
+      }
+    }
+
+    // Sort timeslots by start time
+    timeslots.sort((a, b) => a.raceStartTime.getTime() - b.raceStartTime.getTime())
+
+    // Determine if event thread already exists (meaning this is a 2nd+ timeslot assignment)
     const eventThread = await prisma.race.findFirst({
       where: {
         eventId: raceWithEvent.event.id,
@@ -1362,18 +1463,29 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
       },
       select: { discordTeamsThreadId: true },
     })
+    const existingThreadId = eventThread?.discordTeamsThreadId ?? raceWithEvent.discordTeamsThreadId
+    const threadAlreadyExists = !!existingThreadId
+
+    // Combine car classes from relations and custom car classes
+    const carClasses = [
+      ...raceWithEvent.event.carClasses.map((cc) => cc.name),
+      ...raceWithEvent.event.customCarClasses,
+    ]
+
+    const { sendTeamsAssignedNotification } = await import('@/lib/discord')
     const notification = await sendTeamsAssignedNotification({
       eventName: raceWithEvent.event.name,
-      raceStartTime: raceWithEvent.startTime,
       raceUrl,
       track: raceWithEvent.event.track,
       trackConfig: raceWithEvent.event.trackConfig ?? undefined,
       tempValue: raceWithEvent.event.tempValue,
       precipChance: raceWithEvent.event.precipChance,
-      teams: teamsList,
-      unassigned: unassigned.length > 0 ? unassigned : undefined,
-      threadId: eventThread?.discordTeamsThreadId ?? raceWithEvent.discordTeamsThreadId,
+      carClasses,
+      timeslots,
+      threadId: existingThreadId,
       mentionRegistrationIds: Array.from(mentionRegistrationIds),
+      sendChatNotification: threadAlreadyExists && siblingRaces.some((race) => race.teamsAssigned),
+      chatNotificationLabel: '🏁 Teams Updated',
     })
 
     if (notification.ok) {

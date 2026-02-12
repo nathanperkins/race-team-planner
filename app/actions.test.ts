@@ -20,6 +20,7 @@ vi.mock('@/lib/prisma', () => ({
     race: {
       findUnique: vi.fn(),
       findFirst: vi.fn(),
+      findMany: vi.fn(),
       update: vi.fn(),
       updateMany: vi.fn(),
     },
@@ -79,6 +80,8 @@ describe('sendTeamsAssignmentNotification', () => {
         trackConfig: 'Endurance',
         tempValue: 75,
         precipChance: 10,
+        carClasses: [{ name: 'GT3' }],
+        customCarClasses: [],
       },
       ...overrides,
     }
@@ -105,6 +108,7 @@ describe('sendTeamsAssignmentNotification', () => {
     vi.mocked(prisma.race.update).mockResolvedValue({} as any)
     vi.mocked(prisma.race.updateMany).mockResolvedValue({ count: 1 } as any)
     vi.mocked(prisma.race.findFirst).mockResolvedValue(null)
+    vi.mocked(prisma.race.findMany).mockResolvedValue([])
     process.env.NEXTAUTH_URL = 'http://localhost:3000'
     process.env.DISCORD_GUILD_ID = 'guild-123'
   })
@@ -132,16 +136,14 @@ describe('sendTeamsAssignmentNotification', () => {
       })
     )
 
-    expect(sendDiscordNotification).toHaveBeenCalledWith(
-      expect.objectContaining({
-        teams: expect.arrayContaining([
-          expect.objectContaining({
-            name: 'Team One',
-            threadUrl: 'https://discord.com/channels/guild-123/team-thread-1',
-          }),
-        ]),
-      })
-    )
+    const call = vi.mocked(sendDiscordNotification).mock.calls[0][0]
+    expect(call.timeslots).toHaveLength(1)
+    expect(call.timeslots[0].raceStartTime).toEqual(raceStartTime)
+    expect(call.timeslots[0].teams).toHaveLength(1)
+    expect(call.timeslots[0].teams[0]).toMatchObject({
+      name: 'Team One',
+      threadUrl: 'https://discord.com/channels/guild-123/team-thread-1',
+    })
 
     expect(prisma.race.update).toHaveBeenCalledWith({
       where: { id: raceId },
@@ -184,21 +186,18 @@ describe('sendTeamsAssignmentNotification', () => {
       expect.objectContaining({ teamName: 'Team Two' })
     )
 
-    // Verify event notification includes both thread links
-    expect(sendDiscordNotification).toHaveBeenCalledWith(
-      expect.objectContaining({
-        teams: expect.arrayContaining([
-          expect.objectContaining({
-            name: 'Team One',
-            threadUrl: 'https://discord.com/channels/guild-123/team-thread-1',
-          }),
-          expect.objectContaining({
-            name: 'Team Two',
-            threadUrl: 'https://discord.com/channels/guild-123/team-thread-2',
-          }),
-        ]),
-      })
-    )
+    // Verify event notification includes timeslots with both thread links
+    const call = vi.mocked(sendDiscordNotification).mock.calls[0][0]
+    expect(call.timeslots).toHaveLength(1)
+    expect(call.timeslots[0].teams).toHaveLength(2)
+    expect(call.timeslots[0].teams[0]).toMatchObject({
+      name: 'Team One',
+      threadUrl: 'https://discord.com/channels/guild-123/team-thread-1',
+    })
+    expect(call.timeslots[0].teams[1]).toMatchObject({
+      name: 'Team Two',
+      threadUrl: 'https://discord.com/channels/guild-123/team-thread-2',
+    })
 
     // Verify DB update persists all thread IDs
     expect(prisma.race.update).toHaveBeenCalledWith({
@@ -238,16 +237,13 @@ describe('sendTeamsAssignmentNotification', () => {
       })
     )
 
-    expect(sendDiscordNotification).toHaveBeenCalledWith(
-      expect.objectContaining({
-        teams: expect.arrayContaining([
-          expect.objectContaining({
-            name: 'Team One',
-            threadUrl: 'https://discord.com/channels/guild-123/replacement-thread-id',
-          }),
-        ]),
-      })
-    )
+    const call = vi.mocked(sendDiscordNotification).mock.calls[0][0]
+    expect(call.timeslots).toHaveLength(1)
+    expect(call.timeslots[0].teams).toHaveLength(1)
+    expect(call.timeslots[0].teams[0]).toMatchObject({
+      name: 'Team One',
+      threadUrl: 'https://discord.com/channels/guild-123/replacement-thread-id',
+    })
 
     expect(prisma.race.update).toHaveBeenCalledWith({
       where: { id: raceId },
@@ -330,6 +326,8 @@ describe('registerForRace', () => {
         trackConfig: 'Endurance',
         tempValue: 75,
         precipChance: 10,
+        carClasses: [{ name: 'GT3' }],
+        customCarClasses: [],
       },
     } as any)
 
@@ -363,6 +361,7 @@ describe('adminRegisterDriver', () => {
     vi.clearAllMocks()
     vi.mocked(auth).mockResolvedValue({ user: { id: 'admin-1', role: 'ADMIN' } } as any)
     vi.mocked(prisma.race.findFirst).mockResolvedValue(null)
+    vi.mocked(prisma.race.findMany).mockResolvedValue([])
     vi.mocked(prisma.race.update).mockResolvedValue({} as any)
     vi.mocked(prisma.race.updateMany).mockResolvedValue({ count: 1 } as any)
     vi.mocked(sendDiscordNotification).mockResolvedValue({ ok: true, threadId: 'event-thread-id' })
@@ -392,6 +391,8 @@ describe('adminRegisterDriver', () => {
           trackConfig: 'Endurance',
           tempValue: 75,
           precipChance: 10,
+          carClasses: [{ name: 'GT3' }],
+          customCarClasses: [],
         },
       } as any)
 

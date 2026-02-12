@@ -95,9 +95,9 @@ describe('discord thread recovery', () => {
 
     const result = await sendTeamsAssignedNotification({
       eventName: 'GT3 Challenge',
-      raceStartTime: new Date('2026-02-11T20:00:00Z'),
       raceUrl: 'http://localhost:3000/events/event-1',
-      teams: [],
+      carClasses: ['GT3'],
+      timeslots: [{ raceStartTime: new Date('2026-02-11T20:00:00Z'), teams: [] }],
       threadId: 'missing-event-thread-id',
     })
 
@@ -165,13 +165,18 @@ describe('discord thread recovery', () => {
 
     const result = await sendTeamsAssignedNotification({
       eventName: 'GT3 Challenge',
-      raceStartTime: new Date('2026-02-11T20:00:00Z'),
       raceUrl: 'http://localhost:3000/events/event-1',
+      carClasses: ['GT3'],
       threadId: 'event-thread-id',
-      teams: [
+      timeslots: [
         {
-          name: 'Team One',
-          members: [{ name: 'Alice', carClass: 'GT3' }],
+          raceStartTime: new Date('2026-02-11T20:00:00Z'),
+          teams: [
+            {
+              name: 'Team One',
+              members: [{ name: 'Alice', carClass: 'GT3' }],
+            },
+          ],
         },
       ],
       mentionRegistrationIds: [],
@@ -209,13 +214,18 @@ describe('discord thread recovery', () => {
 
     const result = await sendTeamsAssignedNotification({
       eventName: 'GT3 Challenge',
-      raceStartTime: new Date('2026-02-11T20:00:00Z'),
       raceUrl: 'http://localhost:3000/events/event-1',
+      carClasses: ['GT3'],
       threadId: 'event-thread-id',
-      teams: [
+      timeslots: [
         {
-          name: 'Team One',
-          members: [{ name: 'Alice', carClass: 'GT3' }],
+          raceStartTime: new Date('2026-02-11T20:00:00Z'),
+          teams: [
+            {
+              name: 'Team One',
+              members: [{ name: 'Alice', carClass: 'GT3' }],
+            },
+          ],
         },
       ],
       mentionRegistrationIds: [],
