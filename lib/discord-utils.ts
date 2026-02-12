@@ -258,8 +258,6 @@ export function buildTeamsAssignedEmbeds(
 
   // Build event info header
   const eventInfoLines: string[] = []
-  eventInfoLines.push(`**🏎️ Event:** ${data.eventName}`)
-  eventInfoLines.push('')
 
   if (data.track) {
     let trackVal = data.track

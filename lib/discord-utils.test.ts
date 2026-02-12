@@ -423,7 +423,6 @@ describe('Discord Utils', () => {
       )
 
       // Check that description contains event info at the top
-      expect(embed.description).toContain('**🏎️ Event:** GT3 Challenge - 2026 Season 1')
       expect(embed.description).toContain('**🏟️ Track:** Spa-Francorchamps (Grand Prix)')
       expect(embed.description).toContain('**🕐 Race Times:**')
       expect(embed.description).toContain('<t:1770840000:F>')
