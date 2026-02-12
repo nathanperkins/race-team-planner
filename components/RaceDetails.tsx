@@ -1900,7 +1900,7 @@ export default function RaceDetails({
                       if (guildId && threadId) {
                         return (
                           <a
-                            href={`discord://discord.com/channels/${guildId}/${threadId}`}
+                            href={`discord://-/channels/${guildId}/${threadId}`}
                             className={styles.discordLink}
                             title="Join the team discussion on Discord"
                             onClick={(e) => e.stopPropagation()}
@@ -2179,7 +2179,7 @@ export default function RaceDetails({
             if (guildId && threadId) {
               return (
                 <a
-                  href={`discord://discord.com/channels/${guildId}/${threadId}`}
+                  href={`discord://-/channels/${guildId}/${threadId}`}
                   className={styles.discordLink}
                   title="Join the event discussion in Discord"
                 >

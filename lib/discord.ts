@@ -743,7 +743,7 @@ export async function sendTeamsAssignedNotification(
 
       // Send separate notification to the chat channel if using a forum
       if (forumId && threadId && guildId) {
-        const threadUrl = `https://discord.com/channels/${guildId}/${threadId}`
+        const threadUrl = `discord://-/channels/${guildId}/${threadId}`
         const chatResp = await fetch(`${DISCORD_API_BASE}/channels/${channelId}/messages`, {
           method: 'POST',
           headers: {
@@ -860,7 +860,7 @@ export async function sendTeamsAssignedNotification(
 
         // Send separate notification to the chat channel if using a forum
         if (forumId && threadId && guildId) {
-          const threadUrl = `https://discord.com/channels/${guildId}/${threadId}`
+          const threadUrl = `discord://-/channels/${guildId}/${threadId}`
           await fetch(`${DISCORD_API_BASE}/channels/${channelId}/messages`, {
             method: 'POST',
             headers: {
