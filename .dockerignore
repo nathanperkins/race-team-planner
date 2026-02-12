@@ -5,6 +5,7 @@
 Dockerfile
 .dockerignore
 .env*
+!.env.example
 raw_data/
 node_modules
 npm-debug.log

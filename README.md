@@ -1,4 +1,4 @@
-# iracing-team-planner
+# race-team-planner
 
 A team planner for endurance races in iRacing, designed to make it easy for community members to express interest in specific races so admins can plan teams.
 

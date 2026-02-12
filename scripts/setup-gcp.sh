@@ -2,7 +2,7 @@
 set -eo pipefail
 
 # Configuration
-APP_NAME="iracing-team-planner"
+APP_NAME="${APP_NAME:-race-team-planner}"
 
 echo "🚀 GCP Setup Script for $APP_NAME"
 echo "-----------------------------------"

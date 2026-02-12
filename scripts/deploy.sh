@@ -41,7 +41,7 @@ if [ -z "$REGION" ]; then
   exit 1
 fi
 
-APP_NAME="iracing-team-planner"
+APP_NAME="${APP_NAME:-race-team-planner}"
 REPO_NAME="$APP_NAME"
 IMAGE_NAME="$APP_NAME"
 TAG="latest"

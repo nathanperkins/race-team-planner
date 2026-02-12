@@ -9,7 +9,7 @@ export const features = {
   feedback: !!process.env.FEEDBACK_URL,
 } as const
 
-export const appTitle = process.env.APP_TITLE || 'iRacing Team Planner (dev)'
+export const appTitle = process.env.APP_TITLE || 'Race Team Planner (dev)'
 export const appLocale = process.env.APP_LOCALE || 'en-US'
 export const appTimeZone = process.env.APP_TIMEZONE || 'America/Los_Angeles'
 export const feedbackUrl = process.env.FEEDBACK_URL

@@ -149,7 +149,7 @@ resource "google_cloud_run_v2_job_iam_member" "db_backup_invoker" {
 }
 
 # Cloud Run Job for database restore (manual trigger only)
-# Usage: gcloud run jobs execute iracing-team-planner-db-restore \
+# Usage: gcloud run jobs execute ${var.app_name}-db-restore \
 #          --update-env-vars BACKUP_PATH=gs://bucket/daily/backup-xxx.sql.gz.gpg
 resource "google_cloud_run_v2_job" "db_restore" {
   name     = "${var.app_name}-db-restore"

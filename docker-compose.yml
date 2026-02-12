@@ -1,11 +1,11 @@
 services:
   db:
     image: postgres:16-alpine
-    container_name: iracing-planner-db
+    container_name: race-team-planner-db
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: iracing_planner
+      POSTGRES_DB: race-team-planner
     ports:
       - '5432:5432'
     volumes:
@@ -15,7 +15,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: iracing-planner-app
+    container_name: race-team-planner-app
     profiles:
       - app
     depends_on:
@@ -23,7 +23,7 @@ services:
     ports:
       - '3000:3000'
     environment:
-      - DATABASE_URL=postgresql://postgres:password@db:5432/iracing_planner
+      - DATABASE_URL=postgresql://postgres:password@db:5432/race_team_planner
       - NEXTAUTH_SECRET=supersecret
       - NEXTAUTH_URL=http://localhost:3000
       - AUTH_TRUST_HOST=true

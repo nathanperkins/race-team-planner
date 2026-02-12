@@ -1,4 +1,4 @@
-# iracing-team-planner
+# race-team-planner
 
 ## Summary
 

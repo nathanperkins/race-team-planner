@@ -116,7 +116,7 @@ variable "region" {
 variable "app_name" {
   description = "The name of the application"
   type        = string
-  default     = "iracing-team-planner"
+  default     = "race-team-planner"
 }
 
 variable "environment" {

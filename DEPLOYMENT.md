@@ -1,6 +1,6 @@
 # Deployment Guide
 
-This guide describes how to deploy the iRacing Team Planner application to **Google Cloud Platform (GCP)** using **Terraform** and **Cloud Run**.
+This guide describes how to deploy the Race Team Planner application to **Google Cloud Platform (GCP)** using **Terraform** and **Cloud Run**.
 
 ## Prerequisites
 
