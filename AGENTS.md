@@ -3,7 +3,7 @@
 ## Issue Tracking
 
 This project uses **bd (beads)** and [beads_viewer](https://github.com/Dicklesworthstone/beads_viewer) for issue tracking.
-Issues are stored in `.beads/` and tracked in git.
+Issues are stored in `.beads/` and are local-only (not tracked in git).
 
 Run `bd prime` for workflow context, or install hooks (`bd hooks install`) for auto-injection.
 
@@ -21,7 +21,7 @@ bd create --title="..." --description="..." --type=task --priority=2
 bd update <id> --status=in_progress
 bd close <id> --reason="Completed"
 bd close <id1> <id2>  # Close multiple issues at once
-bd sync               # Commit and push changes
+bd sync               # Export issues to JSONL locally
 ```
 
 ### Workflow Pattern
@@ -34,7 +34,7 @@ bd sync               # Commit and push changes
 6. **Verify**: Once the epic or feature is complete, **stop and ask the user** if it is working correctly and which task to work on next.
 7. **Complete**: When the user has confirmed the feature is working correctly, use `bd close <id>` to close the task and `git commit -m "<description>"` to commit the change.
 8. **Document**: Update AGENTS.md with any information that would have made this session more efficient and check with the user before committing.
-9. **Sync**: Always run `bd sync` to sync beads at the end of the session.
+9. **Sync**: Always run `bd sync` to export beads locally at the end of the session.
 
 ### Key Concepts
 
@@ -65,7 +65,7 @@ git add .               # Stage all changes
 git commit -m "..."     # Commit the changes to git.
 git push                # Push the changes to git.
 bd close <id>           # Close the task(s).
-bd sync                 # Commit beads changes
+bd sync                 # Export beads changes locally
 ```
 
 For full workflow details: `bd prime`
@@ -84,7 +84,7 @@ For full workflow details: `bd prime`
   are documented.
 - Create new issues with `bd create` when you discover tasks.
 - Use descriptive titles and set appropriate priority/type.
-- Always `bd sync` before ending session.
+- Always `bd sync` before ending session to export locally.
 
 ### Project-Specific Architecture
 
