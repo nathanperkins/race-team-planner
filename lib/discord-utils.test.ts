@@ -412,7 +412,7 @@ describe('Discord Utils', () => {
       const embed = embeds[0]
 
       // Check title and basic fields
-      expect(embed.title).toBe('🏎️ Event Thread: GT3 Challenge')
+      expect(embed.title).toBe('🏁 Event Thread: GT3 Challenge')
       expect(embed.color).toBe(0x5865f2)
       expect(embed.url).toBe(data.raceUrl)
       expect(embed.footer.text).toBe('Test App')
@@ -513,7 +513,7 @@ describe('Discord Utils', () => {
       }
 
       const embeds = buildTeamsAssignedEmbeds(data, 'Test App')
-      expect(embeds[0].description).toContain('**🏁 Classes:**')
+      expect(embeds[0].description).toContain('**🏎 Classes:**')
       expect(embeds[0].description).toContain('• GT3')
       expect(embeds[0].description).toContain('• GTE')
       expect(embeds[0].description).toContain('• LMP2')
@@ -616,7 +616,7 @@ describe('Discord Utils', () => {
       }
 
       const embeds = buildTeamsAssignedEmbeds(data, 'Test App')
-      expect(embeds[0].description).toContain('**🏁 Classes:**')
+      expect(embeds[0].description).toContain('**🏎 Classes:**')
       expect(embeds[0].description).toContain('• GT3')
       expect(embeds[0].description).toContain('• GTE')
       expect(embeds[0].description).toContain('• LMP2')
