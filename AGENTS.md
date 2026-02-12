@@ -60,18 +60,29 @@ create subtasks under the epic or feature.
 2. **Commit**: Only commit and push code once verification is confirmed.
 
 ```bash
-git hook run pre-commit # Run this and fix any issues in a loop until it passes.
+# 1. Auto-fix formatting then run all quality checks (lint, build, test).
+#    Fix any issues and re-run until it passes. Do this BEFORE staging or committing.
+npm run format && git hook run pre-commit
 
-# After the pre-commit hook passes, verify the feature is working correctly with the user. Then run:
+# 2. After it passes, verify the feature with the user.
 
+# 3. Only after user confirmation, stage, commit, and push:
 git add .               # Stage all changes
-git commit -m "..."     # Commit the changes to git.
-git push                # Push the changes to git.
-bd close <id>           # Close the task(s).
+git commit -m "..."     # Commit the changes to git
+git push                # Push the changes to git
+bd close <id>           # Close the task(s)
 bd sync                 # Export beads changes locally
 ```
 
 For full workflow details: `bd prime`
+
+### Quality Checks
+
+> [!IMPORTANT]
+> Do NOT run `npm run lint`, `npm run build`, or `npm test` individually.
+> Always use `npm run format && git hook run pre-commit` as a single command.
+> This auto-fixes formatting first, then runs all checks (format check, lint,
+> build, test) in the correct order. Fix any issues and re-run until it passes.
 
 ### Best Practices
 
@@ -105,7 +116,7 @@ For full workflow details: `bd prime`
 **MANDATORY WORKFLOW:**
 
 1. **File issues for remaining work** - Create issues for anything that needs follow-up
-2. **Run quality gates** (if code changed) - Tests, linters, builds
+2. **Run quality gates** (if code changed) - Run `npm run format && git hook run pre-commit`. Fix any issues and re-run until it passes.
 3. **Update issue status** - Close finished work, update in-progress items
 4. **PUSH TO REMOTE** - This is MANDATORY:
    ```bash
@@ -124,3 +135,4 @@ For full workflow details: `bd prime`
 - NEVER stop before pushing - that leaves work stranded locally
 - NEVER say "ready to push when you are" - YOU must push
 - If push fails, resolve and retry until it succeeds
+- NEVER add `Co-Authored-By` trailers to commits
