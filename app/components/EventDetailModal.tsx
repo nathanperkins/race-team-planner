@@ -149,15 +149,6 @@ export default function EventDetailModal({
             </button>
           </div>
 
-          {!isEligible && (
-            <div className={styles.warningBanner}>
-              <span>
-                You don&apos;t meet the license requirements for this event ({license}).
-                Registration is still allowed.
-              </span>
-            </div>
-          )}
-
           <div className={styles.content}>
             <div className={styles.titleRow}>
               <div>

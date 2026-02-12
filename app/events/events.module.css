@@ -201,6 +201,8 @@
   font-family: inherit;
   font-size: inherit;
   text-align: left;
+
+  --gray: rgb(156, 163, 175);
 }
 
 .eventRow:hover {
@@ -223,11 +225,13 @@
 }
 
 .eventRowIneligible .trackDot {
-  filter: grayscale(1);
+  background-color: var(--gray);
 }
 
 .eventRowIneligible .licenseBadge {
-  filter: grayscale(1);
+  border-color: var(--gray) !important;
+  color: var(--gray) !important;
+  background-color: color-mix(in srgb, var(--gray) 19%, transparent) !important;
 }
 
 .eventRowOverlay {
@@ -584,6 +588,25 @@
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
   pointer-events: none;
+}
+
+.licenseBadge:hover::before {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(25%);
+  margin-bottom: 0.15rem;
+  background-color: #111827;
+  color: white;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  border: 1px solid #374151;
+  pointer-events: none;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  z-index: 100;
 }
 
 .driverPillContainer:hover .signupTooltip {
