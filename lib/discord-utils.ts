@@ -574,32 +574,69 @@ function isLegacySnapshot(
 }
 
 /**
- * Formats roster changes into notification message content.
+ * Builds a Discord embed for roster changes notifications.
  */
-export function formatRosterChangeMessage(rosterChanges: RosterChange[]): string {
-  if (rosterChanges.length === 0) return ''
+export function buildRosterChangesEmbed(
+  rosterChanges: RosterChange[],
+  appTitle: string
+): {
+  title: string
+  description: string
+  color: number
+  fields: Array<{ name: string; value: string; inline: boolean }>
+  timestamp: string
+  footer: { text: string }
+} {
+  // Group changes by type for better organization
+  const added = rosterChanges.filter((c) => c.type === 'added')
+  const dropped = rosterChanges.filter((c) => c.type === 'dropped')
+  const moved = rosterChanges.filter((c) => c.type === 'moved')
+  const unassigned = rosterChanges.filter((c) => c.type === 'unassigned')
 
-  const changeMessages: string[] = []
-  for (const change of rosterChanges) {
-    switch (change.type) {
-      case 'added':
-        changeMessages.push(`✅ **${change.driverName}** added to **${change.teamName}**`)
-        break
-      case 'dropped':
-        changeMessages.push(`❌ **${change.driverName}** dropped from race`)
-        break
-      case 'moved':
-        changeMessages.push(
-          `🔄 **${change.driverName}** moved from **${change.fromTeam}** to **${change.toTeam}**`
-        )
-        break
-      case 'unassigned':
-        changeMessages.push(`⚠️ **${change.driverName}** unassigned from **${change.fromTeam}**`)
-        break
-    }
+  const fields: Array<{ name: string; value: string; inline: boolean }> = []
+
+  if (added.length > 0) {
+    fields.push({
+      name: '✅ Added',
+      value: added.map((c) => `**${c.driverName}** → ${c.teamName}`).join('\n'),
+      inline: false,
+    })
   }
 
-  return `**Roster Changes:**\n${changeMessages.join('\n')}`
+  if (moved.length > 0) {
+    fields.push({
+      name: '🔄 Moved',
+      value: moved.map((c) => `**${c.driverName}**: ${c.fromTeam} → ${c.toTeam}`).join('\n'),
+      inline: false,
+    })
+  }
+
+  if (unassigned.length > 0) {
+    fields.push({
+      name: '⚠️ Unassigned',
+      value: unassigned.map((c) => `**${c.driverName}** (from ${c.fromTeam})`).join('\n'),
+      inline: false,
+    })
+  }
+
+  if (dropped.length > 0) {
+    fields.push({
+      name: '❌ Dropped',
+      value: dropped.map((c) => `**${c.driverName}**`).join('\n'),
+      inline: false,
+    })
+  }
+
+  return {
+    title: '📋 Roster Changes',
+    description: `${rosterChanges.length} change${rosterChanges.length === 1 ? '' : 's'} to the roster`,
+    color: 0xffa500, // Orange
+    fields,
+    timestamp: new Date().toISOString(),
+    footer: {
+      text: appTitle,
+    },
+  }
 }
 
 export function buildOnboardingEmbed(data: OnboardingNotificationData, appTitle: string) {

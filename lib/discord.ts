@@ -653,10 +653,14 @@ export async function postRosterChangeNotifications(
 ): Promise<void> {
   if (rosterChanges.length === 0) return
 
-  const { formatRosterChangeMessage } = await import('./discord-utils')
+  const { buildRosterChangesEmbed } = await import('./discord-utils')
 
-  // Helper to post a message to a thread
-  const postToThread = async (threadId: string, content: string, label: string) => {
+  // Helper to post an embed to a thread
+  const postEmbedToThread = async (
+    threadId: string,
+    embed: Record<string, unknown>,
+    label: string
+  ) => {
     try {
       const response = await fetch(`${DISCORD_API_BASE}/channels/${threadId}/messages`, {
         method: 'POST',
@@ -665,7 +669,7 @@ export async function postRosterChangeNotifications(
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          content,
+          embeds: [embed],
           flags: 4096, // Suppress notifications (silent)
         }),
       })
@@ -684,11 +688,9 @@ export async function postRosterChangeNotifications(
     }
   }
 
-  // Post all changes to the event thread
-  const allChangesMessage = formatRosterChangeMessage(rosterChanges)
-  if (allChangesMessage) {
-    await postToThread(eventThreadId, allChangesMessage, 'event thread')
-  }
+  // Post all changes to the event thread as a fancy embed
+  const embed = buildRosterChangesEmbed(rosterChanges, appTitle)
+  await postEmbedToThread(eventThreadId, embed, 'event thread')
 
   // Post relevant changes to team threads
   if (teamThreads && teamNameById) {
@@ -733,9 +735,9 @@ export async function postRosterChangeNotifications(
     for (const [teamId, changes] of changesByTeam.entries()) {
       const teamName = teamNameById.get(teamId) || 'Team'
       const threadId = teamThreads[teamId]
-      const message = formatRosterChangeMessage(changes)
-      if (message && threadId) {
-        await postToThread(threadId, message, `${teamName} thread`)
+      if (changes.length > 0 && threadId) {
+        const teamEmbed = buildRosterChangesEmbed(changes, appTitle)
+        await postEmbedToThread(threadId, teamEmbed, `${teamName} thread`)
       }
     }
   }
