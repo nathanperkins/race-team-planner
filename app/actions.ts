@@ -420,8 +420,8 @@ async function upsertEventDiscussionThread(options: {
     }
   })
 
-  const { sendTeamsAssignedNotification } = await import('@/lib/discord')
-  const notification = await sendTeamsAssignedNotification({
+  const { createOrUpdateEventThread } = await import('@/lib/discord')
+  const result = await createOrUpdateEventThread({
     eventName: options.eventName,
     raceUrl: `${baseUrl}/events?eventId=${options.eventId}`,
     track: options.track ?? undefined,
@@ -431,15 +431,14 @@ async function upsertEventDiscussionThread(options: {
     carClasses,
     timeslots,
     threadId: existingEventThread?.discordTeamsThreadId ?? undefined,
-    sendChatNotification: false, // Don't send chat notification for just registration
   })
 
-  if (notification.ok && notification.threadId) {
+  if (result.ok && result.threadId) {
     await prisma.race.updateMany({
       where: { eventId: options.eventId },
-      data: { discordTeamsThreadId: notification.threadId },
+      data: { discordTeamsThreadId: result.threadId },
     })
-    return notification.threadId
+    return result.threadId
   }
 
   console.error('Failed to create or update event discussion thread')
@@ -1447,7 +1446,7 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
 
     const teamThreads = (raceWithEvent.discordTeamThreads as Record<string, string> | null) ?? {}
     const guildId = process.env.DISCORD_GUILD_ID
-    const { addUsersToThread, buildDiscordWebLink, createTeamThread } =
+    const { addUsersToThread, buildDiscordWebLink, createOrUpdateTeamThread } =
       await import('@/lib/discord')
 
     const { teamsMap, teamsList, unassigned } = buildTeamsFromRegistrations(
@@ -1463,7 +1462,7 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
         .filter((id): id is string => Boolean(id))
       try {
         const existingThreadId = teamThreads[teamId]
-        const threadId = await createTeamThread({
+        const threadId = await createOrUpdateTeamThread({
           teamName: team.name,
           eventName: raceWithEvent.event.name,
           raceStartTime: raceWithEvent.startTime,
@@ -1626,8 +1625,11 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
       ...raceWithEvent.event.customCarClasses,
     ]
 
-    const { sendTeamsAssignedNotification } = await import('@/lib/discord')
-    const notification = await sendTeamsAssignedNotification({
+    const { createOrUpdateEventThread, sendTeamsAssignedNotification } =
+      await import('@/lib/discord')
+
+    // 1. Create or update the event thread with team composition
+    const threadResult = await createOrUpdateEventThread({
       eventName: raceWithEvent.event.name,
       raceUrl,
       track: raceWithEvent.event.track,
@@ -1638,44 +1640,48 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
       timeslots,
       threadId: existingThreadId,
       mentionRegistrationIds: Array.from(mentionRegistrationIds),
-      sendChatNotification: threadAlreadyExists && siblingRaces.some((race) => race.teamsAssigned),
-      chatNotificationLabel: '🏁 Teams Updated',
-      rosterChanges: rosterChanges.length > 0 ? rosterChanges : undefined,
-      teamThreads,
-      teamNameById,
-      adminName: session.user.name || 'Admin',
     })
 
-    if (notification.ok) {
-      await prisma.race.update({
-        where: { id: raceId },
-        data: {
-          discordTeamsSnapshot: currentSnapshot,
-          discordTeamThreads: teamThreads,
-        },
-      })
-
-      const discussionThreadId =
-        notification.threadId ??
-        eventThread?.discordTeamsThreadId ??
-        raceWithEvent.discordTeamsThreadId ??
-        null
-      if (discussionThreadId) {
-        await prisma.race.updateMany({
-          where: { eventId: raceWithEvent.event.id },
-          data: { discordTeamsThreadId: discussionThreadId },
-        })
-      }
-    } else if (
-      notification.threadId &&
-      notification.threadId !==
-        (eventThread?.discordTeamsThreadId ?? raceWithEvent.discordTeamsThreadId)
-    ) {
-      await prisma.race.updateMany({
-        where: { eventId: raceWithEvent.event.id },
-        data: { discordTeamsThreadId: notification.threadId },
-      })
+    if (!threadResult.ok) {
+      console.error('Failed to create/update event thread')
+      return { message: 'Failed to create event thread' }
     }
+
+    const threadId = threadResult.threadId!
+
+    // 2. Send chat notification if appropriate (2nd+ timeslot with teams already assigned)
+    const shouldSendChatNotification =
+      threadAlreadyExists && siblingRaces.some((race) => race.teamsAssigned)
+    if (shouldSendChatNotification) {
+      await sendTeamsAssignedNotification(
+        threadId,
+        {
+          eventName: raceWithEvent.event.name,
+          timeslots,
+          rosterChanges: rosterChanges.length > 0 ? rosterChanges : undefined,
+          adminName: session.user.name || 'Admin',
+          teamThreads,
+          teamNameById,
+        },
+        {
+          title: '🏁 Teams Updated',
+        }
+      )
+    }
+
+    // 3. Update database with thread info and roster snapshot
+    await prisma.race.update({
+      where: { id: raceId },
+      data: {
+        discordTeamsSnapshot: currentSnapshot,
+        discordTeamThreads: teamThreads,
+      },
+    })
+
+    await prisma.race.updateMany({
+      where: { eventId: raceWithEvent.event.id },
+      data: { discordTeamsThreadId: threadId },
+    })
 
     return { message: 'Success' }
   } catch (error) {

@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createEventDiscussionThread,
-  createTeamThread,
-  sendTeamsAssignedNotification,
+  createOrUpdateTeamThread,
+  createOrUpdateEventThread,
 } from './discord'
 
 describe('discord thread recovery', () => {
@@ -43,7 +43,7 @@ describe('discord thread recovery', () => {
         status: 200,
       } as Response)
 
-    const threadId = await createTeamThread({
+    const threadId = await createOrUpdateTeamThread({
       teamName: 'Team One',
       eventName: 'GT3 Challenge',
       raceStartTime: new Date('2026-02-11T20:00:00Z'),
@@ -82,7 +82,7 @@ describe('discord thread recovery', () => {
         json: async () => ({ id: 'new-thread-456' }),
       } as Response)
 
-    const threadId = await createTeamThread({
+    const threadId = await createOrUpdateTeamThread({
       teamName: 'Team One',
       eventName: 'GT3 Challenge',
       raceStartTime: new Date('2026-02-11T20:00:00Z'),
@@ -113,7 +113,7 @@ describe('discord thread recovery', () => {
         json: async () => ({ id: 'new-event-thread-id' }),
       } as Response)
 
-    const result = await sendTeamsAssignedNotification({
+    const result = await createOrUpdateEventThread({
       eventName: 'GT3 Challenge',
       raceUrl: 'http://localhost:3000/events/event-1',
       carClasses: ['GT3'],
@@ -189,7 +189,7 @@ describe('discord thread recovery', () => {
         statusText: 'OK',
       } as Response)
 
-    const result = await sendTeamsAssignedNotification({
+    const result = await createOrUpdateEventThread({
       eventName: 'GT3 Challenge',
       raceUrl: 'http://localhost:3000/events/event-1',
       carClasses: ['GT3'],
@@ -244,7 +244,7 @@ describe('discord thread recovery', () => {
         statusText: 'OK',
       } as Response)
 
-    const result = await sendTeamsAssignedNotification({
+    const result = await createOrUpdateEventThread({
       eventName: 'GT3 Challenge',
       raceUrl: 'http://localhost:3000/events/event-1',
       carClasses: ['GT3'],

@@ -3,7 +3,6 @@ import { appTitle, appLocale, appTimeZone } from './config'
 import {
   OnboardingNotificationData,
   RegistrationNotificationData,
-  TeamsAssignedNotificationData,
   WeeklyScheduleEvent,
   buildDiscordWebLink,
   buildEventThreadName,
@@ -745,18 +744,28 @@ export async function postRosterChangeNotifications(
 }
 
 /**
- * Sends a Discord notification when teams are assigned for a race.
- * Creates a new thread and posts the team composition inside.
+ * Sends a chat channel notification when teams are assigned.
+ * Requires an existing thread - use createOrUpdateEventThread() to create the thread first.
  *
- * This function handles the "Technical Execution":
- * 1. Formats the raw payload (Embeds, Timestamps, Mention lists).
- * 2. Interacts with the Discord API (fetch, error handling).
- * 3. Handles Discord-specific nuances like Public vs Forum threads.
- * 4. This layer knows NOTHING about Prisma or our database state.
+ * @param threadId - The existing thread ID (required)
+ * @param data - Notification data including event name, timeslots, etc.
+ * @param options - Optional title override and roster changes
+ * @returns True if notification sent successfully
  */
 export async function sendTeamsAssignedNotification(
-  data: TeamsAssignedNotificationData
-): Promise<{ ok: boolean; threadId?: string }> {
+  threadId: string,
+  data: {
+    eventName: string
+    timeslots: import('./discord-utils').RaceTimeslotData[]
+    rosterChanges?: import('./discord-utils').RosterChange[]
+    adminName?: string
+    teamThreads?: Record<string, string>
+    teamNameById?: Map<string, string>
+  },
+  options?: {
+    title?: string
+  }
+): Promise<boolean> {
   const botToken = process.env.DISCORD_BOT_TOKEN
   const channelId = process.env.DISCORD_NOTIFICATIONS_CHANNEL_ID
   const forumId = process.env.DISCORD_EVENTS_FORUM_ID
@@ -765,6 +774,122 @@ export async function sendTeamsAssignedNotification(
   if (!botToken || !channelId) {
     console.warn(
       '⚠️ Discord teams notification skipped: DISCORD_BOT_TOKEN or DISCORD_NOTIFICATIONS_CHANNEL_ID not configured'
+    )
+    return false
+  }
+
+  try {
+    // Send chat channel notification (only for forum-based setups)
+    if (forumId && guildId) {
+      const threadUrl = buildDiscordWebLink({ guildId, threadId })
+      const chatNotification = buildTeamsAssignedChatNotification(
+        data.eventName,
+        data.timeslots,
+        threadUrl,
+        options?.title ?? '🏁 Teams Assigned',
+        appTitle
+      )
+
+      const chatResp = await fetch(`${DISCORD_API_BASE}/channels/${channelId}/messages`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bot ${botToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(chatNotification),
+      })
+
+      if (chatResp.ok) {
+        console.log(`✅ [Discord] Posted teams assigned notification to chat channel ${channelId}`)
+      } else {
+        const errorText = await chatResp.text()
+        console.error(
+          `❌ [Discord] Failed to post teams notification to chat channel ${channelId}: ${chatResp.status} ${chatResp.statusText}`,
+          errorText
+        )
+        return false
+      }
+    }
+
+    // Post roster change notifications if provided
+    if (data.rosterChanges && data.rosterChanges.length > 0 && data.adminName) {
+      await postRosterChangeNotifications(
+        threadId,
+        data.rosterChanges,
+        botToken,
+        data.adminName,
+        data.teamThreads,
+        data.teamNameById
+      )
+    }
+
+    return true
+  } catch (error) {
+    console.error('Error sending teams assigned notification:', error)
+    return false
+  }
+}
+
+export async function addUsersToThread(threadId: string, discordUserIds: string[]) {
+  const botToken = process.env.DISCORD_BOT_TOKEN
+  if (!botToken) {
+    return
+  }
+
+  const uniqueIds = Array.from(new Set(discordUserIds)).filter(Boolean)
+  for (const userId of uniqueIds) {
+    try {
+      const response = await fetch(
+        `${DISCORD_API_BASE}/channels/${threadId}/thread-members/${userId}`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bot ${botToken}`,
+          },
+        }
+      )
+
+      if (!response.ok && response.status !== 409) {
+        const errorText = await response.text()
+        console.error(
+          `Failed to add user ${userId} to thread ${threadId}: ${response.status} ${response.statusText}`,
+          errorText
+        )
+      }
+    } catch (error) {
+      console.error(`Failed to add user ${userId} to thread ${threadId}:`, error)
+    }
+  }
+}
+
+export { buildDiscordAppLink, buildDiscordWebLink } from './discord-utils'
+
+/**
+ * Creates or updates an event thread with team composition data.
+ * This is the unified thread management function that handles both initial creation
+ * and subsequent updates as teams are assigned.
+ *
+ * @returns Object with ok status and threadId if successful
+ */
+export async function createOrUpdateEventThread(data: {
+  eventName: string
+  raceUrl: string
+  track?: string
+  trackConfig?: string
+  tempValue?: number | null
+  precipChance?: number | null
+  carClasses: string[]
+  timeslots: import('./discord-utils').RaceTimeslotData[]
+  threadId?: string | null
+  mentionRegistrationIds?: string[]
+}): Promise<{ ok: boolean; threadId?: string }> {
+  const botToken = process.env.DISCORD_BOT_TOKEN
+  const channelId = process.env.DISCORD_NOTIFICATIONS_CHANNEL_ID
+  const forumId = process.env.DISCORD_EVENTS_FORUM_ID
+
+  if (!botToken || !channelId) {
+    console.warn(
+      '⚠️ Discord event thread creation skipped: DISCORD_BOT_TOKEN or DISCORD_NOTIFICATIONS_CHANNEL_ID not configured'
     )
     return { ok: false }
   }
@@ -785,14 +910,11 @@ export async function sendTeamsAssignedNotification(
     const buildEmbeds = () =>
       buildTeamsAssignedEmbeds(data, appTitle, { locale: appLocale, timeZone: appTimeZone })
 
-    const buildChatNotification = (threadUrl: string, title: string): Record<string, unknown> =>
-      buildTeamsAssignedChatNotification(data.eventName, data.timeslots, threadUrl, title, appTitle)
-
     let threadId = data.threadId ?? null
     if (threadId) {
       const exists = await doesDiscordThreadExist({ threadId, botToken })
       if (!exists) {
-        console.warn(`⚠️ [Discord] Teams thread ${threadId} missing; creating a new one`)
+        console.warn(`⚠️ [Discord] Event thread ${threadId} missing; creating a new one`)
         threadId = null
       }
     }
@@ -857,7 +979,7 @@ export async function sendTeamsAssignedNotification(
           errorBody = { raw: errorText }
         }
         console.error(
-          `❌ [Discord] Failed to create thread in ${threadParentId}: ${threadResponse.status} ${threadResponse.statusText}`,
+          `❌ [Discord] Failed to create event thread in ${threadParentId}: ${threadResponse.status} ${threadResponse.statusText}`,
           JSON.stringify(errorBody, null, 2)
         )
         return null
@@ -866,7 +988,7 @@ export async function sendTeamsAssignedNotification(
       const thread = await threadResponse.json()
       const newId = (thread.id as string) ?? null
       if (newId) {
-        console.log(`✅ [Discord] Created teams thread: ${newId} in ${threadParentId}`)
+        console.log(`✅ [Discord] Created event thread: ${newId} in ${threadParentId}`)
         const allMemberDiscordIds = Array.from(allDiscordIds.values())
         if (allMemberDiscordIds.length > 0) {
           await addUsersToThread(newId, allMemberDiscordIds)
@@ -875,134 +997,36 @@ export async function sendTeamsAssignedNotification(
       return newId
     }
 
-    /** Send a chat channel notification (for forum-based setups). */
-    const sendChatChannelNotification = async (
-      newThreadId: string,
-      title: string
-    ): Promise<void> => {
-      if (!forumId || !guildId) return
-      const threadUrl = buildDiscordWebLink({ guildId, threadId: newThreadId })
-      const chatResp = await fetch(`${DISCORD_API_BASE}/channels/${channelId}/messages`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bot ${botToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(buildChatNotification(threadUrl, title)),
-      })
-      if (chatResp.ok) {
-        console.log(`✅ [Discord] Posted thread link to chat channel ${channelId}`)
-      } else {
-        const errorText = await chatResp.text()
-        console.error(
-          `❌ [Discord] Failed to post thread link to chat channel ${channelId}: ${chatResp.status} ${chatResp.statusText}`,
-          errorText
-        )
-      }
-    }
-
-    let threadCreated = false
     if (!threadId) {
-      threadCreated = true
+      // Create new thread
       threadId = await createNewThread()
       if (!threadId) return { ok: false }
-      // Only send chat notification if explicitly requested (for teams assignment)
-      // Don't send for registration-only thread creation
-      if (data.sendChatNotification !== false) {
-        await sendChatChannelNotification(threadId, '🏁 Teams Assigned')
-      }
+      return { ok: true, threadId }
     }
 
-    if (!threadCreated) {
-      const mentionSet = new Set(data.mentionRegistrationIds ?? [])
-      const postResponse = await upsertThreadMessageWithMentions(
-        threadId,
-        buildEmbeds(),
-        mentionSet
+    // Update existing thread
+    const mentionSet = new Set(data.mentionRegistrationIds ?? [])
+    const postResponse = await upsertThreadMessageWithMentions(threadId, buildEmbeds(), mentionSet)
+    if (!postResponse.ok && postResponse.status === 404) {
+      // Thread deleted or inaccessible; create a new one.
+      threadId = await createNewThread()
+      if (!threadId) return { ok: false }
+      return { ok: true, threadId }
+    } else if (!postResponse.ok) {
+      const errorText = await postResponse.text()
+      console.error(
+        `Failed to update event thread: ${postResponse.status} ${postResponse.statusText}`,
+        errorText
       )
-      if (!postResponse.ok && postResponse.status === 404) {
-        // Thread deleted or inaccessible; create a new one.
-        threadCreated = true
-        threadId = await createNewThread()
-        if (!threadId) return { ok: false }
-        // Only send chat notification if explicitly requested
-        if (data.sendChatNotification !== false) {
-          await sendChatChannelNotification(threadId, '🏁 Teams Assigned')
-        }
-      } else if (!postResponse.ok) {
-        const errorText = await postResponse.text()
-        console.error(
-          `Failed to send Discord teams update: ${postResponse.status} ${postResponse.statusText}`,
-          errorText
-        )
-        return { ok: false, threadId: threadId ?? undefined }
-      } else if (data.sendChatNotification && threadId) {
-        // Thread already existed but caller requested a chat notification (e.g. 2nd+ timeslot)
-        await sendChatChannelNotification(
-          threadId,
-          data.chatNotificationLabel ?? '🏁 Teams Updated'
-        )
-      }
-    }
-
-    // Post roster change notifications as separate messages to event thread and team threads
-    if (
-      threadId &&
-      data.rosterChanges &&
-      data.rosterChanges.length > 0 &&
-      data.adminName &&
-      !threadCreated
-    ) {
-      await postRosterChangeNotifications(
-        threadId,
-        data.rosterChanges,
-        botToken,
-        data.adminName,
-        data.teamThreads,
-        data.teamNameById
-      )
+      return { ok: false, threadId: threadId ?? undefined }
     }
 
     return { ok: true, threadId: threadId ?? undefined }
   } catch (error) {
-    console.error('Error sending teams assigned notification:', error)
+    console.error('Error creating or updating event thread:', error)
     return { ok: false }
   }
 }
-
-export async function addUsersToThread(threadId: string, discordUserIds: string[]) {
-  const botToken = process.env.DISCORD_BOT_TOKEN
-  if (!botToken) {
-    return
-  }
-
-  const uniqueIds = Array.from(new Set(discordUserIds)).filter(Boolean)
-  for (const userId of uniqueIds) {
-    try {
-      const response = await fetch(
-        `${DISCORD_API_BASE}/channels/${threadId}/thread-members/${userId}`,
-        {
-          method: 'PUT',
-          headers: {
-            Authorization: `Bot ${botToken}`,
-          },
-        }
-      )
-
-      if (!response.ok && response.status !== 409) {
-        const errorText = await response.text()
-        console.error(
-          `Failed to add user ${userId} to thread ${threadId}: ${response.status} ${response.statusText}`,
-          errorText
-        )
-      }
-    } catch (error) {
-      console.error(`Failed to add user ${userId} to thread ${threadId}:`, error)
-    }
-  }
-}
-
-export { buildDiscordAppLink, buildDiscordWebLink } from './discord-utils'
 
 export async function createEventDiscussionThread(options: {
   eventName: string
@@ -1123,7 +1147,7 @@ export async function createEventDiscussionThread(options: {
   return threadId
 }
 
-export async function createTeamThread(options: {
+export async function createOrUpdateTeamThread(options: {
   teamName: string
   eventName: string
   raceStartTime: Date

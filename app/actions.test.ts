@@ -8,9 +8,9 @@ import {
 import prisma from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import {
-  createTeamThread,
+  createOrUpdateEventThread,
+  createOrUpdateTeamThread,
   sendRegistrationNotification,
-  sendTeamsAssignedNotification as sendDiscordNotification,
 } from '@/lib/discord'
 
 // Mock prisma
@@ -57,7 +57,8 @@ vi.mock('next/cache', () => ({
 // Mock discord
 vi.mock('@/lib/discord', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/discord')>()),
-  createTeamThread: vi.fn(),
+  createOrUpdateEventThread: vi.fn(),
+  createOrUpdateTeamThread: vi.fn(),
   addUsersToThread: vi.fn(),
   sendRegistrationNotification: vi.fn(),
   sendTeamsAssignedNotification: vi.fn(),
@@ -119,11 +120,14 @@ describe('sendTeamsAssignmentNotification', () => {
     ] as any)
     process.env.NEXTAUTH_URL = 'http://localhost:3000'
     process.env.DISCORD_GUILD_ID = 'guild-123'
+    // CRITICAL: Mock fetch to prevent real API calls to Discord
+    vi.stubGlobal('fetch', vi.fn())
   })
 
   afterEach(() => {
     delete process.env.NEXTAUTH_URL
     delete process.env.DISCORD_GUILD_ID
+    vi.unstubAllGlobals()
   })
 
   it('creates event and team threads for a single team', async () => {
@@ -132,26 +136,38 @@ describe('sendTeamsAssignmentNotification', () => {
 
     vi.mocked(prisma.race.findUnique).mockResolvedValue(mockRace as any)
     vi.mocked(prisma.registration.findMany).mockResolvedValue(mockRegistrations as any)
-    vi.mocked(createTeamThread).mockResolvedValue('team-thread-1')
-    vi.mocked(sendDiscordNotification).mockResolvedValue({ ok: true, threadId: 'event-thread-id' })
+    vi.mocked(createOrUpdateTeamThread).mockResolvedValue('team-thread-1')
+    vi.mocked(createOrUpdateEventThread).mockResolvedValue({
+      ok: true,
+      threadId: 'event-thread-id',
+    })
 
     await sendTeamsAssignmentNotification(raceId)
 
-    expect(createTeamThread).toHaveBeenCalledTimes(1)
-    expect(createTeamThread).toHaveBeenCalledWith(
+    expect(createOrUpdateTeamThread).toHaveBeenCalledTimes(1)
+    expect(createOrUpdateTeamThread).toHaveBeenCalledWith(
       expect.objectContaining({
         teamName: 'Team One',
       })
     )
 
-    const call = vi.mocked(sendDiscordNotification).mock.calls[0][0]
-    expect(call.timeslots).toHaveLength(1)
-    expect(call.timeslots[0].raceStartTime).toEqual(raceStartTime)
-    expect(call.timeslots[0].teams).toHaveLength(1)
-    expect(call.timeslots[0].teams[0]).toMatchObject({
-      name: 'Team One',
-      threadUrl: 'https://discord.com/channels/guild-123/team-thread-1',
-    })
+    // Check that createOrUpdateEventThread was called with correct data
+    expect(createOrUpdateEventThread).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventName: 'GT3 Challenge',
+        timeslots: expect.arrayContaining([
+          expect.objectContaining({
+            raceStartTime,
+            teams: expect.arrayContaining([
+              expect.objectContaining({
+                name: 'Team One',
+                threadUrl: 'https://discord.com/channels/guild-123/team-thread-1',
+              }),
+            ]),
+          }),
+        ]),
+      })
+    )
 
     expect(prisma.race.update).toHaveBeenCalledWith({
       where: { id: raceId },
@@ -175,27 +191,30 @@ describe('sendTeamsAssignmentNotification', () => {
     vi.mocked(prisma.race.findUnique).mockResolvedValue(mockRace as any)
     vi.mocked(prisma.registration.findMany).mockResolvedValue(mockRegistrations as any)
 
-    vi.mocked(createTeamThread)
+    vi.mocked(createOrUpdateTeamThread)
       .mockResolvedValueOnce('team-thread-1')
       .mockResolvedValueOnce('team-thread-2')
 
-    vi.mocked(sendDiscordNotification).mockResolvedValue({ ok: true, threadId: 'event-thread-id' })
+    vi.mocked(createOrUpdateEventThread).mockResolvedValue({
+      ok: true,
+      threadId: 'event-thread-id',
+    })
 
     await sendTeamsAssignmentNotification(raceId)
 
     // Verify both team threads were created
-    expect(createTeamThread).toHaveBeenCalledTimes(2)
-    expect(createTeamThread).toHaveBeenNthCalledWith(
+    expect(createOrUpdateTeamThread).toHaveBeenCalledTimes(2)
+    expect(createOrUpdateTeamThread).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({ teamName: 'Team One' })
     )
-    expect(createTeamThread).toHaveBeenNthCalledWith(
+    expect(createOrUpdateTeamThread).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({ teamName: 'Team Two' })
     )
 
     // Verify event notification includes timeslots with both thread links
-    const call = vi.mocked(sendDiscordNotification).mock.calls[0][0]
+    const call = vi.mocked(createOrUpdateEventThread).mock.calls[0][0]
     expect(call.timeslots).toHaveLength(1)
     expect(call.timeslots[0].teams).toHaveLength(2)
     expect(call.timeslots[0].teams[0]).toMatchObject({
@@ -233,19 +252,22 @@ describe('sendTeamsAssignmentNotification', () => {
 
     vi.mocked(prisma.race.findUnique).mockResolvedValue(mockRace as any)
     vi.mocked(prisma.registration.findMany).mockResolvedValue(mockRegistrations as any)
-    vi.mocked(createTeamThread).mockResolvedValue('replacement-thread-id')
-    vi.mocked(sendDiscordNotification).mockResolvedValue({ ok: true, threadId: 'event-thread-id' })
+    vi.mocked(createOrUpdateTeamThread).mockResolvedValue('replacement-thread-id')
+    vi.mocked(createOrUpdateEventThread).mockResolvedValue({
+      ok: true,
+      threadId: 'event-thread-id',
+    })
 
     await sendTeamsAssignmentNotification(raceId)
 
-    expect(createTeamThread).toHaveBeenCalledWith(
+    expect(createOrUpdateTeamThread).toHaveBeenCalledWith(
       expect.objectContaining({
         teamName: 'Team One',
         existingThreadId: 'deleted-thread-id',
       })
     )
 
-    const call = vi.mocked(sendDiscordNotification).mock.calls[0][0]
+    const call = vi.mocked(createOrUpdateEventThread).mock.calls[0][0]
     expect(call.timeslots).toHaveLength(1)
     expect(call.timeslots[0].teams).toHaveLength(1)
     expect(call.timeslots[0].teams[0]).toMatchObject({
@@ -274,15 +296,15 @@ describe('sendTeamsAssignmentNotification', () => {
     vi.mocked(prisma.race.findFirst).mockResolvedValue({
       discordTeamsThreadId: 'shared-event-thread',
     } as any)
-    vi.mocked(createTeamThread).mockResolvedValue('team-thread-1')
-    vi.mocked(sendDiscordNotification).mockResolvedValue({
+    vi.mocked(createOrUpdateTeamThread).mockResolvedValue('team-thread-1')
+    vi.mocked(createOrUpdateEventThread).mockResolvedValue({
       ok: true,
       threadId: 'shared-event-thread',
     })
 
     await sendTeamsAssignmentNotification(raceId)
 
-    expect(sendDiscordNotification).toHaveBeenCalledWith(
+    expect(createOrUpdateEventThread).toHaveBeenCalledWith(
       expect.objectContaining({
         threadId: 'shared-event-thread',
       })
@@ -301,7 +323,11 @@ describe('registerForRace', () => {
     vi.mocked(prisma.registration.create).mockResolvedValue({ id: 'reg-created' } as any)
     vi.mocked(prisma.registration.update).mockResolvedValue({} as any)
     vi.mocked(prisma.registration.findFirst).mockResolvedValue({
-      user: { name: 'User 1', image: null, accounts: [{ providerAccountId: 'discord-1' }] },
+      user: {
+        name: 'User 1',
+        image: null,
+        accounts: [{ providerAccountId: 'discord-1' }],
+      },
       race: {
         startTime: new Date('2026-02-11T20:00:00Z'),
         event: { id: 'event-123', name: 'GT3' },
@@ -319,18 +345,21 @@ describe('registerForRace', () => {
     } as any)
     vi.mocked(prisma.race.updateMany).mockResolvedValue({ count: 2 } as any)
     vi.mocked(sendRegistrationNotification).mockResolvedValue(true)
-    vi.mocked(sendDiscordNotification).mockResolvedValue({
+    vi.mocked(createOrUpdateEventThread).mockResolvedValue({
       ok: true,
       threadId: 'event-thread-id',
     })
     process.env.NEXTAUTH_URL = 'http://localhost:3000'
     process.env.DISCORD_GUILD_ID = 'test-guild-id'
+    // CRITICAL: Mock fetch to prevent real API calls to Discord
+    vi.stubGlobal('fetch', vi.fn())
   })
 
   afterEach(() => {
     vi.useRealTimers()
     delete process.env.NEXTAUTH_URL
     delete process.env.DISCORD_GUILD_ID
+    vi.unstubAllGlobals()
   })
 
   it('creates a new event discussion thread when self-registering for first time', async () => {
@@ -362,10 +391,9 @@ describe('registerForRace', () => {
 
     expect(result).toEqual({ message: 'Success' })
     // Should create new thread via sendTeamsAssignedNotification
-    expect(sendDiscordNotification).toHaveBeenCalledWith(
+    expect(createOrUpdateEventThread).toHaveBeenCalledWith(
       expect.objectContaining({
         eventName: 'GT3 Challenge',
-        sendChatNotification: false, // Don't send chat notification for registration
         threadId: undefined, // No existing thread
       })
     )
@@ -416,10 +444,9 @@ describe('registerForRace', () => {
 
     expect(result).toEqual({ message: 'Success' })
     // Should reuse existing thread via sendTeamsAssignedNotification
-    expect(sendDiscordNotification).toHaveBeenCalledWith(
+    expect(createOrUpdateEventThread).toHaveBeenCalledWith(
       expect.objectContaining({
         eventName: 'GT3 Challenge',
-        sendChatNotification: false, // Don't send chat notification for registration
         threadId: 'existing-thread-id',
       })
     )
@@ -490,7 +517,7 @@ describe('registerForRace', () => {
 
     expect(result).toEqual({ message: 'Success' })
     // Should include both drivers in unassigned list
-    expect(sendDiscordNotification).toHaveBeenCalledWith(
+    expect(createOrUpdateEventThread).toHaveBeenCalledWith(
       expect.objectContaining({
         eventName: 'GT3 Challenge',
         timeslots: [
@@ -535,20 +562,23 @@ describe('adminRegisterDriver', () => {
     } as any)
     vi.mocked(prisma.race.update).mockResolvedValue({} as any)
     vi.mocked(prisma.race.updateMany).mockResolvedValue({ count: 1 } as any)
-    vi.mocked(sendDiscordNotification).mockResolvedValue({
+    vi.mocked(createOrUpdateEventThread).mockResolvedValue({
       ok: true,
       threadId: 'new-event-thread-id',
     })
     vi.mocked(sendRegistrationNotification).mockResolvedValue(true)
-    vi.mocked(createTeamThread).mockResolvedValue('team-thread-1')
+    vi.mocked(createOrUpdateTeamThread).mockResolvedValue('team-thread-1')
     process.env.NEXTAUTH_URL = 'http://localhost:3000'
     process.env.DISCORD_GUILD_ID = 'test-guild-id'
+    // CRITICAL: Mock fetch to prevent real API calls to Discord
+    vi.stubGlobal('fetch', vi.fn())
   })
 
   afterEach(() => {
     vi.useRealTimers()
     delete process.env.NEXTAUTH_URL
     delete process.env.DISCORD_GUILD_ID
+    vi.unstubAllGlobals()
   })
 
   it('refreshes team notification when adding a driver after teams are assigned', async () => {
@@ -618,7 +648,7 @@ describe('adminRegisterDriver', () => {
         where: { raceId: 'race-123' },
       })
     )
-    expect(sendDiscordNotification).toHaveBeenCalled()
+    expect(createOrUpdateEventThread).toHaveBeenCalled()
   })
 
   it('creates a new event discussion thread when admin registers first driver', async () => {
@@ -672,10 +702,9 @@ describe('adminRegisterDriver', () => {
 
     expect(result.message).toBe('Success')
     // Should create new thread via sendTeamsAssignedNotification
-    expect(sendDiscordNotification).toHaveBeenCalledWith(
+    expect(createOrUpdateEventThread).toHaveBeenCalledWith(
       expect.objectContaining({
         eventName: 'GT3 Challenge',
-        sendChatNotification: false, // Don't send chat notification for registration
         threadId: undefined,
       })
     )
@@ -747,10 +776,9 @@ describe('adminRegisterDriver', () => {
 
     expect(result.message).toBe('Success')
     // Should reuse existing thread via sendTeamsAssignedNotification
-    expect(sendDiscordNotification).toHaveBeenCalledWith(
+    expect(createOrUpdateEventThread).toHaveBeenCalledWith(
       expect.objectContaining({
         eventName: 'GT3 Challenge',
-        sendChatNotification: false, // Don't send chat notification for registration
         threadId: 'existing-thread-id',
       })
     )
