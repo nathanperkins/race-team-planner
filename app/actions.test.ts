@@ -439,6 +439,55 @@ describe('sendTeamsAssignmentNotification', () => {
       })
     )
   })
+
+  it('sends notification on first team assignment with "Teams Assigned" title', async () => {
+    // First assignment: no previous snapshot
+    const mockRace = setupMockRace({
+      discordTeamsSnapshot: null, // No previous snapshot
+      teamsAssigned: false, // Not yet marked as assigned
+    })
+
+    const mockRegistrations = [setupMockRegistration('1', 'team-1', 'Team One')]
+
+    vi.mocked(prisma.race.findUnique).mockResolvedValue(mockRace as any)
+    vi.mocked(prisma.registration.findMany).mockResolvedValue(mockRegistrations as any)
+    vi.mocked(createOrUpdateTeamThread).mockResolvedValue('team-thread-1')
+    vi.mocked(createOrUpdateEventThread).mockResolvedValue({
+      ok: true,
+      threadId: 'event-thread-id',
+    })
+
+    await sendTeamsAssignmentNotification(raceId)
+
+    // Verify chat notification was sent with "Teams Assigned" title for first assignment
+    expect(sendTeamsAssignedNotification).toHaveBeenCalledWith(
+      'event-thread-id',
+      expect.objectContaining({
+        eventName: 'GT3 Challenge',
+      }),
+      expect.objectContaining({
+        title: '🏁 Teams Assigned',
+      })
+    )
+  })
+
+  it('does not send notification when no teams are assigned', async () => {
+    // No teams assigned - all registrations are unassigned
+    const mockRace = setupMockRace()
+    const mockRegistrations = [setupMockRegistration('1', null)] // Unassigned
+
+    vi.mocked(prisma.race.findUnique).mockResolvedValue(mockRace as any)
+    vi.mocked(prisma.registration.findMany).mockResolvedValue(mockRegistrations as any)
+    vi.mocked(createOrUpdateEventThread).mockResolvedValue({
+      ok: true,
+      threadId: 'event-thread-id',
+    })
+
+    await sendTeamsAssignmentNotification(raceId)
+
+    // Verify no chat notification was sent
+    expect(sendTeamsAssignedNotification).not.toHaveBeenCalled()
+  })
 })
 
 describe('registerForRace', () => {

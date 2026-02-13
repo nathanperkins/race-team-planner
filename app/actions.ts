@@ -1662,9 +1662,14 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
 
     const threadId = threadResult.threadId!
 
-    // 2. Send chat notification if teams were previously assigned (roster update scenario)
-    const shouldSendChatNotification = previousSnapshot !== null && raceWithEvent.teamsAssigned
-    if (shouldSendChatNotification) {
+    // 2. Send chat notification
+    // - First assignment: Send initial notification
+    // - Subsequent updates: Send roster changes notification
+    const hasTeamsAssigned = teamsList.length > 0
+    const isFirstAssignment = previousSnapshot === null
+    const isUpdate = previousSnapshot !== null && raceWithEvent.teamsAssigned
+
+    if (hasTeamsAssigned && (isFirstAssignment || isUpdate)) {
       await sendTeamsAssignedNotification(
         threadId,
         {
@@ -1676,7 +1681,7 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
           teamNameById,
         },
         {
-          title: '🏁 Teams Updated',
+          title: isFirstAssignment ? '🏁 Teams Assigned' : '🏁 Teams Updated',
         }
       )
     }
