@@ -11,6 +11,7 @@ import {
   buildTeamsAssignedChatNotification,
   buildTeamsAssignedEmbeds,
   collectDiscordIds,
+  formatISODate,
   normalizeSeriesName,
 } from './discord-utils'
 
@@ -1265,11 +1266,10 @@ export async function createOrUpdateTeamThread(options: {
   }
 
   const cleanName = normalizeSeriesName(options.eventName)
-  const dateLabel = new Intl.DateTimeFormat(appLocale, {
-    month: 'numeric',
-    day: 'numeric',
+  const dateLabel = formatISODate(options.raceStartTime, {
+    locale: appLocale,
     timeZone: appTimeZone,
-  }).format(options.raceStartTime)
+  })
   const timeLabel = new Intl.DateTimeFormat(appLocale, {
     hour: 'numeric',
     minute: '2-digit',

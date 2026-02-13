@@ -13,6 +13,7 @@ import {
   buildTeamsAssignedEmbeds,
   buildTeamsAssignedChatNotification,
   collectDiscordIds,
+  formatISODate,
   formatRaceTimesValue,
   detectRosterChanges,
   buildRosterChangesEmbed,
@@ -356,19 +357,42 @@ describe('Discord Utils', () => {
     })
   })
 
+  describe('formatISODate', () => {
+    it('formats date in ISO format (YYYY-MM-DD)', () => {
+      const date = formatISODate(new Date('2026-02-11T20:00:00Z'), {
+        locale: 'en-US',
+        timeZone: 'America/Los_Angeles',
+      })
+      expect(date).toBe('2026-02-11')
+    })
+
+    it('handles single-digit months and days with leading zeros', () => {
+      const date = formatISODate(new Date('2026-05-02T20:00:00Z'), {
+        locale: 'en-US',
+        timeZone: 'America/Los_Angeles',
+      })
+      expect(date).toBe('2026-05-02')
+    })
+
+    it('uses defaults for locale and timezone', () => {
+      const date = formatISODate(new Date('2026-02-11T20:00:00Z'))
+      expect(date).toMatch(/\d{4}-\d{2}-\d{2}/)
+    })
+  })
+
   describe('buildEventThreadName', () => {
-    it('builds thread name with normalized series and date', () => {
+    it('builds thread name with normalized series and ISO date format', () => {
       const name = buildEventThreadName(
         'GT3 Fanatic Series - 2024 Season 1',
         new Date('2026-02-11T20:00:00Z'),
         { locale: 'en-US', timeZone: 'America/Los_Angeles' }
       )
-      expect(name).toBe('GT3 Fanatic Series (2/11)')
+      expect(name).toBe('GT3 Fanatic Series (2026-02-11)')
     })
 
     it('uses defaults for locale and timezone', () => {
       const name = buildEventThreadName('IMSA', new Date('2026-02-11T20:00:00Z'))
-      expect(name).toMatch(/IMSA \(\d+\/\d+\)/)
+      expect(name).toMatch(/IMSA \(\d{4}-\d{2}-\d{2}\)/)
     })
   })
 

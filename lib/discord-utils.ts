@@ -229,20 +229,31 @@ export function collectDiscordIds(timeslots: RaceTimeslotData[]): Map<string, st
   return ids
 }
 
+/** Format a date in ISO format (YYYY-MM-DD) for Discord thread names. */
+export function formatISODate(
+  date: Date,
+  options?: { locale?: string; timeZone?: string }
+): string {
+  const timeZone = options?.timeZone ?? 'America/Los_Angeles'
+
+  // en-CA locale naturally uses YYYY-MM-DD format
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone,
+  })
+  return formatter.format(date)
+}
+
 /** Build a Discord thread name for an event (date only, no specific time). */
 export function buildEventThreadName(
   eventName: string,
   firstStartTime: Date,
   options?: { locale?: string; timeZone?: string }
 ): string {
-  const locale = options?.locale ?? 'en-US'
-  const timeZone = options?.timeZone ?? 'America/Los_Angeles'
   const cleanName = normalizeSeriesName(eventName)
-  const dateLabel = new Intl.DateTimeFormat(locale, {
-    month: 'numeric',
-    day: 'numeric',
-    timeZone,
-  }).format(firstStartTime)
+  const dateLabel = formatISODate(firstStartTime, options)
   return `${cleanName} (${dateLabel})`
 }
 
