@@ -1,3 +1,4 @@
+import pRetry from 'p-retry'
 import { appTitle, appLocale, appTimeZone } from './config'
 import {
   OnboardingNotificationData,
@@ -17,29 +18,34 @@ import {
 const DISCORD_API_BASE = 'https://discord.com/api/v10'
 
 async function doesDiscordThreadExist(options: { threadId: string; botToken: string }) {
-  try {
-    const response = await fetch(`${DISCORD_API_BASE}/channels/${options.threadId}`, {
-      headers: {
-        Authorization: `Bot ${options.botToken}`,
-      },
-    })
+  return pRetry(
+    async () => {
+      const response = await fetch(`${DISCORD_API_BASE}/channels/${options.threadId}`, {
+        headers: {
+          Authorization: `Bot ${options.botToken}`,
+        },
+      })
 
-    if (response.status === 404) {
-      return false
+      if (response.status === 404) {
+        return false
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(
+          `Unable to verify thread ${options.threadId}: ${response.status} ${response.statusText} - ${errorText}`
+        )
+      }
+
+      return true
+    },
+    {
+      retries: 3,
+      minTimeout: 100,
+      maxTimeout: 2000,
+      factor: 2,
     }
-
-    if (!response.ok) {
-      console.warn(
-        `⚠️ [Discord] Unable to verify thread ${options.threadId}: ${response.status} ${response.statusText}`
-      )
-    }
-
-    return true
-  } catch (error) {
-    // Treat transient API failures as "exists" to avoid creating duplicate threads.
-    console.warn(`⚠️ [Discord] Failed to verify thread ${options.threadId}:`, error)
-    return true
-  }
+  )
 }
 
 export enum GuildMembershipStatus {
