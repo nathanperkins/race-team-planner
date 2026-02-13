@@ -787,6 +787,21 @@ describe('Discord Utils', () => {
       expect(changes[0]).toEqual({
         type: 'dropped',
         driverName: 'Bob',
+        fromTeam: 'Team Alpha',
+      })
+    })
+
+    it('detects driver drops from unassigned', () => {
+      const previousSnapshot = {
+        reg1: { teamId: null, driverName: 'Alice' },
+      }
+      const currentSnapshot = {}
+      const changes = detectRosterChanges(previousSnapshot, currentSnapshot, teamNameById)
+      expect(changes).toHaveLength(1)
+      expect(changes[0]).toEqual({
+        type: 'dropped',
+        driverName: 'Alice',
+        fromTeam: 'Unassigned',
       })
     })
 
@@ -818,6 +833,7 @@ describe('Discord Utils', () => {
       expect(changes).toContainEqual({
         type: 'dropped',
         driverName: 'Bob',
+        fromTeam: 'Team Alpha',
       })
     })
 
@@ -967,13 +983,13 @@ describe('Discord Utils', () => {
 
     it('builds embed with dropped drivers', () => {
       const embed = buildRosterChangesEmbed(
-        [{ type: 'dropped', driverName: 'Bob' }],
+        [{ type: 'dropped', driverName: 'Bob', fromTeam: 'Team Alpha' }],
         appTitle,
         adminName
       )
       expect(embed.fields).toHaveLength(1)
       expect(embed.fields[0].name).toBe('❌ Dropped')
-      expect(embed.fields[0].value).toBe('**Bob**')
+      expect(embed.fields[0].value).toBe('**Bob** (from Team Alpha)')
     })
 
     it('builds embed with moved drivers', () => {
@@ -1003,7 +1019,7 @@ describe('Discord Utils', () => {
         [
           { type: 'added', driverName: 'Alice', teamName: 'Team Alpha' },
           { type: 'added', driverName: 'Eve', teamName: 'Team Beta' },
-          { type: 'dropped', driverName: 'Bob' },
+          { type: 'dropped', driverName: 'Bob', fromTeam: 'Team Alpha' },
           { type: 'moved', driverName: 'Charlie', fromTeam: 'Team Alpha', toTeam: 'Team Beta' },
           { type: 'unassigned', driverName: 'Dave', fromTeam: 'Team Gamma' },
         ],
@@ -1024,7 +1040,7 @@ describe('Discord Utils', () => {
       const embed = buildRosterChangesEmbed(
         [
           { type: 'added', driverName: 'Alice', teamName: 'Team Alpha' },
-          { type: 'dropped', driverName: 'Bob' },
+          { type: 'dropped', driverName: 'Bob', fromTeam: 'Team Alpha' },
         ],
         appTitle,
         adminName
@@ -1045,7 +1061,7 @@ describe('Discord Utils', () => {
       const embed = buildRosterChangesEmbed(
         [
           { type: 'added', driverName: 'Alice', teamName: 'Team Alpha' },
-          { type: 'dropped', driverName: 'Bob' },
+          { type: 'dropped', driverName: 'Bob', fromTeam: 'Team Alpha' },
         ],
         appTitle
       )
@@ -1095,7 +1111,7 @@ describe('Discord Utils', () => {
             toClass: 'LMP2',
             drivers: ['Alice', 'Bob'],
           },
-          { type: 'dropped', driverName: 'Eve' },
+          { type: 'dropped', driverName: 'Eve', fromTeam: 'Team Gamma' },
         ],
         appTitle,
         adminName

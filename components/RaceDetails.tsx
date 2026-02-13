@@ -971,6 +971,9 @@ export default function RaceDetails({
           setExtraTeams([])
           setRevealedTeamIds([])
           setLockedTeamIds(new Set())
+          teamOverridesRef.current = new Map()
+          setPendingAdditions([])
+          setPendingDrops(new Set())
           setTeamPickerId(null)
           setTeamPickerQuery('')
           setTeamNameOverrides({})
@@ -1548,15 +1551,13 @@ export default function RaceDetails({
       teamName: reg.team?.name,
       carClassName: reg.carClass.shortName || reg.carClass.name,
     }))
-    const pendingRecords = pendingRegistrations
-      .filter((reg) => !isTempRegistrationId(reg.id))
-      .map((reg) => ({
-        id: reg.id,
-        driverName: reg.user?.name || reg.manualDriver?.name || 'Driver',
-        teamId: reg.teamId ?? reg.team?.id ?? null,
-        teamName: reg.team?.name,
-        carClassName: reg.carClass.shortName || reg.carClass.name,
-      }))
+    const pendingRecords = pendingRegistrations.map((reg) => ({
+      id: reg.id,
+      driverName: reg.user?.name || reg.manualDriver?.name || 'Driver',
+      teamId: reg.teamId ?? reg.team?.id ?? null,
+      teamName: reg.team?.name,
+      carClassName: reg.carClass.shortName || reg.carClass.name,
+    }))
     const assignedTeamIds = new Set(
       pendingRecords.map((reg) => reg.teamId).filter((id): id is string => Boolean(id))
     )
@@ -1571,14 +1572,7 @@ export default function RaceDetails({
       teamNameById,
       newlyFormedTeamNames,
     })
-  }, [
-    extraTeams,
-    pendingRegistrations,
-    race.registrations,
-    race.discordTeamThreads,
-    teamNameById,
-    isTempRegistrationId,
-  ])
+  }, [extraTeams, pendingRegistrations, race.registrations, race.discordTeamThreads, teamNameById])
 
   const renderDriverRow = (
     reg: RaceWithRegistrations['registrations'][0],
@@ -2317,6 +2311,9 @@ export default function RaceDetails({
                 <div className={styles.adminActionSlot}>
                   <TeamPickerTrigger
                     onOpen={() => {
+                      teamOverridesRef.current = new Map()
+                      setPendingAdditions([])
+                      setPendingDrops(new Set())
                       setIsTeamModalOpen(true)
                       initializeLockedTeams()
                     }}

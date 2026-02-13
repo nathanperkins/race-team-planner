@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   adminRegisterDriver,
+  deleteRegistration,
   registerForRace,
   sendTeamsAssignmentNotification,
   updateRegistrationCarClass,
@@ -10,6 +11,7 @@ import { auth } from '@/lib/auth'
 import {
   createOrUpdateEventThread,
   createOrUpdateTeamThread,
+  postRosterChangeNotifications,
   sendRegistrationNotification,
   sendTeamsAssignedNotification,
 } from '@/lib/discord'
@@ -26,6 +28,7 @@ vi.mock('@/lib/prisma', () => ({
     },
     registration: {
       create: vi.fn(),
+      delete: vi.fn(),
       update: vi.fn(),
       findUnique: vi.fn(),
       findFirst: vi.fn(),
@@ -63,6 +66,7 @@ vi.mock('@/lib/discord', async (importOriginal) => ({
   addUsersToThread: vi.fn(),
   sendRegistrationNotification: vi.fn(),
   sendTeamsAssignedNotification: vi.fn(),
+  postRosterChangeNotifications: vi.fn(),
 }))
 
 describe('sendTeamsAssignmentNotification', () => {
@@ -464,6 +468,7 @@ describe('sendTeamsAssignmentNotification', () => {
       'event-thread-id',
       expect.objectContaining({
         eventName: 'GT3 Challenge',
+        rosterChanges: undefined,
       }),
       expect.objectContaining({
         title: '🏁 Teams Assigned',
@@ -487,6 +492,87 @@ describe('sendTeamsAssignmentNotification', () => {
 
     // Verify no chat notification was sent
     expect(sendTeamsAssignedNotification).not.toHaveBeenCalled()
+  })
+})
+
+describe('deleteRegistration notifications', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(auth).mockResolvedValue({
+      user: { id: 'user-1', role: 'USER', name: 'User One' },
+    } as any)
+    vi.mocked(prisma.team.findMany).mockResolvedValue([
+      { id: 'team-1', name: 'Team One' },
+      { id: 'team-2', name: 'Team Two' },
+    ] as any)
+  })
+
+  it('posts drop notification to event and team thread when user drops from team', async () => {
+    vi.mocked(prisma.registration.findUnique).mockResolvedValue({
+      id: 'reg-1',
+      userId: 'user-1',
+      teamId: 'team-1',
+      team: { id: 'team-1', name: 'Team One' },
+      user: { name: 'User One' },
+      manualDriver: null,
+      race: {
+        id: 'race-1',
+        endTime: new Date('2099-01-01T00:00:00Z'),
+        eventId: 'event-1',
+        discordTeamsThreadId: null,
+      },
+    } as any)
+    vi.mocked(prisma.registration.delete).mockResolvedValue({} as any)
+    vi.mocked(prisma.race.findFirst).mockResolvedValue({
+      discordTeamsThreadId: 'event-thread-1',
+      discordTeamThreads: { 'team-1': 'team-thread-1' },
+    } as any)
+    vi.mocked(postRosterChangeNotifications).mockResolvedValue(undefined as any)
+
+    await deleteRegistration('reg-1')
+
+    expect(postRosterChangeNotifications).toHaveBeenCalledWith(
+      'event-thread-1',
+      [{ type: 'dropped', driverName: 'User One', fromTeam: 'Team One' }],
+      expect.any(String),
+      'User One',
+      { 'team-1': 'team-thread-1' },
+      expect.any(Map)
+    )
+  })
+
+  it('posts drop notification only to event thread payload with Unassigned source', async () => {
+    vi.mocked(prisma.registration.findUnique).mockResolvedValue({
+      id: 'reg-2',
+      userId: 'user-1',
+      teamId: null,
+      team: null,
+      user: { name: 'User One' },
+      manualDriver: null,
+      race: {
+        id: 'race-1',
+        endTime: new Date('2099-01-01T00:00:00Z'),
+        eventId: 'event-1',
+        discordTeamsThreadId: 'event-thread-1',
+      },
+    } as any)
+    vi.mocked(prisma.registration.delete).mockResolvedValue({} as any)
+    vi.mocked(prisma.race.findFirst).mockResolvedValue({
+      discordTeamsThreadId: 'event-thread-1',
+      discordTeamThreads: {},
+    } as any)
+    vi.mocked(postRosterChangeNotifications).mockResolvedValue(undefined as any)
+
+    await deleteRegistration('reg-2')
+
+    expect(postRosterChangeNotifications).toHaveBeenCalledWith(
+      'event-thread-1',
+      [{ type: 'dropped', driverName: 'User One', fromTeam: 'Unassigned' }],
+      expect.any(String),
+      'User One',
+      {},
+      expect.any(Map)
+    )
   })
 })
 
@@ -580,12 +666,7 @@ describe('registerForRace', () => {
       where: { eventId: 'event-123' },
       data: { discordTeamsThreadId: 'event-thread-id' },
     })
-    expect(sendRegistrationNotification).toHaveBeenCalledWith(
-      expect.objectContaining({
-        threadId: 'event-thread-id',
-        guildId: 'test-guild-id',
-      })
-    )
+    expect(sendRegistrationNotification).not.toHaveBeenCalled()
   })
 
   it('reuses existing event discussion thread when self-registering', async () => {
@@ -614,6 +695,11 @@ describe('registerForRace', () => {
       discordTeamsThreadId: 'existing-thread-id',
     } as any)
 
+    vi.mocked(createOrUpdateEventThread).mockResolvedValueOnce({
+      ok: true,
+      threadId: 'existing-thread-id',
+    })
+
     const formData = new FormData()
     formData.set('raceId', 'race-123')
     formData.set('carClassId', 'class-1')
@@ -630,7 +716,7 @@ describe('registerForRace', () => {
     )
     expect(sendRegistrationNotification).toHaveBeenCalledWith(
       expect.objectContaining({
-        threadId: 'event-thread-id',
+        threadId: 'existing-thread-id',
         guildId: 'test-guild-id',
       })
     )
@@ -918,14 +1004,7 @@ describe('adminRegisterDriver', () => {
       where: { eventId: 'event-123' },
       data: { discordTeamsThreadId: 'new-event-thread-id' },
     })
-    expect(sendRegistrationNotification).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userName: 'New Driver',
-        eventName: 'GT3 Challenge',
-        threadId: 'new-event-thread-id',
-        guildId: 'test-guild-id',
-      })
-    )
+    expect(sendRegistrationNotification).not.toHaveBeenCalled()
   })
 
   it('reuses existing event discussion thread when admin registers driver', async () => {
@@ -972,6 +1051,11 @@ describe('adminRegisterDriver', () => {
       discordTeamsThreadId: 'existing-thread-id',
     } as any)
 
+    vi.mocked(createOrUpdateEventThread).mockResolvedValueOnce({
+      ok: true,
+      threadId: 'existing-thread-id',
+    })
+
     const formData = new FormData()
     formData.set('raceId', 'race-123')
     formData.set('userId', 'user-2')
@@ -991,7 +1075,7 @@ describe('adminRegisterDriver', () => {
       expect.objectContaining({
         userName: 'New Driver',
         eventName: 'GT3 Challenge',
-        threadId: 'new-event-thread-id',
+        threadId: 'existing-thread-id',
         guildId: 'test-guild-id',
       })
     )

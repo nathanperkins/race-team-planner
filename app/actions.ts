@@ -322,7 +322,7 @@ async function upsertEventDiscussionThread(options: {
   trackConfig?: string | null
   tempValue?: number | null
   precipChance?: number | null
-}): Promise<string | null> {
+}): Promise<{ threadId: string | null; createdOrReplaced: boolean }> {
   const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
 
   // Find existing thread ID from any race in this event
@@ -434,15 +434,17 @@ async function upsertEventDiscussionThread(options: {
   })
 
   if (result.ok && result.threadId) {
+    const previousThreadId = existingEventThread?.discordTeamsThreadId ?? null
+    const createdOrReplaced = previousThreadId !== result.threadId
     await prisma.race.updateMany({
       where: { eventId: options.eventId },
       data: { discordTeamsThreadId: result.threadId },
     })
-    return result.threadId
+    return { threadId: result.threadId, createdOrReplaced }
   }
 
   console.error('Failed to create or update event discussion thread')
-  return null
+  return { threadId: null, createdOrReplaced: false }
 }
 
 export async function registerForRace(prevState: State, formData: FormData) {
@@ -526,7 +528,7 @@ export async function registerForRace(prevState: State, formData: FormData) {
     try {
       const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
       // Ensure event-level discussion thread exists as soon as the first driver signs up.
-      const discussionThreadId = await upsertEventDiscussionThread({
+      const discussionThread = await upsertEventDiscussionThread({
         eventId: race.eventId,
         eventName: race.event.name,
         track: race.event.track,
@@ -534,6 +536,8 @@ export async function registerForRace(prevState: State, formData: FormData) {
         tempValue: race.event.tempValue,
         precipChance: race.event.precipChance,
       })
+      const discussionThreadId = discussionThread.threadId
+      const suppressRegistrationNotification = discussionThread.createdOrReplaced
 
       const registrationData = await prisma.registration.findFirst({
         where: {
@@ -577,7 +581,7 @@ export async function registerForRace(prevState: State, formData: FormData) {
 
         // Only send notification if we have both thread ID and guild ID
         const guildId = process.env.DISCORD_GUILD_ID
-        if (discussionThreadId && guildId) {
+        if (discussionThreadId && guildId && !suppressRegistrationNotification) {
           await sendRegistrationNotification({
             userName: registrationData.user.name || 'Unknown User',
             userAvatarUrl: registrationData.user.image || undefined,
@@ -633,8 +637,12 @@ export async function deleteRegistration(registrationId: string): Promise<void> 
       select: {
         id: true,
         userId: true,
+        teamId: true,
+        team: { select: { id: true, name: true } },
+        user: { select: { name: true } },
+        manualDriver: { select: { name: true } },
         race: {
-          select: { endTime: true, eventId: true },
+          select: { id: true, endTime: true, eventId: true, discordTeamsThreadId: true },
         },
       },
     })
@@ -660,6 +668,43 @@ export async function deleteRegistration(registrationId: string): Promise<void> 
         id: registrationId,
       },
     })
+
+    // Emit roster-change notifications for user/admin drops without blocking the drop flow.
+    try {
+      const eventThreadRecord = await prisma.race.findFirst({
+        where: {
+          eventId: registration.race.eventId,
+          NOT: { discordTeamsThreadId: null },
+        },
+        select: { discordTeamsThreadId: true, discordTeamThreads: true },
+      })
+
+      const eventThreadId =
+        eventThreadRecord?.discordTeamsThreadId ?? registration.race.discordTeamsThreadId ?? null
+      if (eventThreadId) {
+        const teamThreads =
+          (eventThreadRecord?.discordTeamThreads as Record<string, string> | null) ?? {}
+        const teams = await prisma.team.findMany({
+          select: { id: true, name: true },
+        })
+        const teamNameById = new Map(teams.map((team) => [team.id, team.name]))
+        const driverName =
+          registration.user?.name || registration.manualDriver?.name || 'Unknown Driver'
+        const fromTeam = registration.team?.name || 'Unassigned'
+
+        const { postRosterChangeNotifications } = await import('@/lib/discord')
+        await postRosterChangeNotifications(
+          eventThreadId,
+          [{ type: 'dropped', driverName, fromTeam }],
+          process.env.DISCORD_BOT_TOKEN || '',
+          session.user.name || driverName,
+          teamThreads,
+          teamNameById
+        )
+      }
+    } catch (notificationError) {
+      console.error('Failed to send drop notification:', notificationError)
+    }
 
     if (registration.race?.eventId) {
       revalidatePath(`/events/${registration.race.eventId}`)
@@ -1153,6 +1198,7 @@ export async function saveRaceEdits(formData: FormData) {
     }
 
     if (updates.length > 0) {
+      const droppedIdSet = new Set(pendingDrops)
       const regs = await prisma.registration.findMany({
         where: { id: { in: updates.map((u) => u.id) } },
         select: { id: true, userId: true, raceId: true },
@@ -1161,6 +1207,7 @@ export async function saveRaceEdits(formData: FormData) {
 
       const tx: Prisma.PrismaPromise<unknown>[] = []
       for (const update of updates) {
+        if (droppedIdSet.has(update.id)) continue
         const reg = regMap.get(update.id)
         if (!reg) continue
         if (reg.raceId !== raceId) continue
@@ -1451,6 +1498,7 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
     const raceUrl = `${baseUrl}/events/${raceWithEvent.event.id}`
 
     const teamThreads = (raceWithEvent.discordTeamThreads as Record<string, string> | null) ?? {}
+    const newlyCreatedOrReplacedTeamThreadIds = new Set<string>()
     const guildId = process.env.DISCORD_GUILD_ID
     const { addUsersToThread, buildDiscordWebLink, createOrUpdateTeamThread } =
       await import('@/lib/discord')
@@ -1483,6 +1531,9 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
           members: team.members.map((m) => m.name),
         })
         if (threadId) {
+          if (threadId !== existingThreadId) {
+            newlyCreatedOrReplacedTeamThreadIds.add(threadId)
+          }
           teamThreads[teamId] = threadId
         }
       } catch (error) {
@@ -1668,6 +1719,8 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
     const hasTeamsAssigned = teamsList.length > 0
     const isFirstAssignment = previousSnapshot === null
     const isUpdate = previousSnapshot !== null && raceWithEvent.teamsAssigned
+    const rosterChangesForNotification =
+      !isFirstAssignment && rosterChanges.length > 0 ? rosterChanges : undefined
 
     if (hasTeamsAssigned && (isFirstAssignment || isUpdate)) {
       await sendTeamsAssignedNotification(
@@ -1675,10 +1728,11 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
         {
           eventName: raceWithEvent.event.name,
           timeslots,
-          rosterChanges: rosterChanges.length > 0 ? rosterChanges : undefined,
+          rosterChanges: rosterChangesForNotification,
           adminName: session.user.name || 'Admin',
           teamThreads,
           teamNameById,
+          suppressTeamThreadIds: Array.from(newlyCreatedOrReplacedTeamThreadIds),
         },
         {
           title: isFirstAssignment ? '🏁 Teams Assigned' : '🏁 Teams Updated',
@@ -1884,7 +1938,7 @@ export async function adminRegisterDriver(prevState: State, formData: FormData) 
     try {
       const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
       // Ensure event-level discussion thread exists
-      const discussionThreadId = await upsertEventDiscussionThread({
+      const discussionThread = await upsertEventDiscussionThread({
         eventId: race.eventId,
         eventName: registration?.race.event.name || '',
         track: registration?.race.event.track ?? null,
@@ -1892,11 +1946,18 @@ export async function adminRegisterDriver(prevState: State, formData: FormData) 
         tempValue: registration?.race.event.tempValue ?? null,
         precipChance: registration?.race.event.precipChance ?? null,
       })
+      const discussionThreadId = discussionThread.threadId
+      const suppressRegistrationNotification = discussionThread.createdOrReplaced
 
       // Send registration notification for regular users (not manual drivers)
       // Only send if we have both thread ID and guild ID
       const guildId = process.env.DISCORD_GUILD_ID
-      if (registration?.user && discussionThreadId && guildId) {
+      if (
+        registration?.user &&
+        discussionThreadId &&
+        guildId &&
+        !suppressRegistrationNotification
+      ) {
         const { sendRegistrationNotification } = await import('@/lib/discord')
 
         const discordAccount = registration.user.accounts[0]

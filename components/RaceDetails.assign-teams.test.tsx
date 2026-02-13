@@ -1,7 +1,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { describe, it, expect, vi } from 'vitest'
+import { beforeEach, describe, it, expect, vi } from 'vitest'
 import RaceDetails from './RaceDetails'
 import React from 'react'
+import { saveRaceEdits } from '@/app/actions'
 
 vi.mock('@/app/actions', () => ({
   saveRaceEdits: vi.fn(),
@@ -25,22 +26,74 @@ vi.mock('./QuickRegistration', () => ({
 vi.mock('./EditableCarClass', () => ({
   default: () => <div data-testid="editable-car-class" />,
 }))
-vi.mock('./AdminDriverSearch', () => ({
-  default: (props: {
-    allDrivers?: Array<{ id: string; name: string | null; image: string | null }>
-    onSelectDriver?: (driver: { id: string; name: string | null; image: string | null }) => void
-  }) => (
-    <button
-      data-testid={props.onSelectDriver ? 'admin-driver-search-select' : 'admin-driver-search'}
-      onClick={() => {
-        const fallback = { id: 'mock-driver', name: 'Mock Driver', image: null }
-        props.onSelectDriver?.(props.allDrivers?.[0] ?? fallback)
-      }}
-    >
-      Add Driver
-    </button>
-  ),
-}))
+vi.mock('./AdminDriverSearch', () => {
+  let pickIndex = 0
+  return {
+    default: (props: {
+      allDrivers?: Array<{ id: string; name: string | null; image: string | null }>
+      onSelectDriver?: (driver: { id: string; name: string | null; image: string | null }) => void
+      onSuccess?: (payload: {
+        message: string
+        registration?: {
+          id: string
+          userId: string
+          user: { name: string | null; image: string | null; racerStats: Array<unknown> }
+          carClass: { id: string; name: string; shortName: string }
+          manualDriver: null
+          teamId: string | null
+          team: null
+        }
+      }) => void
+    }) => {
+      return (
+        <button
+          data-testid={props.onSelectDriver ? 'admin-driver-search-select' : 'admin-driver-search'}
+          onClick={() => {
+            const fallback = { id: 'mock-driver', name: 'Mock Driver', image: null }
+            const pool = props.allDrivers ?? []
+            if (pool.length === 0) {
+              props.onSelectDriver?.(fallback)
+              if (!props.onSelectDriver) {
+                props.onSuccess?.({
+                  message: `${fallback.name} Added!`,
+                  registration: {
+                    id: `reg-${fallback.id}`,
+                    userId: fallback.id,
+                    user: { name: fallback.name, image: fallback.image, racerStats: [] },
+                    carClass: { id: 'class-1', name: 'Class 1', shortName: 'C1' },
+                    manualDriver: null,
+                    teamId: null,
+                    team: null,
+                  },
+                })
+              }
+              return
+            }
+            const selected = pool[Math.min(pickIndex, pool.length - 1)] ?? fallback
+            pickIndex += 1
+            props.onSelectDriver?.(selected)
+            if (!props.onSelectDriver) {
+              props.onSuccess?.({
+                message: `${selected.name || 'Driver'} Added!`,
+                registration: {
+                  id: `reg-${selected.id}`,
+                  userId: selected.id,
+                  user: { name: selected.name, image: selected.image, racerStats: [] },
+                  carClass: { id: 'class-1', name: 'Class 1', shortName: 'C1' },
+                  manualDriver: null,
+                  teamId: null,
+                  team: null,
+                },
+              })
+            }
+          }}
+        >
+          Add Driver
+        </button>
+      )
+    },
+  }
+})
 vi.mock('./TeamPickerTrigger', () => ({
   default: (props: { onOpen: () => void }) => (
     <button data-testid="team-picker-trigger" onClick={props.onOpen}>
@@ -53,6 +106,182 @@ vi.mock('next/image', () => ({
 }))
 
 describe('RaceDetails Assign Teams', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('adds 3 drivers, assigns to one team, saves, then drops all and persists empty race state', async () => {
+    vi.mocked(saveRaceEdits).mockResolvedValue({ message: 'Success' } as any)
+
+    const mockRace = {
+      id: 'race-add-assign-drop-1',
+      startTime: new Date('2027-01-01T10:00:00Z'),
+      endTime: new Date('2027-01-01T12:00:00Z'),
+      teamsAssigned: false,
+      maxDriversPerTeam: 3,
+      teamAssignmentStrategy: 'BALANCED_IRATING' as const,
+      registrations: [],
+      discordTeamsThreadId: null,
+      discordTeamThreads: null,
+    }
+
+    render(
+      <RaceDetails
+        race={mockRace}
+        userId="admin-user"
+        isAdmin
+        carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
+        teams={[{ id: 'team-1', name: 'Team 1', iracingTeamId: null, memberCount: 0 }]}
+        allDrivers={[
+          { id: 'driver-1', name: 'Driver One', image: null },
+          { id: 'driver-2', name: 'Driver Two', image: null },
+          { id: 'driver-3', name: 'Driver Three', image: null },
+        ]}
+      />
+    )
+
+    fireEvent.click(screen.getByTestId('admin-driver-search'))
+    fireEvent.click(screen.getByTestId('admin-driver-search'))
+    fireEvent.click(screen.getByTestId('admin-driver-search'))
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Driver One').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('Driver Two').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('Driver Three').length).toBeGreaterThan(0)
+    })
+
+    fireEvent.click(screen.getByTestId('team-picker-trigger'))
+    const unlockButton = screen.queryByTitle('Unlock team')
+    if (unlockButton) {
+      fireEvent.click(unlockButton)
+    }
+
+    fireEvent.click(screen.getByRole('button', { name: 'Form/Rebalance Teams' }))
+
+    await waitFor(() => {
+      expect(screen.getAllByTitle('Move to unassigned').length).toBe(3)
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save and Notify' }))
+    fireEvent.click(screen.getByLabelText('Confirm save and notify'))
+
+    await waitFor(() => {
+      expect(saveRaceEdits).toHaveBeenCalledTimes(1)
+    })
+
+    const firstSaveData = vi.mocked(saveRaceEdits).mock.calls[0][0] as FormData
+    const firstUpdates = JSON.parse(
+      (firstSaveData.get('registrationUpdates') as string) ?? '[]'
+    ) as Array<{ id: string; teamId: string | null }>
+    expect(firstUpdates).toHaveLength(3)
+    expect(firstUpdates.every((entry) => !!entry.teamId)).toBe(true)
+
+    fireEvent.click(screen.getByTestId('team-picker-trigger'))
+    const secondUnlockButton = screen.queryByTitle('Unlock team')
+    if (secondUnlockButton) {
+      fireEvent.click(secondUnlockButton)
+    }
+
+    const unassignButtons = screen.queryAllByTitle('Move to unassigned')
+    unassignButtons.forEach((btn) => fireEvent.click(btn))
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId(/drop-registration-button-reg-driver-/).length).toBe(3)
+    })
+
+    const dropButtons = screen.getAllByTestId(/drop-registration-button-reg-driver-/)
+    dropButtons.forEach((btn) => fireEvent.click(btn))
+
+    await waitFor(() => {
+      expect(screen.getByText('No drivers registered for this race.')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save and Notify' }))
+    fireEvent.click(screen.getByLabelText('Confirm save and notify'))
+
+    await waitFor(() => {
+      expect(saveRaceEdits).toHaveBeenCalledTimes(2)
+    })
+
+    const secondSaveData = vi.mocked(saveRaceEdits).mock.calls[1][0] as FormData
+    const secondPendingAdditions = JSON.parse(
+      (secondSaveData.get('pendingAdditions') as string) ?? '[]'
+    ) as unknown[]
+    const secondUpdates = JSON.parse(
+      (secondSaveData.get('registrationUpdates') as string) ?? '[]'
+    ) as unknown[]
+    const secondPendingDrops = JSON.parse(
+      (secondSaveData.get('pendingDrops') as string) ?? '[]'
+    ) as unknown[]
+
+    expect(secondPendingAdditions).toHaveLength(0)
+    expect(secondUpdates).toHaveLength(0)
+    expect(secondPendingDrops).toHaveLength(3)
+  })
+
+  it('includes dropped existing driver IDs in pendingDrops when saving', async () => {
+    vi.mocked(saveRaceEdits).mockResolvedValue({ message: 'Success' } as any)
+
+    const mockRace = {
+      id: 'race-drop-save-1',
+      startTime: new Date('2027-01-01T10:00:00Z'),
+      endTime: new Date('2027-01-01T12:00:00Z'),
+      teamsAssigned: true,
+      maxDriversPerTeam: 2,
+      teamAssignmentStrategy: 'BALANCED_IRATING' as const,
+      registrations: [
+        {
+          id: 'reg-existing',
+          carClass: { id: 'class-1', name: 'Class 1', shortName: 'C1' },
+          userId: 'existing-user',
+          user: {
+            name: 'Existing Driver',
+            image: null,
+            racerStats: [],
+          },
+          manualDriver: null,
+          teamId: 'team-1',
+          team: { id: 'team-1', name: 'Team 1' },
+        },
+      ],
+      discordTeamsThreadId: null,
+      discordTeamThreads: null,
+    }
+
+    render(
+      <RaceDetails
+        race={mockRace}
+        userId="admin-user"
+        isAdmin
+        carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
+        teams={[{ id: 'team-1', name: 'Team 1', iracingTeamId: null, memberCount: 1 }]}
+        allDrivers={[]}
+      />
+    )
+
+    fireEvent.click(screen.getByTestId('team-picker-trigger'))
+
+    const unlockButton = screen.queryByTitle('Unlock team')
+    if (unlockButton) {
+      fireEvent.click(unlockButton)
+    }
+
+    fireEvent.click(await screen.findByTitle('Move to unassigned'))
+    fireEvent.click(await screen.findByTestId('drop-registration-button-reg-existing'))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save and Notify' }))
+    fireEvent.click(screen.getByLabelText('Confirm save and notify'))
+
+    await waitFor(() => {
+      expect(saveRaceEdits).toHaveBeenCalledTimes(1)
+    })
+
+    const formData = vi.mocked(saveRaceEdits).mock.calls[0][0] as FormData
+    const pendingDropsRaw = formData.get('pendingDrops') as string
+    const pendingDrops = JSON.parse(pendingDropsRaw) as string[]
+    expect(pendingDrops).toContain('reg-existing')
+  })
+
   it('can register then drop a driver in assign teams modal', async () => {
     const mockRace = {
       id: 'race-assign-1',

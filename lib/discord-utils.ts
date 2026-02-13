@@ -35,7 +35,7 @@ export interface RaceTimeslotData {
 
 export type RosterChange =
   | { type: 'added'; driverName: string; teamName: string }
-  | { type: 'dropped'; driverName: string }
+  | { type: 'dropped'; driverName: string; fromTeam?: string }
   | { type: 'moved'; driverName: string; fromTeam: string; toTeam: string }
   | { type: 'unassigned'; driverName: string; fromTeam: string }
   | {
@@ -652,7 +652,9 @@ export function detectRosterChanges(
       if (previous.teamId === null && assignedDriverNames.has(previous.driverName)) {
         return
       }
-      rosterChanges.push({ type: 'dropped', driverName: previous.driverName })
+      const fromTeam =
+        previous.teamId === null ? 'Unassigned' : (teamNameById.get(previous.teamId) ?? 'Team')
+      rosterChanges.push({ type: 'dropped', driverName: previous.driverName, fromTeam })
     }
   })
 
@@ -731,7 +733,11 @@ export function buildRosterChangesEmbed(
   if (dropped.length > 0) {
     fields.push({
       name: '❌ Dropped',
-      value: dropped.map((c) => `**${c.driverName}**`).join('\n'),
+      value: dropped
+        .map((c) =>
+          c.fromTeam ? `**${c.driverName}** (from ${c.fromTeam})` : `**${c.driverName}**`
+        )
+        .join('\n'),
       inline: false,
     })
   }

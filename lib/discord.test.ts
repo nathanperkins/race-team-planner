@@ -1170,6 +1170,47 @@ describe('postRosterChangeNotifications', () => {
     expect(fetch).toHaveBeenCalledTimes(3)
   })
 
+  it('skips team-thread roster change post for newly created team thread IDs', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+    } as Response)
+
+    const teamThreads = {
+      'team-1': 'team-thread-1',
+      'team-2': 'team-thread-2',
+    }
+    const teamNameById = new Map([
+      ['team-1', 'Team One'],
+      ['team-2', 'Team Two'],
+    ])
+
+    const rosterChanges = [
+      { type: 'moved' as const, driverName: 'Bob', fromTeam: 'Team One', toTeam: 'Team Two' },
+    ]
+
+    await postRosterChangeNotifications(
+      eventThreadId,
+      rosterChanges,
+      botToken,
+      'Admin User',
+      teamThreads,
+      teamNameById,
+      ['team-thread-2']
+    )
+
+    // Event + Team One only (Team Two suppressed)
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining(`/channels/${eventThreadId}/messages`),
+      expect.anything()
+    )
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/channels/team-thread-1/messages'),
+      expect.anything()
+    )
+  })
+
   it('logs error when posting to thread fails', async () => {
     vi.mocked(fetch).mockResolvedValue({
       ok: false,
@@ -1226,6 +1267,80 @@ describe('postRosterChangeNotifications', () => {
     )
     expect(fetch).toHaveBeenCalledWith(
       expect.stringContaining(`/channels/team-thread-1/messages`),
+      expect.anything()
+    )
+  })
+
+  it('posts dropped drivers to event thread and the originating team thread', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+    } as Response)
+
+    const teamThreads = {
+      'team-1': 'team-thread-1',
+    }
+    const teamNameById = new Map([['team-1', 'Team One']])
+
+    const rosterChanges = [
+      {
+        type: 'dropped' as const,
+        driverName: 'Bob',
+        fromTeam: 'Team One',
+      },
+    ]
+
+    await postRosterChangeNotifications(
+      eventThreadId,
+      rosterChanges,
+      botToken,
+      'Admin User',
+      teamThreads,
+      teamNameById
+    )
+
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining(`/channels/${eventThreadId}/messages`),
+      expect.anything()
+    )
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/channels/team-thread-1/messages'),
+      expect.anything()
+    )
+  })
+
+  it('posts dropped unassigned drivers only to event thread', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+    } as Response)
+
+    const teamThreads = {
+      'team-1': 'team-thread-1',
+    }
+    const teamNameById = new Map([['team-1', 'Team One']])
+
+    const rosterChanges = [
+      {
+        type: 'dropped' as const,
+        driverName: 'Bob',
+        fromTeam: 'Unassigned',
+      },
+    ]
+
+    await postRosterChangeNotifications(
+      eventThreadId,
+      rosterChanges,
+      botToken,
+      'Admin User',
+      teamThreads,
+      teamNameById
+    )
+
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining(`/channels/${eventThreadId}/messages`),
       expect.anything()
     )
   })
@@ -1572,8 +1687,14 @@ describe('createOrUpdateTeamThread', () => {
     const existingThreadId = 'existing-team-thread-123'
     const mockBotUserId = 'bot-user-id'
 
-    // Mock bot user ID fetch
+    // Mock existing thread lookup + upsert flow
     vi.mocked(fetch)
+      // Existing thread parent lookup
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: existingThreadId, parent_id: forumId }),
+      } as Response)
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -1615,6 +1736,45 @@ describe('createOrUpdateTeamThread', () => {
     expect(addUsersCalls.length).toBeGreaterThanOrEqual(3)
   })
 
+  it('recreates missing team thread when linked thread no longer exists', async () => {
+    const existingThreadId = 'deleted-team-thread-123'
+    const replacementThreadId = 'replacement-team-thread-123'
+
+    vi.mocked(fetch)
+      // Existing thread lookup: missing
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        json: async () => ({}),
+      } as Response)
+      // Create replacement thread
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: replacementThreadId }),
+      } as Response)
+      // Add users to replacement thread
+      .mockResolvedValue({
+        ok: true,
+        status: 204,
+      } as Response)
+
+    const result = await createOrUpdateTeamThread({
+      teamName: 'Team Alpha',
+      eventName: 'GT3 Challenge',
+      raceStartTime: new Date('2026-02-15T18:00:00Z'),
+      existingThreadId,
+      memberDiscordIds: ['discord-alice', 'discord-bob'],
+      members: ['Alice', 'Bob'],
+    })
+
+    expect(result).toBe(replacementThreadId)
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining(`/channels/${forumId}/threads`),
+      expect.objectContaining({ method: 'POST' })
+    )
+  })
+
   it('should handle empty discord IDs gracefully', async () => {
     const mockThreadId = 'new-team-thread-123'
 
@@ -1639,6 +1799,46 @@ describe('createOrUpdateTeamThread', () => {
       .mocked(fetch)
       .mock.calls.filter((call) => call[0]?.toString().includes('/thread-members/'))
     expect(addUsersCalls).toHaveLength(0)
+  })
+
+  it('recreates event thread in forum when existing thread has wrong parent', async () => {
+    const existingThreadId = 'legacy-channel-thread'
+    const replacementThreadId = 'forum-thread-123'
+
+    vi.mocked(fetch)
+      // Existing thread lookup shows old notifications channel parent.
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: existingThreadId, parent_id: channelId }),
+      } as Response)
+      // Create replacement thread in forum.
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: replacementThreadId }),
+      } as Response)
+
+    const result = await createOrUpdateEventThread({
+      eventName: 'GT3 Challenge',
+      raceUrl: 'https://example.com/race',
+      carClasses: ['GT3'],
+      threadId: existingThreadId,
+      timeslots: [
+        {
+          raceStartTime: new Date('2026-02-15T18:00:00Z'),
+          teams: [{ name: 'Team Alpha', members: [] }],
+        },
+      ],
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.threadId).toBe(replacementThreadId)
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining(`/channels/${forumId}/threads`),
+      expect.objectContaining({ method: 'POST' })
+    )
   })
 })
 
@@ -1739,12 +1939,12 @@ describe('createOrUpdateEventThread', () => {
     const existingThreadId = 'existing-thread-123'
     const mockBotUserId = 'bot-user-id'
 
-    // Mock thread existence check
+    // Mock existing thread lookup (must be under configured forum)
     vi.mocked(fetch)
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: async () => ({ id: existingThreadId }),
+        json: async () => ({ id: existingThreadId, parent_id: forumId }),
       } as Response)
       // Mock bot user ID fetch
       .mockResolvedValueOnce({

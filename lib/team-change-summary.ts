@@ -316,7 +316,6 @@ export function buildTeamChangeDetails(params: {
     }
 
     if (original && !pending) {
-      if (!original.teamId) return
       const fromTeamName = getTeamName(original.teamId, original.teamName)
       details.push({
         registrationId: id,

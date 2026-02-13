@@ -48,6 +48,38 @@ async function doesDiscordThreadExist(options: { threadId: string; botToken: str
   )
 }
 
+async function getDiscordThreadParentInfo(options: { threadId: string; botToken: string }) {
+  return pRetry(
+    async () => {
+      const response = await fetch(`${DISCORD_API_BASE}/channels/${options.threadId}`, {
+        headers: {
+          Authorization: `Bot ${options.botToken}`,
+        },
+      })
+
+      if (response.status === 404) {
+        return { exists: false as const, parentId: null as string | null }
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(
+          `Unable to verify thread parent ${options.threadId}: ${response.status} ${response.statusText} - ${errorText}`
+        )
+      }
+
+      const body = (await response.json()) as { parent_id?: string | null }
+      return { exists: true as const, parentId: body.parent_id ?? null }
+    },
+    {
+      retries: 3,
+      minTimeout: 100,
+      maxTimeout: 2000,
+      factor: 2,
+    }
+  )
+}
+
 export enum GuildMembershipStatus {
   MEMBER = 'member',
   NOT_MEMBER = 'access_denied_guild_membership',
@@ -650,7 +682,8 @@ export async function postRosterChangeNotifications(
   botToken: string,
   adminName: string,
   teamThreads?: Record<string, string>,
-  teamNameById?: Map<string, string>
+  teamNameById?: Map<string, string>,
+  suppressTeamThreadIds?: string[]
 ): Promise<void> {
   if (rosterChanges.length === 0) return
 
@@ -695,6 +728,7 @@ export async function postRosterChangeNotifications(
 
   // Post relevant changes to team threads
   if (teamThreads && teamNameById) {
+    const suppressedTeamThreadIdSet = new Set(suppressTeamThreadIds ?? [])
     // Build reverse map: team name -> team ID
     const teamIdByName = new Map<string, string>()
     for (const [id, name] of teamNameById.entries()) {
@@ -721,7 +755,10 @@ export async function postRosterChangeNotifications(
           affectedTeams.push(change.teamName)
           break
         case 'dropped':
-          // Dropped drivers don't have a specific team in the change
+          // Dropped drivers should notify the originating team thread when available.
+          if (change.fromTeam && change.fromTeam !== 'Unassigned') {
+            affectedTeams.push(change.fromTeam)
+          }
           break
       }
 
@@ -739,6 +776,9 @@ export async function postRosterChangeNotifications(
     for (const [teamId, changes] of changesByTeam.entries()) {
       const teamName = teamNameById.get(teamId) || 'Team'
       const threadId = teamThreads[teamId]
+      if (threadId && suppressedTeamThreadIdSet.has(threadId)) {
+        continue
+      }
       if (changes.length > 0 && threadId) {
         const teamEmbed = buildRosterChangesEmbed(changes, appTitle, adminName)
         await postEmbedToThread(threadId, teamEmbed, `${teamName} thread`)
@@ -765,6 +805,7 @@ export async function sendTeamsAssignedNotification(
     adminName?: string
     teamThreads?: Record<string, string>
     teamNameById?: Map<string, string>
+    suppressTeamThreadIds?: string[]
   },
   options?: {
     title?: string
@@ -823,7 +864,8 @@ export async function sendTeamsAssignedNotification(
         botToken,
         data.adminName,
         data.teamThreads,
-        data.teamNameById
+        data.teamNameById,
+        data.suppressTeamThreadIds
       )
     }
 
@@ -913,16 +955,20 @@ export async function createOrUpdateEventThread(data: {
     })
 
     const allDiscordIds = collectDiscordIds(data.timeslots)
-    const allMentionIds = new Set<string>(allDiscordIds.keys())
 
     const buildEmbeds = () =>
       buildTeamsAssignedEmbeds(data, appTitle, { locale: appLocale, timeZone: appTimeZone })
 
     let threadId = data.threadId ?? null
     if (threadId) {
-      const exists = await doesDiscordThreadExist({ threadId, botToken })
-      if (!exists) {
+      const threadInfo = await getDiscordThreadParentInfo({ threadId, botToken })
+      if (!threadInfo.exists) {
         console.warn(`⚠️ [Discord] Event thread ${threadId} missing; creating a new one`)
+        threadId = null
+      } else if (forumId && threadInfo.parentId !== forumId) {
+        console.warn(
+          `⚠️ [Discord] Event thread ${threadId} is not in forum ${forumId}; creating a replacement in forum`
+        )
         threadId = null
       }
     }
@@ -952,14 +998,6 @@ export async function createOrUpdateEventThread(data: {
     /** Creates a new thread and returns its ID, or null on failure. */
     const createNewThread = async (): Promise<string | null> => {
       const embeds = buildEmbeds()
-      const mentionList = Array.from(allMentionIds)
-        .map((regId) => allDiscordIds.get(regId))
-        .filter((did): did is string => Boolean(did))
-        .map((did) => `<@${did}>`)
-      const allowedIds = Array.from(allMentionIds)
-        .map((regId) => allDiscordIds.get(regId))
-        .filter((did): did is string => Boolean(did))
-      const content = mentionList.length ? mentionList.join(' ') : undefined
 
       const threadResponse = await fetch(`${DISCORD_API_BASE}/channels/${threadParentId}/threads`, {
         method: 'POST',
@@ -971,9 +1009,9 @@ export async function createOrUpdateEventThread(data: {
           name: threadName,
           auto_archive_duration: 10080,
           message: {
-            content,
+            content: undefined,
             embeds,
-            allowed_mentions: { users: allowedIds, parse: [] },
+            allowed_mentions: { users: [], parse: [] },
           },
         }),
       })
@@ -1248,39 +1286,60 @@ export async function createOrUpdateTeamThread(options: {
       text: appTitle,
     },
   })
-
   // If thread exists, upsert the message to keep it current
   if (options.existingThreadId) {
-    const upsertResponse = await upsertThreadMessage(
-      options.existingThreadId,
-      { embeds: [buildTeamEmbed()] },
-      botToken
-    )
+    const existingInfo = await getDiscordThreadParentInfo({
+      threadId: options.existingThreadId,
+      botToken,
+    })
 
-    // If upsert succeeded, the thread exists and was updated
-    if (upsertResponse.ok) {
-      console.log(`✅ [Discord] Reused existing team thread: ${options.existingThreadId}`)
-
-      // Add all current members to the thread (ensures new drivers are added)
-      if (options.memberDiscordIds?.length) {
-        await addUsersToThread(options.existingThreadId, options.memberDiscordIds)
-      }
-
-      return options.existingThreadId
-    }
-
-    // If 404, thread was deleted - fall through to create a new one
-    if (upsertResponse.status === 404) {
+    if (!existingInfo.exists) {
       console.warn(
         `⚠️ [Discord] Team thread ${options.existingThreadId} missing; creating a replacement`
       )
-    } else {
-      // Other error - log it but continue to create new thread
-      const errorText = await upsertResponse.text()
+    } else if (forumId && existingInfo.parentId !== forumId) {
       console.warn(
-        `⚠️ [Discord] Failed to update team thread ${options.existingThreadId}: ${upsertResponse.status} ${upsertResponse.statusText}`,
-        errorText
+        `⚠️ [Discord] Team thread ${options.existingThreadId} is not in forum ${forumId}; creating a replacement in forum`
       )
+    } else {
+      try {
+        const upsertResponse = await upsertThreadMessage(
+          options.existingThreadId,
+          { embeds: [buildTeamEmbed()] },
+          botToken
+        )
+
+        // If upsert succeeded, the thread exists and was updated
+        if (upsertResponse.ok) {
+          console.log(`✅ [Discord] Reused existing team thread: ${options.existingThreadId}`)
+
+          // Add all current members to the thread (ensures new drivers are added)
+          if (options.memberDiscordIds?.length) {
+            await addUsersToThread(options.existingThreadId, options.memberDiscordIds)
+          }
+
+          return options.existingThreadId
+        }
+
+        // If 404, thread was deleted - fall through to create a new one
+        if (upsertResponse.status === 404) {
+          console.warn(
+            `⚠️ [Discord] Team thread ${options.existingThreadId} missing; creating a replacement`
+          )
+        } else {
+          // Other error - log it but continue to create new thread
+          const errorText = await upsertResponse.text()
+          console.warn(
+            `⚠️ [Discord] Failed to update team thread ${options.existingThreadId}: ${upsertResponse.status} ${upsertResponse.statusText}`,
+            errorText
+          )
+        }
+      } catch (error) {
+        console.warn(
+          `⚠️ [Discord] Failed to update team thread ${options.existingThreadId}; creating a replacement`,
+          error
+        )
+      }
     }
   }
 
