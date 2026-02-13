@@ -1260,6 +1260,12 @@ export async function createOrUpdateTeamThread(options: {
     // If upsert succeeded, the thread exists and was updated
     if (upsertResponse.ok) {
       console.log(`✅ [Discord] Reused existing team thread: ${options.existingThreadId}`)
+
+      // Add all current members to the thread (ensures new drivers are added)
+      if (options.memberDiscordIds?.length) {
+        await addUsersToThread(options.existingThreadId, options.memberDiscordIds)
+      }
+
       return options.existingThreadId
     }
 
