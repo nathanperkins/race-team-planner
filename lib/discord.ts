@@ -903,7 +903,11 @@ export async function sendTeamsAssignedNotification(
       threadCreated = true
       threadId = await createNewThread()
       if (!threadId) return { ok: false }
-      await sendChatChannelNotification(threadId, '🏁 Teams Assigned')
+      // Only send chat notification if explicitly requested (for teams assignment)
+      // Don't send for registration-only thread creation
+      if (data.sendChatNotification !== false) {
+        await sendChatChannelNotification(threadId, '🏁 Teams Assigned')
+      }
     }
 
     if (!threadCreated) {
@@ -918,7 +922,10 @@ export async function sendTeamsAssignedNotification(
         threadCreated = true
         threadId = await createNewThread()
         if (!threadId) return { ok: false }
-        await sendChatChannelNotification(threadId, '🏁 Teams Assigned')
+        // Only send chat notification if explicitly requested
+        if (data.sendChatNotification !== false) {
+          await sendChatChannelNotification(threadId, '🏁 Teams Assigned')
+        }
       } else if (!postResponse.ok) {
         const errorText = await postResponse.text()
         console.error(

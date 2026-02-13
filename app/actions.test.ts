@@ -8,7 +8,6 @@ import {
 import prisma from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import {
-  createEventDiscussionThread,
   createTeamThread,
   sendRegistrationNotification,
   sendTeamsAssignedNotification as sendDiscordNotification,
@@ -40,6 +39,9 @@ vi.mock('@/lib/prisma', () => ({
     team: {
       findMany: vi.fn(),
     },
+    event: {
+      findUnique: vi.fn(),
+    },
   },
 }))
 
@@ -55,7 +57,6 @@ vi.mock('next/cache', () => ({
 // Mock discord
 vi.mock('@/lib/discord', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/discord')>()),
-  createEventDiscussionThread: vi.fn(),
   createTeamThread: vi.fn(),
   addUsersToThread: vi.fn(),
   sendRegistrationNotification: vi.fn(),
@@ -309,9 +310,19 @@ describe('registerForRace', () => {
     } as any)
     vi.mocked(prisma.user.findUnique).mockResolvedValue({ expectationsVersion: 1 } as any)
     vi.mocked(prisma.race.findFirst).mockResolvedValue(null)
+    vi.mocked(prisma.race.findMany).mockResolvedValue([
+      { startTime: new Date('2026-02-11T20:00:00Z') },
+    ] as any)
+    vi.mocked(prisma.event.findUnique).mockResolvedValue({
+      carClasses: [{ name: 'GT3' }],
+      customCarClasses: [],
+    } as any)
     vi.mocked(prisma.race.updateMany).mockResolvedValue({ count: 2 } as any)
     vi.mocked(sendRegistrationNotification).mockResolvedValue(true)
-    vi.mocked(createEventDiscussionThread).mockResolvedValue('event-thread-id')
+    vi.mocked(sendDiscordNotification).mockResolvedValue({
+      ok: true,
+      threadId: 'event-thread-id',
+    })
     process.env.NEXTAUTH_URL = 'http://localhost:3000'
   })
 
@@ -348,11 +359,12 @@ describe('registerForRace', () => {
     const result = await registerForRace({ message: '' }, formData)
 
     expect(result).toEqual({ message: 'Success' })
-    // Should create new thread (no existing thread)
-    expect(createEventDiscussionThread).toHaveBeenCalledWith(
+    // Should create new thread via sendTeamsAssignedNotification
+    expect(sendDiscordNotification).toHaveBeenCalledWith(
       expect.objectContaining({
         eventName: 'GT3 Challenge',
-        existingThreadId: null,
+        sendChatNotification: false, // Don't send chat notification for registration
+        threadId: undefined, // No existing thread
       })
     )
     // Should sync new thread ID to all event races
@@ -400,11 +412,12 @@ describe('registerForRace', () => {
     const result = await registerForRace({ message: '' }, formData)
 
     expect(result).toEqual({ message: 'Success' })
-    // Should reuse existing thread
-    expect(createEventDiscussionThread).toHaveBeenCalledWith(
+    // Should reuse existing thread via sendTeamsAssignedNotification
+    expect(sendDiscordNotification).toHaveBeenCalledWith(
       expect.objectContaining({
         eventName: 'GT3 Challenge',
-        existingThreadId: 'existing-thread-id',
+        sendChatNotification: false, // Don't send chat notification for registration
+        threadId: 'existing-thread-id',
       })
     )
     expect(sendRegistrationNotification).toHaveBeenCalledWith(
@@ -423,11 +436,22 @@ describe('adminRegisterDriver', () => {
     vi.setSystemTime(FIXED_TIME)
     vi.mocked(auth).mockResolvedValue({ user: { id: 'admin-1', role: 'ADMIN' } } as any)
     vi.mocked(prisma.race.findFirst).mockResolvedValue(null)
-    vi.mocked(prisma.race.findMany).mockResolvedValue([])
+    vi.mocked(prisma.race.findMany).mockResolvedValue([
+      { startTime: new Date('2026-02-11T20:00:00Z') },
+    ] as any)
+    vi.mocked(prisma.event.findUnique).mockResolvedValue({
+      carClasses: [{ name: 'GT3' }],
+      customCarClasses: [],
+    } as any)
     vi.mocked(prisma.race.update).mockResolvedValue({} as any)
     vi.mocked(prisma.race.updateMany).mockResolvedValue({ count: 1 } as any)
-    vi.mocked(sendDiscordNotification).mockResolvedValue({ ok: true, threadId: 'event-thread-id' })
+    vi.mocked(sendDiscordNotification).mockResolvedValue({
+      ok: true,
+      threadId: 'new-event-thread-id',
+    })
+    vi.mocked(sendRegistrationNotification).mockResolvedValue(true)
     vi.mocked(createTeamThread).mockResolvedValue('team-thread-1')
+    process.env.NEXTAUTH_URL = 'http://localhost:3000'
   })
 
   afterEach(() => {
@@ -547,7 +571,6 @@ describe('adminRegisterDriver', () => {
 
     // No existing thread in any race for this event
     vi.mocked(prisma.race.findFirst).mockResolvedValue(null)
-    vi.mocked(createEventDiscussionThread).mockResolvedValue('new-event-thread-id')
 
     const formData = new FormData()
     formData.set('raceId', 'race-123')
@@ -557,11 +580,12 @@ describe('adminRegisterDriver', () => {
     const result = await adminRegisterDriver({ message: '' }, formData)
 
     expect(result.message).toBe('Success')
-    // Should create new thread (no existing thread)
-    expect(createEventDiscussionThread).toHaveBeenCalledWith(
+    // Should create new thread via sendTeamsAssignedNotification
+    expect(sendDiscordNotification).toHaveBeenCalledWith(
       expect.objectContaining({
         eventName: 'GT3 Challenge',
-        existingThreadId: null,
+        sendChatNotification: false, // Don't send chat notification for registration
+        threadId: undefined,
       })
     )
     // Should sync new thread ID to all event races
@@ -625,7 +649,6 @@ describe('adminRegisterDriver', () => {
     vi.mocked(prisma.race.findFirst).mockResolvedValue({
       discordTeamsThreadId: 'existing-thread-id',
     } as any)
-    vi.mocked(createEventDiscussionThread).mockResolvedValue('existing-thread-id')
 
     const formData = new FormData()
     formData.set('raceId', 'race-123')
@@ -635,18 +658,19 @@ describe('adminRegisterDriver', () => {
     const result = await adminRegisterDriver({ message: '' }, formData)
 
     expect(result.message).toBe('Success')
-    // Should reuse existing thread
-    expect(createEventDiscussionThread).toHaveBeenCalledWith(
+    // Should reuse existing thread via sendTeamsAssignedNotification
+    expect(sendDiscordNotification).toHaveBeenCalledWith(
       expect.objectContaining({
         eventName: 'GT3 Challenge',
-        existingThreadId: 'existing-thread-id',
+        sendChatNotification: false, // Don't send chat notification for registration
+        threadId: 'existing-thread-id',
       })
     )
     expect(sendRegistrationNotification).toHaveBeenCalledWith(
       expect.objectContaining({
         userName: 'New Driver',
         eventName: 'GT3 Challenge',
-        threadId: 'existing-thread-id',
+        threadId: 'new-event-thread-id',
       })
     )
 

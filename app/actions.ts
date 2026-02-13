@@ -310,6 +310,83 @@ async function rebalanceTeamsForClass(
   }
 }
 
+/**
+ * Ensures an event-level discussion thread exists for the given event.
+ * Creates or updates the thread using the unified format from sendTeamsAssignedNotification.
+ * Returns the thread ID if successful, or null on failure.
+ */
+async function upsertEventDiscussionThread(options: {
+  eventId: string
+  eventName: string
+  track?: string | null
+  trackConfig?: string | null
+  tempValue?: number | null
+  precipChance?: number | null
+}): Promise<string | null> {
+  const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+
+  // Find existing thread ID from any race in this event
+  const existingEventThread = await prisma.race.findFirst({
+    where: {
+      eventId: options.eventId,
+      NOT: { discordTeamsThreadId: null },
+    },
+    select: {
+      discordTeamsThreadId: true,
+    },
+  })
+
+  // Fetch all races for this event to show all timeslots in the thread
+  const allRaces = await prisma.race.findMany({
+    where: { eventId: options.eventId },
+    select: { startTime: true },
+    orderBy: { startTime: 'asc' },
+  })
+
+  // Fetch car classes for this event
+  const event = await prisma.event.findUnique({
+    where: { id: options.eventId },
+    include: {
+      carClasses: { select: { name: true } },
+    },
+  })
+
+  const carClasses = [
+    ...(event?.carClasses.map((cc) => cc.name) ?? []),
+    ...(event?.customCarClasses ?? []),
+  ]
+
+  // Build timeslots with empty teams (no teams assigned yet during registration)
+  const timeslots = allRaces.map((r) => ({
+    raceStartTime: r.startTime,
+    teams: [],
+  }))
+
+  const { sendTeamsAssignedNotification } = await import('@/lib/discord')
+  const notification = await sendTeamsAssignedNotification({
+    eventName: options.eventName,
+    raceUrl: `${baseUrl}/events?eventId=${options.eventId}`,
+    track: options.track ?? undefined,
+    trackConfig: options.trackConfig ?? undefined,
+    tempValue: options.tempValue,
+    precipChance: options.precipChance,
+    carClasses,
+    timeslots,
+    threadId: existingEventThread?.discordTeamsThreadId ?? undefined,
+    sendChatNotification: false, // Don't send chat notification for just registration
+  })
+
+  if (notification.ok && notification.threadId) {
+    await prisma.race.updateMany({
+      where: { eventId: options.eventId },
+      data: { discordTeamsThreadId: notification.threadId },
+    })
+    return notification.threadId
+  }
+
+  return null
+}
+
 export async function registerForRace(prevState: State, formData: FormData) {
   const session = await auth()
   if (!session || !session.user?.id) {
@@ -391,34 +468,14 @@ export async function registerForRace(prevState: State, formData: FormData) {
     try {
       const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
       // Ensure event-level discussion thread exists as soon as the first driver signs up.
-      const existingEventThread = await prisma.race.findFirst({
-        where: {
-          eventId: race.eventId,
-          NOT: { discordTeamsThreadId: null },
-        },
-        select: {
-          discordTeamsThreadId: true,
-        },
-      })
-
-      const { createEventDiscussionThread } = await import('@/lib/discord')
-      const discussionThreadId = await createEventDiscussionThread({
+      const discussionThreadId = await upsertEventDiscussionThread({
+        eventId: race.eventId,
         eventName: race.event.name,
-        eventStartTime: race.startTime,
-        eventUrl: `${baseUrl}/events?eventId=${race.event.id}`,
         track: race.event.track,
-        trackConfig: race.event.trackConfig ?? undefined,
+        trackConfig: race.event.trackConfig,
         tempValue: race.event.tempValue,
         precipChance: race.event.precipChance,
-        existingThreadId: existingEventThread?.discordTeamsThreadId ?? race.discordTeamsThreadId,
       })
-
-      if (discussionThreadId) {
-        await prisma.race.updateMany({
-          where: { eventId: race.eventId },
-          data: { discordTeamsThreadId: discussionThreadId },
-        })
-      }
 
       const registrationData = await prisma.registration.findFirst({
         where: {
@@ -1738,37 +1795,15 @@ export async function adminRegisterDriver(prevState: State, formData: FormData) 
     // Send Discord notifications (non-blocking)
     try {
       const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
-
       // Ensure event-level discussion thread exists
-      const existingEventThread = await prisma.race.findFirst({
-        where: {
-          eventId: race.eventId,
-          NOT: { discordTeamsThreadId: null },
-        },
-        select: {
-          discordTeamsThreadId: true,
-        },
-      })
-
-      const { createEventDiscussionThread } = await import('@/lib/discord')
-      const discussionThreadId = await createEventDiscussionThread({
+      const discussionThreadId = await upsertEventDiscussionThread({
+        eventId: race.eventId,
         eventName: registration?.race.event.name || '',
-        eventStartTime: registration?.race.startTime || race.startTime,
-        eventUrl: `${baseUrl}/events?eventId=${race.eventId}`,
-        track: registration?.race.event.track,
-        trackConfig: registration?.race.event.trackConfig ?? undefined,
-        tempValue: registration?.race.event.tempValue,
-        precipChance: registration?.race.event.precipChance,
-        existingThreadId:
-          existingEventThread?.discordTeamsThreadId || registration?.race.discordTeamsThreadId,
+        track: registration?.race.event.track ?? null,
+        trackConfig: registration?.race.event.trackConfig ?? null,
+        tempValue: registration?.race.event.tempValue ?? null,
+        precipChance: registration?.race.event.precipChance ?? null,
       })
-
-      if (discussionThreadId) {
-        await prisma.race.updateMany({
-          where: { eventId: race.eventId },
-          data: { discordTeamsThreadId: discussionThreadId },
-        })
-      }
 
       // Send registration notification for regular users (not manual drivers)
       if (registration?.user) {
