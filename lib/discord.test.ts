@@ -819,72 +819,65 @@ describe('findBotMessageInThread', () => {
     expect(result).toBeNull()
   })
 
-  it('throws error and logs when bot user ID fetch fails', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce({
+  it('throws error when bot user ID fetch fails after retries', async () => {
+    vi.mocked(fetch).mockResolvedValue({
       ok: false,
       status: 401,
       statusText: 'Unauthorized',
       text: async () => 'Invalid token',
     } as Response)
 
-    const result = await findBotMessageInThread(threadId, botToken)
-
-    expect(result).toBeNull()
-    expect(fetch).toHaveBeenCalledTimes(1)
-    // Verify that an error was thrown and caught, logged via console.warn
-    expect(console.warn).toHaveBeenCalledWith(
-      expect.stringContaining(`Failed to find bot message in thread ${threadId}`),
-      expect.any(Error)
+    await expect(findBotMessageInThread(threadId, botToken)).rejects.toThrow(
+      'Failed to get bot user ID: 401 Unauthorized - Invalid token'
     )
-    // Verify the error message content
-    const warnCall = vi.mocked(console.warn).mock.calls[0]
-    const error = warnCall[1] as Error
-    expect(error.message).toContain('Failed to get bot user ID: 401 Unauthorized')
-    expect(error.message).toContain('Invalid token')
+
+    // Verify it retried (initial + 3 retries = 4 total attempts)
+    expect(fetch).toHaveBeenCalledTimes(4)
   })
 
-  it('throws error and logs when messages fetch fails', async () => {
+  it('throws error when messages fetch fails after retries', async () => {
+    const botIdResponse = {
+      ok: true,
+      status: 200,
+      json: async () => ({ id: 'bot-user-123' }),
+    } as Response
+    const messagesErrorResponse = {
+      ok: false,
+      status: 404,
+      statusText: 'Not Found',
+      text: async () => 'Thread not found',
+    } as Response
+
     vi.mocked(fetch)
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({ id: 'bot-user-123' }),
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 404,
-        statusText: 'Not Found',
-        text: async () => 'Thread not found',
-      } as Response)
+      // Initial attempt
+      .mockResolvedValueOnce(botIdResponse)
+      .mockResolvedValueOnce(messagesErrorResponse)
+      // Retry 1
+      .mockResolvedValueOnce(botIdResponse)
+      .mockResolvedValueOnce(messagesErrorResponse)
+      // Retry 2
+      .mockResolvedValueOnce(botIdResponse)
+      .mockResolvedValueOnce(messagesErrorResponse)
+      // Retry 3
+      .mockResolvedValueOnce(botIdResponse)
+      .mockResolvedValueOnce(messagesErrorResponse)
 
-    const result = await findBotMessageInThread(threadId, botToken)
+    await expect(findBotMessageInThread(threadId, botToken)).rejects.toThrow(
+      'Failed to fetch messages from thread thread-123: 404 Not Found - Thread not found'
+    )
 
-    expect(result).toBeNull()
-    // Verify that an error was thrown and caught, logged via console.warn
-    expect(console.warn).toHaveBeenCalledWith(
-      expect.stringContaining(`Failed to find bot message in thread ${threadId}`),
-      expect.any(Error)
-    )
-    // Verify the error message content
-    const warnCall = vi.mocked(console.warn).mock.calls[0]
-    const error = warnCall[1] as Error
-    expect(error.message).toContain(
-      'Failed to fetch messages from thread thread-123: 404 Not Found'
-    )
-    expect(error.message).toContain('Thread not found')
+    // 4 attempts total (initial + 3 retries), each with 2 fetches (bot ID + messages)
+    expect(fetch).toHaveBeenCalledTimes(8)
   })
 
-  it('returns null and logs warning on error', async () => {
+  it('throws error when network fails after retries', async () => {
     const error = new Error('Network error')
-    vi.mocked(fetch).mockRejectedValueOnce(error)
+    vi.mocked(fetch).mockRejectedValue(error)
 
-    const result = await findBotMessageInThread(threadId, botToken)
+    await expect(findBotMessageInThread(threadId, botToken)).rejects.toThrow('Network error')
 
-    expect(result).toBeNull()
-    expect(console.warn).toHaveBeenCalledWith(
-      expect.stringContaining(`Failed to find bot message in thread ${threadId}`),
-      error
-    )
+    // Verify it retried (initial + 3 retries = 4 total attempts)
+    expect(fetch).toHaveBeenCalledTimes(4)
   })
 })
 

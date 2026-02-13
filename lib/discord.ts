@@ -184,61 +184,66 @@ export async function findBotMessageInThread(
   threadId: string,
   botToken: string
 ): Promise<string | null> {
-  try {
-    // Get bot's own user ID
-    const botInfo = await fetch(`${DISCORD_API_BASE}/users/@me`, {
-      headers: {
-        Authorization: `Bot ${botToken}`,
-      },
-    })
-
-    if (!botInfo.ok) {
-      const errorText = await botInfo.text()
-      throw new Error(
-        `Failed to get bot user ID: ${botInfo.status} ${botInfo.statusText} - ${errorText}`
-      )
-    }
-
-    const botUserId = (await botInfo.json()).id
-    if (!botUserId) {
-      throw new Error('Bot user ID is missing from API response')
-    }
-
-    // Fetch recent messages from the thread
-    const messagesResponse = await fetch(
-      `${DISCORD_API_BASE}/channels/${threadId}/messages?limit=25`,
-      {
+  return pRetry(
+    async () => {
+      // Get bot's own user ID
+      const botInfo = await fetch(`${DISCORD_API_BASE}/users/@me`, {
         headers: {
           Authorization: `Bot ${botToken}`,
-          'Content-Type': 'application/json',
         },
+      })
+
+      if (!botInfo.ok) {
+        const errorText = await botInfo.text()
+        throw new Error(
+          `Failed to get bot user ID: ${botInfo.status} ${botInfo.statusText} - ${errorText}`
+        )
       }
-    )
 
-    if (!messagesResponse.ok) {
-      const errorText = await messagesResponse.text()
-      throw new Error(
-        `Failed to fetch messages from thread ${threadId}: ${messagesResponse.status} ${messagesResponse.statusText} - ${errorText}`
+      const botUserId = (await botInfo.json()).id
+      if (!botUserId) {
+        throw new Error('Bot user ID is missing from API response')
+      }
+
+      // Fetch recent messages from the thread
+      const messagesResponse = await fetch(
+        `${DISCORD_API_BASE}/channels/${threadId}/messages?limit=25`,
+        {
+          headers: {
+            Authorization: `Bot ${botToken}`,
+            'Content-Type': 'application/json',
+          },
+        }
       )
+
+      if (!messagesResponse.ok) {
+        const errorText = await messagesResponse.text()
+        throw new Error(
+          `Failed to fetch messages from thread ${threadId}: ${messagesResponse.status} ${messagesResponse.statusText} - ${errorText}`
+        )
+      }
+
+      const messages = await messagesResponse.json()
+
+      // Find the first message authored by this bot (usually the thread starter)
+      const existingMessage = Array.isArray(messages)
+        ? messages
+            .reverse() // Reverse to get oldest first
+            .find(
+              (message: { author?: { id?: string } }) =>
+                botUserId && message?.author?.id === botUserId
+            )
+        : null
+
+      return existingMessage?.id ?? null
+    },
+    {
+      retries: 3,
+      minTimeout: 100,
+      maxTimeout: 2000,
+      factor: 2,
     }
-
-    const messages = await messagesResponse.json()
-
-    // Find the first message authored by this bot (usually the thread starter)
-    const existingMessage = Array.isArray(messages)
-      ? messages
-          .reverse() // Reverse to get oldest first
-          .find(
-            (message: { author?: { id?: string } }) =>
-              botUserId && message?.author?.id === botUserId
-          )
-      : null
-
-    return existingMessage?.id ?? null
-  } catch (error) {
-    console.warn(`Failed to find bot message in thread ${threadId}:`, error)
-    return null
-  }
+  )
 }
 
 /**
