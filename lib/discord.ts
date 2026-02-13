@@ -545,7 +545,9 @@ export async function sendWeeklyScheduleNotification(
       chunks.push(embeds.slice(i, i + 10))
     }
 
+    let allSucceeded = true
     for (const chunk of chunks) {
+      const chunkIndex = chunks.indexOf(chunk) + 1
       const resp = await fetch(`${DISCORD_API_BASE}/channels/${channelId}/messages`, {
         method: 'POST',
         headers: {
@@ -559,13 +561,18 @@ export async function sendWeeklyScheduleNotification(
         }),
       })
       if (resp.ok) {
-        console.log(
-          `✅ [Discord] Weekly schedule chunk ${chunks.indexOf(chunk) + 1}/${chunks.length} sent`
+        console.log(`✅ [Discord] Weekly schedule chunk ${chunkIndex}/${chunks.length} sent`)
+      } else {
+        const errorText = await resp.text()
+        console.error(
+          `❌ [Discord] Failed to send weekly schedule chunk ${chunkIndex}/${chunks.length}: ${resp.status} ${resp.statusText}`,
+          errorText
         )
+        allSucceeded = false
       }
     }
 
-    return true
+    return allSucceeded
   } catch (error) {
     console.error('Error sending Discord weekly schedule notification:', error)
     return false

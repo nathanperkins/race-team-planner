@@ -1282,7 +1282,7 @@ describe('sendWeeklyScheduleNotification', () => {
     )
   })
 
-  it('returns true even when some chunk posts fail', async () => {
+  it('returns false and logs error when any chunk fails', async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce({
         ok: true,
@@ -1292,6 +1292,7 @@ describe('sendWeeklyScheduleNotification', () => {
         ok: false,
         status: 500,
         statusText: 'Internal Server Error',
+        text: async () => 'Server error details',
       } as Response)
 
     // Create 11 events to force multiple chunks
@@ -1299,12 +1300,15 @@ describe('sendWeeklyScheduleNotification', () => {
 
     const result = await sendWeeklyScheduleNotification(events)
 
-    // Still returns true even if some chunks fail
-    expect(result).toBe(true)
+    // Returns false if ANY chunk fails (all-or-nothing)
+    expect(result).toBe(false)
     expect(console.log).toHaveBeenCalledWith(
       expect.stringContaining('Weekly schedule chunk 1/2 sent')
     )
-    // Second chunk fails but no error log for that (function doesn't log chunk post failures)
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to send weekly schedule chunk 2/2'),
+      'Server error details'
+    )
   })
 
   it('returns false and logs error when an exception is thrown', async () => {
