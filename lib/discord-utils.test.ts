@@ -846,6 +846,85 @@ describe('Discord Utils', () => {
         teamName: 'Team Alpha',
       })
     })
+
+    it('detects team car class changes', () => {
+      const previousSnapshot = {
+        reg1: {
+          teamId: 'team1',
+          driverName: 'Alice',
+          carClassId: 'class-gt3',
+          carClassName: 'GT3',
+        },
+        reg2: {
+          teamId: 'team1',
+          driverName: 'Bob',
+          carClassId: 'class-gt3',
+          carClassName: 'GT3',
+        },
+        reg3: {
+          teamId: 'team2',
+          driverName: 'Charlie',
+          carClassId: 'class-lmp2',
+          carClassName: 'LMP2',
+        },
+      }
+      const currentSnapshot = {
+        reg1: {
+          teamId: 'team1',
+          driverName: 'Alice',
+          carClassId: 'class-gte',
+          carClassName: 'GTE',
+        },
+        reg2: {
+          teamId: 'team1',
+          driverName: 'Bob',
+          carClassId: 'class-gte',
+          carClassName: 'GTE',
+        },
+        reg3: {
+          teamId: 'team2',
+          driverName: 'Charlie',
+          carClassId: 'class-lmp2',
+          carClassName: 'LMP2',
+        },
+      }
+      const changes = detectRosterChanges(previousSnapshot, currentSnapshot, teamNameById)
+      expect(changes).toHaveLength(1)
+      expect(changes[0]).toEqual({
+        type: 'teamClassChanged',
+        teamName: 'Team Alpha',
+        fromClass: 'GT3',
+        toClass: 'GTE',
+        drivers: ['Alice', 'Bob'],
+      })
+    })
+
+    it('does not detect class changes as team changes when drivers move teams', () => {
+      const previousSnapshot = {
+        reg1: {
+          teamId: 'team1',
+          driverName: 'Alice',
+          carClassId: 'class-gt3',
+          carClassName: 'GT3',
+        },
+      }
+      const currentSnapshot = {
+        reg1: {
+          teamId: 'team2',
+          driverName: 'Alice',
+          carClassId: 'class-lmp2',
+          carClassName: 'LMP2',
+        },
+      }
+      const changes = detectRosterChanges(previousSnapshot, currentSnapshot, teamNameById)
+      expect(changes).toHaveLength(1)
+      expect(changes[0]).toEqual({
+        type: 'moved',
+        driverName: 'Alice',
+        fromTeam: 'Team Alpha',
+        toTeam: 'Team Beta',
+      })
+    })
   })
 
   describe('buildRosterChangesEmbed', () => {
@@ -963,6 +1042,51 @@ describe('Discord Utils', () => {
         appTitle
       )
       expect(embed.description).toBe('1 change to the roster')
+    })
+
+    it('builds embed with team car class changes', () => {
+      const embed = buildRosterChangesEmbed(
+        [
+          {
+            type: 'teamClassChanged',
+            teamName: 'Team Alpha',
+            fromClass: 'GT3',
+            toClass: 'GTE',
+            drivers: ['Alice', 'Bob', 'Charlie'],
+          },
+        ],
+        appTitle,
+        adminName
+      )
+      expect(embed.fields).toHaveLength(1)
+      expect(embed.fields[0].name).toBe('🏎️ Car Class Changed')
+      expect(embed.fields[0].value).toContain('**Team Alpha**: GT3 → GTE')
+      expect(embed.fields[0].value).toContain('• Alice')
+      expect(embed.fields[0].value).toContain('• Bob')
+      expect(embed.fields[0].value).toContain('• Charlie')
+    })
+
+    it('groups team class changes with other changes', () => {
+      const embed = buildRosterChangesEmbed(
+        [
+          { type: 'added', driverName: 'Dave', teamName: 'Team Beta' },
+          {
+            type: 'teamClassChanged',
+            teamName: 'Team Alpha',
+            fromClass: 'GT3',
+            toClass: 'LMP2',
+            drivers: ['Alice', 'Bob'],
+          },
+          { type: 'dropped', driverName: 'Eve' },
+        ],
+        appTitle,
+        adminName
+      )
+      expect(embed.description).toBe('3 changes made by **John Admin**')
+      expect(embed.fields).toHaveLength(3)
+      expect(embed.fields[0].name).toBe('✅ Added')
+      expect(embed.fields[1].name).toBe('🏎️ Car Class Changed')
+      expect(embed.fields[2].name).toBe('❌ Dropped')
     })
   })
 })

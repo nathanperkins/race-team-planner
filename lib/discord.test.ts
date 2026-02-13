@@ -1184,6 +1184,48 @@ describe('postRosterChangeNotifications', () => {
       expect.anything()
     )
   })
+
+  it('posts team class change to both event thread and affected team thread', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+    } as Response)
+
+    const teamThreads = {
+      'team-1': 'team-thread-1',
+    }
+    const teamNameById = new Map([['team-1', 'Team One']])
+
+    const rosterChanges = [
+      {
+        type: 'teamClassChanged' as const,
+        teamName: 'Team One',
+        fromClass: 'GT3',
+        toClass: 'GTE',
+        drivers: ['Alice', 'Bob'],
+      },
+    ]
+
+    await postRosterChangeNotifications(
+      eventThreadId,
+      rosterChanges,
+      botToken,
+      'Admin User',
+      teamThreads,
+      teamNameById
+    )
+
+    // Should post to: event thread + team-thread-1
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining(`/channels/${eventThreadId}/messages`),
+      expect.anything()
+    )
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining(`/channels/team-thread-1/messages`),
+      expect.anything()
+    )
+  })
 })
 
 describe('sendWeeklyScheduleNotification', () => {

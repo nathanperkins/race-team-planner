@@ -366,6 +366,79 @@ describe('sendTeamsAssignmentNotification', () => {
       })
     )
   })
+
+  it('detects team car class changes in roster notifications', async () => {
+    // First assignment: Team One with Alice and Bob in GT3 class
+    const mockRace = setupMockRace({
+      teamsAssigned: true,
+      discordTeamsThreadId: 'event-thread-id',
+      discordTeamsSnapshot: {
+        'reg-1': {
+          teamId: 'team-1',
+          driverName: 'Alice',
+          carClassId: 'class-gt3',
+          carClassName: 'GT3',
+        },
+        'reg-2': {
+          teamId: 'team-1',
+          driverName: 'Bob',
+          carClassId: 'class-gt3',
+          carClassName: 'GT3',
+        },
+      },
+    })
+
+    vi.mocked(prisma.race.findUnique).mockResolvedValue(mockRace as any)
+
+    // Current state: Same team, but both changed to GTE class
+    vi.mocked(prisma.registration.findMany).mockResolvedValue([
+      {
+        id: 'reg-1',
+        teamId: 'team-1',
+        team: { id: 'team-1', name: 'Team One' },
+        carClass: { id: 'class-gte', name: 'GTE', shortName: 'GTE' },
+        user: { name: 'Alice', accounts: [], racerStats: [] },
+        manualDriver: null,
+      },
+      {
+        id: 'reg-2',
+        teamId: 'team-1',
+        team: { id: 'team-1', name: 'Team One' },
+        carClass: { id: 'class-gte', name: 'GTE', shortName: 'GTE' },
+        user: { name: 'Bob', accounts: [], racerStats: [] },
+        manualDriver: null,
+      },
+    ] as any)
+
+    vi.mocked(prisma.team.findMany).mockResolvedValue([{ id: 'team-1', name: 'Team One' }] as any)
+
+    vi.mocked(createOrUpdateEventThread).mockResolvedValue({
+      ok: true,
+      threadId: 'event-thread-id',
+    })
+
+    await sendTeamsAssignmentNotification(raceId)
+
+    // Verify chat notification was sent with team class change
+    expect(sendTeamsAssignedNotification).toHaveBeenCalledWith(
+      'event-thread-id',
+      expect.objectContaining({
+        eventName: 'GT3 Challenge',
+        rosterChanges: expect.arrayContaining([
+          expect.objectContaining({
+            type: 'teamClassChanged',
+            teamName: 'Team One',
+            fromClass: 'GT3',
+            toClass: 'GTE',
+            drivers: expect.arrayContaining(['Alice', 'Bob']),
+          }),
+        ]),
+      }),
+      expect.objectContaining({
+        title: '🏁 Teams Updated',
+      })
+    )
+  })
 })
 
 describe('registerForRace', () => {
@@ -646,6 +719,16 @@ describe('adminRegisterDriver', () => {
         maxDriversPerTeam: null,
         teamsAssigned: true,
         teamAssignmentStrategy: 'BALANCED_IRATING',
+        event: {
+          id: 'event-123',
+          name: 'GT3 Challenge',
+          track: 'Spa',
+          trackConfig: 'Endurance',
+          tempValue: 75,
+          precipChance: 10,
+          carClasses: [{ name: 'GT3' }],
+          customCarClasses: [],
+        },
       } as any)
       .mockResolvedValueOnce({
         id: 'race-123',
@@ -671,10 +754,27 @@ describe('adminRegisterDriver', () => {
     vi.mocked(prisma.registration.update).mockResolvedValue({} as any)
     vi.mocked(prisma.registration.findFirst).mockResolvedValue({
       id: 'reg-created',
-      user: { name: 'New Driver', image: null, racerStats: [] },
+      user: {
+        name: 'New Driver',
+        image: null,
+        accounts: [{ providerAccountId: 'discord-2' }],
+        racerStats: [],
+      },
       carClass: { name: 'GT3', shortName: 'GT3' },
       team: null,
       manualDriver: null,
+      race: {
+        startTime: new Date('2026-02-11T20:00:00Z'),
+        discordTeamsThreadId: 'event-thread-id',
+        event: {
+          id: 'event-123',
+          name: 'GT3 Challenge',
+          track: 'Spa',
+          trackConfig: 'Endurance',
+          tempValue: 75,
+          precipChance: 10,
+        },
+      },
     } as any)
     vi.mocked(prisma.registration.findMany).mockResolvedValue([
       {

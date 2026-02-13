@@ -38,6 +38,13 @@ export type RosterChange =
   | { type: 'dropped'; driverName: string }
   | { type: 'moved'; driverName: string; fromTeam: string; toTeam: string }
   | { type: 'unassigned'; driverName: string; fromTeam: string }
+  | {
+      type: 'teamClassChanged'
+      teamName: string
+      fromClass: string
+      toClass: string
+      drivers: string[]
+    }
 
 export interface TeamsAssignedNotificationData {
   eventName: string
@@ -498,7 +505,10 @@ export function buildRegistrationEmbed(data: RegistrationNotificationData, appTi
   return embed
 }
 
-export type RegistrationSnapshot = Record<string, { teamId: string | null; driverName: string }>
+export type RegistrationSnapshot = Record<
+  string,
+  { teamId: string | null; driverName: string; carClassId?: string; carClassName?: string }
+>
 
 /**
  * Detects roster changes between two snapshots.
@@ -531,8 +541,69 @@ export function detectRosterChanges(
     return []
   }
 
-  // Detect additions and modifications
+  // Track team class changes to group them
+  const teamClassChanges = new Map<
+    string,
+    {
+      fromClass: string
+      toClass: string
+      drivers: Array<{ regId: string; name: string }>
+    }
+  >()
+
+  // First pass: detect team class changes
   Object.entries(currentSnapshot).forEach(([regId, current]) => {
+    if (!(regId in normalizedPrevious)) return
+
+    const previous = normalizedPrevious[regId]
+
+    // Check if car class changed while staying in the same team
+    if (
+      current.teamId &&
+      previous.teamId === current.teamId &&
+      previous.carClassId &&
+      current.carClassId &&
+      previous.carClassId !== current.carClassId &&
+      previous.carClassName &&
+      current.carClassName
+    ) {
+      const key = `${current.teamId}:${previous.carClassId}->${current.carClassId}`
+      const existing = teamClassChanges.get(key)
+
+      if (existing) {
+        existing.drivers.push({ regId, name: current.driverName })
+      } else {
+        teamClassChanges.set(key, {
+          fromClass: previous.carClassName,
+          toClass: current.carClassName,
+          drivers: [{ regId, name: current.driverName }],
+        })
+      }
+    }
+  })
+
+  // Convert team class changes to roster changes
+  const processedForTeamClassChange = new Set<string>()
+  for (const [key, change] of teamClassChanges) {
+    const teamId = key.split(':')[0]
+    const teamName = teamNameById.get(teamId) || 'Team'
+
+    rosterChanges.push({
+      type: 'teamClassChanged',
+      teamName,
+      fromClass: change.fromClass,
+      toClass: change.toClass,
+      drivers: change.drivers.map((d) => d.name),
+    })
+
+    // Mark these registrations as processed
+    change.drivers.forEach((d) => processedForTeamClassChange.add(d.regId))
+  }
+
+  // Second pass: detect additions and modifications (skip those already processed as team class changes)
+  Object.entries(currentSnapshot).forEach(([regId, current]) => {
+    if (processedForTeamClassChange.has(regId)) return
+
     if (!(regId in normalizedPrevious)) {
       // New registration
       if (current.teamId) {
@@ -605,6 +676,7 @@ export function buildRosterChangesEmbed(
   const dropped = rosterChanges.filter((c) => c.type === 'dropped')
   const moved = rosterChanges.filter((c) => c.type === 'moved')
   const unassigned = rosterChanges.filter((c) => c.type === 'unassigned')
+  const teamClassChanged = rosterChanges.filter((c) => c.type === 'teamClassChanged')
 
   const fields: Array<{ name: string; value: string; inline: boolean }> = []
 
@@ -620,6 +692,19 @@ export function buildRosterChangesEmbed(
     fields.push({
       name: '🔄 Moved',
       value: moved.map((c) => `**${c.driverName}**: ${c.fromTeam} → ${c.toTeam}`).join('\n'),
+      inline: false,
+    })
+  }
+
+  if (teamClassChanged.length > 0) {
+    fields.push({
+      name: '🏎️ Car Class Changed',
+      value: teamClassChanged
+        .map((c) => {
+          const driversList = c.drivers.map((d) => `• ${d}`).join('\n')
+          return `**${c.teamName}**: ${c.fromClass} → ${c.toClass}\n${driversList}`
+        })
+        .join('\n\n'),
       inline: false,
     })
   }

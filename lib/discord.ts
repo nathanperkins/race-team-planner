@@ -717,6 +717,9 @@ export async function postRosterChangeNotifications(
         case 'unassigned':
           affectedTeams.push(change.fromTeam)
           break
+        case 'teamClassChanged':
+          affectedTeams.push(change.teamName)
+          break
         case 'dropped':
           // Dropped drivers don't have a specific team in the change
           break

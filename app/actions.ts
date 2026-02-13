@@ -1414,7 +1414,7 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
 
     const registrationInclude = {
       team: { select: { name: true, id: true } },
-      carClass: { select: { name: true, shortName: true } },
+      carClass: { select: { id: true, name: true, shortName: true } },
       user: {
         select: {
           name: true,
@@ -1433,12 +1433,17 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
       include: registrationInclude,
     })
 
-    const currentSnapshot: Record<string, { teamId: string | null; driverName: string }> = {}
+    const currentSnapshot: Record<
+      string,
+      { teamId: string | null; driverName: string; carClassId: string; carClassName: string }
+    > = {}
     registrations.forEach((reg) => {
       const driverName = reg.user?.name || reg.manualDriver?.name || 'Driver'
       currentSnapshot[reg.id] = {
         teamId: reg.teamId ?? reg.team?.id ?? null,
         driverName,
+        carClassId: reg.carClass.id,
+        carClassName: reg.carClass.shortName || reg.carClass.name,
       }
     })
 
@@ -1506,7 +1511,15 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
     // Determine mentions: only users whose assignments changed in the current race
     const previousSnapshot =
       (raceWithEvent.discordTeamsSnapshot as
-        | Record<string, { teamId: string | null; driverName: string }>
+        | Record<
+            string,
+            {
+              teamId: string | null
+              driverName: string
+              carClassId?: string
+              carClassName?: string
+            }
+          >
         | Record<string, string | null>
         | null) ?? null
     const mentionRegistrationIds = new Set<string>()
