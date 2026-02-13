@@ -466,12 +466,11 @@ export async function batchAssignTeams(
     for (const a of assignments) {
       if (a.registrationId && !a.registrationId.startsWith('M-')) {
         // Update existing registration (User or existing manual)
+        // Only update the team assignment, don't change raceId or carClassId
         await tx.registration.update({
           where: { id: a.registrationId },
           data: {
             teamId: a.teamId,
-            raceId,
-            carClassId,
           },
         })
       } else if (a.manualName) {
@@ -496,13 +495,30 @@ export async function batchAssignTeams(
           })
         }
 
+        // Determine car class from team's existing registrations
+        // If team has existing members, use their car class
+        // Otherwise fall back to the provided carClassId
+        let targetCarClassId = carClassId
+        if (a.teamId) {
+          const teamRegistration = await tx.registration.findFirst({
+            where: {
+              raceId,
+              teamId: a.teamId,
+            },
+            select: { carClassId: true },
+          })
+          if (teamRegistration) {
+            targetCarClassId = teamRegistration.carClassId
+          }
+        }
+
         // Create new manual registration
         await tx.registration.create({
           data: {
             manualDriverId: manualDriver.id,
             teamId: a.teamId,
             raceId,
-            carClassId,
+            carClassId: targetCarClassId,
           },
         })
       }
