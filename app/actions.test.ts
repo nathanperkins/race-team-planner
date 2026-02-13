@@ -454,6 +454,70 @@ describe('adminRegisterDriver', () => {
     )
     expect(sendDiscordNotification).toHaveBeenCalled()
   })
+
+  it('sends registration notification when admin adds a driver', async () => {
+    process.env.NEXTAUTH_URL = 'http://localhost:3000'
+
+    vi.mocked(prisma.race.findUnique).mockResolvedValueOnce({
+      startTime: new Date('2026-02-11T20:00:00Z'),
+      endTime: new Date('2026-02-12T20:00:00Z'),
+      eventId: 'event-123',
+      maxDriversPerTeam: null,
+      teamsAssigned: false, // Teams not yet assigned
+      teamAssignmentStrategy: 'BALANCED_IRATING',
+    } as any)
+
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ id: 'user-2' } as any)
+    vi.mocked(prisma.registration.findUnique).mockResolvedValue(null)
+    vi.mocked(prisma.registration.create).mockResolvedValue({ id: 'reg-created' } as any)
+    vi.mocked(prisma.registration.update).mockResolvedValue({} as any)
+    vi.mocked(prisma.registration.findFirst).mockResolvedValue({
+      id: 'reg-created',
+      user: {
+        name: 'New Driver',
+        image: 'https://example.com/avatar.jpg',
+        accounts: [{ providerAccountId: 'discord-123' }],
+        racerStats: [],
+      },
+      race: {
+        startTime: new Date('2026-02-11T20:00:00Z'),
+        event: {
+          id: 'event-123',
+          name: 'GT3 Challenge',
+        },
+        discordTeamsThreadId: 'event-thread-id',
+      },
+      carClass: { name: 'GT3', shortName: 'GT3' },
+      team: null,
+      manualDriver: null,
+    } as any)
+
+    vi.mocked(createEventDiscussionThread).mockResolvedValue('event-thread-id')
+
+    const formData = new FormData()
+    formData.set('raceId', 'race-123')
+    formData.set('userId', 'user-2')
+    formData.set('carClassId', 'class-1')
+
+    const result = await adminRegisterDriver({ message: '' }, formData)
+
+    expect(result.message).toBe('Success')
+    expect(sendRegistrationNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userName: 'New Driver',
+        userAvatarUrl: 'https://example.com/avatar.jpg',
+        eventName: 'GT3 Challenge',
+        carClassName: 'GT3',
+        threadId: 'event-thread-id',
+        discordUser: {
+          id: 'discord-123',
+          name: 'New Driver',
+        },
+      })
+    )
+
+    delete process.env.NEXTAUTH_URL
+  })
 })
 
 describe('updateRegistrationCarClass', () => {

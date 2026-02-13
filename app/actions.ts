@@ -1701,6 +1701,10 @@ export async function adminRegisterDriver(prevState: State, formData: FormData) 
           select: {
             name: true,
             image: true,
+            accounts: {
+              where: { provider: 'discord' },
+              select: { providerAccountId: true },
+            },
             racerStats: {
               select: {
                 category: true,
@@ -1712,8 +1716,86 @@ export async function adminRegisterDriver(prevState: State, formData: FormData) 
             },
           },
         },
+        race: {
+          select: {
+            startTime: true,
+            discordTeamsThreadId: true,
+            event: {
+              select: {
+                id: true,
+                name: true,
+                track: true,
+                trackConfig: true,
+                tempValue: true,
+                precipChance: true,
+              },
+            },
+          },
+        },
       },
     })
+
+    // Send Discord notifications (non-blocking)
+    try {
+      const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+
+      // Ensure event-level discussion thread exists
+      const existingEventThread = await prisma.race.findFirst({
+        where: {
+          eventId: race.eventId,
+          NOT: { discordTeamsThreadId: null },
+        },
+        select: {
+          discordTeamsThreadId: true,
+        },
+      })
+
+      const { createEventDiscussionThread } = await import('@/lib/discord')
+      const discussionThreadId = await createEventDiscussionThread({
+        eventName: registration?.race.event.name || '',
+        eventStartTime: registration?.race.startTime || race.startTime,
+        eventUrl: `${baseUrl}/events?eventId=${race.eventId}`,
+        track: registration?.race.event.track,
+        trackConfig: registration?.race.event.trackConfig ?? undefined,
+        tempValue: registration?.race.event.tempValue,
+        precipChance: registration?.race.event.precipChance,
+        existingThreadId:
+          existingEventThread?.discordTeamsThreadId || registration?.race.discordTeamsThreadId,
+      })
+
+      if (discussionThreadId) {
+        await prisma.race.updateMany({
+          where: { eventId: race.eventId },
+          data: { discordTeamsThreadId: discussionThreadId },
+        })
+      }
+
+      // Send registration notification for regular users (not manual drivers)
+      if (registration?.user) {
+        const { sendRegistrationNotification } = await import('@/lib/discord')
+
+        const discordAccount = registration.user.accounts[0]
+
+        await sendRegistrationNotification({
+          userName: registration.user.name || 'Unknown User',
+          userAvatarUrl: registration.user.image || undefined,
+          eventName: registration.race.event.name,
+          raceStartTime: registration.race.startTime,
+          carClassName: registration.carClass.name,
+          eventUrl: `${baseUrl}/events?eventId=${registration.race.event.id}`,
+          discordUser: discordAccount?.providerAccountId
+            ? {
+                id: discordAccount.providerAccountId,
+                name: registration.user.name || 'Unknown',
+              }
+            : undefined,
+          threadId: discussionThreadId,
+        })
+      }
+    } catch (notificationError) {
+      // Log but don't fail the registration if notification fails
+      console.error('Failed to send Discord notification:', notificationError)
+    }
 
     if (race.teamsAssigned) {
       try {
