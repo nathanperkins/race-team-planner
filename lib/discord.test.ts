@@ -12,7 +12,9 @@ import {
   findBotMessageInThread,
   upsertThreadMessage,
   postRosterChangeNotifications,
+  sendWeeklyScheduleNotification,
 } from './discord'
+import type { WeeklyScheduleEvent } from './discord-utils'
 
 describe('checkGuildMembership', () => {
   const userId = '123456789'
@@ -1148,6 +1150,174 @@ describe('postRosterChangeNotifications', () => {
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Failed to post roster changes'),
       expect.anything()
+    )
+  })
+})
+
+describe('sendWeeklyScheduleNotification', () => {
+  const createMockEvent = (name: string): WeeklyScheduleEvent => ({
+    name,
+    track: 'Spa-Francorchamps',
+    startTime: new Date('2026-02-15T10:00:00Z'),
+    endTime: new Date('2026-02-15T12:00:00Z'),
+    raceTimes: [new Date('2026-02-15T11:00:00Z')],
+    carClasses: ['GT3'],
+    registeredUsers: [{ name: 'Test User', discordId: '123456' }],
+    eventUrl: 'https://example.com/event',
+  })
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn())
+    vi.stubEnv('DISCORD_BOT_TOKEN', 'fake-bot-token')
+    vi.stubEnv('DISCORD_NOTIFICATIONS_CHANNEL_ID', 'fake-channel-id')
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('returns false and logs warning when DISCORD_BOT_TOKEN is missing', async () => {
+    vi.stubEnv('DISCORD_BOT_TOKEN', '')
+
+    const events = [createMockEvent('GT3 Challenge')]
+
+    const result = await sendWeeklyScheduleNotification(events)
+
+    expect(result).toBe(false)
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'DISCORD_BOT_TOKEN or DISCORD_NOTIFICATIONS_CHANNEL_ID not configured'
+      )
+    )
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('returns false and logs warning when DISCORD_NOTIFICATIONS_CHANNEL_ID is missing', async () => {
+    vi.stubEnv('DISCORD_NOTIFICATIONS_CHANNEL_ID', '')
+
+    const events = [createMockEvent('GT3 Challenge')]
+
+    const result = await sendWeeklyScheduleNotification(events)
+
+    expect(result).toBe(false)
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'DISCORD_BOT_TOKEN or DISCORD_NOTIFICATIONS_CHANNEL_ID not configured'
+      )
+    )
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('returns false when events array is empty', async () => {
+    const result = await sendWeeklyScheduleNotification([])
+
+    expect(result).toBe(false)
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('sends a single chunk notification when events produce less than 10 embeds', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+    } as Response)
+
+    const events = [createMockEvent('GT3 Challenge'), createMockEvent('LMP2 Endurance')]
+
+    const result = await sendWeeklyScheduleNotification(events)
+
+    expect(result).toBe(true)
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/channels/fake-channel-id/messages'),
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          Authorization: 'Bot fake-bot-token',
+        }),
+        body: expect.stringContaining('Upcoming Races for this Weekend'),
+      })
+    )
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('Weekly schedule chunk 1/1 sent')
+    )
+  })
+
+  it('sends multiple chunks when events produce more than 10 embeds', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+    } as Response)
+
+    // Create 11 events to ensure we get more than 10 embeds (triggers chunking)
+    const events = Array.from({ length: 11 }, (_, i) => createMockEvent(`Event ${i + 1}`))
+
+    const result = await sendWeeklyScheduleNotification(events)
+
+    expect(result).toBe(true)
+    // Should send 2 chunks (10 embeds in first, 1 in second)
+    expect(fetch).toHaveBeenCalledTimes(2)
+
+    // First chunk should have content with "Upcoming Races"
+    const firstCall = vi.mocked(fetch).mock.calls[0]
+    const firstBody = JSON.parse(firstCall[1]?.body as string)
+    expect(firstBody.content).toBe('**Upcoming Races for this Weekend** 🏁')
+    expect(firstBody.embeds).toHaveLength(10)
+
+    // Second chunk should not have the "Upcoming Races" content
+    const secondCall = vi.mocked(fetch).mock.calls[1]
+    const secondBody = JSON.parse(secondCall[1]?.body as string)
+    expect(secondBody.content).toBeUndefined()
+    expect(secondBody.embeds).toHaveLength(1)
+
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('Weekly schedule chunk 1/2 sent')
+    )
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('Weekly schedule chunk 2/2 sent')
+    )
+  })
+
+  it('returns true even when some chunk posts fail', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+      } as Response)
+
+    // Create 11 events to force multiple chunks
+    const events = Array.from({ length: 11 }, (_, i) => createMockEvent(`Event ${i + 1}`))
+
+    const result = await sendWeeklyScheduleNotification(events)
+
+    // Still returns true even if some chunks fail
+    expect(result).toBe(true)
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('Weekly schedule chunk 1/2 sent')
+    )
+    // Second chunk fails but no error log for that (function doesn't log chunk post failures)
+  })
+
+  it('returns false and logs error when an exception is thrown', async () => {
+    vi.mocked(fetch).mockRejectedValue(new Error('Network error'))
+
+    const events = [createMockEvent('GT3 Challenge')]
+
+    const result = await sendWeeklyScheduleNotification(events)
+
+    expect(result).toBe(false)
+    expect(console.error).toHaveBeenCalledWith(
+      'Error sending Discord weekly schedule notification:',
+      expect.any(Error)
     )
   })
 })
