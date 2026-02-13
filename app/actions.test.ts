@@ -311,7 +311,7 @@ describe('registerForRace', () => {
     vi.mocked(prisma.user.findUnique).mockResolvedValue({ expectationsVersion: 1 } as any)
     vi.mocked(prisma.race.findFirst).mockResolvedValue(null)
     vi.mocked(prisma.race.findMany).mockResolvedValue([
-      { startTime: new Date('2026-02-11T20:00:00Z') },
+      { id: 'race-123', startTime: new Date('2026-02-11T20:00:00Z'), registrations: [] },
     ] as any)
     vi.mocked(prisma.event.findUnique).mockResolvedValue({
       carClasses: [{ name: 'GT3' }],
@@ -430,6 +430,92 @@ describe('registerForRace', () => {
       })
     )
   })
+
+  it('includes newly registered driver in event thread as unassigned', async () => {
+    // Mock race with existing registrations plus the new one
+    vi.mocked(prisma.race.findMany).mockResolvedValue([
+      {
+        id: 'race-123',
+        startTime: new Date('2026-02-11T20:00:00Z'),
+        registrations: [
+          {
+            id: 'reg-existing',
+            team: null,
+            carClass: { name: 'GT3' },
+            user: {
+              name: 'Existing Driver',
+              accounts: [{ providerAccountId: 'discord-existing' }],
+            },
+            manualDriver: null,
+          },
+          {
+            id: 'reg-new',
+            team: null,
+            carClass: { name: 'GT3' },
+            user: {
+              name: 'User 1',
+              accounts: [{ providerAccountId: 'discord-1' }],
+            },
+            manualDriver: null,
+          },
+        ],
+      },
+    ] as any)
+
+    vi.mocked(prisma.race.findUnique).mockResolvedValue({
+      startTime: new Date('2026-02-11T20:00:00Z'),
+      endTime: new Date('2026-02-12T20:00:00Z'),
+      eventId: 'event-123',
+      discordTeamsThreadId: null,
+      maxDriversPerTeam: null,
+      teamsAssigned: false,
+      teamAssignmentStrategy: 'BALANCED_IRATING',
+      event: {
+        id: 'event-123',
+        name: 'GT3 Challenge',
+        track: 'Spa',
+        trackConfig: 'Endurance',
+        tempValue: 75,
+        precipChance: 10,
+        carClasses: [{ name: 'GT3' }],
+        customCarClasses: [],
+      },
+    } as any)
+
+    const formData = new FormData()
+    formData.set('raceId', 'race-123')
+    formData.set('carClassId', 'class-1')
+
+    const result = await registerForRace({ message: '' }, formData)
+
+    expect(result).toEqual({ message: 'Success' })
+    // Should include both drivers in unassigned list
+    expect(sendDiscordNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventName: 'GT3 Challenge',
+        timeslots: [
+          expect.objectContaining({
+            raceStartTime: new Date('2026-02-11T20:00:00Z'),
+            teams: [],
+            unassigned: [
+              {
+                name: 'Existing Driver',
+                carClass: 'GT3',
+                discordId: 'discord-existing',
+                registrationId: 'reg-existing',
+              },
+              {
+                name: 'User 1',
+                carClass: 'GT3',
+                discordId: 'discord-1',
+                registrationId: 'reg-new',
+              },
+            ],
+          }),
+        ],
+      })
+    )
+  })
 })
 
 describe('adminRegisterDriver', () => {
@@ -441,7 +527,7 @@ describe('adminRegisterDriver', () => {
     vi.mocked(auth).mockResolvedValue({ user: { id: 'admin-1', role: 'ADMIN' } } as any)
     vi.mocked(prisma.race.findFirst).mockResolvedValue(null)
     vi.mocked(prisma.race.findMany).mockResolvedValue([
-      { startTime: new Date('2026-02-11T20:00:00Z') },
+      { id: 'race-123', startTime: new Date('2026-02-11T20:00:00Z'), registrations: [] },
     ] as any)
     vi.mocked(prisma.event.findUnique).mockResolvedValue({
       carClasses: [{ name: 'GT3' }],

@@ -336,10 +336,30 @@ async function upsertEventDiscussionThread(options: {
     },
   })
 
-  // Fetch all races for this event to show all timeslots in the thread
+  // Fetch all races for this event with their registrations to show all timeslots in the thread
   const allRaces = await prisma.race.findMany({
     where: { eventId: options.eventId },
-    select: { startTime: true },
+    select: {
+      id: true,
+      startTime: true,
+      registrations: {
+        select: {
+          id: true,
+          team: { select: { id: true, name: true } },
+          carClass: { select: { name: true } },
+          user: {
+            select: {
+              name: true,
+              accounts: {
+                where: { provider: 'discord' },
+                select: { providerAccountId: true },
+              },
+            },
+          },
+          manualDriver: { select: { name: true } },
+        },
+      },
+    },
     orderBy: { startTime: 'asc' },
   })
 
@@ -356,11 +376,49 @@ async function upsertEventDiscussionThread(options: {
     ...(event?.customCarClasses ?? []),
   ]
 
-  // Build timeslots with empty teams (no teams assigned yet during registration)
-  const timeslots = allRaces.map((r) => ({
-    raceStartTime: r.startTime,
-    teams: [],
-  }))
+  // Build timeslots with teams and unassigned drivers
+  const timeslots = allRaces.map((race) => {
+    const registrations = race.registrations
+
+    // Group registrations by team (null = unassigned)
+    const byTeam = new Map<string | null, typeof registrations>()
+    for (const reg of registrations) {
+      const teamId = reg.team?.id ?? null
+      const existing = byTeam.get(teamId) ?? []
+      existing.push(reg)
+      byTeam.set(teamId, existing)
+    }
+
+    // Build teams array (exclude unassigned)
+    const teams = Array.from(byTeam.entries())
+      .filter(([teamId]) => teamId !== null)
+      .map(([, regs]) => {
+        const teamName = regs[0].team!.name
+        return {
+          name: teamName,
+          members: regs.map((r) => ({
+            name: r.user?.name ?? r.manualDriver?.name ?? 'Unknown',
+            carClass: r.carClass.name,
+            discordId: r.user?.accounts[0]?.providerAccountId,
+            registrationId: r.id,
+          })),
+        }
+      })
+
+    // Build unassigned array
+    const unassigned = (byTeam.get(null) ?? []).map((r) => ({
+      name: r.user?.name ?? r.manualDriver?.name ?? 'Unknown',
+      carClass: r.carClass.name,
+      discordId: r.user?.accounts[0]?.providerAccountId,
+      registrationId: r.id,
+    }))
+
+    return {
+      raceStartTime: race.startTime,
+      teams,
+      unassigned: unassigned.length > 0 ? unassigned : undefined,
+    }
+  })
 
   const { sendTeamsAssignedNotification } = await import('@/lib/discord')
   const notification = await sendTeamsAssignedNotification({
