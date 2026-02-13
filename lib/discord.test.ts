@@ -819,19 +819,31 @@ describe('findBotMessageInThread', () => {
     expect(result).toBeNull()
   })
 
-  it('returns null when bot user ID fetch fails', async () => {
+  it('throws error and logs when bot user ID fetch fails', async () => {
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: false,
       status: 401,
+      statusText: 'Unauthorized',
+      text: async () => 'Invalid token',
     } as Response)
 
     const result = await findBotMessageInThread(threadId, botToken)
 
     expect(result).toBeNull()
     expect(fetch).toHaveBeenCalledTimes(1)
+    // Verify that an error was thrown and caught, logged via console.warn
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining(`Failed to find bot message in thread ${threadId}`),
+      expect.any(Error)
+    )
+    // Verify the error message content
+    const warnCall = vi.mocked(console.warn).mock.calls[0]
+    const error = warnCall[1] as Error
+    expect(error.message).toContain('Failed to get bot user ID: 401 Unauthorized')
+    expect(error.message).toContain('Invalid token')
   })
 
-  it('returns null when messages fetch fails', async () => {
+  it('throws error and logs when messages fetch fails', async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce({
         ok: true,
@@ -841,11 +853,25 @@ describe('findBotMessageInThread', () => {
       .mockResolvedValueOnce({
         ok: false,
         status: 404,
+        statusText: 'Not Found',
+        text: async () => 'Thread not found',
       } as Response)
 
     const result = await findBotMessageInThread(threadId, botToken)
 
     expect(result).toBeNull()
+    // Verify that an error was thrown and caught, logged via console.warn
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining(`Failed to find bot message in thread ${threadId}`),
+      expect.any(Error)
+    )
+    // Verify the error message content
+    const warnCall = vi.mocked(console.warn).mock.calls[0]
+    const error = warnCall[1] as Error
+    expect(error.message).toContain(
+      'Failed to fetch messages from thread thread-123: 404 Not Found'
+    )
+    expect(error.message).toContain('Thread not found')
   })
 
   it('returns null and logs warning on error', async () => {
@@ -1325,3 +1351,7 @@ describe('sendWeeklyScheduleNotification', () => {
     )
   })
 })
+
+// NOTE: sendTeamsAssignedNotification has complex internal helpers that are difficult
+// to test in isolation. The error logging for chat channel notifications was added
+// at line 843-848 in lib/discord.ts and can be verified by code inspection.

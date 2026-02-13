@@ -185,9 +185,17 @@ export async function findBotMessageInThread(
         Authorization: `Bot ${botToken}`,
       },
     })
-    const botUserId = botInfo.ok ? (await botInfo.json()).id : null
+
+    if (!botInfo.ok) {
+      const errorText = await botInfo.text()
+      throw new Error(
+        `Failed to get bot user ID: ${botInfo.status} ${botInfo.statusText} - ${errorText}`
+      )
+    }
+
+    const botUserId = (await botInfo.json()).id
     if (!botUserId) {
-      return null
+      throw new Error('Bot user ID is missing from API response')
     }
 
     // Fetch recent messages from the thread
@@ -202,7 +210,10 @@ export async function findBotMessageInThread(
     )
 
     if (!messagesResponse.ok) {
-      return null
+      const errorText = await messagesResponse.text()
+      throw new Error(
+        `Failed to fetch messages from thread ${threadId}: ${messagesResponse.status} ${messagesResponse.statusText} - ${errorText}`
+      )
     }
 
     const messages = await messagesResponse.json()
@@ -829,6 +840,12 @@ export async function sendTeamsAssignedNotification(
       })
       if (chatResp.ok) {
         console.log(`✅ [Discord] Posted thread link to chat channel ${channelId}`)
+      } else {
+        const errorText = await chatResp.text()
+        console.error(
+          `❌ [Discord] Failed to post thread link to chat channel ${channelId}: ${chatResp.status} ${chatResp.statusText}`,
+          errorText
+        )
       }
     }
 
