@@ -610,6 +610,34 @@ describe('sendRegistrationNotification', () => {
     )
   })
 
+  it('returns true but logs error when thread post fails', async () => {
+    const withThread = { ...data, threadId: 'event-thread-123' }
+    vi.mocked(fetch)
+      // Notification channel succeeds
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+      } as Response)
+      // Event thread fails
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+        text: async () => 'Thread not found',
+      } as Response)
+
+    const result = await sendRegistrationNotification(withThread)
+
+    expect(result).toBe(true) // Still returns true since notification channel succeeded
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'Failed to send Discord registration notification to thread event-thread-123'
+      ),
+      'Thread not found'
+    )
+  })
+
   it('returns false and logs error when API returns error code', async () => {
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: false,
