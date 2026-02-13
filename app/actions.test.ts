@@ -11,6 +11,7 @@ import {
   createOrUpdateEventThread,
   createOrUpdateTeamThread,
   sendRegistrationNotification,
+  sendTeamsAssignedNotification,
 } from '@/lib/discord'
 
 // Mock prisma
@@ -307,6 +308,61 @@ describe('sendTeamsAssignmentNotification', () => {
     expect(createOrUpdateEventThread).toHaveBeenCalledWith(
       expect.objectContaining({
         threadId: 'shared-event-thread',
+      })
+    )
+  })
+
+  it('sends roster change notification when reassigning teams', async () => {
+    // First assignment: User 1 on Team One (stored in snapshot)
+    const mockRace = setupMockRace({
+      discordTeamsThreadId: 'event-thread-id',
+      discordTeamsSnapshot: {
+        'reg-1': { teamId: 'team-1', driverName: 'User 1' },
+      },
+      teamsAssigned: true,
+    })
+
+    // Second assignment: User 1 moved to Team Two
+    const mockRegistrations = [setupMockRegistration('1', 'team-2', 'Team Two')]
+
+    vi.mocked(prisma.race.findUnique).mockResolvedValue(mockRace as any)
+    vi.mocked(prisma.registration.findMany).mockResolvedValue(mockRegistrations as any)
+    vi.mocked(prisma.race.findFirst).mockResolvedValue({
+      discordTeamsThreadId: 'event-thread-id',
+    } as any)
+    vi.mocked(prisma.race.findMany).mockResolvedValue([])
+
+    vi.mocked(createOrUpdateTeamThread).mockResolvedValue('team-thread-2')
+    vi.mocked(createOrUpdateEventThread).mockResolvedValue({
+      ok: true,
+      threadId: 'event-thread-id',
+    })
+
+    await sendTeamsAssignmentNotification(raceId)
+
+    // Verify event thread was updated
+    expect(createOrUpdateEventThread).toHaveBeenCalledWith(
+      expect.objectContaining({
+        threadId: 'event-thread-id',
+      })
+    )
+
+    // Verify chat notification was sent with roster changes
+    expect(sendTeamsAssignedNotification).toHaveBeenCalledWith(
+      'event-thread-id',
+      expect.objectContaining({
+        eventName: 'GT3 Challenge',
+        rosterChanges: expect.arrayContaining([
+          expect.objectContaining({
+            type: 'moved',
+            driverName: 'User 1',
+            fromTeam: 'Team One',
+            toTeam: 'Team Two',
+          }),
+        ]),
+      }),
+      expect.objectContaining({
+        title: '🏁 Teams Updated',
       })
     )
   })

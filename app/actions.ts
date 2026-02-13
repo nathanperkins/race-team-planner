@@ -1390,6 +1390,7 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
       select: {
         id: true,
         startTime: true,
+        teamsAssigned: true,
         discordTeamsThreadId: true,
         discordTeamsSnapshot: true,
         discordTeamThreads: true,
@@ -1617,7 +1618,6 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
       select: { discordTeamsThreadId: true },
     })
     const existingThreadId = eventThread?.discordTeamsThreadId ?? raceWithEvent.discordTeamsThreadId
-    const threadAlreadyExists = !!existingThreadId
 
     // Combine car classes from relations and custom car classes
     const carClasses = [
@@ -1649,9 +1649,8 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
 
     const threadId = threadResult.threadId!
 
-    // 2. Send chat notification if appropriate (2nd+ timeslot with teams already assigned)
-    const shouldSendChatNotification =
-      threadAlreadyExists && siblingRaces.some((race) => race.teamsAssigned)
+    // 2. Send chat notification if teams were previously assigned (roster update scenario)
+    const shouldSendChatNotification = previousSnapshot !== null && raceWithEvent.teamsAssigned
     if (shouldSendChatNotification) {
       await sendTeamsAssignedNotification(
         threadId,
