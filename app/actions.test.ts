@@ -324,11 +324,13 @@ describe('registerForRace', () => {
       threadId: 'event-thread-id',
     })
     process.env.NEXTAUTH_URL = 'http://localhost:3000'
+    process.env.DISCORD_GUILD_ID = 'test-guild-id'
   })
 
   afterEach(() => {
     vi.useRealTimers()
     delete process.env.NEXTAUTH_URL
+    delete process.env.DISCORD_GUILD_ID
   })
 
   it('creates a new event discussion thread when self-registering for first time', async () => {
@@ -375,6 +377,7 @@ describe('registerForRace', () => {
     expect(sendRegistrationNotification).toHaveBeenCalledWith(
       expect.objectContaining({
         threadId: 'event-thread-id',
+        guildId: 'test-guild-id',
       })
     )
   })
@@ -423,6 +426,7 @@ describe('registerForRace', () => {
     expect(sendRegistrationNotification).toHaveBeenCalledWith(
       expect.objectContaining({
         threadId: 'event-thread-id',
+        guildId: 'test-guild-id',
       })
     )
   })
@@ -452,10 +456,13 @@ describe('adminRegisterDriver', () => {
     vi.mocked(sendRegistrationNotification).mockResolvedValue(true)
     vi.mocked(createTeamThread).mockResolvedValue('team-thread-1')
     process.env.NEXTAUTH_URL = 'http://localhost:3000'
+    process.env.DISCORD_GUILD_ID = 'test-guild-id'
   })
 
   afterEach(() => {
     vi.useRealTimers()
+    delete process.env.NEXTAUTH_URL
+    delete process.env.DISCORD_GUILD_ID
   })
 
   it('refreshes team notification when adding a driver after teams are assigned', async () => {
@@ -529,8 +536,6 @@ describe('adminRegisterDriver', () => {
   })
 
   it('creates a new event discussion thread when admin registers first driver', async () => {
-    process.env.NEXTAUTH_URL = 'http://localhost:3000'
-
     vi.mocked(prisma.race.findUnique).mockResolvedValueOnce({
       startTime: new Date('2026-02-11T20:00:00Z'),
       endTime: new Date('2026-02-12T20:00:00Z'),
@@ -598,15 +603,12 @@ describe('adminRegisterDriver', () => {
         userName: 'New Driver',
         eventName: 'GT3 Challenge',
         threadId: 'new-event-thread-id',
+        guildId: 'test-guild-id',
       })
     )
-
-    delete process.env.NEXTAUTH_URL
   })
 
   it('reuses existing event discussion thread when admin registers driver', async () => {
-    process.env.NEXTAUTH_URL = 'http://localhost:3000'
-
     vi.mocked(prisma.race.findUnique).mockResolvedValueOnce({
       startTime: new Date('2026-02-11T20:00:00Z'),
       endTime: new Date('2026-02-12T20:00:00Z'),
@@ -671,10 +673,9 @@ describe('adminRegisterDriver', () => {
         userName: 'New Driver',
         eventName: 'GT3 Challenge',
         threadId: 'new-event-thread-id',
+        guildId: 'test-guild-id',
       })
     )
-
-    delete process.env.NEXTAUTH_URL
   })
 })
 

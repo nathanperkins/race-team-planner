@@ -65,7 +65,8 @@ export interface RegistrationNotificationData {
   carClassName: string
   eventUrl: string
   discordUser?: { id: string; name: string }
-  threadId?: string | null
+  threadId: string
+  guildId: string
 }
 
 export interface OnboardingNotificationData {
@@ -433,6 +434,26 @@ export function buildRegistrationEmbed(data: RegistrationNotificationData, appTi
   const unixTimestamp = Math.floor(data.raceStartTime.getTime() / 1000)
   const discordTimestamp = `<t:${unixTimestamp}:F>`
 
+  const threadUrl = buildDiscordWebLink({ guildId: data.guildId, threadId: data.threadId })
+
+  const fields: Array<{ name: string; value: string; inline: boolean }> = [
+    {
+      name: '🏎️ Car Class',
+      value: data.carClassName,
+      inline: true,
+    },
+    {
+      name: '🕐 Race Time',
+      value: discordTimestamp,
+      inline: true,
+    },
+    {
+      name: '💬 Discussion',
+      value: `[View Event Thread](${threadUrl})`,
+      inline: true,
+    },
+  ]
+
   const embed: {
     title: string
     description: string
@@ -448,18 +469,7 @@ export function buildRegistrationEmbed(data: RegistrationNotificationData, appTi
       ? `<@${data.discordUser.id}> has registered for **${data.eventName}**`
       : `**${data.userName}** has registered for **${data.eventName}**`,
     color: 0x5865f2, // Discord blurple color
-    fields: [
-      {
-        name: '🏎️ Car Class',
-        value: data.carClassName,
-        inline: true,
-      },
-      {
-        name: '🕐 Race Time',
-        value: discordTimestamp,
-        inline: true,
-      },
-    ],
+    fields,
     url: data.eventUrl,
     timestamp: new Date().toISOString(),
     footer: {

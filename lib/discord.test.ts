@@ -533,6 +533,7 @@ describe('verifyEventsForum', () => {
 describe('sendRegistrationNotification', () => {
   const botToken = 'fake-bot-token'
   const channelId = 'fake-channel-id'
+  const guildId = 'fake-guild-id'
   const data = {
     userName: 'Alice',
     eventName: 'GT3 Challenge',
@@ -540,6 +541,8 @@ describe('sendRegistrationNotification', () => {
     carClassName: 'GT3',
     eventUrl: 'http://example.com',
     discordUser: { id: '123', name: 'alice' },
+    threadId: 'event-thread-123',
+    guildId,
   }
 
   beforeEach(() => {
@@ -565,10 +568,15 @@ describe('sendRegistrationNotification', () => {
   })
 
   it('returns true when API returns 200 OK', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-    } as Response)
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+      } as Response)
 
     const result = await sendRegistrationNotification(data)
 
@@ -584,8 +592,7 @@ describe('sendRegistrationNotification', () => {
     )
   })
 
-  it('posts to both notification channel and event thread when threadId is provided', async () => {
-    const withThread = { ...data, threadId: 'event-thread-123' }
+  it('posts to both notification channel and event thread', async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce({
         ok: true,
@@ -596,7 +603,7 @@ describe('sendRegistrationNotification', () => {
         status: 200,
       } as Response)
 
-    const result = await sendRegistrationNotification(withThread)
+    const result = await sendRegistrationNotification(data)
 
     expect(result).toBe(true)
     expect(fetch).toHaveBeenCalledTimes(2)
@@ -613,7 +620,6 @@ describe('sendRegistrationNotification', () => {
   })
 
   it('returns true but logs error when thread post fails', async () => {
-    const withThread = { ...data, threadId: 'event-thread-123' }
     vi.mocked(fetch)
       // Notification channel succeeds
       .mockResolvedValueOnce({
@@ -628,7 +634,7 @@ describe('sendRegistrationNotification', () => {
         text: async () => 'Thread not found',
       } as Response)
 
-    const result = await sendRegistrationNotification(withThread)
+    const result = await sendRegistrationNotification(data)
 
     expect(result).toBe(true) // Still returns true since notification channel succeeded
     expect(fetch).toHaveBeenCalledTimes(2)

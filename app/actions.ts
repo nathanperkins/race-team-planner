@@ -384,6 +384,7 @@ async function upsertEventDiscussionThread(options: {
     return notification.threadId
   }
 
+  console.error('Failed to create or update event discussion thread')
   return null
 }
 
@@ -517,21 +518,26 @@ export async function registerForRace(prevState: State, formData: FormData) {
 
         const discordAccount = registrationData.user.accounts[0]
 
-        await sendRegistrationNotification({
-          userName: registrationData.user.name || 'Unknown User',
-          userAvatarUrl: registrationData.user.image || undefined,
-          eventName: registrationData.race.event.name,
-          raceStartTime: registrationData.race.startTime,
-          carClassName: registrationData.carClass.name,
-          eventUrl: `${baseUrl}/events?eventId=${registrationData.race.event.id}`,
-          discordUser: discordAccount?.providerAccountId
-            ? {
-                id: discordAccount.providerAccountId,
-                name: registrationData.user.name || 'Unknown',
-              }
-            : undefined,
-          threadId: discussionThreadId,
-        })
+        // Only send notification if we have both thread ID and guild ID
+        const guildId = process.env.DISCORD_GUILD_ID
+        if (discussionThreadId && guildId) {
+          await sendRegistrationNotification({
+            userName: registrationData.user.name || 'Unknown User',
+            userAvatarUrl: registrationData.user.image || undefined,
+            eventName: registrationData.race.event.name,
+            raceStartTime: registrationData.race.startTime,
+            carClassName: registrationData.carClass.name,
+            eventUrl: `${baseUrl}/events?eventId=${registrationData.race.event.id}`,
+            discordUser: discordAccount?.providerAccountId
+              ? {
+                  id: discordAccount.providerAccountId,
+                  name: registrationData.user.name || 'Unknown',
+                }
+              : undefined,
+            threadId: discussionThreadId,
+            guildId,
+          })
+        }
       }
     } catch (notificationError) {
       // Log but don't fail the registration if notification fails
@@ -1806,7 +1812,9 @@ export async function adminRegisterDriver(prevState: State, formData: FormData) 
       })
 
       // Send registration notification for regular users (not manual drivers)
-      if (registration?.user) {
+      // Only send if we have both thread ID and guild ID
+      const guildId = process.env.DISCORD_GUILD_ID
+      if (registration?.user && discussionThreadId && guildId) {
         const { sendRegistrationNotification } = await import('@/lib/discord')
 
         const discordAccount = registration.user.accounts[0]
@@ -1825,6 +1833,7 @@ export async function adminRegisterDriver(prevState: State, formData: FormData) 
               }
             : undefined,
           threadId: discussionThreadId,
+          guildId,
         })
       }
     } catch (notificationError) {

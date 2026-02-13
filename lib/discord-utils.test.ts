@@ -197,6 +197,8 @@ describe('Discord Utils', () => {
       carClassName: 'GT3',
       eventUrl: 'http://example.com',
       discordUser: { id: '123', name: 'alice' },
+      threadId: 'thread-123',
+      guildId: 'guild-456',
     }
     const appTitle = 'Test App'
 
@@ -208,6 +210,11 @@ describe('Discord Utils', () => {
       expect(embed.fields).toContainEqual({
         name: '🕐 Race Time',
         value: '<t:1714593600:F>',
+        inline: true,
+      })
+      expect(embed.fields).toContainEqual({
+        name: '💬 Discussion',
+        value: '[View Event Thread](https://discord.com/channels/guild-456/thread-123)',
         inline: true,
       })
       expect(embed.footer.text).toBe(appTitle)
