@@ -270,43 +270,81 @@ export async function upsertThreadMessage(
   const existingMessageId = await findBotMessageInThread(threadId, botToken)
 
   if (existingMessageId) {
-    const editResponse = await fetch(
-      `${DISCORD_API_BASE}/channels/${threadId}/messages/${existingMessageId}`,
-      {
-        method: 'PATCH',
+    // Try to edit existing message, with retry for network errors and transient HTTP errors
+    try {
+      const editResponse = await pRetry(
+        async () => {
+          const response = await fetch(
+            `${DISCORD_API_BASE}/channels/${threadId}/messages/${existingMessageId}`,
+            {
+              method: 'PATCH',
+              headers: {
+                Authorization: `Bot ${botToken}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(payload),
+            }
+          )
+          // Don't retry 404 - message was deleted, fall through to create new one
+          if (response.status === 404) {
+            return response
+          }
+          // Retry other HTTP errors (500, 503, etc.)
+          if (!response.ok) {
+            const errorText = await response.text()
+            throw new Error(
+              `Failed to edit message ${existingMessageId}: ${response.status} ${response.statusText} - ${errorText}`
+            )
+          }
+          return response
+        },
+        {
+          retries: 3,
+          minTimeout: 100,
+          maxTimeout: 2000,
+          factor: 2,
+        }
+      )
+
+      if (editResponse.ok) {
+        console.log(`✏️ [Discord] Updated existing message in thread ${threadId}`)
+        return editResponse
+      }
+      if (editResponse.status === 404) {
+        console.log(`[Discord] Message ${existingMessageId} not found, will create new message`)
+        // Fall through to create new message
+      }
+    } catch (error) {
+      // Edit failed after retries - log and fall through to create new message
+      console.warn(
+        `Failed to edit existing message ${existingMessageId} in thread ${threadId} after retries:`,
+        error
+      )
+      // Fall through to create new message
+    }
+  }
+
+  // Post new message if no existing message or edit failed
+  // pRetry will only retry network errors (fetch throws) not HTTP errors (response.ok = false)
+  const resp = await pRetry(
+    async () => {
+      return await fetch(`${DISCORD_API_BASE}/channels/${threadId}/messages`, {
+        method: 'POST',
         headers: {
           Authorization: `Bot ${botToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload),
-      }
-    )
-    if (editResponse.ok) {
-      console.log(`✏️ [Discord] Updated existing message in thread ${threadId}`)
-      return editResponse
-    }
-    if (editResponse.status === 404) {
-      console.log(`[Discord] Message ${existingMessageId} not found, will create new message`)
-      // Fall through to create new message
-    } else {
-      // Other error - log and fall through to create new message
-      const errorText = await editResponse.text()
-      console.warn(
-        `Failed to edit existing message ${existingMessageId} in thread ${threadId}: ${editResponse.status} ${editResponse.statusText}`,
-        errorText
-      )
-    }
-  }
-
-  // Post new message if no existing message or edit failed
-  const resp = await fetch(`${DISCORD_API_BASE}/channels/${threadId}/messages`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bot ${botToken}`,
-      'Content-Type': 'application/json',
+      })
     },
-    body: JSON.stringify(payload),
-  })
+    {
+      retries: 3,
+      minTimeout: 100,
+      maxTimeout: 2000,
+      factor: 2,
+    }
+  )
+
   if (resp.ok) {
     console.log(`✅ [Discord] Created new message in thread ${threadId}`)
   } else {

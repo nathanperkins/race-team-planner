@@ -969,7 +969,14 @@ describe('upsertThreadMessage', () => {
     )
   })
 
-  it('posts new message when edit fails with non-404 error', async () => {
+  it('posts new message when edit fails with non-404 error after retries', async () => {
+    const editErrorResponse = {
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+      text: async () => 'Error details',
+    } as Response
+
     vi.mocked(fetch)
       // Get bot user ID
       .mockResolvedValueOnce({
@@ -983,14 +990,12 @@ describe('upsertThreadMessage', () => {
         status: 200,
         json: async () => [{ id: 'msg-1', author: { id: 'bot-user-123' } }],
       } as Response)
-      // Edit fails with 500
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        statusText: 'Internal Server Error',
-        text: async () => 'Error details',
-      } as Response)
-      // Post new message
+      // Edit fails 4 times (initial + 3 retries)
+      .mockResolvedValueOnce(editErrorResponse)
+      .mockResolvedValueOnce(editErrorResponse)
+      .mockResolvedValueOnce(editErrorResponse)
+      .mockResolvedValueOnce(editErrorResponse)
+      // Post new message succeeds
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -999,10 +1004,11 @@ describe('upsertThreadMessage', () => {
     const result = await upsertThreadMessage(threadId, payload, botToken)
 
     expect(result.ok).toBe(true)
-    expect(fetch).toHaveBeenCalledTimes(4)
+    // Get bot ID + Get messages + 4 edit attempts + 1 post = 7 total
+    expect(fetch).toHaveBeenCalledTimes(7)
     expect(console.warn).toHaveBeenCalledWith(
       expect.stringContaining('Failed to edit existing message msg-1'),
-      expect.anything()
+      expect.any(Error)
     )
   })
 
