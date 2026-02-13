@@ -14,6 +14,8 @@ import {
   buildTeamsAssignedChatNotification,
   collectDiscordIds,
   formatRaceTimesValue,
+  detectRosterChanges,
+  formatRosterChangeMessage,
 } from './discord-utils'
 
 describe('Discord Utils', () => {
@@ -657,6 +659,210 @@ describe('Discord Utils', () => {
       expect(discussionField.value).toBe(
         '[View Event Thread](https://discord.com/channels/123/456)'
       )
+    })
+  })
+
+  describe('detectRosterChanges', () => {
+    const teamNameById = new Map([
+      ['team1', 'Team Alpha'],
+      ['team2', 'Team Beta'],
+    ])
+
+    it('returns empty array for first-time assignments (no previous snapshot)', () => {
+      const currentSnapshot = {
+        reg1: { teamId: 'team1', driverName: 'Alice' },
+        reg2: { teamId: 'team1', driverName: 'Bob' },
+      }
+      const changes = detectRosterChanges(null, currentSnapshot, teamNameById)
+      expect(changes).toEqual([])
+    })
+
+    it('detects new driver additions', () => {
+      const previousSnapshot = {
+        reg1: { teamId: 'team1', driverName: 'Alice' },
+      }
+      const currentSnapshot = {
+        reg1: { teamId: 'team1', driverName: 'Alice' },
+        reg2: { teamId: 'team2', driverName: 'Bob' },
+      }
+      const changes = detectRosterChanges(previousSnapshot, currentSnapshot, teamNameById)
+      expect(changes).toHaveLength(1)
+      expect(changes[0]).toEqual({
+        type: 'added',
+        driverName: 'Bob',
+        teamName: 'Team Beta',
+      })
+    })
+
+    it('detects driver assignments from unassigned', () => {
+      const previousSnapshot = {
+        reg1: { teamId: null, driverName: 'Alice' },
+      }
+      const currentSnapshot = {
+        reg1: { teamId: 'team1', driverName: 'Alice' },
+      }
+      const changes = detectRosterChanges(previousSnapshot, currentSnapshot, teamNameById)
+      expect(changes).toHaveLength(1)
+      expect(changes[0]).toEqual({
+        type: 'added',
+        driverName: 'Alice',
+        teamName: 'Team Alpha',
+      })
+    })
+
+    it('detects driver moves between teams', () => {
+      const previousSnapshot = {
+        reg1: { teamId: 'team1', driverName: 'Alice' },
+      }
+      const currentSnapshot = {
+        reg1: { teamId: 'team2', driverName: 'Alice' },
+      }
+      const changes = detectRosterChanges(previousSnapshot, currentSnapshot, teamNameById)
+      expect(changes).toHaveLength(1)
+      expect(changes[0]).toEqual({
+        type: 'moved',
+        driverName: 'Alice',
+        fromTeam: 'Team Alpha',
+        toTeam: 'Team Beta',
+      })
+    })
+
+    it('detects driver unassignments', () => {
+      const previousSnapshot = {
+        reg1: { teamId: 'team1', driverName: 'Alice' },
+      }
+      const currentSnapshot = {
+        reg1: { teamId: null, driverName: 'Alice' },
+      }
+      const changes = detectRosterChanges(previousSnapshot, currentSnapshot, teamNameById)
+      expect(changes).toHaveLength(1)
+      expect(changes[0]).toEqual({
+        type: 'unassigned',
+        driverName: 'Alice',
+        fromTeam: 'Team Alpha',
+      })
+    })
+
+    it('detects driver drops (registration deletions)', () => {
+      const previousSnapshot = {
+        reg1: { teamId: 'team1', driverName: 'Alice' },
+        reg2: { teamId: 'team1', driverName: 'Bob' },
+      }
+      const currentSnapshot = {
+        reg1: { teamId: 'team1', driverName: 'Alice' },
+      }
+      const changes = detectRosterChanges(previousSnapshot, currentSnapshot, teamNameById)
+      expect(changes).toHaveLength(1)
+      expect(changes[0]).toEqual({
+        type: 'dropped',
+        driverName: 'Bob',
+      })
+    })
+
+    it('detects multiple changes in one update', () => {
+      const previousSnapshot = {
+        reg1: { teamId: 'team1', driverName: 'Alice' },
+        reg2: { teamId: 'team1', driverName: 'Bob' },
+        reg3: { teamId: 'team2', driverName: 'Charlie' },
+      }
+      const currentSnapshot = {
+        reg1: { teamId: 'team2', driverName: 'Alice' }, // Moved
+        reg3: { teamId: 'team2', driverName: 'Charlie' }, // No change
+        reg4: { teamId: 'team1', driverName: 'Dave' }, // Added
+        // reg2 dropped
+      }
+      const changes = detectRosterChanges(previousSnapshot, currentSnapshot, teamNameById)
+      expect(changes).toHaveLength(3)
+      expect(changes).toContainEqual({
+        type: 'moved',
+        driverName: 'Alice',
+        fromTeam: 'Team Alpha',
+        toTeam: 'Team Beta',
+      })
+      expect(changes).toContainEqual({
+        type: 'added',
+        driverName: 'Dave',
+        teamName: 'Team Alpha',
+      })
+      expect(changes).toContainEqual({
+        type: 'dropped',
+        driverName: 'Bob',
+      })
+    })
+
+    it('handles legacy snapshot format (string teamIds)', () => {
+      const legacySnapshot: Record<string, string | null> = {
+        reg1: 'team1',
+        reg2: null,
+      }
+      const currentSnapshot = {
+        reg1: { teamId: 'team2', driverName: 'Alice' },
+        reg2: { teamId: 'team1', driverName: 'Bob' },
+      }
+      const changes = detectRosterChanges(legacySnapshot, currentSnapshot, teamNameById)
+      expect(changes).toHaveLength(2)
+      // Should detect move for reg1 (uses current driver name even though legacy didn't have it)
+      expect(changes).toContainEqual({
+        type: 'moved',
+        driverName: 'Alice',
+        fromTeam: 'Team Alpha',
+        toTeam: 'Team Beta',
+      })
+      // Should detect assignment for reg2
+      expect(changes).toContainEqual({
+        type: 'added',
+        driverName: 'Bob',
+        teamName: 'Team Alpha',
+      })
+    })
+  })
+
+  describe('formatRosterChangeMessage', () => {
+    it('returns empty string for no changes', () => {
+      const message = formatRosterChangeMessage([])
+      expect(message).toBe('')
+    })
+
+    it('formats added driver message', () => {
+      const message = formatRosterChangeMessage([
+        { type: 'added', driverName: 'Alice', teamName: 'Team Alpha' },
+      ])
+      expect(message).toContain('Roster Changes:')
+      expect(message).toContain('✅ **Alice** added to **Team Alpha**')
+    })
+
+    it('formats dropped driver message', () => {
+      const message = formatRosterChangeMessage([{ type: 'dropped', driverName: 'Bob' }])
+      expect(message).toContain('Roster Changes:')
+      expect(message).toContain('❌ **Bob** dropped from race')
+    })
+
+    it('formats moved driver message', () => {
+      const message = formatRosterChangeMessage([
+        { type: 'moved', driverName: 'Charlie', fromTeam: 'Team Alpha', toTeam: 'Team Beta' },
+      ])
+      expect(message).toContain('Roster Changes:')
+      expect(message).toContain('🔄 **Charlie** moved from **Team Alpha** to **Team Beta**')
+    })
+
+    it('formats unassigned driver message', () => {
+      const message = formatRosterChangeMessage([
+        { type: 'unassigned', driverName: 'Dave', fromTeam: 'Team Alpha' },
+      ])
+      expect(message).toContain('Roster Changes:')
+      expect(message).toContain('⚠️ **Dave** unassigned from **Team Alpha**')
+    })
+
+    it('formats multiple changes', () => {
+      const message = formatRosterChangeMessage([
+        { type: 'added', driverName: 'Alice', teamName: 'Team Alpha' },
+        { type: 'dropped', driverName: 'Bob' },
+        { type: 'moved', driverName: 'Charlie', fromTeam: 'Team Alpha', toTeam: 'Team Beta' },
+      ])
+      expect(message).toContain('Roster Changes:')
+      expect(message).toContain('✅ **Alice** added to **Team Alpha**')
+      expect(message).toContain('❌ **Bob** dropped from race')
+      expect(message).toContain('🔄 **Charlie** moved from **Team Alpha** to **Team Beta**')
     })
   })
 })

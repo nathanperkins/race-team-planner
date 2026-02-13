@@ -24,11 +24,24 @@ describe('discord thread recovery', () => {
   })
 
   it('reuses an existing team thread when it still exists', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      statusText: 'OK',
-    } as Response)
+    vi.mocked(fetch)
+      // Get bot user ID for upsertThreadMessage
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 'bot-user-123' }),
+      } as Response)
+      // Get messages for upsertThreadMessage
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => [],
+      } as Response)
+      // Post new message (no existing message found)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+      } as Response)
 
     const threadId = await createTeamThread({
       teamName: 'Team One',
@@ -38,24 +51,31 @@ describe('discord thread recovery', () => {
     })
 
     expect(threadId).toBe('thread-123')
-    expect(fetch).toHaveBeenCalledTimes(1)
-    expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/channels/thread-123'),
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          Authorization: 'Bot fake-bot-token',
-        }),
-      })
-    )
+    expect(fetch).toHaveBeenCalledTimes(3)
   })
 
   it('creates a replacement team thread when linked thread is missing', async () => {
     vi.mocked(fetch)
+      // Get bot user ID for upsertThreadMessage
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 'bot-user-123' }),
+      } as Response)
+      // Get messages for upsertThreadMessage
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => [],
+      } as Response)
+      // Post to missing thread fails with 404
       .mockResolvedValueOnce({
         ok: false,
         status: 404,
         statusText: 'Not Found',
+        text: async () => 'Thread not found',
       } as Response)
+      // Create new thread
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -70,9 +90,9 @@ describe('discord thread recovery', () => {
     })
 
     expect(threadId).toBe('new-thread-456')
-    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(fetch).toHaveBeenCalledTimes(4)
     expect(fetch).toHaveBeenNthCalledWith(
-      2,
+      4,
       expect.stringContaining('/channels/fake-channel-id/threads'),
       expect.objectContaining({
         method: 'POST',
@@ -144,6 +164,12 @@ describe('discord thread recovery', () => {
         status: 200,
         statusText: 'OK',
       } as Response)
+      // get bot user ID
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 'bot-user-123' }),
+      } as Response)
       // list recent messages in thread
       .mockResolvedValueOnce({
         ok: true,
@@ -151,7 +177,7 @@ describe('discord thread recovery', () => {
         json: async () => [
           {
             id: 'msg-1',
-            author: { bot: true },
+            author: { id: 'bot-user-123', bot: true },
             embeds: [{ title: '🏁 Teams Assigned' }],
           },
         ],
@@ -198,6 +224,12 @@ describe('discord thread recovery', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
+      } as Response)
+      // get bot user ID
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 'bot-user-123' }),
       } as Response)
       // list recent messages
       .mockResolvedValueOnce({

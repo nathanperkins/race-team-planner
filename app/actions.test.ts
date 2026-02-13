@@ -37,6 +37,9 @@ vi.mock('@/lib/prisma', () => ({
     manualDriver: {
       findUnique: vi.fn(),
     },
+    team: {
+      findMany: vi.fn(),
+    },
   },
 }))
 
@@ -109,6 +112,10 @@ describe('sendTeamsAssignmentNotification', () => {
     vi.mocked(prisma.race.updateMany).mockResolvedValue({ count: 1 } as any)
     vi.mocked(prisma.race.findFirst).mockResolvedValue(null)
     vi.mocked(prisma.race.findMany).mockResolvedValue([])
+    vi.mocked(prisma.team.findMany).mockResolvedValue([
+      { id: 'team-1', name: 'Team One' },
+      { id: 'team-2', name: 'Team Two' },
+    ] as any)
     process.env.NEXTAUTH_URL = 'http://localhost:3000'
     process.env.DISCORD_GUILD_ID = 'guild-123'
   })
@@ -284,9 +291,11 @@ describe('sendTeamsAssignmentNotification', () => {
 
 describe('registerForRace', () => {
   const mockSession = { user: { id: 'user-1', role: 'USER' } }
+  const FIXED_TIME = new Date('2026-02-10T12:00:00Z')
 
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.setSystemTime(FIXED_TIME)
     vi.mocked(auth).mockResolvedValue(mockSession as any)
     vi.mocked(prisma.registration.create).mockResolvedValue({ id: 'reg-created' } as any)
     vi.mocked(prisma.registration.update).mockResolvedValue({} as any)
@@ -307,6 +316,7 @@ describe('registerForRace', () => {
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     delete process.env.NEXTAUTH_URL
   })
 
@@ -357,8 +367,11 @@ describe('registerForRace', () => {
 })
 
 describe('adminRegisterDriver', () => {
+  const FIXED_TIME = new Date('2026-02-10T12:00:00Z')
+
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.setSystemTime(FIXED_TIME)
     vi.mocked(auth).mockResolvedValue({ user: { id: 'admin-1', role: 'ADMIN' } } as any)
     vi.mocked(prisma.race.findFirst).mockResolvedValue(null)
     vi.mocked(prisma.race.findMany).mockResolvedValue([])
@@ -366,6 +379,10 @@ describe('adminRegisterDriver', () => {
     vi.mocked(prisma.race.updateMany).mockResolvedValue({ count: 1 } as any)
     vi.mocked(sendDiscordNotification).mockResolvedValue({ ok: true, threadId: 'event-thread-id' })
     vi.mocked(createTeamThread).mockResolvedValue('team-thread-1')
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('refreshes team notification when adding a driver after teams are assigned', async () => {

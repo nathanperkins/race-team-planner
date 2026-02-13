@@ -171,6 +171,131 @@ interface DiscordRole {
 }
 
 /**
+ * Find the first message in a thread authored by the bot.
+ * Returns the message ID if found, or null if not found.
+ */
+export async function findBotMessageInThread(
+  threadId: string,
+  botToken: string
+): Promise<string | null> {
+  try {
+    // Get bot's own user ID
+    const botInfo = await fetch(`${DISCORD_API_BASE}/users/@me`, {
+      headers: {
+        Authorization: `Bot ${botToken}`,
+      },
+    })
+    const botUserId = botInfo.ok ? (await botInfo.json()).id : null
+    if (!botUserId) {
+      return null
+    }
+
+    // Fetch recent messages from the thread
+    const messagesResponse = await fetch(
+      `${DISCORD_API_BASE}/channels/${threadId}/messages?limit=25`,
+      {
+        headers: {
+          Authorization: `Bot ${botToken}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    )
+
+    if (!messagesResponse.ok) {
+      return null
+    }
+
+    const messages = await messagesResponse.json()
+
+    // Find the first message authored by this bot (usually the thread starter)
+    const existingMessage = Array.isArray(messages)
+      ? messages
+          .reverse() // Reverse to get oldest first
+          .find(
+            (message: { author?: { id?: string } }) =>
+              botUserId && message?.author?.id === botUserId
+          )
+      : null
+
+    return existingMessage?.id ?? null
+  } catch (error) {
+    console.warn(`Failed to find bot message in thread ${threadId}:`, error)
+    return null
+  }
+}
+
+/**
+ * Upserts a message in a Discord thread.
+ * If the bot has an existing message in the thread, it will be edited.
+ * Otherwise, a new message will be posted.
+ *
+ * @param threadId - The Discord thread/channel ID
+ * @param payload - The message payload (content, embeds, etc.)
+ * @param botToken - The Discord bot token
+ * @returns The Discord API Response
+ */
+export async function upsertThreadMessage(
+  threadId: string,
+  payload: {
+    content?: string
+    embeds?: unknown[]
+    allowed_mentions?: { users?: string[]; parse?: string[] }
+  },
+  botToken: string
+): Promise<Response> {
+  // TODO: Store the main thread message ID in the database to avoid searching for it
+  // This would require adding a discordMainMessageId field to the Race model
+  const existingMessageId = await findBotMessageInThread(threadId, botToken)
+
+  if (existingMessageId) {
+    const editResponse = await fetch(
+      `${DISCORD_API_BASE}/channels/${threadId}/messages/${existingMessageId}`,
+      {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bot ${botToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      }
+    )
+    if (editResponse.ok) {
+      console.log(`✏️ [Discord] Updated existing message in thread ${threadId}`)
+      return editResponse
+    }
+    if (editResponse.status === 404) {
+      console.log(`[Discord] Message ${existingMessageId} not found, will create new message`)
+      // Fall through to create new message
+    } else {
+      // Other error - log and fall through to create new message
+      const errorText = await editResponse.text()
+      console.warn(
+        `Failed to edit existing message ${existingMessageId} in thread ${threadId}: ${editResponse.status} ${editResponse.statusText}`,
+        errorText
+      )
+    }
+  }
+
+  // Post new message if no existing message or edit failed
+  const resp = await fetch(`${DISCORD_API_BASE}/channels/${threadId}/messages`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bot ${botToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  })
+  if (resp.ok) {
+    console.log(`✅ [Discord] Created new message in thread ${threadId}`)
+  } else {
+    console.warn(
+      `❌ [Discord] Failed to create message in thread ${threadId}: ${resp.status} ${resp.statusText}`
+    )
+  }
+  return resp
+}
+
+/**
  * Diagnostic function to verify configured admin roles.
  */
 export async function verifyAdminRoles(): Promise<string[]> {
@@ -448,6 +573,108 @@ export async function sendWeeklyScheduleNotification(
 }
 
 /**
+ * Posts roster change notifications as separate messages in the thread.
+ * These are smaller, specific notifications like "Added X to Team Y" or "X Dropped".
+ * Posts to both the event thread and affected team threads.
+ */
+export async function postRosterChangeNotifications(
+  eventThreadId: string,
+  rosterChanges: import('./discord-utils').RosterChange[],
+  botToken: string,
+  teamThreads?: Record<string, string>,
+  teamNameById?: Map<string, string>
+): Promise<void> {
+  if (rosterChanges.length === 0) return
+
+  const { formatRosterChangeMessage } = await import('./discord-utils')
+
+  // Helper to post a message to a thread
+  const postToThread = async (threadId: string, content: string, label: string) => {
+    try {
+      const response = await fetch(`${DISCORD_API_BASE}/channels/${threadId}/messages`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bot ${botToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content,
+          flags: 4096, // Suppress notifications (silent)
+        }),
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error(
+          `Failed to post roster changes to ${label}: ${response.status} ${response.statusText}`,
+          errorText
+        )
+      } else {
+        console.log(`✅ [Discord] Posted roster changes to ${label}`)
+      }
+    } catch (error) {
+      console.error(`Error posting roster changes to ${label}:`, error)
+    }
+  }
+
+  // Post all changes to the event thread
+  const allChangesMessage = formatRosterChangeMessage(rosterChanges)
+  if (allChangesMessage) {
+    await postToThread(eventThreadId, allChangesMessage, 'event thread')
+  }
+
+  // Post relevant changes to team threads
+  if (teamThreads && teamNameById) {
+    // Build reverse map: team name -> team ID
+    const teamIdByName = new Map<string, string>()
+    for (const [id, name] of teamNameById.entries()) {
+      teamIdByName.set(name, id)
+    }
+
+    // Group changes by affected teams
+    const changesByTeam = new Map<string, import('./discord-utils').RosterChange[]>()
+
+    for (const change of rosterChanges) {
+      const affectedTeams: string[] = []
+
+      switch (change.type) {
+        case 'added':
+          affectedTeams.push(change.teamName)
+          break
+        case 'moved':
+          affectedTeams.push(change.fromTeam, change.toTeam)
+          break
+        case 'unassigned':
+          affectedTeams.push(change.fromTeam)
+          break
+        case 'dropped':
+          // Dropped drivers don't have a specific team in the change
+          break
+      }
+
+      for (const teamName of affectedTeams) {
+        const teamId = teamIdByName.get(teamName)
+        if (teamId && teamThreads[teamId]) {
+          const existing = changesByTeam.get(teamId) || []
+          existing.push(change)
+          changesByTeam.set(teamId, existing)
+        }
+      }
+    }
+
+    // Post to each affected team thread
+    for (const [teamId, changes] of changesByTeam.entries()) {
+      const teamName = teamNameById.get(teamId) || 'Team'
+      const threadId = teamThreads[teamId]
+      const message = formatRosterChangeMessage(changes)
+      if (message && threadId) {
+        await postToThread(threadId, message, `${teamName} thread`)
+      }
+    }
+  }
+}
+
+/**
  * Sends a Discord notification when teams are assigned for a race.
  * Creates a new thread and posts the team composition inside.
  *
@@ -500,7 +727,7 @@ export async function sendTeamsAssignedNotification(
       }
     }
 
-    const upsertThreadMessage = async (
+    const upsertThreadMessageWithMentions = async (
       id: string,
       embeds: ReturnType<typeof buildEmbeds>,
       mentionSet: Set<string>
@@ -519,70 +746,7 @@ export async function sendTeamsAssignedNotification(
         allowed_mentions: { users: allowedIds, parse: [] as string[] },
       }
 
-      const messagesResponse = await fetch(`${DISCORD_API_BASE}/channels/${id}/messages?limit=25`, {
-        headers: {
-          Authorization: `Bot ${botToken}`,
-          'Content-Type': 'application/json',
-        },
-      })
-      if (!messagesResponse.ok) {
-        if (messagesResponse.status === 404) {
-          return messagesResponse
-        }
-        const errorText = await messagesResponse.text()
-        console.warn(
-          `Failed to read messages in thread ${id} before update: ${messagesResponse.status} ${messagesResponse.statusText}`,
-          errorText
-        )
-      } else {
-        const messages = await messagesResponse.json()
-        const existingTeamsMessage = Array.isArray(messages)
-          ? messages.find(
-              (message: { embeds?: Array<{ title?: string }>; author?: { bot?: boolean } }) => {
-                const embeds = Array.isArray(message?.embeds) ? message.embeds : []
-                const hasTeamsEmbed = embeds.some(
-                  (embed: { title?: string }) =>
-                    typeof embed?.title === 'string' && embed.title.startsWith('🏁 Teams Assigned')
-                )
-                const isBotMessage = message?.author?.bot !== false
-                return hasTeamsEmbed && isBotMessage
-              }
-            )
-          : null
-
-        if (existingTeamsMessage?.id) {
-          const editResponse = await fetch(
-            `${DISCORD_API_BASE}/channels/${id}/messages/${existingTeamsMessage.id}`,
-            {
-              method: 'PATCH',
-              headers: {
-                Authorization: `Bot ${botToken}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(payload),
-            }
-          )
-          if (editResponse.ok || editResponse.status === 404) {
-            return editResponse
-          }
-          const errorText = await editResponse.text()
-          console.warn(
-            `Failed to edit existing teams message ${existingTeamsMessage.id} in thread ${id}: ${editResponse.status} ${editResponse.statusText}`,
-            errorText
-          )
-        }
-      }
-
-      const resp = await fetch(`${DISCORD_API_BASE}/channels/${id}/messages`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bot ${botToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      })
-      console.log(`[Discord] upsertThreadMessage response: ${resp.status} ${resp.statusText}`)
-      return resp
+      return upsertThreadMessage(id, payload, botToken)
     }
 
     /** Creates a new thread and returns its ID, or null on failure. */
@@ -671,7 +835,11 @@ export async function sendTeamsAssignedNotification(
 
     if (!threadCreated) {
       const mentionSet = new Set(data.mentionRegistrationIds ?? [])
-      const postResponse = await upsertThreadMessage(threadId, buildEmbeds(), mentionSet)
+      const postResponse = await upsertThreadMessageWithMentions(
+        threadId,
+        buildEmbeds(),
+        mentionSet
+      )
       if (!postResponse.ok && postResponse.status === 404) {
         // Thread deleted or inaccessible; create a new one.
         threadCreated = true
@@ -692,6 +860,17 @@ export async function sendTeamsAssignedNotification(
           data.chatNotificationLabel ?? '🏁 Teams Updated'
         )
       }
+    }
+
+    // Post roster change notifications as separate messages to event thread and team threads
+    if (threadId && data.rosterChanges && data.rosterChanges.length > 0 && !threadCreated) {
+      await postRosterChangeNotifications(
+        threadId,
+        data.rosterChanges,
+        botToken,
+        data.teamThreads,
+        data.teamNameById
+      )
     }
 
     return { ok: true, threadId: threadId ?? undefined }
@@ -881,17 +1060,94 @@ export async function createTeamThread(options: {
 
   const threadParentId = forumId || channelId
 
+  // Build the team thread embed
+  const buildTeamEmbed = () => ({
+    title: `🏎️ Team Thread: ${options.teamName}`,
+    description: `Official preparation and coordination thread for **${options.teamName}** in **${options.eventName}**.`,
+    color: 0x5865f2, // Blurple
+    url: options.raceUrl,
+    fields: [
+      {
+        name: '🏎️ Team',
+        value: options.teamName,
+        inline: true,
+      },
+      {
+        name: '🏁 Class',
+        value: options.carClassName || 'Unknown',
+        inline: true,
+      },
+      {
+        name: '🕐 Race Start',
+        value: `<t:${Math.floor(options.raceStartTime.getTime() / 1000)}:F>`,
+        inline: true,
+      },
+      ...(options.members?.length
+        ? [
+            {
+              name: '👥 Members',
+              value: options.members.join('\n'),
+              inline: false,
+            },
+          ]
+        : []),
+      ...(options.track
+        ? [
+            {
+              name: '🏟️ Track',
+              value: options.trackConfig
+                ? `${options.track} (${options.trackConfig})`
+                : options.track,
+              inline: true,
+            },
+          ]
+        : []),
+      ...(typeof options.tempValue === 'number'
+        ? [
+            {
+              name: '🌤️ Weather',
+              value:
+                typeof options.precipChance === 'number'
+                  ? `${options.tempValue}°F, ${options.precipChance}% Rain`
+                  : `${options.tempValue}°F`,
+              inline: true,
+            },
+          ]
+        : []),
+    ],
+    timestamp: new Date().toISOString(),
+    footer: {
+      text: appTitle,
+    },
+  })
+
+  // If thread exists, upsert the message to keep it current
   if (options.existingThreadId) {
-    const exists = await doesDiscordThreadExist({
-      threadId: options.existingThreadId,
-      botToken,
-    })
-    if (exists) {
+    const upsertResponse = await upsertThreadMessage(
+      options.existingThreadId,
+      { embeds: [buildTeamEmbed()] },
+      botToken
+    )
+
+    // If upsert succeeded, the thread exists and was updated
+    if (upsertResponse.ok) {
+      console.log(`✅ [Discord] Reused existing team thread: ${options.existingThreadId}`)
       return options.existingThreadId
     }
-    console.warn(
-      `⚠️ [Discord] Team thread ${options.existingThreadId} missing; creating a replacement`
-    )
+
+    // If 404, thread was deleted - fall through to create a new one
+    if (upsertResponse.status === 404) {
+      console.warn(
+        `⚠️ [Discord] Team thread ${options.existingThreadId} missing; creating a replacement`
+      )
+    } else {
+      // Other error - log it but continue to create new thread
+      const errorText = await upsertResponse.text()
+      console.warn(
+        `⚠️ [Discord] Failed to update team thread ${options.existingThreadId}: ${upsertResponse.status} ${upsertResponse.statusText}`,
+        errorText
+      )
+    }
   }
 
   const cleanName = normalizeSeriesName(options.eventName)
@@ -918,67 +1174,7 @@ export async function createTeamThread(options: {
       name: threadName,
       auto_archive_duration: 10080,
       message: {
-        embeds: [
-          {
-            title: `🏎️ Team Thread: ${options.teamName}`,
-            description: `Official preparation and coordination thread for **${options.teamName}** in **${options.eventName}**.`,
-            color: 0x5865f2, // Blurple
-            url: options.raceUrl,
-            fields: [
-              {
-                name: '🏎️ Team',
-                value: options.teamName,
-                inline: true,
-              },
-              {
-                name: '🏁 Class',
-                value: options.carClassName || 'Unknown',
-                inline: true,
-              },
-              {
-                name: '🕐 Race Start',
-                value: `<t:${Math.floor(options.raceStartTime.getTime() / 1000)}:F>`,
-                inline: true,
-              },
-              ...(options.members?.length
-                ? [
-                    {
-                      name: '👥 Members',
-                      value: options.members.join('\n'),
-                      inline: false,
-                    },
-                  ]
-                : []),
-              ...(options.track
-                ? [
-                    {
-                      name: '🏟️ Track',
-                      value: options.trackConfig
-                        ? `${options.track} (${options.trackConfig})`
-                        : options.track,
-                      inline: true,
-                    },
-                  ]
-                : []),
-              ...(typeof options.tempValue === 'number'
-                ? [
-                    {
-                      name: '🌤️ Weather',
-                      value:
-                        typeof options.precipChance === 'number'
-                          ? `${options.tempValue}°F, ${options.precipChance}% Rain`
-                          : `${options.tempValue}°F`,
-                      inline: true,
-                    },
-                  ]
-                : []),
-            ],
-            timestamp: new Date().toISOString(),
-            footer: {
-              text: appTitle,
-            },
-          },
-        ],
+        embeds: [buildTeamEmbed()],
       },
     }),
   })

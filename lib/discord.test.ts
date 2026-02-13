@@ -9,6 +9,9 @@ import {
   verifyEventsForum,
   sendRegistrationNotification,
   sendOnboardingNotification,
+  findBotMessageInThread,
+  upsertThreadMessage,
+  postRosterChangeNotifications,
 } from './discord'
 
 describe('checkGuildMembership', () => {
@@ -713,6 +716,410 @@ describe('sendOnboardingNotification', () => {
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Error sending Discord onboarding notification:'),
       error
+    )
+  })
+})
+
+describe('findBotMessageInThread', () => {
+  const botToken = 'fake-bot-token'
+  const threadId = 'thread-123'
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn())
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('returns message ID when bot message is found', async () => {
+    vi.mocked(fetch)
+      // Get bot user ID
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 'bot-user-123' }),
+      } as Response)
+      // Get messages
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => [
+          { id: 'msg-3', author: { id: 'user-456' } },
+          { id: 'msg-2', author: { id: 'user-789' } },
+          { id: 'msg-1', author: { id: 'bot-user-123' } },
+        ],
+      } as Response)
+
+    const result = await findBotMessageInThread(threadId, botToken)
+
+    expect(result).toBe('msg-1')
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(fetch).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining('/users/@me'),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bot fake-bot-token',
+        }),
+      })
+    )
+  })
+
+  it('returns null when no bot message is found', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 'bot-user-123' }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => [
+          { id: 'msg-2', author: { id: 'user-456' } },
+          { id: 'msg-1', author: { id: 'user-789' } },
+        ],
+      } as Response)
+
+    const result = await findBotMessageInThread(threadId, botToken)
+
+    expect(result).toBeNull()
+  })
+
+  it('returns null when bot user ID fetch fails', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+    } as Response)
+
+    const result = await findBotMessageInThread(threadId, botToken)
+
+    expect(result).toBeNull()
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('returns null when messages fetch fails', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 'bot-user-123' }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+      } as Response)
+
+    const result = await findBotMessageInThread(threadId, botToken)
+
+    expect(result).toBeNull()
+  })
+
+  it('returns null and logs warning on error', async () => {
+    const error = new Error('Network error')
+    vi.mocked(fetch).mockRejectedValueOnce(error)
+
+    const result = await findBotMessageInThread(threadId, botToken)
+
+    expect(result).toBeNull()
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining(`Failed to find bot message in thread ${threadId}`),
+      error
+    )
+  })
+})
+
+describe('upsertThreadMessage', () => {
+  const botToken = 'fake-bot-token'
+  const threadId = 'thread-123'
+  const payload = {
+    content: 'Test message',
+    embeds: [{ title: 'Test Embed' }],
+    allowed_mentions: { users: ['user-1'], parse: [] },
+  }
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn())
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('edits existing message when bot message is found', async () => {
+    vi.mocked(fetch)
+      // Get bot user ID
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 'bot-user-123' }),
+      } as Response)
+      // Get messages
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => [{ id: 'msg-1', author: { id: 'bot-user-123' } }],
+      } as Response)
+      // Edit message
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+      } as Response)
+
+    const result = await upsertThreadMessage(threadId, payload, botToken)
+
+    expect(result.ok).toBe(true)
+    expect(fetch).toHaveBeenCalledTimes(3)
+    expect(fetch).toHaveBeenNthCalledWith(
+      3,
+      expect.stringContaining('/channels/thread-123/messages/msg-1'),
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      })
+    )
+  })
+
+  it('posts new message when no existing message found', async () => {
+    vi.mocked(fetch)
+      // Get bot user ID
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 'bot-user-123' }),
+      } as Response)
+      // Get messages (empty)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => [],
+      } as Response)
+      // Post new message
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+      } as Response)
+
+    const result = await upsertThreadMessage(threadId, payload, botToken)
+
+    expect(result.ok).toBe(true)
+    expect(fetch).toHaveBeenCalledTimes(3)
+    expect(fetch).toHaveBeenNthCalledWith(
+      3,
+      expect.stringContaining('/channels/thread-123/messages'),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify(payload),
+      })
+    )
+  })
+
+  it('posts new message when edit fails with non-404 error', async () => {
+    vi.mocked(fetch)
+      // Get bot user ID
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 'bot-user-123' }),
+      } as Response)
+      // Get messages
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => [{ id: 'msg-1', author: { id: 'bot-user-123' } }],
+      } as Response)
+      // Edit fails with 500
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+        text: async () => 'Error details',
+      } as Response)
+      // Post new message
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+      } as Response)
+
+    const result = await upsertThreadMessage(threadId, payload, botToken)
+
+    expect(result.ok).toBe(true)
+    expect(fetch).toHaveBeenCalledTimes(4)
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to edit existing message msg-1'),
+      expect.anything()
+    )
+  })
+
+  it('creates new message when existing message was deleted (404)', async () => {
+    vi.mocked(fetch)
+      // Get bot user ID
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 'bot-user-123' }),
+      } as Response)
+      // Get messages
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => [{ id: 'msg-1', author: { id: 'bot-user-123' } }],
+      } as Response)
+      // Edit fails with 404 (message deleted)
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+      } as Response)
+      // Post new message succeeds
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+      } as Response)
+
+    const result = await upsertThreadMessage(threadId, payload, botToken)
+
+    expect(result.ok).toBe(true)
+    expect(fetch).toHaveBeenCalledTimes(4)
+    expect(fetch).toHaveBeenNthCalledWith(
+      4,
+      expect.stringContaining('/channels/thread-123/messages'),
+      expect.objectContaining({
+        method: 'POST',
+      })
+    )
+  })
+
+  it('returns 404 when thread itself is deleted', async () => {
+    vi.mocked(fetch)
+      // Get bot user ID
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 'bot-user-123' }),
+      } as Response)
+      // Get messages (no existing messages)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => [],
+      } as Response)
+      // Post fails with 404 (thread deleted)
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+      } as Response)
+
+    const result = await upsertThreadMessage(threadId, payload, botToken)
+
+    expect(result.ok).toBe(false)
+    expect(result.status).toBe(404)
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to create message in thread thread-123')
+    )
+  })
+})
+
+describe('postRosterChangeNotifications', () => {
+  const botToken = 'fake-bot-token'
+  const eventThreadId = 'event-thread-123'
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn())
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('does nothing when roster changes are empty', async () => {
+    await postRosterChangeNotifications(eventThreadId, [], botToken)
+
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('posts changes to event thread only when no team threads provided', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+    } as Response)
+
+    const rosterChanges = [
+      { type: 'added' as const, driverName: 'Alice', teamName: 'Team One' },
+      { type: 'dropped' as const, driverName: 'Bob' },
+    ]
+
+    await postRosterChangeNotifications(eventThreadId, rosterChanges, botToken)
+
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining(`/channels/${eventThreadId}/messages`),
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          Authorization: 'Bot fake-bot-token',
+        }),
+        body: expect.stringContaining('Alice'),
+      })
+    )
+  })
+
+  it('posts changes to both event and affected team threads', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+    } as Response)
+
+    const teamThreads = {
+      'team-1': 'team-thread-1',
+      'team-2': 'team-thread-2',
+    }
+    const teamNameById = new Map([
+      ['team-1', 'Team One'],
+      ['team-2', 'Team Two'],
+    ])
+
+    const rosterChanges = [
+      { type: 'added' as const, driverName: 'Alice', teamName: 'Team One' },
+      { type: 'moved' as const, driverName: 'Bob', fromTeam: 'Team One', toTeam: 'Team Two' },
+    ]
+
+    await postRosterChangeNotifications(
+      eventThreadId,
+      rosterChanges,
+      botToken,
+      teamThreads,
+      teamNameById
+    )
+
+    // Should post to: event thread + team-thread-1 + team-thread-2
+    expect(fetch).toHaveBeenCalledTimes(3)
+  })
+
+  it('logs error when posting to thread fails', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+      text: async () => 'Error details',
+    } as Response)
+
+    const rosterChanges = [{ type: 'added' as const, driverName: 'Alice', teamName: 'Team One' }]
+
+    await postRosterChangeNotifications(eventThreadId, rosterChanges, botToken)
+
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to post roster changes'),
+      expect.anything()
     )
   })
 })

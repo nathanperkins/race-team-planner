@@ -1312,9 +1312,13 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
       include: registrationInclude,
     })
 
-    const currentSnapshot: Record<string, string | null> = {}
+    const currentSnapshot: Record<string, { teamId: string | null; driverName: string }> = {}
     registrations.forEach((reg) => {
-      currentSnapshot[reg.id] = reg.teamId ?? reg.team?.id ?? null
+      const driverName = reg.user?.name || reg.manualDriver?.name || 'Driver'
+      currentSnapshot[reg.id] = {
+        teamId: reg.teamId ?? reg.team?.id ?? null,
+        driverName,
+      }
     })
 
     const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
@@ -1380,8 +1384,24 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
 
     // Determine mentions: only users whose assignments changed in the current race
     const previousSnapshot =
-      (raceWithEvent.discordTeamsSnapshot as Record<string, string | null> | null) ?? null
+      (raceWithEvent.discordTeamsSnapshot as
+        | Record<string, { teamId: string | null; driverName: string }>
+        | Record<string, string | null>
+        | null) ?? null
     const mentionRegistrationIds = new Set<string>()
+
+    // Build team name mapping - include ALL teams, not just those with current members
+    // This ensures we can look up team names for drivers who moved FROM teams
+    const allTeams = await prisma.team.findMany({
+      select: { id: true, name: true },
+    })
+    const teamNameById = new Map(allTeams.map((team) => [team.id, team.name]))
+
+    // Detect roster changes using utility function
+    const { detectRosterChanges } = await import('@/lib/discord-utils')
+    const rosterChanges = detectRosterChanges(previousSnapshot, currentSnapshot, teamNameById)
+
+    // Determine mentions based on changes
     if (!previousSnapshot) {
       registrations.forEach((reg) => {
         const discordId = reg.user?.accounts?.[0]?.providerAccountId
@@ -1390,12 +1410,25 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
         }
       })
     } else {
-      Object.entries(currentSnapshot).forEach(([regId, teamId]) => {
-        if (!(regId in previousSnapshot)) {
+      // TODO: Remove legacy snapshot format handling after migration
+      // Normalize previousSnapshot to handle legacy format
+      const isLegacy =
+        previousSnapshot &&
+        Object.values(previousSnapshot).some((v) => typeof v === 'string' || v === null)
+      const normalizedPrevious: Record<string, { teamId: string | null }> = isLegacy
+        ? Object.fromEntries(
+            Object.entries(previousSnapshot as Record<string, string | null>).map(
+              ([id, teamId]) => [id, { teamId }]
+            )
+          )
+        : (previousSnapshot as Record<string, { teamId: string | null; driverName: string }>)
+
+      Object.entries(currentSnapshot).forEach(([regId, current]) => {
+        if (!(regId in normalizedPrevious)) {
           mentionRegistrationIds.add(regId)
           return
         }
-        if (previousSnapshot[regId] !== teamId) {
+        if (normalizedPrevious[regId].teamId !== current.teamId) {
           mentionRegistrationIds.add(regId)
         }
       })
@@ -1486,6 +1519,9 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
       mentionRegistrationIds: Array.from(mentionRegistrationIds),
       sendChatNotification: threadAlreadyExists && siblingRaces.some((race) => race.teamsAssigned),
       chatNotificationLabel: '🏁 Teams Updated',
+      rosterChanges: rosterChanges.length > 0 ? rosterChanges : undefined,
+      teamThreads,
+      teamNameById,
     })
 
     if (notification.ok) {

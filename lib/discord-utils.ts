@@ -33,6 +33,12 @@ export interface RaceTimeslotData {
   }>
 }
 
+export type RosterChange =
+  | { type: 'added'; driverName: string; teamName: string }
+  | { type: 'dropped'; driverName: string }
+  | { type: 'moved'; driverName: string; fromTeam: string; toTeam: string }
+  | { type: 'unassigned'; driverName: string; fromTeam: string }
+
 export interface TeamsAssignedNotificationData {
   eventName: string
   raceUrl: string
@@ -46,6 +52,9 @@ export interface TeamsAssignedNotificationData {
   mentionRegistrationIds?: string[]
   sendChatNotification?: boolean
   chatNotificationLabel?: string
+  rosterChanges?: RosterChange[]
+  teamThreads?: Record<string, string>
+  teamNameById?: Map<string, string>
 }
 
 export interface RegistrationNotificationData {
@@ -465,6 +474,122 @@ export function buildRegistrationEmbed(data: RegistrationNotificationData, appTi
   }
 
   return embed
+}
+
+export type RegistrationSnapshot = Record<string, { teamId: string | null; driverName: string }>
+
+/**
+ * Detects roster changes between two snapshots.
+ * Returns an array of changes categorized by type.
+ *
+ * TODO: Remove legacy snapshot format handling after all production snapshots have been migrated.
+ */
+export function detectRosterChanges(
+  previousSnapshot: RegistrationSnapshot | Record<string, string | null> | null,
+  currentSnapshot: RegistrationSnapshot,
+  teamNameById: Map<string, string>
+): RosterChange[] {
+  const rosterChanges: RosterChange[] = []
+
+  // Handle legacy snapshot format (just teamId strings)
+  // TODO: Remove this legacy handling after migration
+  const normalizedPrevious: RegistrationSnapshot | null = previousSnapshot
+    ? isLegacySnapshot(previousSnapshot)
+      ? Object.fromEntries(
+          Object.entries(previousSnapshot).map(([id, teamId]) => [
+            id,
+            { teamId: teamId as string | null, driverName: 'Driver' },
+          ])
+        )
+      : (previousSnapshot as RegistrationSnapshot)
+    : null
+
+  if (!normalizedPrevious) {
+    // First-time assignment - no changes to report
+    return []
+  }
+
+  // Detect additions and modifications
+  Object.entries(currentSnapshot).forEach(([regId, current]) => {
+    if (!(regId in normalizedPrevious)) {
+      // New registration
+      if (current.teamId) {
+        const teamName = teamNameById.get(current.teamId) || 'Team'
+        rosterChanges.push({ type: 'added', driverName: current.driverName, teamName })
+      }
+      return
+    }
+
+    const previous = normalizedPrevious[regId]
+    if (previous.teamId !== current.teamId) {
+      if (previous.teamId === null && current.teamId !== null) {
+        // Was unassigned, now assigned
+        const teamName = teamNameById.get(current.teamId) || 'Team'
+        rosterChanges.push({ type: 'added', driverName: current.driverName, teamName })
+      } else if (previous.teamId !== null && current.teamId === null) {
+        // Was assigned, now unassigned
+        const fromTeam = teamNameById.get(previous.teamId) || 'Team'
+        rosterChanges.push({ type: 'unassigned', driverName: current.driverName, fromTeam })
+      } else if (previous.teamId !== null && current.teamId !== null) {
+        // Moved between teams
+        const fromTeam = teamNameById.get(previous.teamId) || 'Team'
+        const toTeam = teamNameById.get(current.teamId) || 'Team'
+        rosterChanges.push({
+          type: 'moved',
+          driverName: current.driverName,
+          fromTeam,
+          toTeam,
+        })
+      }
+    }
+  })
+
+  // Detect drops (removed registrations)
+  Object.keys(normalizedPrevious).forEach((regId) => {
+    if (!(regId in currentSnapshot)) {
+      const previous = normalizedPrevious[regId]
+      rosterChanges.push({ type: 'dropped', driverName: previous.driverName })
+    }
+  })
+
+  return rosterChanges
+}
+
+/** Type guard to check if snapshot is in legacy format (string teamId instead of object) */
+function isLegacySnapshot(
+  snapshot: RegistrationSnapshot | Record<string, string | null>
+): snapshot is Record<string, string | null> {
+  const firstEntry = Object.values(snapshot)[0]
+  return typeof firstEntry === 'string' || firstEntry === null
+}
+
+/**
+ * Formats roster changes into notification message content.
+ */
+export function formatRosterChangeMessage(rosterChanges: RosterChange[]): string {
+  if (rosterChanges.length === 0) return ''
+
+  const changeMessages: string[] = []
+  for (const change of rosterChanges) {
+    switch (change.type) {
+      case 'added':
+        changeMessages.push(`✅ **${change.driverName}** added to **${change.teamName}**`)
+        break
+      case 'dropped':
+        changeMessages.push(`❌ **${change.driverName}** dropped from race`)
+        break
+      case 'moved':
+        changeMessages.push(
+          `🔄 **${change.driverName}** moved from **${change.fromTeam}** to **${change.toTeam}**`
+        )
+        break
+      case 'unassigned':
+        changeMessages.push(`⚠️ **${change.driverName}** unassigned from **${change.fromTeam}**`)
+        break
+    }
+  }
+
+  return `**Roster Changes:**\n${changeMessages.join('\n')}`
 }
 
 export function buildOnboardingEmbed(data: OnboardingNotificationData, appTitle: string) {
