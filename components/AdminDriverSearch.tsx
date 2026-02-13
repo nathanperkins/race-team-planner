@@ -75,8 +75,11 @@ export default function AdminDriverSearch({
     const threshold = 220
     const shouldOpenUp = rect.bottom > window.innerHeight - threshold
     setOpenDirection(shouldOpenUp ? 'up' : 'down')
-    const left = Math.max(8, rect.left)
-    const width = Math.min(rect.width, window.innerWidth - left - 8)
+    const minDropdownWidth = 320
+    const desiredWidth = Math.max(rect.width, minDropdownWidth)
+    const maxWidth = window.innerWidth - 16
+    const width = Math.min(desiredWidth, maxWidth)
+    const left = Math.min(Math.max(8, rect.left), Math.max(8, window.innerWidth - width - 8))
     if (shouldOpenUp) {
       setDropdownStyle({
         position: 'fixed',

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { deleteRegistration } from '@/app/actions'
 import styles from './DropRegistrationButton.module.css'
-import { Trash2, Check, X, Loader2 } from 'lucide-react'
+import { Trash2, Check, X, Loader2, ChevronDown } from 'lucide-react'
 
 interface Props {
   registrationId: string
@@ -73,10 +73,20 @@ export default function DropRegistrationButton({
       <span
         className={`${styles.dropWrapper} ${variant === 'full' ? styles.fullWidthWrapper : ''}`}
       >
-        <button className={`${styles.button} ${styles.deleting} ${className || ''}`} disabled>
-          <Loader2 className={styles.spinner} size={14} />
-          <span>Dropping...</span>
-        </button>
+        {variant === 'full' ? (
+          <button
+            className={`${styles.button} ${styles.fullWidthButton} ${styles.deleting} ${className || ''}`}
+            disabled
+          >
+            <span>Dropping...</span>
+            <ChevronDown size={14} />
+          </button>
+        ) : (
+          <button className={`${styles.button} ${styles.deleting} ${className || ''}`} disabled>
+            <Loader2 className={styles.spinner} size={14} />
+            <span>Dropping...</span>
+          </button>
+        )}
       </span>
     )
   }

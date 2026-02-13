@@ -14,7 +14,7 @@ interface Props {
   className?: string
   readOnly?: boolean
   showLabel?: boolean
-  variant?: 'standard' | 'table' | 'pill' | 'icon'
+  variant?: 'standard' | 'table' | 'pill' | 'icon' | 'full'
   pillStyle?: 'default' | 'group'
   deferSubmit?: boolean
   onChange?: (classId: string) => void
@@ -135,13 +135,14 @@ export default function EditableCarClass({
   }
 
   const baseLabel = currentCarClassId ? currentCarClassShortName : (placeholderLabel ?? '-')
-  const displayText = showLabel ? `Class: ${baseLabel}` : baseLabel
+  const displayText = variant === 'full' ? 'Change' : showLabel ? `Class: ${baseLabel}` : baseLabel
   const isPlaceholder = !currentCarClassId
   const containerClassName = [
     styles.container,
     variant === 'table' ? styles.tableVariant : '',
     variant === 'pill' ? styles.pillVariant : '',
     variant === 'icon' ? styles.iconVariant : '',
+    variant === 'full' ? styles.fullVariant : '',
     variant === 'pill' && pillStyle === 'group' ? styles.groupPill : '',
     className ?? '',
   ]
@@ -152,7 +153,7 @@ export default function EditableCarClass({
     return (
       <div className={containerClassName}>
         <p className={styles.displayOnly}>
-          {(variant === 'pill' || variant === 'icon') && <Car size={12} />}
+          {(variant === 'pill' || variant === 'icon' || variant === 'full') && <Car size={12} />}
           {variant !== 'icon' && <span className={styles.pillText}>{displayText}</span>}
         </p>
       </div>
@@ -179,7 +180,7 @@ export default function EditableCarClass({
         title={displayText}
         data-placeholder={isPlaceholder ? baseLabel : ''}
       >
-        {(variant === 'pill' || variant === 'icon') && <Car size={12} />}
+        {(variant === 'pill' || variant === 'icon' || variant === 'full') && <Car size={12} />}
         {variant !== 'icon' && <span className={styles.pillText}>{displayText}</span>}
         {variant !== 'icon' && <ChevronDown size={12} className={styles.chevron} />}
       </button>

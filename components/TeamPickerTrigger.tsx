@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { Users, ChevronDown } from 'lucide-react'
+import { Users } from 'lucide-react'
 import styles from './TeamPickerTrigger.module.css'
 
 interface Props {
@@ -20,7 +20,6 @@ export default function TeamPickerTrigger({ onOpen, disabled }: Props) {
       >
         <Users size={16} />
         <span>Pick Teams</span>
-        <ChevronDown size={14} />
       </button>
     </div>
   )

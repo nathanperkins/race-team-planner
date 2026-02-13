@@ -401,16 +401,33 @@
   margin-top: 1rem;
   padding-top: 1rem;
   border-top: 1px solid #374151;
-  align-items: center;
+  align-items: flex-end;
 }
 
 .adminSearchWrapper {
   flex: 1;
   min-width: 0;
+  display: flex;
 }
 
 .quickRegWrapper {
   flex: 1;
+  min-width: 0;
+  display: flex;
+}
+
+.userActionStack {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.userActionStackSingle {
+  grid-template-columns: 1fr;
+}
+
+.userActionStack > * {
   min-width: 0;
 }
 
@@ -423,9 +440,47 @@
 .teamPickerWrapper {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: stretch;
   flex: 1;
   min-width: 0;
+}
+
+.adminSearchWrapper > *,
+.quickRegWrapper > *,
+.teamPickerWrapper > * {
+  width: 100%;
+}
+
+.adminActionsCluster {
+  flex: 2;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.adminActionsLabel {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.adminActionsRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.adminActionSlot {
+  min-width: 0;
+  display: flex;
+}
+
+.adminActionSlot > * {
+  width: 100%;
 }
 
 .unassignedGroup {
@@ -450,8 +505,18 @@
 
   .adminSearchWrapper,
   .quickRegWrapper,
-  .teamPickerWrapper {
+  .teamPickerWrapper,
+  .adminActionsCluster {
     width: 100%;
+  }
+
+  .userActionStack {
+    grid-template-columns: 1fr;
+  }
+
+  .adminActionsRow {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
   }
 }
 
@@ -566,6 +631,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
 }
 
 .teamModalHeader {
@@ -639,6 +705,41 @@
   gap: 0.75rem;
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+.saveConfirmWrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.saveReviewSection {
+  text-align: left;
+  margin-bottom: 0.85rem;
+}
+
+.saveReviewTitle {
+  margin: 0 0 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.saveSummaryList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.saveSummaryItem {
+  margin: 0;
+  font-size: 0.84rem;
+  color: #e2e8f0;
+}
+
+.saveSummaryDestructive {
+  color: #fca5a5;
 }
 
 .addDriverInline {

@@ -17,7 +17,11 @@ vi.mock('./QuickRegistration', () => ({
   default: () => <div data-testid="quick-registration" />,
 }))
 vi.mock('./EditableCarClass', () => ({
-  default: () => <div data-testid="editable-car-class" />,
+  default: (props: { variant?: string }) => (
+    <div
+      data-testid={props.variant === 'full' ? 'editable-car-class-full' : 'editable-car-class'}
+    />
+  ),
 }))
 vi.mock('./AdminDriverSearch', () => ({
   default: () => <div data-testid="admin-driver-search" />,
@@ -253,6 +257,46 @@ describe('RaceDetails', () => {
     expect(screen.getAllByTestId('drop-registration-button')).toHaveLength(1)
   })
 
+  it('shows class-change action for a registered unassigned non-admin user', () => {
+    const mockRace = {
+      id: 'race-5b',
+      startTime: new Date('2027-01-01T10:00:00Z'),
+      endTime: new Date('2027-01-01T12:00:00Z'),
+      teamsAssigned: false,
+      maxDriversPerTeam: 2,
+      teamAssignmentStrategy: 'BALANCED_IRATING' as const,
+      registrations: [
+        {
+          id: 'reg-user',
+          carClass: { id: 'class-1', name: 'Class 1', shortName: 'C1' },
+          userId: 'user-1',
+          user: {
+            name: 'User 1',
+            image: null,
+            racerStats: [],
+          },
+          manualDriver: null,
+          teamId: null,
+          team: null,
+        },
+      ],
+      discordTeamsThreadId: null,
+      discordTeamThreads: null,
+    }
+
+    render(
+      <RaceDetails
+        race={mockRace}
+        userId="user-1"
+        carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
+        teams={[]}
+        allDrivers={[]}
+      />
+    )
+
+    expect(screen.getByTestId('editable-car-class-full')).toBeInTheDocument()
+  })
+
   it('hides swap control when registered user is already assigned to a team', () => {
     const mockRace = {
       id: 'race-6',
@@ -291,5 +335,47 @@ describe('RaceDetails', () => {
     )
 
     expect(screen.getByTestId('drop-registration-button')).toBeInTheDocument()
+    expect(screen.queryByTestId('editable-car-class-full')).not.toBeInTheDocument()
+  })
+
+  it('shows class-change action for a registered unassigned admin user', () => {
+    const mockRace = {
+      id: 'race-7',
+      startTime: new Date('2027-01-01T10:00:00Z'),
+      endTime: new Date('2027-01-01T12:00:00Z'),
+      teamsAssigned: false,
+      maxDriversPerTeam: 2,
+      teamAssignmentStrategy: 'BALANCED_IRATING' as const,
+      registrations: [
+        {
+          id: 'reg-admin',
+          carClass: { id: 'class-1', name: 'Class 1', shortName: 'C1' },
+          userId: 'admin-user',
+          user: {
+            name: 'Admin User',
+            image: null,
+            racerStats: [],
+          },
+          manualDriver: null,
+          teamId: null,
+          team: null,
+        },
+      ],
+      discordTeamsThreadId: null,
+      discordTeamThreads: null,
+    }
+
+    render(
+      <RaceDetails
+        race={mockRace}
+        userId="admin-user"
+        isAdmin
+        carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
+        teams={[]}
+        allDrivers={[]}
+      />
+    )
+
+    expect(screen.getByTestId('editable-car-class-full')).toBeInTheDocument()
   })
 })

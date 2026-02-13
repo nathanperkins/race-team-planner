@@ -123,6 +123,41 @@
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
 }
 
+.fullVariant .editButton,
+.fullVariant .displayOnly {
+  width: 100%;
+  min-height: 40px;
+  padding: 0.625rem 1rem;
+  border-radius: 6px;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  background-color: rgba(59, 130, 246, 0.1);
+  color: #60a5fa;
+  font-size: 0.875rem;
+  font-weight: 500;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.fullVariant .editButton:hover:not(:disabled) {
+  background-color: rgba(59, 130, 246, 0.2);
+}
+
+.fullVariant .editButton.active {
+  border-color: rgba(96, 165, 250, 0.9);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.fullVariant .pillText {
+  text-align: center;
+  flex: 0 1 auto;
+}
+
+.fullVariant .dropdown {
+  left: 0;
+  right: 0;
+  min-width: 0;
+}
+
 .groupPill .editButton,
 .groupPill .displayOnly {
   background: transparent;
