@@ -638,9 +638,20 @@ export function detectRosterChanges(
   })
 
   // Detect drops (removed registrations)
+  // But skip drivers who were unassigned and are now assigned (even with different reg ID)
+  const assignedDriverNames = new Set(
+    Object.values(currentSnapshot)
+      .filter((reg) => reg.teamId !== null)
+      .map((reg) => reg.driverName)
+  )
+
   Object.keys(normalizedPrevious).forEach((regId) => {
     if (!(regId in currentSnapshot)) {
       const previous = normalizedPrevious[regId]
+      // Don't report as dropped if this driver was unassigned and is now assigned to a team
+      if (previous.teamId === null && assignedDriverNames.has(previous.driverName)) {
+        return
+      }
       rosterChanges.push({ type: 'dropped', driverName: previous.driverName })
     }
   })

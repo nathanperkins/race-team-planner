@@ -925,6 +925,24 @@ describe('Discord Utils', () => {
         toTeam: 'Team Beta',
       })
     })
+
+    it('does not show dropped when unassigned driver gets assigned (even with different registration ID)', () => {
+      const previousSnapshot = {
+        reg1: { teamId: null, driverName: 'Mock Bob' },
+      }
+      const currentSnapshot = {
+        reg2: { teamId: 'team1', driverName: 'Mock Bob' },
+      }
+      const changes = detectRosterChanges(previousSnapshot, currentSnapshot, teamNameById)
+      // Should only show "added", not "dropped"
+      // Bug: currently shows both added and dropped because registration ID changed
+      expect(changes).toHaveLength(1)
+      expect(changes[0]).toEqual({
+        type: 'added',
+        driverName: 'Mock Bob',
+        teamName: 'Team Alpha',
+      })
+    })
   })
 
   describe('buildRosterChangesEmbed', () => {
