@@ -510,4 +510,15 @@ export async function batchAssignTeams(
 
   revalidatePath('/events')
   revalidatePath('/events/[id]', 'layout')
+
+  // Send Discord notification if we have a raceId
+  if (overrides?.raceId) {
+    try {
+      const { sendTeamsAssignmentNotification } = await import('@/app/actions')
+      await sendTeamsAssignmentNotification(overrides.raceId)
+    } catch (error) {
+      console.error('Failed to send Discord notification after batch assign:', error)
+      // Don't throw - the team assignment succeeded, notification failure is non-fatal
+    }
+  }
 }
