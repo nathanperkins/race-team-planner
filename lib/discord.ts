@@ -841,29 +841,33 @@ export async function addUsersToThread(threadId: string, discordUserIds: string[
   }
 
   const uniqueIds = Array.from(new Set(discordUserIds)).filter(Boolean)
-  for (const userId of uniqueIds) {
-    try {
-      const response = await fetch(
-        `${DISCORD_API_BASE}/channels/${threadId}/thread-members/${userId}`,
-        {
-          method: 'PUT',
-          headers: {
-            Authorization: `Bot ${botToken}`,
-          },
-        }
-      )
 
-      if (!response.ok && response.status !== 409) {
-        const errorText = await response.text()
-        console.error(
-          `Failed to add user ${userId} to thread ${threadId}: ${response.status} ${response.statusText}`,
-          errorText
+  // Add all users concurrently for better performance
+  await Promise.all(
+    uniqueIds.map(async (userId) => {
+      try {
+        const response = await fetch(
+          `${DISCORD_API_BASE}/channels/${threadId}/thread-members/${userId}`,
+          {
+            method: 'PUT',
+            headers: {
+              Authorization: `Bot ${botToken}`,
+            },
+          }
         )
+
+        if (!response.ok && response.status !== 409) {
+          const errorText = await response.text()
+          console.error(
+            `Failed to add user ${userId} to thread ${threadId}: ${response.status} ${response.statusText}`,
+            errorText
+          )
+        }
+      } catch (error) {
+        console.error(`Failed to add user ${userId} to thread ${threadId}:`, error)
       }
-    } catch (error) {
-      console.error(`Failed to add user ${userId} to thread ${threadId}:`, error)
-    }
-  }
+    })
+  )
 }
 
 export { buildDiscordAppLink, buildDiscordWebLink } from './discord-utils'
@@ -1023,6 +1027,12 @@ export async function createOrUpdateEventThread(data: {
         errorText
       )
       return { ok: false, threadId: threadId ?? undefined }
+    }
+
+    // Add all current members to the thread (ensures new drivers are added)
+    const allMemberDiscordIds = Array.from(allDiscordIds.values())
+    if (allMemberDiscordIds.length > 0) {
+      await addUsersToThread(threadId, allMemberDiscordIds)
     }
 
     return { ok: true, threadId: threadId ?? undefined }

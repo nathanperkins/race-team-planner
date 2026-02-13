@@ -13,6 +13,8 @@ import {
   upsertThreadMessage,
   postRosterChangeNotifications,
   sendWeeklyScheduleNotification,
+  createOrUpdateEventThread,
+  addUsersToThread,
 } from './discord'
 import type { WeeklyScheduleEvent } from './discord-utils'
 
@@ -1397,6 +1399,334 @@ describe('sendWeeklyScheduleNotification', () => {
       'Error sending Discord weekly schedule notification:',
       expect.any(Error)
     )
+  })
+})
+
+describe('addUsersToThread', () => {
+  const botToken = 'fake-bot-token'
+  const threadId = 'thread-123'
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn())
+    vi.stubEnv('DISCORD_BOT_TOKEN', botToken)
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('should add multiple users to a thread', async () => {
+    const discordUserIds = ['user-1', 'user-2', 'user-3']
+
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      status: 204,
+    } as Response)
+
+    await addUsersToThread(threadId, discordUserIds)
+
+    expect(fetch).toHaveBeenCalledTimes(3)
+    expect(fetch).toHaveBeenCalledWith(
+      `https://discord.com/api/v10/channels/${threadId}/thread-members/user-1`,
+      {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bot ${botToken}`,
+        },
+      }
+    )
+    expect(fetch).toHaveBeenCalledWith(
+      `https://discord.com/api/v10/channels/${threadId}/thread-members/user-2`,
+      {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bot ${botToken}`,
+        },
+      }
+    )
+    expect(fetch).toHaveBeenCalledWith(
+      `https://discord.com/api/v10/channels/${threadId}/thread-members/user-3`,
+      {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bot ${botToken}`,
+        },
+      }
+    )
+  })
+
+  it('should skip empty or duplicate user IDs', async () => {
+    const discordUserIds = ['user-1', '', 'user-1', 'user-2', '']
+
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      status: 204,
+    } as Response)
+
+    await addUsersToThread(threadId, discordUserIds)
+
+    // Should only call for unique non-empty IDs
+    expect(fetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('should handle 409 conflict errors (user already in thread) gracefully', async () => {
+    const discordUserIds = ['user-1']
+
+    vi.mocked(fetch).mockResolvedValue({
+      ok: false,
+      status: 409,
+      text: async () => 'User is already a member',
+    } as Response)
+
+    await addUsersToThread(threadId, discordUserIds)
+
+    expect(console.error).not.toHaveBeenCalled()
+  })
+
+  it('should log errors for non-409 failures', async () => {
+    const discordUserIds = ['user-1']
+
+    vi.mocked(fetch).mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+      text: async () => 'Something went wrong',
+    } as Response)
+
+    await addUsersToThread(threadId, discordUserIds)
+
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to add user user-1'),
+      expect.any(String)
+    )
+  })
+
+  it('should return early if no bot token is configured', async () => {
+    vi.stubEnv('DISCORD_BOT_TOKEN', '')
+
+    await addUsersToThread(threadId, ['user-1'])
+
+    expect(fetch).not.toHaveBeenCalled()
+  })
+})
+
+describe('createOrUpdateEventThread', () => {
+  const botToken = 'fake-bot-token'
+  const channelId = 'channel-123'
+  const forumId = 'forum-456'
+  const guildId = 'guild-789'
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn())
+    vi.stubEnv('DISCORD_BOT_TOKEN', botToken)
+    vi.stubEnv('DISCORD_NOTIFICATIONS_CHANNEL_ID', channelId)
+    vi.stubEnv('DISCORD_EVENTS_FORUM_ID', forumId)
+    vi.stubEnv('DISCORD_GUILD_ID', guildId)
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('should add all users to a newly created event thread', async () => {
+    const mockThreadId = 'new-thread-123'
+
+    // Mock thread creation response
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: mockThreadId }),
+      } as Response)
+      // Mock addUsersToThread calls (3 users)
+      .mockResolvedValue({
+        ok: true,
+        status: 204,
+      } as Response)
+
+    const result = await createOrUpdateEventThread({
+      eventName: 'GT3 Challenge',
+      raceUrl: 'https://example.com/race',
+      carClasses: ['GT3'],
+      timeslots: [
+        {
+          raceStartTime: new Date('2026-02-15T18:00:00Z'),
+          teams: [
+            {
+              name: 'Team Alpha',
+              members: [
+                {
+                  name: 'Alice',
+                  carClass: 'GT3',
+                  discordId: 'discord-alice',
+                  registrationId: 'reg-1',
+                  rating: 2000,
+                },
+                {
+                  name: 'Bob',
+                  carClass: 'GT3',
+                  discordId: 'discord-bob',
+                  registrationId: 'reg-2',
+                  rating: 1800,
+                },
+              ],
+            },
+            {
+              name: 'Team Beta',
+              members: [
+                {
+                  name: 'Charlie',
+                  carClass: 'GT3',
+                  discordId: 'discord-charlie',
+                  registrationId: 'reg-3',
+                  rating: 1900,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.threadId).toBe(mockThreadId)
+
+    // Verify addUsersToThread was called with all Discord IDs
+    const addUsersCalls = vi
+      .mocked(fetch)
+      .mock.calls.filter((call) => call[0]?.toString().includes('/thread-members/'))
+    expect(addUsersCalls).toHaveLength(3)
+  })
+
+  it('should add all users when updating an existing event thread', async () => {
+    const existingThreadId = 'existing-thread-123'
+    const mockBotUserId = 'bot-user-id'
+
+    // Mock thread existence check
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: existingThreadId }),
+      } as Response)
+      // Mock bot user ID fetch
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: mockBotUserId }),
+      } as Response)
+      // Mock messages fetch (find bot message)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => [{ id: 'message-1', author: { id: mockBotUserId } }],
+      } as Response)
+      // Mock message edit (upsert)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({}),
+      } as Response)
+      // Mock addUsersToThread calls (3 users)
+      .mockResolvedValue({
+        ok: true,
+        status: 204,
+      } as Response)
+
+    const result = await createOrUpdateEventThread({
+      eventName: 'GT3 Challenge',
+      raceUrl: 'https://example.com/race',
+      carClasses: ['GT3'],
+      threadId: existingThreadId,
+      timeslots: [
+        {
+          raceStartTime: new Date('2026-02-15T18:00:00Z'),
+          teams: [
+            {
+              name: 'Team Alpha',
+              members: [
+                {
+                  name: 'Alice',
+                  carClass: 'GT3',
+                  discordId: 'discord-alice',
+                  registrationId: 'reg-1',
+                  rating: 2000,
+                },
+                {
+                  name: 'Bob',
+                  carClass: 'GT3',
+                  discordId: 'discord-bob',
+                  registrationId: 'reg-2',
+                  rating: 1800,
+                },
+                {
+                  name: 'Dave',
+                  carClass: 'GT3',
+                  discordId: 'discord-dave',
+                  registrationId: 'reg-3',
+                  rating: 2100,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.threadId).toBe(existingThreadId)
+
+    // Verify addUsersToThread was called for all current members
+    const addUsersCalls = vi
+      .mocked(fetch)
+      .mock.calls.filter((call) => call[0]?.toString().includes('/thread-members/'))
+    expect(addUsersCalls.length).toBeGreaterThanOrEqual(3)
+  })
+
+  it('should handle empty discord IDs gracefully', async () => {
+    const mockThreadId = 'new-thread-123'
+
+    // Mock thread creation response
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ id: mockThreadId }),
+    } as Response)
+
+    const result = await createOrUpdateEventThread({
+      eventName: 'GT3 Challenge',
+      raceUrl: 'https://example.com/race',
+      carClasses: ['GT3'],
+      timeslots: [
+        {
+          raceStartTime: new Date('2026-02-15T18:00:00Z'),
+          teams: [
+            {
+              name: 'Team Alpha',
+              members: [
+                { name: 'Alice', carClass: 'GT3', rating: 2000 }, // No discordId
+              ],
+            },
+          ],
+        },
+      ],
+    })
+
+    expect(result.ok).toBe(true)
+
+    // Verify no addUsersToThread calls were made
+    const addUsersCalls = vi
+      .mocked(fetch)
+      .mock.calls.filter((call) => call[0]?.toString().includes('/thread-members/'))
+    expect(addUsersCalls).toHaveLength(0)
   })
 })
 
