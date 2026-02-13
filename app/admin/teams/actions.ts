@@ -453,7 +453,8 @@ export async function batchAssignTeams(
     manualIR?: number
     teamId: string | null
   }[],
-  overrides?: { raceId?: string; carClassId?: string }
+  raceId: string,
+  carClassId: string
 ) {
   const session = await auth()
   if (!session?.user || session.user.role !== 'ADMIN') {
@@ -469,11 +470,11 @@ export async function batchAssignTeams(
           where: { id: a.registrationId },
           data: {
             teamId: a.teamId,
-            ...(overrides?.raceId ? { raceId: overrides.raceId } : {}),
-            ...(overrides?.carClassId ? { carClassId: overrides.carClassId } : {}),
+            raceId,
+            carClassId,
           },
         })
-      } else if (a.manualName && overrides?.raceId && overrides?.carClassId) {
+      } else if (a.manualName) {
         // Find or create manual driver
         let manualDriver = await tx.manualDriver.findFirst({
           where: { name: a.manualName },
@@ -500,8 +501,8 @@ export async function batchAssignTeams(
           data: {
             manualDriverId: manualDriver.id,
             teamId: a.teamId,
-            raceId: overrides.raceId,
-            carClassId: overrides.carClassId,
+            raceId,
+            carClassId,
           },
         })
       }
@@ -511,14 +512,12 @@ export async function batchAssignTeams(
   revalidatePath('/events')
   revalidatePath('/events/[id]', 'layout')
 
-  // Send Discord notification if we have a raceId
-  if (overrides?.raceId) {
-    try {
-      const { sendTeamsAssignmentNotification } = await import('@/app/actions')
-      await sendTeamsAssignmentNotification(overrides.raceId)
-    } catch (error) {
-      console.error('Failed to send Discord notification after batch assign:', error)
-      // Don't throw - the team assignment succeeded, notification failure is non-fatal
-    }
+  // Send Discord notification
+  try {
+    const { sendTeamsAssignmentNotification } = await import('@/app/actions')
+    await sendTeamsAssignmentNotification(raceId)
+  } catch (error) {
+    console.error('Failed to send Discord notification after batch assign:', error)
+    // Don't throw - the team assignment succeeded, notification failure is non-fatal
   }
 }

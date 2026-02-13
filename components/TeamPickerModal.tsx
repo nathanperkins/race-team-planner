@@ -57,8 +57,8 @@ interface Props {
   teams: { id: string; name: string }[]
   onClose: () => void
   eventRegistrations?: ExtendedRegistration[]
-  raceId?: string
-  carClassId?: string
+  raceId: string
+  carClassId: string
 }
 
 export default function TeamPickerModal({
@@ -365,7 +365,7 @@ export default function TeamPickerModal({
         })
       )
 
-      await batchAssignTeams(assignments, { raceId, carClassId })
+      await batchAssignTeams(assignments, raceId, carClassId)
       onClose()
     } catch (err) {
       console.error(err)

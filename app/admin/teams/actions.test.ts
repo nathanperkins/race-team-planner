@@ -68,26 +68,9 @@ describe('batchAssignTeams', () => {
       { registrationId: 'reg-1', teamId: 'team-2' }, // Moving Alice from team-1 to team-2
     ]
 
-    await batchAssignTeams(assignments, { raceId, carClassId })
+    await batchAssignTeams(assignments, raceId, carClassId)
 
     // Verify that sendTeamsAssignmentNotification was called
     expect(sendTeamsAssignmentNotification).toHaveBeenCalledWith(raceId)
-  })
-
-  it('does not send notification if no raceId is provided', async () => {
-    vi.mocked(prisma.$transaction).mockImplementation(async (callback) => {
-      return callback(prisma as any)
-    })
-
-    vi.mocked(prisma as any).registration = {
-      update: vi.fn().mockResolvedValue({}),
-    }
-
-    const assignments = [{ registrationId: 'reg-1', teamId: 'team-2' }]
-
-    await batchAssignTeams(assignments, { carClassId: 'class-gt3' })
-
-    // Should not send notification without raceId
-    expect(sendTeamsAssignmentNotification).not.toHaveBeenCalled()
   })
 })
