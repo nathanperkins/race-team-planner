@@ -528,6 +528,12 @@ export async function batchAssignTeams(
   revalidatePath('/events')
   revalidatePath('/events/[id]', 'layout')
 
+  // Mark teams as assigned so roster change notifications are sent
+  await prisma.race.update({
+    where: { id: raceId },
+    data: { teamsAssigned: true },
+  })
+
   // Send Discord notification
   try {
     const { sendTeamsAssignmentNotification } = await import('@/app/actions')

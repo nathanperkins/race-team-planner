@@ -63,6 +63,7 @@ describe('batchAssignTeams', () => {
     vi.mocked(prisma as any).registration = {
       update: vi.fn().mockResolvedValue({}),
     }
+    vi.mocked(prisma.race as any).update = vi.fn().mockResolvedValue({})
 
     const assignments = [
       { registrationId: 'reg-1', teamId: 'team-2' }, // Moving Alice from team-1 to team-2
@@ -86,6 +87,7 @@ describe('batchAssignTeams', () => {
     vi.mocked(prisma as any).registration = {
       update: mockUpdate,
     }
+    vi.mocked(prisma.race as any).update = vi.fn().mockResolvedValue({})
 
     const assignments = [
       { registrationId: 'reg-1', teamId: 'team-2' }, // Existing registration
@@ -126,6 +128,7 @@ describe('batchAssignTeams', () => {
       findFirst: mockFindFirst,
       create: mockCreate,
     }
+    vi.mocked(prisma.race as any).update = vi.fn().mockResolvedValue({})
 
     const assignments = [
       {
@@ -172,6 +175,7 @@ describe('batchAssignTeams', () => {
       findFirst: mockFindFirst,
       create: mockCreate,
     }
+    vi.mocked(prisma.race as any).update = vi.fn().mockResolvedValue({})
 
     const assignments = [
       {
@@ -220,6 +224,7 @@ describe('batchAssignTeams', () => {
       findFirst: mockFindFirst,
       create: mockCreate,
     }
+    vi.mocked(prisma.race as any).update = vi.fn().mockResolvedValue({})
 
     const assignments = [
       // Existing user being moved to a different team
@@ -254,5 +259,32 @@ describe('batchAssignTeams', () => {
 
     // Verify notification was sent
     expect(sendTeamsAssignmentNotification).toHaveBeenCalledWith(raceId)
+  })
+
+  it('sets teamsAssigned flag to true after batch assignment', async () => {
+    const raceId = 'race-123'
+    const carClassId = 'class-gt3'
+
+    vi.mocked(prisma.$transaction).mockImplementation(async (callback) => {
+      return callback(prisma as any)
+    })
+
+    const mockUpdate = vi.fn().mockResolvedValue({})
+    const mockRaceUpdate = vi.fn().mockResolvedValue({})
+
+    vi.mocked(prisma as any).registration = {
+      update: mockUpdate,
+    }
+    vi.mocked(prisma.race as any).update = mockRaceUpdate
+
+    const assignments = [{ registrationId: 'reg-1', teamId: 'team-2' }]
+
+    await batchAssignTeams(assignments, raceId, carClassId)
+
+    // Verify that the race's teamsAssigned flag was set to true
+    expect(mockRaceUpdate).toHaveBeenCalledWith({
+      where: { id: raceId },
+      data: { teamsAssigned: true },
+    })
   })
 })
