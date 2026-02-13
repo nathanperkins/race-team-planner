@@ -1643,6 +1643,7 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
       rosterChanges: rosterChanges.length > 0 ? rosterChanges : undefined,
       teamThreads,
       teamNameById,
+      adminName: session.user.name || 'Admin',
     })
 
     if (notification.ok) {

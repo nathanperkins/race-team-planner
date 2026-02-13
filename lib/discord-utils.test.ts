@@ -826,14 +826,16 @@ describe('Discord Utils', () => {
 
   describe('buildRosterChangesEmbed', () => {
     const appTitle = 'Test App'
+    const adminName = 'John Admin'
 
-    it('builds embed with added drivers', () => {
+    it('builds embed with added drivers and admin name', () => {
       const embed = buildRosterChangesEmbed(
         [{ type: 'added', driverName: 'Alice', teamName: 'Team Alpha' }],
-        appTitle
+        appTitle,
+        adminName
       )
       expect(embed.title).toBe('📋 Roster Changes')
-      expect(embed.description).toBe('1 change to the roster')
+      expect(embed.description).toBe('1 change made by **John Admin**')
       expect(embed.color).toBe(0xffa500) // Orange
       expect(embed.fields).toHaveLength(1)
       expect(embed.fields[0].name).toBe('✅ Added')
@@ -843,7 +845,11 @@ describe('Discord Utils', () => {
     })
 
     it('builds embed with dropped drivers', () => {
-      const embed = buildRosterChangesEmbed([{ type: 'dropped', driverName: 'Bob' }], appTitle)
+      const embed = buildRosterChangesEmbed(
+        [{ type: 'dropped', driverName: 'Bob' }],
+        appTitle,
+        adminName
+      )
       expect(embed.fields).toHaveLength(1)
       expect(embed.fields[0].name).toBe('❌ Dropped')
       expect(embed.fields[0].value).toBe('**Bob**')
@@ -852,7 +858,8 @@ describe('Discord Utils', () => {
     it('builds embed with moved drivers', () => {
       const embed = buildRosterChangesEmbed(
         [{ type: 'moved', driverName: 'Charlie', fromTeam: 'Team Alpha', toTeam: 'Team Beta' }],
-        appTitle
+        appTitle,
+        adminName
       )
       expect(embed.fields).toHaveLength(1)
       expect(embed.fields[0].name).toBe('🔄 Moved')
@@ -862,7 +869,8 @@ describe('Discord Utils', () => {
     it('builds embed with unassigned drivers', () => {
       const embed = buildRosterChangesEmbed(
         [{ type: 'unassigned', driverName: 'Dave', fromTeam: 'Team Alpha' }],
-        appTitle
+        appTitle,
+        adminName
       )
       expect(embed.fields).toHaveLength(1)
       expect(embed.fields[0].name).toBe('⚠️ Unassigned')
@@ -878,9 +886,10 @@ describe('Discord Utils', () => {
           { type: 'moved', driverName: 'Charlie', fromTeam: 'Team Alpha', toTeam: 'Team Beta' },
           { type: 'unassigned', driverName: 'Dave', fromTeam: 'Team Gamma' },
         ],
-        appTitle
+        appTitle,
+        adminName
       )
-      expect(embed.description).toBe('5 changes to the roster')
+      expect(embed.description).toBe('5 changes made by **John Admin**')
       expect(embed.fields).toHaveLength(4) // Added, Moved, Unassigned, Dropped
       expect(embed.fields[0].name).toBe('✅ Added')
       expect(embed.fields[0].value).toContain('**Alice** → Team Alpha')
@@ -896,12 +905,35 @@ describe('Discord Utils', () => {
           { type: 'added', driverName: 'Alice', teamName: 'Team Alpha' },
           { type: 'dropped', driverName: 'Bob' },
         ],
-        appTitle
+        appTitle,
+        adminName
       )
-      expect(embed.description).toBe('2 changes to the roster')
+      expect(embed.description).toBe('2 changes made by **John Admin**')
     })
 
     it('uses singular form in description for single change', () => {
+      const embed = buildRosterChangesEmbed(
+        [{ type: 'added', driverName: 'Alice', teamName: 'Team Alpha' }],
+        appTitle,
+        adminName
+      )
+      expect(embed.description).toBe('1 change made by **John Admin**')
+    })
+
+    it('shows generic description when adminName is not provided', () => {
+      const embed = buildRosterChangesEmbed(
+        [
+          { type: 'added', driverName: 'Alice', teamName: 'Team Alpha' },
+          { type: 'dropped', driverName: 'Bob' },
+        ],
+        appTitle
+      )
+      expect(embed.description).toBe('2 changes to the roster')
+      expect(embed.title).toBe('📋 Roster Changes')
+      expect(embed.fields).toHaveLength(2)
+    })
+
+    it('shows singular generic description when adminName is not provided', () => {
       const embed = buildRosterChangesEmbed(
         [{ type: 'added', driverName: 'Alice', teamName: 'Team Alpha' }],
         appTitle

@@ -1103,7 +1103,7 @@ describe('postRosterChangeNotifications', () => {
   })
 
   it('does nothing when roster changes are empty', async () => {
-    await postRosterChangeNotifications(eventThreadId, [], botToken)
+    await postRosterChangeNotifications(eventThreadId, [], botToken, 'Admin User')
 
     expect(fetch).not.toHaveBeenCalled()
   })
@@ -1119,7 +1119,7 @@ describe('postRosterChangeNotifications', () => {
       { type: 'dropped' as const, driverName: 'Bob' },
     ]
 
-    await postRosterChangeNotifications(eventThreadId, rosterChanges, botToken)
+    await postRosterChangeNotifications(eventThreadId, rosterChanges, botToken, 'Admin User')
 
     expect(fetch).toHaveBeenCalledTimes(1)
     expect(fetch).toHaveBeenCalledWith(
@@ -1158,6 +1158,7 @@ describe('postRosterChangeNotifications', () => {
       eventThreadId,
       rosterChanges,
       botToken,
+      'Admin User',
       teamThreads,
       teamNameById
     )
@@ -1176,7 +1177,7 @@ describe('postRosterChangeNotifications', () => {
 
     const rosterChanges = [{ type: 'added' as const, driverName: 'Alice', teamName: 'Team One' }]
 
-    await postRosterChangeNotifications(eventThreadId, rosterChanges, botToken)
+    await postRosterChangeNotifications(eventThreadId, rosterChanges, botToken, 'Admin User')
 
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Failed to post roster changes'),

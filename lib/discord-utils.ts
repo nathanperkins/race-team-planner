@@ -55,6 +55,7 @@ export interface TeamsAssignedNotificationData {
   rosterChanges?: RosterChange[]
   teamThreads?: Record<string, string>
   teamNameById?: Map<string, string>
+  adminName?: string
 }
 
 export interface RegistrationNotificationData {
@@ -578,7 +579,8 @@ function isLegacySnapshot(
  */
 export function buildRosterChangesEmbed(
   rosterChanges: RosterChange[],
-  appTitle: string
+  appTitle: string,
+  adminName?: string
 ): {
   title: string
   description: string
@@ -627,9 +629,14 @@ export function buildRosterChangesEmbed(
     })
   }
 
+  const changeCount = `${rosterChanges.length} change${rosterChanges.length === 1 ? '' : 's'}`
+  const description = adminName
+    ? `${changeCount} made by **${adminName}**`
+    : `${changeCount} to the roster`
+
   return {
     title: '📋 Roster Changes',
-    description: `${rosterChanges.length} change${rosterChanges.length === 1 ? '' : 's'} to the roster`,
+    description,
     color: 0xffa500, // Orange
     fields,
     timestamp: new Date().toISOString(),
