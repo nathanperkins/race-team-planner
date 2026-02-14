@@ -25,6 +25,57 @@ function isRegistrationUserForeignKeyError(error: unknown): boolean {
   return JSON.stringify(error.meta ?? {}).includes('Registration_userId_fkey')
 }
 
+async function getOtherRegisteredDriversForRace(
+  raceId: string,
+  excludeRegistrationId: string
+): Promise<Array<{ name: string; carClassName: string; discordId?: string }>> {
+  const registrations =
+    (await prisma.registration.findMany({
+      where: {
+        raceId,
+        id: { not: excludeRegistrationId },
+      },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        carClass: {
+          select: {
+            name: true,
+            shortName: true,
+          },
+        },
+        user: {
+          select: {
+            name: true,
+            accounts: {
+              where: { provider: 'discord' },
+              select: { providerAccountId: true },
+            },
+          },
+        },
+        manualDriver: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    })) ?? []
+
+  return registrations
+    .map((reg) => {
+      const name = reg.user?.name || reg.manualDriver?.name || ''
+      if (!name) return null
+      const carClassName = reg.carClass.shortName || reg.carClass.name
+      if (!carClassName) return null
+      const discordId = reg.user?.accounts?.[0]?.providerAccountId
+      return {
+        name,
+        carClassName,
+        ...(discordId ? { discordId } : {}),
+      }
+    })
+    .filter((entry): entry is { name: string; carClassName: string; discordId?: string } => !!entry)
+}
+
 async function getAutoTeamId(
   raceId: string,
   carClassId: string,
@@ -578,6 +629,10 @@ export async function registerForRace(prevState: State, formData: FormData) {
         const { sendRegistrationNotification } = await import('@/lib/discord')
 
         const discordAccount = registrationData.user.accounts[0]
+        const otherRegisteredDrivers = await getOtherRegisteredDriversForRace(
+          raceId,
+          registrationData.id
+        )
 
         // Only send notification if we have both thread ID and guild ID
         const guildId = process.env.DISCORD_GUILD_ID
@@ -595,6 +650,7 @@ export async function registerForRace(prevState: State, formData: FormData) {
                   name: registrationData.user.name || 'Unknown',
                 }
               : undefined,
+            otherRegisteredDrivers,
             threadId: discussionThreadId,
             guildId,
           })
@@ -1503,6 +1559,20 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
     const { addUsersToThread, buildDiscordWebLink, createOrUpdateTeamThread } =
       await import('@/lib/discord')
 
+    const existingEventThreadRecord = await prisma.race.findFirst({
+      where: {
+        eventId: raceWithEvent.event.id,
+        NOT: { discordTeamsThreadId: null },
+      },
+      select: { discordTeamsThreadId: true },
+    })
+    const existingEventThreadId =
+      existingEventThreadRecord?.discordTeamsThreadId ?? raceWithEvent.discordTeamsThreadId
+    const mainEventThreadUrl =
+      guildId && existingEventThreadId
+        ? buildDiscordWebLink({ guildId, threadId: existingEventThreadId })
+        : undefined
+
     const { teamsMap, teamsList, unassigned } = buildTeamsFromRegistrations(
       registrations as RegistrationRow[],
       teamThreads,
@@ -1521,6 +1591,7 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
           eventName: raceWithEvent.event.name,
           raceStartTime: raceWithEvent.startTime,
           existingThreadId,
+          mainEventThreadUrl,
           memberDiscordIds,
           raceUrl,
           track: raceWithEvent.event.track,
@@ -1718,14 +1789,7 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
     timeslots.sort((a, b) => a.raceStartTime.getTime() - b.raceStartTime.getTime())
 
     // Determine if event thread already exists (meaning this is a 2nd+ timeslot assignment)
-    const eventThread = await prisma.race.findFirst({
-      where: {
-        eventId: raceWithEvent.event.id,
-        NOT: { discordTeamsThreadId: null },
-      },
-      select: { discordTeamsThreadId: true },
-    })
-    const existingThreadId = eventThread?.discordTeamsThreadId ?? raceWithEvent.discordTeamsThreadId
+    const existingThreadId = existingEventThreadId
 
     // Combine car classes from relations and custom car classes
     const carClasses = [
@@ -1772,6 +1836,7 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
         {
           eventName: raceWithEvent.event.name,
           timeslots,
+          eventUrl: raceUrl,
           rosterChanges: rosterChangesForNotification,
           adminName: session.user.name || 'Admin',
           teamThreads,
@@ -2006,6 +2071,10 @@ export async function adminRegisterDriver(prevState: State, formData: FormData) 
         const { sendRegistrationNotification } = await import('@/lib/discord')
 
         const discordAccount = registration.user.accounts[0]
+        const otherRegisteredDrivers = await getOtherRegisteredDriversForRace(
+          raceId,
+          registration.id
+        )
 
         await sendRegistrationNotification({
           userName: registration.user.name || 'Unknown User',
@@ -2020,6 +2089,7 @@ export async function adminRegisterDriver(prevState: State, formData: FormData) 
                 name: registration.user.name || 'Unknown',
               }
             : undefined,
+          otherRegisteredDrivers,
           threadId: discussionThreadId,
           guildId,
         })

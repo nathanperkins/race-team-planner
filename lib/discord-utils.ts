@@ -73,8 +73,49 @@ export interface RegistrationNotificationData {
   carClassName: string
   eventUrl: string
   discordUser?: { id: string; name: string }
+  otherRegisteredDrivers?: Array<{ name: string; carClassName: string; discordId?: string }>
   threadId: string
   guildId: string
+}
+
+type DiscordMessageComponent = Record<string, unknown>
+
+function buildRegisteredByClassGroups(
+  entries: Array<{ name: string; carClassName: string; discordId?: string }>,
+  maxDrivers = 16
+) {
+  const grouped = new Map<string, string[]>()
+
+  entries.slice(0, maxDrivers).forEach((entry) => {
+    const className = entry.carClassName || 'Unknown Class'
+    const list = grouped.get(className) ?? []
+    list.push(entry.discordId ? `<@${entry.discordId}>` : entry.name)
+    grouped.set(className, list)
+  })
+
+  return {
+    grouped,
+    truncatedCount: Math.max(entries.length - maxDrivers, 0),
+  }
+}
+
+function formatRegisteredByClass(
+  entries: Array<{ name: string; carClassName: string; discordId?: string }>,
+  maxDrivers = 16
+): string {
+  const { grouped, truncatedCount } = buildRegisteredByClassGroups(entries, maxDrivers)
+
+  const lines: string[] = []
+  grouped.forEach((drivers, className) => {
+    lines.push(`**${className}**`)
+    lines.push(...drivers)
+  })
+
+  if (truncatedCount > 0) {
+    lines.push(`...and ${truncatedCount} more`)
+  }
+
+  return lines.length > 0 ? lines.join('\n') : 'No one else yet.'
 }
 
 export interface OnboardingNotificationData {
@@ -361,6 +402,7 @@ export function buildTeamsAssignedEmbeds(
 export function buildTeamsAssignedChatNotification(
   eventName: string,
   timeslots: RaceTimeslotData[],
+  eventUrl: string,
   threadUrl: string,
   title: string,
   appTitle: string,
@@ -380,18 +422,32 @@ export function buildTeamsAssignedChatNotification(
           {
             name: '🕐 Race Times',
             value: formatRaceTimesValue(timeslots),
-            inline: true,
-          },
-          {
-            name: '🔗 Discussion',
-            value: `[View Event Thread](${threadUrl})`,
-            inline: true,
+            inline: false,
           },
         ],
         timestamp: new Date().toISOString(),
         footer: {
           text: appTitle,
         },
+      },
+    ],
+    components: [
+      {
+        type: 1,
+        components: [
+          {
+            type: 2,
+            style: 5,
+            label: 'Join Event',
+            url: eventUrl,
+          },
+          {
+            type: 2,
+            style: 5,
+            label: 'View Thread',
+            url: threadUrl,
+          },
+        ],
       },
     ],
   }
@@ -453,7 +509,15 @@ export function buildWeeklyScheduleEmbeds(events: WeeklyScheduleEvent[]) {
   })
 }
 
-export function buildRegistrationEmbed(data: RegistrationNotificationData, appTitle: string) {
+export function buildRegistrationEmbed(
+  data: RegistrationNotificationData,
+  appTitle: string,
+  options?: {
+    includeOtherRegisteredDrivers?: boolean
+    includeJoinEventLink?: boolean
+    includeDiscussionLink?: boolean
+  }
+) {
   const unixTimestamp = Math.floor(data.raceStartTime.getTime() / 1000)
   const discordTimestamp = `<t:${unixTimestamp}:F>`
 
@@ -470,12 +534,59 @@ export function buildRegistrationEmbed(data: RegistrationNotificationData, appTi
       value: discordTimestamp,
       inline: true,
     },
-    {
+  ]
+
+  if (options?.includeDiscussionLink ?? true) {
+    fields.push({
       name: '💬 Discussion',
       value: `[View Event Thread](${threadUrl})`,
       inline: true,
-    },
-  ]
+    })
+  }
+
+  if (options?.includeOtherRegisteredDrivers) {
+    const others = (data.otherRegisteredDrivers ?? []).filter(
+      (entry) => entry.name.trim().length > 0 && entry.carClassName.trim().length > 0
+    )
+    const { grouped, truncatedCount } = buildRegisteredByClassGroups(others)
+    if (grouped.size === 0) {
+      fields.push({
+        name: '👥 Already Registered By Class',
+        value: 'No one else yet.',
+        inline: false,
+      })
+    } else {
+      fields.push({
+        name: '👥 Already Registered By Class',
+        value: '\u200b',
+        inline: false,
+      })
+
+      grouped.forEach((drivers, className) => {
+        fields.push({
+          name: className,
+          value: drivers.join('\n'),
+          inline: true,
+        })
+      })
+
+      if (truncatedCount > 0) {
+        fields.push({
+          name: 'More',
+          value: `...and ${truncatedCount} more`,
+          inline: false,
+        })
+      }
+    }
+  }
+
+  if (options?.includeJoinEventLink) {
+    fields.push({
+      name: '🔗 Join Event',
+      value: `[Open Event Page](${data.eventUrl})`,
+      inline: false,
+    })
+  }
 
   const embed: {
     title: string
@@ -507,6 +618,108 @@ export function buildRegistrationEmbed(data: RegistrationNotificationData, appTi
   }
 
   return embed
+}
+
+export function buildRegistrationComponentsV2(
+  data: RegistrationNotificationData
+): DiscordMessageComponent[] {
+  const unixTimestamp = Math.floor(data.raceStartTime.getTime() / 1000)
+  const discussionUrl = buildDiscordWebLink({ guildId: data.guildId, threadId: data.threadId })
+  const actor = data.discordUser ? `<@${data.discordUser.id}>` : `**${data.userName}**`
+  const others = (data.otherRegisteredDrivers ?? []).filter(
+    (entry) => entry.name.trim().length > 0 && entry.carClassName.trim().length > 0
+  )
+
+  const headerSummary = [
+    '\uD83C\uDFC1 **New Race Registration**',
+    `${actor} has registered for **${data.eventName}**`,
+  ].join('\n')
+  const rosterSummary = [
+    '\uD83D\uDC65 **Already Registered By Class**',
+    formatRegisteredByClass(others),
+  ].join('\n')
+  const carClassLine = `\uD83C\uDFCE\uFE0F **Car Class:** ${data.carClassName}`
+  const raceTimeLine = `\uD83D\uDD52 **Race Time:** <t:${unixTimestamp}:F>`
+
+  const joinEventButton = {
+    type: 2,
+    style: 5,
+    label: 'Join Event',
+    url: data.eventUrl,
+  }
+  const viewThreadButton = {
+    type: 2,
+    style: 5,
+    label: 'View Thread',
+    url: discussionUrl,
+  }
+
+  const headerComponent = data.userAvatarUrl
+    ? {
+        type: 9,
+        components: [
+          {
+            type: 10,
+            content: headerSummary,
+          },
+        ],
+        accessory: {
+          type: 11,
+          media: {
+            url: data.userAvatarUrl,
+          },
+        },
+      }
+    : {
+        type: 10,
+        content: headerSummary,
+      }
+
+  if (data.userAvatarUrl) {
+    return [
+      {
+        type: 17,
+        components: [
+          headerComponent,
+          {
+            type: 9,
+            components: [{ type: 10, content: carClassLine }],
+            accessory: joinEventButton,
+          },
+          {
+            type: 9,
+            components: [{ type: 10, content: raceTimeLine }],
+            accessory: viewThreadButton,
+          },
+          {
+            type: 10,
+            content: rosterSummary,
+          },
+        ],
+      },
+    ]
+  }
+
+  return [
+    {
+      type: 17,
+      components: [
+        headerComponent,
+        {
+          type: 10,
+          content: [carClassLine, raceTimeLine].join('\n'),
+        },
+        {
+          type: 10,
+          content: rosterSummary,
+        },
+        {
+          type: 1,
+          components: [joinEventButton, viewThreadButton],
+        },
+      ],
+    },
+  ]
 }
 
 export type RegistrationSnapshot = Record<

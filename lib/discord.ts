@@ -505,7 +505,13 @@ export async function sendRegistrationNotification(
   }
 
   try {
-    const embed = buildRegistrationEmbed(data, appTitle)
+    const notificationEmbed = buildRegistrationEmbed(data, appTitle, {
+      includeOtherRegisteredDrivers: true,
+      includeDiscussionLink: false,
+    })
+    const threadEmbed = buildRegistrationEmbed(data, appTitle, {
+      includeDiscussionLink: false,
+    })
 
     const response = await fetch(`${DISCORD_API_BASE}/channels/${channelId}/messages`, {
       method: 'POST',
@@ -514,7 +520,26 @@ export async function sendRegistrationNotification(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        embeds: [embed],
+        embeds: [notificationEmbed],
+        components: [
+          {
+            type: 1,
+            components: [
+              {
+                type: 2,
+                style: 5,
+                label: 'Join Event',
+                url: data.eventUrl,
+              },
+              {
+                type: 2,
+                style: 5,
+                label: 'View Thread',
+                url: buildDiscordWebLink({ guildId: data.guildId, threadId: data.threadId }),
+              },
+            ],
+          },
+        ],
         flags: 4096, // Suppress notifications (silent)
       }),
     })
@@ -536,7 +561,7 @@ export async function sendRegistrationNotification(
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          embeds: [embed],
+          embeds: [threadEmbed],
           flags: 4096, // Suppress notifications (silent)
         }),
       })
@@ -811,6 +836,7 @@ export async function sendTeamsAssignedNotification(
   data: {
     eventName: string
     timeslots: import('./discord-utils').RaceTimeslotData[]
+    eventUrl: string
     rosterChanges?: import('./discord-utils').RosterChange[]
     adminName?: string
     teamThreads?: Record<string, string>
@@ -841,6 +867,7 @@ export async function sendTeamsAssignedNotification(
       const chatNotification = buildTeamsAssignedChatNotification(
         data.eventName,
         data.timeslots,
+        data.eventUrl,
         threadUrl,
         options?.title ?? '🏁 Teams Assigned',
         appTitle,
@@ -1217,6 +1244,7 @@ export async function createOrUpdateTeamThread(options: {
   eventName: string
   raceStartTime: Date
   existingThreadId?: string | null
+  mainEventThreadUrl?: string
   memberDiscordIds?: string[]
   raceUrl?: string
   track?: string
@@ -1385,7 +1413,26 @@ export async function createOrUpdateTeamThread(options: {
         }
         const upsertResponse = await upsertThreadMessage(
           options.existingThreadId,
-          { embeds: [buildTeamEmbed()] },
+          {
+            embeds: [buildTeamEmbed()],
+            ...(options.mainEventThreadUrl
+              ? {
+                  components: [
+                    {
+                      type: 1,
+                      components: [
+                        {
+                          type: 2,
+                          style: 5,
+                          label: 'View Main Event Thread',
+                          url: options.mainEventThreadUrl,
+                        },
+                      ],
+                    },
+                  ],
+                }
+              : {}),
+          },
           botToken
         )
 
@@ -1447,6 +1494,23 @@ export async function createOrUpdateTeamThread(options: {
       auto_archive_duration: 10080,
       message: {
         embeds: [buildTeamEmbed()],
+        ...(options.mainEventThreadUrl
+          ? {
+              components: [
+                {
+                  type: 1,
+                  components: [
+                    {
+                      type: 2,
+                      style: 5,
+                      label: 'View Main Event Thread',
+                      url: options.mainEventThreadUrl,
+                    },
+                  ],
+                },
+              ],
+            }
+          : {}),
       },
     }),
   })

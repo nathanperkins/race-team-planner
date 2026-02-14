@@ -622,6 +622,55 @@ describe('sendRegistrationNotification', () => {
     )
   })
 
+  it('adds buttons and roster list only on the notifications channel message', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+      } as Response)
+
+    const result = await sendRegistrationNotification({
+      ...data,
+      otherRegisteredDrivers: [
+        { name: 'Driver One', carClassName: 'GT3', discordId: '555' },
+        { name: 'Driver Two', carClassName: 'LMP2' },
+      ],
+    })
+
+    expect(result).toBe(true)
+    expect(fetch).toHaveBeenCalledTimes(2)
+
+    const firstPayload = JSON.parse(
+      (vi.mocked(fetch).mock.calls[0]?.[1] as RequestInit).body as string
+    )
+    expect(firstPayload.flags).toBe(4096)
+    expect(firstPayload.embeds).toBeDefined()
+    expect(firstPayload.components?.[0]?.type).toBe(1)
+    const buttonUrls = (firstPayload.components?.[0]?.components ?? [])
+      .map((button: { url?: string }) => button.url)
+      .filter((value: string | undefined): value is string => Boolean(value))
+    expect(buttonUrls).toHaveLength(2)
+    expect(buttonUrls).toContain('http://example.com')
+    expect(buttonUrls).toContain('https://discord.com/channels/fake-guild-id/event-thread-123')
+    const firstFields = firstPayload.embeds?.[0]?.fields ?? []
+    expect(
+      firstFields.some((field: { name: string }) => field.name === '👥 Already Registered By Class')
+    ).toBe(true)
+
+    const secondPayload = JSON.parse(
+      (vi.mocked(fetch).mock.calls[1]?.[1] as RequestInit).body as string
+    )
+    const secondFields = secondPayload.embeds?.[0]?.fields ?? []
+    expect(secondPayload.components).toBeUndefined()
+    expect(
+      secondFields.some((field: { name: string }) => field.name === '👥 Already Registered')
+    ).toBe(false)
+  })
+
   it('returns true but logs error when thread post fails', async () => {
     vi.mocked(fetch)
       // Notification channel succeeds
@@ -1748,6 +1797,40 @@ describe('createOrUpdateTeamThread', () => {
         }),
       ])
     )
+  })
+
+  it('adds a main event thread button on team thread create when URL is provided', async () => {
+    const mockThreadId = 'new-team-thread-with-main-link'
+
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ id: mockThreadId }),
+    } as Response)
+
+    await createOrUpdateTeamThread({
+      teamName: 'Team Alpha',
+      eventName: 'GT3 Challenge',
+      raceStartTime: new Date('2026-02-15T18:00:00Z'),
+      mainEventThreadUrl: 'https://discord.com/channels/guild-123/main-event-thread-123',
+    })
+
+    const createCallBody = JSON.parse(
+      (vi.mocked(fetch).mock.calls[0][1] as RequestInit).body as string
+    )
+    expect(createCallBody.message.components).toEqual([
+      {
+        type: 1,
+        components: [
+          {
+            type: 2,
+            style: 5,
+            label: 'View Main Event Thread',
+            url: 'https://discord.com/channels/guild-123/main-event-thread-123',
+          },
+        ],
+      },
+    ])
   })
 
   it('preserves original creator and sets editor on thread updates', async () => {

@@ -232,6 +232,49 @@ describe('Discord Utils', () => {
       const embed = buildRegistrationEmbed(avatarData, appTitle)
       expect(embed.thumbnail?.url).toBe('http://avatar.com')
     })
+
+    it('includes other registered drivers only when requested', () => {
+      const embedWithout = buildRegistrationEmbed(
+        {
+          ...data,
+          otherRegisteredDrivers: [
+            { name: 'Driver One', carClassName: 'GT3', discordId: '111' },
+            { name: 'Driver Two', carClassName: 'LMP2' },
+          ],
+        },
+        appTitle
+      )
+      expect(
+        embedWithout.fields.some((field) => String(field.name).includes('Already Registered'))
+      ).toBe(false)
+
+      const embedWith = buildRegistrationEmbed(
+        {
+          ...data,
+          otherRegisteredDrivers: [
+            { name: 'Driver One', carClassName: 'GT3', discordId: '111' },
+            { name: 'Driver Two', carClassName: 'LMP2' },
+          ],
+        },
+        appTitle,
+        { includeOtherRegisteredDrivers: true }
+      )
+      const rosterField = embedWith.fields.find((field) =>
+        String(field.name).includes('Already Registered')
+      )
+      expect(rosterField).toBeTruthy()
+      expect(rosterField?.value).toBe('\u200b')
+
+      const gt3Field = embedWith.fields.find((field) => field.name === 'GT3')
+      expect(gt3Field).toBeTruthy()
+      expect(gt3Field?.value).toContain('<@111>')
+      expect(gt3Field?.inline).toBe(true)
+
+      const lmp2Field = embedWith.fields.find((field) => field.name === 'LMP2')
+      expect(lmp2Field).toBeTruthy()
+      expect(lmp2Field?.value).toContain('Driver Two')
+      expect(lmp2Field?.inline).toBe(true)
+    })
   })
 
   describe('buildOnboardingEmbed', () => {
@@ -667,6 +710,7 @@ describe('Discord Utils', () => {
       const result = buildTeamsAssignedChatNotification(
         'GT3 Challenge',
         timeslots,
+        'https://example.com/events?eventId=123',
         'https://discord.com/channels/123/456',
         '🏁 Teams Assigned',
         'Test App'
@@ -685,17 +729,36 @@ describe('Discord Utils', () => {
       const raceTimesField = embed.fields.find((f: any) => f.name === '🕐 Race Times')
       expect(raceTimesField.value).toContain('<t:1770840000:F>')
       expect(raceTimesField.value).toContain('<t:1770847200:F>')
+      expect(raceTimesField.inline).toBe(false)
 
-      const discussionField = embed.fields.find((f: any) => f.name === '🔗 Discussion')
-      expect(discussionField.value).toBe(
-        '[View Event Thread](https://discord.com/channels/123/456)'
-      )
+      expect(embed.fields.some((f: any) => f.name === '🔗 Discussion')).toBe(false)
+
+      expect(result.components).toEqual([
+        {
+          type: 1,
+          components: [
+            {
+              type: 2,
+              style: 5,
+              label: 'Join Event',
+              url: 'https://example.com/events?eventId=123',
+            },
+            {
+              type: 2,
+              style: 5,
+              label: 'View Thread',
+              url: 'https://discord.com/channels/123/456',
+            },
+          ],
+        },
+      ])
     })
 
     it('includes the actor when adminName is provided', () => {
       const result = buildTeamsAssignedChatNotification(
         'GT3 Challenge',
         [{ raceStartTime: new Date('2026-02-11T20:00:00Z'), teams: [] }],
+        'https://example.com/events?eventId=123',
         'https://discord.com/channels/123/456',
         '🏁 Teams Updated',
         'Test App',
