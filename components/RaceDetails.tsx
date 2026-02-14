@@ -6,6 +6,7 @@ import {
   ChevronDown,
   GripVertical,
   Lock,
+  ShieldX,
   Trash2,
   Unlock,
   UserCog,
@@ -1613,11 +1614,8 @@ export default function RaceDetails({
     const driverImage = reg.user?.image || reg.manualDriver?.image
     const preferredStats = getPreferredStats(reg)
     const manualRating = reg.manualDriver?.irating
-    const licenseColor = preferredStats
-      ? getLicenseColor(preferredStats.groupName)
-      : manualRating !== undefined
-        ? '#94a3b8'
-        : null
+    const hasStats = preferredStats || manualRating !== undefined
+    const licenseColor = preferredStats ? getLicenseColor(preferredStats.groupName) : '#94a3b8'
     const licenseLabel = preferredStats
       ? preferredStats.groupName.replace('Class ', '').substring(0, 1)
       : manualRating !== undefined
@@ -1665,18 +1663,24 @@ export default function RaceDetails({
                   <UserCog size={14} />
                 </div>
               )}
-              {irating !== undefined && (
-                <span
-                  className={styles.statsBadge}
-                  style={{
-                    borderColor: licenseColor || undefined,
-                    backgroundColor: lightBg,
-                    color: licenseColor || undefined,
-                  }}
-                >
-                  {licenseLabel} {safetyRating} {irating}
-                </span>
-              )}
+              <span
+                className={styles.statsBadge}
+                style={{
+                  borderColor: licenseColor || undefined,
+                  backgroundColor: lightBg,
+                  color: licenseColor || undefined,
+                }}
+              >
+                {hasStats ? (
+                  <>
+                    {licenseLabel} {safetyRating} {irating}
+                  </>
+                ) : (
+                  <>
+                    <ShieldX size={14} color="#ef4444" /> Unknown
+                  </>
+                )}
+              </span>
             </div>
             <div className={styles.driverPills}>
               {!showTeamsInCard && !inUnassignedTile && !(allowAdminEdits && isTeamModalOpen) && (

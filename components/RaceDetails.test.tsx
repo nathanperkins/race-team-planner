@@ -378,4 +378,59 @@ describe('RaceDetails', () => {
 
     expect(screen.getByTestId('editable-car-class-full')).toBeInTheDocument()
   })
+
+  it('shows unknown eligibility badge for racer without stats or manual rating', () => {
+    const mockRace = {
+      id: 'race-8',
+      startTime: new Date('2027-01-01T10:00:00Z'),
+      endTime: new Date('2027-01-01T12:00:00Z'),
+      teamsAssigned: false,
+      maxDriversPerTeam: 2,
+      teamAssignmentStrategy: 'BALANCED_IRATING' as const,
+      registrations: [
+        {
+          id: 'reg-no-stats',
+          carClass: { id: 'class-1', name: 'Class 1', shortName: 'C1' },
+          userId: 'user-no-stats',
+          user: {
+            name: 'User Without Stats',
+            image: null,
+            racerStats: [],
+          },
+          manualDriver: null,
+          teamId: null,
+          team: null,
+        },
+      ],
+      discordTeamsThreadId: null,
+      discordTeamThreads: null,
+    }
+
+    const { container } = render(
+      <RaceDetails
+        race={mockRace}
+        userId="admin-user"
+        isAdmin
+        carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
+        teams={[]}
+        allDrivers={[]}
+      />
+    )
+
+    // Find the stats badge
+    const badges = container.getElementsByClassName(styles.statsBadge)
+    expect(badges.length).toBe(1)
+
+    const badge = badges[0] as HTMLElement
+    expect(badge.textContent).toContain('Unknown')
+
+    // Verify ShieldX icon is present (red X)
+    const svg = badge.querySelector('svg')
+    expect(svg).toBeInTheDocument()
+
+    // Verify grey styling for unknown status (similar to ineligible races)
+    const computedStyle = window.getComputedStyle(badge)
+    expect(computedStyle.borderColor).toBe('rgb(148, 163, 184)') // slate-400 (#94a3b8)
+    expect(computedStyle.color).toBe('rgb(148, 163, 184)')
+  })
 })
