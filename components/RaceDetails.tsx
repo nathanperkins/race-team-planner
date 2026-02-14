@@ -1698,6 +1698,11 @@ export default function RaceDetails({
                       }
                     : undefined
                 }
+                title={
+                  !hasStats || !isRacerEligible
+                    ? 'This racer is ineligible for this race.'
+                    : undefined
+                }
               >
                 {hasStats ? (
                   <>
