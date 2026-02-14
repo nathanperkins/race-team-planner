@@ -56,17 +56,24 @@ create subtasks under the epic or feature.
 
 **Before ending any session, run this checklist:**
 
-1. **Verify**: Ask the user if the feature is working correctly.
-2. **Commit**: Only commit and push code once verification is confirmed.
+1. **Code Review**: Run comprehensive code review before committing.
+2. **Quality Checks**: Run automated quality checks.
+3. **Verify**: Ask the user if the feature is working correctly.
+4. **Commit**: Only commit and push code once verification is confirmed.
 
 ```bash
-# 1. Auto-fix formatting then run all quality checks (lint, build, test).
+# 1. Run comprehensive code review (REQUIRED before commit)
+#    Use /prepare-commit to run all specialized reviewers
+#    OR ask: "Use code-reviewer subagent to review my changes"
+#    Fix any critical issues found before proceeding.
+
+# 2. Auto-fix formatting then run all quality checks (lint, build, test).
 #    Fix any issues and re-run until it passes. Do this BEFORE staging or committing.
 npm run format && git hook run pre-commit
 
-# 2. After it passes, verify the feature with the user.
+# 3. After it passes, verify the feature with the user.
 
-# 3. Only after user confirmation, stage, commit, and push:
+# 4. Only after user confirmation, stage, commit, and push:
 git add .               # Stage all changes
 git commit -m "..."     # Commit the changes to git
 git push                # Push the changes to git
