@@ -23,17 +23,7 @@ export function getLicenseForId(id: string, licenseGroup?: number | null): strin
     return LICENSE_NAMES[licenseGroup as LicenseLevel]
   }
 
-  // Fallback to hashing for mock/legacy data
-  const map = [
-    LICENSE_NAMES[LicenseLevel.A],
-    LICENSE_NAMES[LicenseLevel.B],
-    LICENSE_NAMES[LicenseLevel.C],
-    LICENSE_NAMES[LicenseLevel.D],
-    LICENSE_NAMES[LicenseLevel.ROOKIE],
-  ]
-  let sum = 0
-  for (let i = 0; i < id.length; i++) sum += id.charCodeAt(i)
-  return map[sum % map.length]
+  return 'N/A'
 }
 
 export function getLicenseColor(name: string): string {

@@ -12,6 +12,7 @@ async function main() {
       track: 'Mock Raceway Park',
       description:
         'THIS IS MOCK DATA. The classic 12 hour endurance race around the bumps of Sebring.',
+      licenseGroup: 3, // Class C
     },
     create: {
       id: sebringId,
@@ -26,6 +27,7 @@ async function main() {
       relHumidity: 65,
       skies: 1,
       precipChance: 15,
+      licenseGroup: 3, // Class C
     },
   })
 

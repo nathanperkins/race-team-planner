@@ -2368,6 +2368,9 @@ export default function RaceDetails({
                   carClasses={carClasses}
                   compact
                   onDropdownToggle={setIsRegisterOpen}
+                  eventId={eventId}
+                  eventLicenseGroup={eventLicenseGroup}
+                  userLicenseLevel={userLicenseLevel}
                 />
               </div>
             )}
@@ -2442,6 +2445,9 @@ export default function RaceDetails({
               raceId={race.id}
               carClasses={carClasses}
               onDropdownToggle={setIsRegisterOpen}
+              eventId={eventId}
+              eventLicenseGroup={eventLicenseGroup}
+              userLicenseLevel={userLicenseLevel}
             />
           ))}
 

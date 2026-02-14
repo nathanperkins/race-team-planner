@@ -2,14 +2,18 @@
 
 import { useActionState, useState, useEffect, useRef } from 'react'
 import { registerForRace } from '@/app/actions'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, AlertTriangle } from 'lucide-react'
 import styles from './QuickRegistration.module.css'
+import { isLicenseEligible, getLicenseForId, LicenseLevel } from '@/lib/utils'
 
 interface Props {
   raceId: string
   carClasses: { id: string; name: string; shortName: string }[]
   compact?: boolean
   onDropdownToggle?: (open: boolean) => void
+  eventId?: string
+  eventLicenseGroup?: number | null
+  userLicenseLevel?: LicenseLevel | null
 }
 
 type State = {
@@ -26,10 +30,15 @@ export default function QuickRegistration({
   carClasses,
   compact = false,
   onDropdownToggle,
+  eventId,
+  eventLicenseGroup,
+  userLicenseLevel,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false)
   const [openDirection, setOpenDirection] = useState<'down' | 'up'>('down')
   const [state, formAction, isPending] = useActionState(registerForRace, initialState)
+  const [showWarning, setShowWarning] = useState(false)
+  const [pendingClassId, setPendingClassId] = useState<string | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
 
@@ -65,15 +74,52 @@ export default function QuickRegistration({
     }
   }, [isOpen])
 
-  const handleSelect = (classId: string) => {
-    setIsOpen(false)
+  const checkEligibilityAndSubmit = (classId: string) => {
     if (formRef.current) {
-      // Set the value of the hidden input
       const input = formRef.current.querySelector('input[name="carClassId"]') as HTMLInputElement
       if (input) {
         input.value = classId
         formRef.current.requestSubmit()
       }
+    }
+  }
+
+  const handleSelect = (classId: string) => {
+    setIsOpen(false)
+
+    // Check eligibility if we have the necessary information
+    if (
+      eventId &&
+      eventLicenseGroup !== undefined &&
+      eventLicenseGroup !== null &&
+      userLicenseLevel !== null &&
+      userLicenseLevel !== undefined
+    ) {
+      const eventLicense = getLicenseForId(eventId, eventLicenseGroup)
+      const isEligible = isLicenseEligible(userLicenseLevel, eventLicense)
+
+      if (!isEligible) {
+        // User is ineligible - show warning
+        setPendingClassId(classId)
+        setShowWarning(true)
+        return
+      }
+    }
+
+    // User is eligible or we don't have enough info to check - proceed
+    checkEligibilityAndSubmit(classId)
+  }
+
+  const handleCancelWarning = () => {
+    setShowWarning(false)
+    setPendingClassId(null)
+  }
+
+  const handleContinueRegistration = () => {
+    setShowWarning(false)
+    if (pendingClassId) {
+      checkEligibilityAndSubmit(pendingClassId)
+      setPendingClassId(null)
     }
   }
 
@@ -115,8 +161,41 @@ export default function QuickRegistration({
         )}
       </div>
 
-      {state.message && state.message !== 'Success' && (
+      {state?.message && state.message !== 'Success' && (
         <p className={styles.errorMessage}>{state.message}</p>
+      )}
+
+      {showWarning && (
+        <div className={styles.warningOverlay} role="dialog" aria-modal="true">
+          <div className={styles.warningDialog}>
+            <div className={styles.warningHeader}>
+              <AlertTriangle size={24} color="#f59e0b" />
+              <h3>Ineligible for Race</h3>
+            </div>
+            <div className={styles.warningBody}>
+              <p>
+                You do not meet the license requirements for this race. You can still register, but
+                you may not be eligible to participate in the official event.
+              </p>
+            </div>
+            <div className={styles.warningActions}>
+              <button
+                type="button"
+                className={styles.warningCancelButton}
+                onClick={handleCancelWarning}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={styles.warningContinueButton}
+                onClick={handleContinueRegistration}
+              >
+                Continue Anyway
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
