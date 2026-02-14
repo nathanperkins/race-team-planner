@@ -763,4 +763,98 @@ describe('RaceDetails Assign Teams', () => {
       })
     })
   })
+
+  it('keeps unassigned class tile order stable when moving drivers', async () => {
+    const mockRace = {
+      id: 'race-unassigned-order-1',
+      startTime: new Date('2027-01-01T10:00:00Z'),
+      endTime: new Date('2027-01-01T12:00:00Z'),
+      teamsAssigned: true,
+      maxDriversPerTeam: 2,
+      teamAssignmentStrategy: 'BALANCED_IRATING' as const,
+      registrations: [
+        {
+          id: 'reg-assigned-a',
+          carClass: { id: 'class-a', name: 'Class A', shortName: 'A' },
+          userId: 'assigned-a',
+          user: { name: 'Assigned A', image: null, racerStats: [] },
+          manualDriver: null,
+          teamId: 'team-1',
+          team: { id: 'team-1', name: 'Team 1' },
+        },
+        {
+          id: 'reg-unassigned-b',
+          carClass: { id: 'class-b', name: 'Class B', shortName: 'B' },
+          userId: 'unassigned-b',
+          user: { name: 'Unassigned B', image: null, racerStats: [] },
+          manualDriver: null,
+          teamId: null,
+          team: null,
+        },
+        {
+          id: 'reg-unassigned-a',
+          carClass: { id: 'class-a', name: 'Class A', shortName: 'A' },
+          userId: 'unassigned-a',
+          user: { name: 'Unassigned A', image: null, racerStats: [] },
+          manualDriver: null,
+          teamId: null,
+          team: null,
+        },
+      ],
+      discordTeamsThreadId: null,
+      discordTeamThreads: null,
+    }
+
+    render(
+      <RaceDetails
+        race={mockRace}
+        userId="admin-user"
+        isAdmin
+        carClasses={[
+          { id: 'class-a', name: 'Class A', shortName: 'A' },
+          { id: 'class-b', name: 'Class B', shortName: 'B' },
+        ]}
+        teams={[{ id: 'team-1', name: 'Team 1', iracingTeamId: null, memberCount: 1 }]}
+        allDrivers={[]}
+      />
+    )
+
+    fireEvent.click(screen.getByTestId('team-picker-trigger'))
+    const unlockButton = screen.queryByTitle('Unlock team')
+    if (unlockButton) {
+      fireEvent.click(unlockButton)
+    }
+
+    const getUnassignedClassLabels = () => {
+      const modal = document.querySelector('div[class*="teamModal_"]') as HTMLElement | null
+      expect(modal).toBeTruthy()
+      const tiles = Array.from(modal!.querySelectorAll('div[class*="teamGroup_"]')) as HTMLElement[]
+      return tiles
+        .map((tile) => {
+          const teamHeaderText = tile.querySelector('span')?.textContent?.trim() ?? ''
+          return teamHeaderText
+        })
+        .filter((label) => label.startsWith('Unassigned - '))
+    }
+
+    await waitFor(() => {
+      expect(getUnassignedClassLabels()).toHaveLength(2)
+    })
+    const beforeMove = getUnassignedClassLabels()
+
+    const modal = document.querySelector('div[class*="teamModal_"]') as HTMLElement | null
+    expect(modal).toBeTruthy()
+    const assignedNameNode = screen.getAllByText('Assigned A').find((node) => modal!.contains(node))
+    const assignedRow = assignedNameNode?.closest('[draggable]')
+    expect(assignedRow).toBeTruthy()
+    const moveButton = assignedRow?.querySelector('button[title="Move to unassigned"]') as
+      | HTMLButtonElement
+      | undefined
+    expect(moveButton).toBeTruthy()
+    fireEvent.click(moveButton!)
+
+    await waitFor(() => {
+      expect(getUnassignedClassLabels()).toEqual(beforeMove)
+    })
+  })
 })

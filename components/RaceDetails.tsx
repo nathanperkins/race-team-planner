@@ -2136,6 +2136,16 @@ export default function RaceDetails({
       )
     }
 
+    const classOrderById = new Map<string, number>()
+    carClasses.forEach((carClass, index) => {
+      classOrderById.set(carClass.id, index)
+    })
+    pendingRegistrations.forEach((reg) => {
+      if (!classOrderById.has(reg.carClass.id)) {
+        classOrderById.set(reg.carClass.id, classOrderById.size)
+      }
+    })
+
     const assignedTiles = assignedTeams.map((teamId) =>
       renderTeamTile(teamId, grouped[teamId] ?? [])
     )
@@ -2148,13 +2158,25 @@ export default function RaceDetails({
         list.push(reg)
         byClass.set(key, list)
       })
-      return Array.from(byClass.entries()).map(([classId, regs]) =>
-        renderTeamTile(teamId, regs, {
-          unassignedLabel: `Unassigned - ${
-            regs[0]?.carClass.shortName || regs[0]?.carClass.name || classId
-          }`,
+      return Array.from(byClass.entries())
+        .sort(([leftClassId, leftRegs], [rightClassId, rightRegs]) => {
+          const leftOrder = classOrderById.get(leftClassId) ?? Number.MAX_SAFE_INTEGER
+          const rightOrder = classOrderById.get(rightClassId) ?? Number.MAX_SAFE_INTEGER
+          if (leftOrder !== rightOrder) return leftOrder - rightOrder
+
+          const leftLabel =
+            leftRegs[0]?.carClass.shortName || leftRegs[0]?.carClass.name || leftClassId
+          const rightLabel =
+            rightRegs[0]?.carClass.shortName || rightRegs[0]?.carClass.name || rightClassId
+          return leftLabel.localeCompare(rightLabel)
         })
-      )
+        .map(([classId, regs]) =>
+          renderTeamTile(teamId, regs, {
+            unassignedLabel: `Unassigned - ${
+              regs[0]?.carClass.shortName || regs[0]?.carClass.name || classId
+            }`,
+          })
+        )
     })
 
     const addTeamTile =
