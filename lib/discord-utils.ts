@@ -363,13 +363,17 @@ export function buildTeamsAssignedChatNotification(
   timeslots: RaceTimeslotData[],
   threadUrl: string,
   title: string,
-  appTitle: string
+  appTitle: string,
+  adminName?: string
 ): Record<string, unknown> {
+  const description = adminName
+    ? `Teams have been assigned for **${eventName}**.\nUpdated by **${adminName}**.`
+    : `Teams have been assigned for **${eventName}**!`
   return {
     embeds: [
       {
         title,
-        description: `Teams have been assigned for **${eventName}**!`,
+        description,
         color: 0x5865f2,
         url: threadUrl,
         fields: [

@@ -1529,6 +1529,7 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
           precipChance: raceWithEvent.event.precipChance,
           carClassName: team.carClassName,
           members: team.members.map((m) => m.name),
+          actorName: session.user.name || 'Admin',
         })
         if (threadId) {
           if (threadId !== existingThreadId) {
@@ -1582,42 +1583,85 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
     })
     const teamNameById = new Map(allTeams.map((team) => [team.id, team.name]))
 
-    // Detect roster changes using utility function
-    const { detectRosterChanges } = await import('@/lib/discord-utils')
-    const rosterChanges = detectRosterChanges(previousSnapshot, currentSnapshot, teamNameById)
-
-    // Determine mentions based on changes
-    if (!previousSnapshot) {
-      registrations.forEach((reg) => {
-        const discordId = reg.user?.accounts?.[0]?.providerAccountId
-        if (discordId) {
-          mentionRegistrationIds.add(reg.id)
-        }
-      })
-    } else {
-      // TODO: Remove legacy snapshot format handling after migration
-      // Normalize previousSnapshot to handle legacy format
-      const isLegacy =
-        previousSnapshot &&
-        Object.values(previousSnapshot).some((v) => typeof v === 'string' || v === null)
-      const normalizedPrevious: Record<string, { teamId: string | null }> = isLegacy
+    const { buildRosterChangesFromTeamChangeDetails, buildTeamChangeDetails } =
+      await import('@/lib/team-change-summary')
+    const isLegacyPreviousSnapshot =
+      previousSnapshot &&
+      Object.values(previousSnapshot).some((v) => typeof v === 'string' || v === null)
+    const normalizedPreviousSnapshot: Record<
+      string,
+      { teamId: string | null; driverName: string; carClassName?: string }
+    > | null = previousSnapshot
+      ? isLegacyPreviousSnapshot
         ? Object.fromEntries(
             Object.entries(previousSnapshot as Record<string, string | null>).map(
-              ([id, teamId]) => [id, { teamId }]
+              ([id, teamId]) => [id, { teamId, driverName: 'Driver', carClassName: undefined }]
             )
           )
-        : (previousSnapshot as Record<string, { teamId: string | null; driverName: string }>)
+        : (previousSnapshot as Record<
+            string,
+            { teamId: string | null; driverName: string; carClassName?: string }
+          >)
+      : null
 
-      Object.entries(currentSnapshot).forEach(([regId, current]) => {
-        if (!(regId in normalizedPrevious)) {
-          mentionRegistrationIds.add(regId)
-          return
-        }
-        if (normalizedPrevious[regId].teamId !== current.teamId) {
+    const originalRecords = normalizedPreviousSnapshot
+      ? Object.entries(normalizedPreviousSnapshot).map(([id, snapshot]) => ({
+          id,
+          driverName: snapshot.driverName || currentSnapshot[id]?.driverName || 'Driver',
+          teamId: snapshot.teamId,
+          teamName: snapshot.teamId ? (teamNameById.get(snapshot.teamId) ?? null) : null,
+          carClassName: snapshot.carClassName || currentSnapshot[id]?.carClassName || 'Unknown',
+        }))
+      : []
+    const pendingRecords = Object.entries(currentSnapshot).map(([id, snapshot]) => ({
+      id,
+      driverName: snapshot.driverName,
+      teamId: snapshot.teamId,
+      teamName: snapshot.teamId ? (teamNameById.get(snapshot.teamId) ?? null) : null,
+      carClassName: snapshot.carClassName,
+    }))
+    const sharedChangeDetails = buildTeamChangeDetails({
+      originalRecords,
+      pendingRecords,
+      teamNameById,
+    })
+    const rosterChanges = normalizedPreviousSnapshot
+      ? buildRosterChangesFromTeamChangeDetails(sharedChangeDetails)
+      : []
+
+    // Event-thread mentions: only newly registered drivers.
+    if (normalizedPreviousSnapshot) {
+      Object.entries(currentSnapshot).forEach(([regId]) => {
+        if (!(regId in normalizedPreviousSnapshot)) {
           mentionRegistrationIds.add(regId)
         }
       })
     }
+
+    // Team-thread mentions: drivers added/moved into a team during this save.
+    const registrationDiscordIdById = new Map<string, string>()
+    registrations.forEach((reg) => {
+      const discordId = reg.user?.accounts?.[0]?.providerAccountId
+      if (discordId) {
+        registrationDiscordIdById.set(reg.id, discordId)
+      }
+    })
+    const teamMentionDiscordIdsByTeamId = new Map<string, Set<string>>()
+    sharedChangeDetails.forEach((detail) => {
+      if (!detail.toTeamId) return
+      if (detail.type !== 'added' && detail.type !== 'moved') return
+      const discordId = registrationDiscordIdById.get(detail.registrationId)
+      if (!discordId) return
+      const existing = teamMentionDiscordIdsByTeamId.get(detail.toTeamId) ?? new Set<string>()
+      existing.add(discordId)
+      teamMentionDiscordIdsByTeamId.set(detail.toTeamId, existing)
+    })
+    const teamMentionDiscordIdsRecord = Object.fromEntries(
+      Array.from(teamMentionDiscordIdsByTeamId.entries()).map(([teamId, ids]) => [
+        teamId,
+        Array.from(ids),
+      ])
+    )
 
     // Build timeslots: current race + all other races in the event
     const siblingRaces = await prisma.race.findMany({
@@ -1733,6 +1777,7 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
           teamThreads,
           teamNameById,
           suppressTeamThreadIds: Array.from(newlyCreatedOrReplacedTeamThreadIds),
+          teamMentionDiscordIdsByTeamId: teamMentionDiscordIdsRecord,
         },
         {
           title: isFirstAssignment ? '🏁 Teams Assigned' : '🏁 Teams Updated',

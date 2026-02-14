@@ -1,3 +1,5 @@
+import type { RosterChange } from './discord-utils'
+
 export type TeamSnapshot = Record<string, string | null>
 
 export interface MentionCandidate {
@@ -36,6 +38,9 @@ export interface TeamChangeDetail {
   toTeamId: string | null
   fromTeamName: string
   toTeamName: string
+  fromCarClassName?: string
+  toCarClassName?: string
+  drivers?: string[]
   line: string
   destructive: boolean
 }
@@ -229,6 +234,10 @@ export function buildTeamChangeDetails(params: {
     const oldClass = oldClassValues.length === 1 ? oldClassValues[0] : null
     const newClass = newClassValues.length === 1 ? newClassValues[0] : null
     if (oldClass && newClass && oldClass !== newClass) {
+      const driverNames = Array.from(pendingTeamMembers.get(teamId) ?? [])
+        .map((registrationId) => pendingById.get(registrationId)?.driverName)
+        .filter((name): name is string => Boolean(name))
+        .sort((a, b) => a.localeCompare(b))
       details.push({
         registrationId: `team-class:${teamId}`,
         driverName: oldTeamName,
@@ -237,6 +246,9 @@ export function buildTeamChangeDetails(params: {
         toTeamId: teamId,
         fromTeamName: oldTeamName,
         toTeamName: newTeamName,
+        fromCarClassName: oldClass,
+        toCarClassName: newClass,
+        drivers: driverNames,
         line: `${oldTeamName} car class changed from ${oldClass} to ${newClass}.`,
         destructive: true,
       })
@@ -308,6 +320,8 @@ export function buildTeamChangeDetails(params: {
           toTeamId,
           fromTeamName,
           toTeamName,
+          fromCarClassName: original.carClassName,
+          toCarClassName: pending.carClassName,
           line: `Changed ${pending.driverName} from ${original.carClassName} to ${pending.carClassName}.`,
           destructive: true,
         })
@@ -349,4 +363,97 @@ export function buildTeamChangeDetails(params: {
   })
 
   return details.sort((a, b) => a.line.localeCompare(b.line))
+}
+
+export function buildRosterChangesFromTeamChangeDetails(
+  details: TeamChangeDetail[]
+): RosterChange[] {
+  const rosterChanges: RosterChange[] = []
+  const teamClassChangeGroups = new Map<
+    string,
+    {
+      teamName: string
+      fromClass: string
+      toClass: string
+      drivers: Set<string>
+    }
+  >()
+
+  details.forEach((detail) => {
+    if (detail.type === 'added') {
+      rosterChanges.push({
+        type: 'added',
+        driverName: detail.driverName,
+        teamName: detail.toTeamName,
+      })
+      return
+    }
+
+    if (detail.type === 'dropped') {
+      rosterChanges.push({
+        type: 'dropped',
+        driverName: detail.driverName,
+        fromTeam: detail.fromTeamName,
+      })
+      return
+    }
+
+    if (detail.type === 'moved') {
+      rosterChanges.push({
+        type: 'moved',
+        driverName: detail.driverName,
+        fromTeam: detail.fromTeamName,
+        toTeam: detail.toTeamName,
+      })
+      return
+    }
+
+    if (detail.type === 'class_changed' || detail.type === 'team_class_changed') {
+      if (!detail.fromCarClassName || !detail.toCarClassName) return
+
+      const key = `${detail.toTeamName}:${detail.fromCarClassName}->${detail.toCarClassName}`
+      const existing = teamClassChangeGroups.get(key)
+      if (existing) {
+        if (detail.type === 'team_class_changed') {
+          const existingDrivers = detail.drivers ?? []
+          existingDrivers.forEach((driver) => existing.drivers.add(driver))
+        } else {
+          existing.drivers.add(detail.driverName)
+        }
+        return
+      }
+
+      const group = {
+        teamName: detail.toTeamName,
+        fromClass: detail.fromCarClassName,
+        toClass: detail.toCarClassName,
+        drivers: new Set<string>(),
+      }
+
+      if (detail.type === 'team_class_changed') {
+        const teamDrivers = detail.drivers ?? []
+        teamDrivers.forEach((driver) => group.drivers.add(driver))
+      } else {
+        group.drivers.add(detail.driverName)
+      }
+
+      teamClassChangeGroups.set(key, group)
+    }
+  })
+
+  const groupedClassChanges = Array.from(teamClassChangeGroups.values())
+    .map((group) => ({
+      type: 'teamClassChanged' as const,
+      teamName: group.teamName,
+      fromClass: group.fromClass,
+      toClass: group.toClass,
+      drivers: Array.from(group.drivers).sort((a, b) => a.localeCompare(b)),
+    }))
+    .sort((a, b) => {
+      if (a.teamName !== b.teamName) return a.teamName.localeCompare(b.teamName)
+      if (a.fromClass !== b.fromClass) return a.fromClass.localeCompare(b.fromClass)
+      return a.toClass.localeCompare(b.toClass)
+    })
+
+  return [...rosterChanges, ...groupedClassChanges]
 }

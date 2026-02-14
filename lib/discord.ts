@@ -683,7 +683,8 @@ export async function postRosterChangeNotifications(
   adminName: string,
   teamThreads?: Record<string, string>,
   teamNameById?: Map<string, string>,
-  suppressTeamThreadIds?: string[]
+  suppressTeamThreadIds?: string[],
+  teamMentionDiscordIdsByTeamId?: Record<string, string[]>
 ): Promise<void> {
   if (rosterChanges.length === 0) return
 
@@ -693,9 +694,11 @@ export async function postRosterChangeNotifications(
   const postEmbedToThread = async (
     threadId: string,
     embed: Record<string, unknown>,
-    label: string
+    label: string,
+    mentionDiscordIds?: string[]
   ) => {
     try {
+      const users = Array.from(new Set(mentionDiscordIds ?? [])).filter(Boolean)
       const response = await fetch(`${DISCORD_API_BASE}/channels/${threadId}/messages`, {
         method: 'POST',
         headers: {
@@ -703,6 +706,8 @@ export async function postRosterChangeNotifications(
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          content: users.length > 0 ? users.map((id) => `<@${id}>`).join(' ') : undefined,
+          allowed_mentions: users.length > 0 ? { users, parse: [] as string[] } : undefined,
           embeds: [embed],
           flags: 4096, // Suppress notifications (silent)
         }),
@@ -781,7 +786,12 @@ export async function postRosterChangeNotifications(
       }
       if (changes.length > 0 && threadId) {
         const teamEmbed = buildRosterChangesEmbed(changes, appTitle, adminName)
-        await postEmbedToThread(threadId, teamEmbed, `${teamName} thread`)
+        await postEmbedToThread(
+          threadId,
+          teamEmbed,
+          `${teamName} thread`,
+          teamMentionDiscordIdsByTeamId?.[teamId]
+        )
       }
     }
   }
@@ -806,6 +816,7 @@ export async function sendTeamsAssignedNotification(
     teamThreads?: Record<string, string>
     teamNameById?: Map<string, string>
     suppressTeamThreadIds?: string[]
+    teamMentionDiscordIdsByTeamId?: Record<string, string[]>
   },
   options?: {
     title?: string
@@ -832,7 +843,8 @@ export async function sendTeamsAssignedNotification(
         data.timeslots,
         threadUrl,
         options?.title ?? '🏁 Teams Assigned',
-        appTitle
+        appTitle,
+        data.adminName
       )
 
       const chatResp = await fetch(`${DISCORD_API_BASE}/channels/${channelId}/messages`, {
@@ -865,7 +877,8 @@ export async function sendTeamsAssignedNotification(
         data.adminName,
         data.teamThreads,
         data.teamNameById,
-        data.suppressTeamThreadIds
+        data.suppressTeamThreadIds,
+        data.teamMentionDiscordIdsByTeamId
       )
     }
 
@@ -1212,6 +1225,7 @@ export async function createOrUpdateTeamThread(options: {
   precipChance?: number | null
   carClassName?: string
   members?: string[]
+  actorName?: string
 }): Promise<string | null> {
   const botToken = process.env.DISCORD_BOT_TOKEN
   const channelId = process.env.DISCORD_NOTIFICATIONS_CHANNEL_ID
@@ -1225,6 +1239,48 @@ export async function createOrUpdateTeamThread(options: {
   }
 
   const threadParentId = forumId || channelId
+  let createdByName = options.actorName
+  const editedByName = options.actorName
+
+  const extractCreatedByFromExistingTeamThread = async (
+    threadId: string
+  ): Promise<string | null> => {
+    try {
+      const botInfo = await fetch(`${DISCORD_API_BASE}/users/@me`, {
+        headers: {
+          Authorization: `Bot ${botToken}`,
+        },
+      })
+      if (!botInfo.ok) return null
+      const botUserId = (await botInfo.json()).id as string | undefined
+      if (!botUserId) return null
+
+      const messagesResponse = await fetch(
+        `${DISCORD_API_BASE}/channels/${threadId}/messages?limit=25`,
+        {
+          headers: {
+            Authorization: `Bot ${botToken}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      )
+      if (!messagesResponse.ok) return null
+
+      const messages = (await messagesResponse.json()) as Array<{
+        author?: { id?: string }
+        embeds?: Array<{ fields?: Array<{ name?: string; value?: string }> }>
+      }>
+      const existingMessage = messages
+        .slice()
+        .reverse()
+        .find((message) => message?.author?.id === botUserId)
+      const fields = existingMessage?.embeds?.[0]?.fields ?? []
+      const createdByField = fields.find((field) => field.name === 'Created By')
+      return createdByField?.value ?? null
+    } catch {
+      return null
+    }
+  }
 
   // Build the team thread embed
   const buildTeamEmbed = () => ({
@@ -1280,6 +1336,24 @@ export async function createOrUpdateTeamThread(options: {
             },
           ]
         : []),
+      ...(createdByName
+        ? [
+            {
+              name: 'Created By',
+              value: createdByName,
+              inline: true,
+            },
+          ]
+        : []),
+      ...(editedByName
+        ? [
+            {
+              name: 'Edited By',
+              value: editedByName,
+              inline: true,
+            },
+          ]
+        : []),
     ],
     timestamp: new Date().toISOString(),
     footer: {
@@ -1303,6 +1377,12 @@ export async function createOrUpdateTeamThread(options: {
       )
     } else {
       try {
+        const existingCreatedBy = await extractCreatedByFromExistingTeamThread(
+          options.existingThreadId
+        )
+        if (existingCreatedBy) {
+          createdByName = existingCreatedBy
+        }
         const upsertResponse = await upsertThreadMessage(
           options.existingThreadId,
           { embeds: [buildTeamEmbed()] },

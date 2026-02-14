@@ -1170,6 +1170,39 @@ describe('postRosterChangeNotifications', () => {
     expect(fetch).toHaveBeenCalledTimes(3)
   })
 
+  it('includes mentions in the same team-thread roster-change post', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+    } as Response)
+
+    const teamThreads = {
+      'team-1': 'team-thread-1',
+    }
+    const teamNameById = new Map([['team-1', 'Team One']])
+    const rosterChanges = [{ type: 'added' as const, driverName: 'Alice', teamName: 'Team One' }]
+
+    await postRosterChangeNotifications(
+      eventThreadId,
+      rosterChanges,
+      botToken,
+      'Admin User',
+      teamThreads,
+      teamNameById,
+      undefined,
+      { 'team-1': ['12345'] }
+    )
+
+    const teamPostCall = vi
+      .mocked(fetch)
+      .mock.calls.find((call) => call[0]?.toString().includes('/channels/team-thread-1/messages'))
+    expect(teamPostCall).toBeDefined()
+    const body = JSON.parse((teamPostCall?.[1] as RequestInit).body as string)
+    expect(body.content).toContain('<@12345>')
+    expect(body.allowed_mentions).toEqual({ users: ['12345'], parse: [] })
+    expect(body.embeds).toBeDefined()
+  })
+
   it('skips team-thread roster change post for newly created team thread IDs', async () => {
     vi.mocked(fetch).mockResolvedValue({
       ok: true,
@@ -1683,6 +1716,109 @@ describe('createOrUpdateTeamThread', () => {
     expect(addUsersCalls).toHaveLength(2)
   })
 
+  it('includes creator name in team thread embed on create', async () => {
+    const mockThreadId = 'new-team-thread-actor'
+
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ id: mockThreadId }),
+    } as Response)
+
+    await createOrUpdateTeamThread({
+      teamName: 'Team Alpha',
+      eventName: 'GT3 Challenge',
+      raceStartTime: new Date('2026-02-15T18:00:00Z'),
+      actorName: 'Steven Case1',
+    })
+
+    const createCallBody = JSON.parse(
+      (vi.mocked(fetch).mock.calls[0][1] as RequestInit).body as string
+    )
+    const fields = createCallBody.message.embeds[0].fields as Array<{ name: string; value: string }>
+    expect(fields).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'Created By',
+          value: 'Steven Case1',
+        }),
+        expect.objectContaining({
+          name: 'Edited By',
+          value: 'Steven Case1',
+        }),
+      ])
+    )
+  })
+
+  it('preserves original creator and sets editor on thread updates', async () => {
+    const existingThreadId = 'existing-team-thread-actor'
+    const mockBotUserId = 'bot-user-id'
+
+    vi.mocked(fetch)
+      // Existing thread parent lookup
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: existingThreadId, parent_id: forumId }),
+      } as Response)
+      // Extract existing Created By: bot identity
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: mockBotUserId }),
+      } as Response)
+      // Extract existing Created By: thread messages
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => [
+          {
+            id: 'message-1',
+            author: { id: mockBotUserId },
+            embeds: [{ fields: [{ name: 'Created By', value: 'Nathan' }] }],
+          },
+        ],
+      } as Response)
+      // upsertThreadMessage -> findBotMessageInThread: bot identity
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: mockBotUserId }),
+      } as Response)
+      // upsertThreadMessage -> find bot message
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => [{ id: 'message-1', author: { id: mockBotUserId } }],
+      } as Response)
+      // upsertThreadMessage -> patch
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({}),
+      } as Response)
+
+    await createOrUpdateTeamThread({
+      teamName: 'Team Alpha',
+      eventName: 'GT3 Challenge',
+      raceStartTime: new Date('2026-02-15T18:00:00Z'),
+      existingThreadId,
+      actorName: 'Steven Case1',
+    })
+
+    const patchCall = vi
+      .mocked(fetch)
+      .mock.calls.find((call) => call[0]?.toString().includes(`/messages/message-1`))
+    const patchBody = JSON.parse((patchCall?.[1] as RequestInit).body as string)
+    const fields = patchBody.embeds[0].fields as Array<{ name: string; value: string }>
+    expect(fields).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'Created By', value: 'Nathan' }),
+        expect.objectContaining({ name: 'Edited By', value: 'Steven Case1' }),
+      ])
+    )
+  })
+
   it('should add all users when updating an existing team thread', async () => {
     const existingThreadId = 'existing-team-thread-123'
     const mockBotUserId = 'bot-user-id'
@@ -1695,18 +1831,37 @@ describe('createOrUpdateTeamThread', () => {
         status: 200,
         json: async () => ({ id: existingThreadId, parent_id: forumId }),
       } as Response)
+      // Extract existing Created By: bot identity
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
         json: async () => ({ id: mockBotUserId }),
       } as Response)
-      // Mock messages fetch (find bot message)
+      // Extract existing Created By: thread messages
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => [
+          {
+            id: 'message-1',
+            author: { id: mockBotUserId },
+            embeds: [{ fields: [{ name: 'Created By', value: 'Nathan' }] }],
+          },
+        ],
+      } as Response)
+      // upsertThreadMessage -> findBotMessageInThread: bot identity
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: mockBotUserId }),
+      } as Response)
+      // upsertThreadMessage -> find bot message
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
         json: async () => [{ id: 'message-1', author: { id: mockBotUserId } }],
       } as Response)
-      // Mock message edit (upsert)
+      // upsertThreadMessage -> patch
       .mockResolvedValueOnce({
         ok: true,
         status: 200,

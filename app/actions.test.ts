@@ -153,6 +153,7 @@ describe('sendTeamsAssignmentNotification', () => {
     expect(createOrUpdateTeamThread).toHaveBeenCalledWith(
       expect.objectContaining({
         teamName: 'Team One',
+        actorName: 'Admin',
       })
     )
 

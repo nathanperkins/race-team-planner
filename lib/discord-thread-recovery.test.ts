@@ -31,6 +31,18 @@ describe('discord thread recovery', () => {
         status: 200,
         json: async () => ({ parent_id: 'fake-channel-id' }),
       } as Response)
+      // Get bot user ID for extracting Created By
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 'bot-user-123' }),
+      } as Response)
+      // Get messages for extracting Created By
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => [],
+      } as Response)
       // Get bot user ID for upsertThreadMessage
       .mockResolvedValueOnce({
         ok: true,
@@ -57,7 +69,7 @@ describe('discord thread recovery', () => {
     })
 
     expect(threadId).toBe('thread-123')
-    expect(fetch).toHaveBeenCalledTimes(4)
+    expect(fetch).toHaveBeenCalledTimes(6)
   })
 
   it('creates a replacement team thread when linked thread is missing', async () => {

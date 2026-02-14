@@ -691,6 +691,20 @@ describe('Discord Utils', () => {
         '[View Event Thread](https://discord.com/channels/123/456)'
       )
     })
+
+    it('includes the actor when adminName is provided', () => {
+      const result = buildTeamsAssignedChatNotification(
+        'GT3 Challenge',
+        [{ raceStartTime: new Date('2026-02-11T20:00:00Z'), teams: [] }],
+        'https://discord.com/channels/123/456',
+        '🏁 Teams Updated',
+        'Test App',
+        'Steven Case1'
+      )
+
+      const embed = (result.embeds as any[])[0]
+      expect(embed.description).toContain('Updated by **Steven Case1**.')
+    })
   })
 
   describe('detectRosterChanges', () => {
