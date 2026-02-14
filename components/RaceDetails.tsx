@@ -60,6 +60,7 @@ export interface RaceWithRegistrations {
     team?: {
       id: string
       name: string
+      alias?: string | null
     } | null
     user?: {
       name: string | null
@@ -681,7 +682,10 @@ export default function RaceDetails({
       teamOverridesRef.current = new Map(
         next.map((reg) => [
           reg.id,
-          { teamId: reg.teamId ?? reg.team?.id ?? null, teamName: reg.team?.name },
+          {
+            teamId: reg.teamId ?? reg.team?.id ?? null,
+            teamName: reg.team?.alias || reg.team?.name,
+          },
         ])
       )
     },
@@ -785,7 +789,10 @@ export default function RaceDetails({
             ...reg,
             teamId,
             team: teamId
-              ? { id: teamId, name: override.teamName || reg.team?.name || 'Team' }
+              ? {
+                  id: teamId,
+                  name: override.teamName || reg.team?.alias || reg.team?.name || 'Team',
+                }
               : null,
           }
         })
@@ -808,7 +815,12 @@ export default function RaceDetails({
               team: teamId
                 ? {
                     id: teamId,
-                    name: override.teamName || reg.team?.name || teamNameById.get(teamId) || 'Team',
+                    name:
+                      override.teamName ||
+                      reg.team?.alias ||
+                      reg.team?.name ||
+                      teamNameById.get(teamId) ||
+                      'Team',
                   }
                 : null,
             }
@@ -836,7 +848,12 @@ export default function RaceDetails({
             team: teamId
               ? {
                   id: teamId,
-                  name: override.teamName || reg.team?.name || teamNameById.get(teamId) || 'Team',
+                  name:
+                    override.teamName ||
+                    reg.team?.alias ||
+                    reg.team?.name ||
+                    teamNameById.get(teamId) ||
+                    'Team',
                 }
               : null,
           }
@@ -856,7 +873,12 @@ export default function RaceDetails({
               team: teamId
                 ? {
                     id: teamId,
-                    name: override.teamName || reg.team?.name || teamNameById.get(teamId) || 'Team',
+                    name:
+                      override.teamName ||
+                      reg.team?.alias ||
+                      reg.team?.name ||
+                      teamNameById.get(teamId) ||
+                      'Team',
                   }
                 : null,
             }
@@ -1548,14 +1570,14 @@ export default function RaceDetails({
       id: reg.id,
       driverName: reg.user?.name || reg.manualDriver?.name || 'Driver',
       teamId: reg.teamId ?? reg.team?.id ?? null,
-      teamName: reg.team?.name,
+      teamName: reg.team?.alias || reg.team?.name,
       carClassName: reg.carClass.shortName || reg.carClass.name,
     }))
     const pendingRecords = pendingRegistrations.map((reg) => ({
       id: reg.id,
       driverName: reg.user?.name || reg.manualDriver?.name || 'Driver',
       teamId: reg.teamId ?? reg.team?.id ?? null,
-      teamName: reg.team?.name,
+      teamName: reg.team?.alias || reg.team?.name,
       carClassName: reg.carClass.shortName || reg.carClass.name,
     }))
     const assignedTeamIds = new Set(

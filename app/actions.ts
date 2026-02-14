@@ -345,7 +345,7 @@ async function upsertEventDiscussionThread(options: {
       registrations: {
         select: {
           id: true,
-          team: { select: { id: true, name: true } },
+          team: { select: { id: true, name: true, alias: true } },
           carClass: { select: { name: true } },
           user: {
             select: {
@@ -393,7 +393,7 @@ async function upsertEventDiscussionThread(options: {
     const teams = Array.from(byTeam.entries())
       .filter(([teamId]) => teamId !== null)
       .map(([, regs]) => {
-        const teamName = regs[0].team!.name
+        const teamName = regs[0].team!.alias || regs[0].team!.name
         return {
           name: teamName,
           members: regs.map((r) => ({
@@ -638,7 +638,7 @@ export async function deleteRegistration(registrationId: string): Promise<void> 
         id: true,
         userId: true,
         teamId: true,
-        team: { select: { id: true, name: true } },
+        team: { select: { id: true, name: true, alias: true } },
         user: { select: { name: true } },
         manualDriver: { select: { name: true } },
         race: {
@@ -685,12 +685,12 @@ export async function deleteRegistration(registrationId: string): Promise<void> 
         const teamThreads =
           (eventThreadRecord?.discordTeamThreads as Record<string, string> | null) ?? {}
         const teams = await prisma.team.findMany({
-          select: { id: true, name: true },
+          select: { id: true, name: true, alias: true },
         })
-        const teamNameById = new Map(teams.map((team) => [team.id, team.name]))
+        const teamNameById = new Map(teams.map((team) => [team.id, team.alias || team.name]))
         const driverName =
           registration.user?.name || registration.manualDriver?.name || 'Unknown Driver'
-        const fromTeam = registration.team?.name || 'Unassigned'
+        const fromTeam = registration.team?.alias || registration.team?.name || 'Unassigned'
 
         const { postRosterChangeNotifications } = await import('@/lib/discord')
         await postRosterChangeNotifications(
@@ -1302,7 +1302,7 @@ export async function saveRaceEdits(formData: FormData) {
 type RegistrationRow = {
   id: string
   teamId: string | null
-  team: { id: string; name: string } | null
+  team: { id: string; name: string; alias?: string | null } | null
   carClass: { name: string; shortName: string | null }
   user: {
     name: string | null
@@ -1368,7 +1368,7 @@ function buildTeamsFromRegistrations(
       0
     if (reg.teamId && reg.team) {
       const existing = teamsMap.get(reg.teamId) || {
-        name: reg.team.name,
+        name: reg.team.alias || reg.team.name,
         members: [],
       }
       existing.members.push({
@@ -1460,7 +1460,7 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
     }
 
     const registrationInclude = {
-      team: { select: { name: true, id: true } },
+      team: { select: { name: true, alias: true, id: true } },
       carClass: { select: { id: true, name: true, shortName: true } },
       user: {
         select: {
@@ -1579,9 +1579,9 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
     // Build team name mapping - include ALL teams, not just those with current members
     // This ensures we can look up team names for drivers who moved FROM teams
     const allTeams = await prisma.team.findMany({
-      select: { id: true, name: true },
+      select: { id: true, name: true, alias: true },
     })
-    const teamNameById = new Map(allTeams.map((team) => [team.id, team.name]))
+    const teamNameById = new Map(allTeams.map((team) => [team.id, team.alias || team.name]))
 
     const { buildRosterChangesFromTeamChangeDetails, buildTeamChangeDetails } =
       await import('@/lib/team-change-summary')

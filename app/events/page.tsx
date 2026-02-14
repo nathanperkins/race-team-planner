@@ -266,7 +266,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
   })
   const teams = rawTeams.map((team) => ({
     id: team.id,
-    name: team.name,
+    name: team.alias || team.name,
     iracingTeamId: team.iracingTeamId,
     memberCount: team.teamMembers.length,
   }))

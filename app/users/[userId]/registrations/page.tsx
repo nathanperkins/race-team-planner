@@ -133,7 +133,7 @@ export default async function UserRegistrationsPage({ params }: Props) {
                     </td>
                     <td className={styles.td} data-label="Team">
                       {reg.team ? (
-                        <span className={styles.teamPill}>{reg.team.name}</span>
+                        <span className={styles.teamPill}>{reg.team.alias || reg.team.name}</span>
                       ) : (
                         <span className={styles.teamPill}>Team Unassigned</span>
                       )}

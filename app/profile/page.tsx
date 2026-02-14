@@ -22,6 +22,7 @@ export default async function ProfilePage() {
         select: {
           id: true,
           name: true,
+          alias: true,
           iracingTeamId: true,
         },
       },
@@ -93,7 +94,7 @@ export default async function ProfilePage() {
             <div className={styles.teamsList}>
               {user.teams.map((team) => (
                 <span key={team.id} className={styles.teamBadge}>
-                  {team.name}
+                  {team.alias || team.name}
                 </span>
               ))}
             </div>

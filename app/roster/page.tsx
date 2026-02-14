@@ -46,6 +46,7 @@ export default async function RosterPage({ searchParams }: Props) {
         select: {
           id: true,
           name: true,
+          alias: true,
           iracingTeamId: true,
         },
       },

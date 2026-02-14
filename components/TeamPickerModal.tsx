@@ -120,7 +120,7 @@ export default function TeamPickerModal({
         originalClass: reg.carClass.name,
         originalTime: reg.raceStartTime,
         userId: reg.userId, // For deduplication
-        originalTeam: reg.team?.name,
+        originalTeam: reg.team?.alias || reg.team?.name,
       } as Driver
     })
 
@@ -185,7 +185,7 @@ export default function TeamPickerModal({
         if (!existingTeamsMap.has(reg.team.id)) {
           existingTeamsMap.set(reg.team.id, {
             teamId: reg.team.id,
-            teamName: reg.team.name,
+            teamName: reg.team.alias || reg.team.name,
             drivers: [],
             locked: true,
             isGeneric: false,

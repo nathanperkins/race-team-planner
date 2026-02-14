@@ -21,6 +21,7 @@ export async function getTeams() {
   return teams.map((team) => ({
     id: team.id,
     name: team.name,
+    alias: team.alias,
     iracingTeamId: team.iracingTeamId,
     createdAt: team.createdAt,
     updatedAt: team.updatedAt,
@@ -206,7 +207,7 @@ export async function getTeamMembers(teamId: string) {
   const enrolledCount = membersWithEnrollment.filter((m) => m.isEnrolled).length
 
   return {
-    teamName: team.name,
+    teamName: team.alias || team.name,
     iracingTeamId: team.iracingTeamId,
     members: membersWithEnrollment,
     enrolledCount,
@@ -329,7 +330,7 @@ export async function createTeam(iracingTeamId: number) {
   return team
 }
 
-export async function updateTeam(id: string, iracingTeamId: number) {
+export async function updateTeam(id: string, iracingTeamId: number, alias?: string | null) {
   const session = await auth()
   if (!session?.user || session.user.role !== 'ADMIN') {
     throw new Error('Unauthorized')
@@ -365,6 +366,7 @@ export async function updateTeam(id: string, iracingTeamId: number) {
     data: {
       name: teamInfo.teamName,
       iracingTeamId: teamInfo.teamId,
+      alias: alias?.trim() ? alias.trim() : null,
     },
   })
 

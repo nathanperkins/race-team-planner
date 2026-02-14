@@ -27,6 +27,7 @@ import styles from './TeamManagement.module.css'
 interface Team {
   id: string
   name: string
+  alias?: string | null
   iracingTeamId: number
   memberCount?: number
 }
@@ -58,6 +59,7 @@ export default function TeamManagement() {
   const [newTeamIracingId, setNewTeamIracingId] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editIracingId, setEditIracingId] = useState('')
+  const [editAlias, setEditAlias] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [processing, setProcessing] = useState<string | null>(null)
   const [inspectingTeam, setInspectingTeam] = useState<TeamMembersData | null>(null)
@@ -112,7 +114,7 @@ export default function TeamManagement() {
         setProcessing(null)
         return
       }
-      await updateTeam(id, iracingId)
+      await updateTeam(id, iracingId, editAlias.trim() || null)
       setEditingId(null)
       await fetchTeams()
     } catch (err) {
@@ -139,6 +141,7 @@ export default function TeamManagement() {
   const startEditing = (team: Team) => {
     setEditingId(team.id)
     setEditIracingId(Math.abs(team.iracingTeamId).toString())
+    setEditAlias(team.alias || '')
     setError(null)
   }
 
@@ -214,16 +217,27 @@ export default function TeamManagement() {
               <div key={team.id} className={styles.teamRow}>
                 {editingId === team.id ? (
                   <>
-                    <input
-                      type="number"
-                      value={editIracingId}
-                      onChange={(e) => setEditIracingId(e.target.value)}
-                      className={styles.editInput}
-                      placeholder="iRacing Team ID"
-                      autoFocus
-                      disabled={processing === team.id}
-                      onKeyDown={(e) => e.key === 'Enter' && handleUpdateTeam(team.id)}
-                    />
+                    <div className={styles.editFields}>
+                      <input
+                        type="number"
+                        value={editIracingId}
+                        onChange={(e) => setEditIracingId(e.target.value)}
+                        className={styles.editInput}
+                        placeholder="iRacing Team ID"
+                        autoFocus
+                        disabled={processing === team.id}
+                        onKeyDown={(e) => e.key === 'Enter' && handleUpdateTeam(team.id)}
+                      />
+                      <input
+                        type="text"
+                        value={editAlias}
+                        onChange={(e) => setEditAlias(e.target.value)}
+                        className={styles.editInput}
+                        placeholder="Alias (optional)"
+                        disabled={processing === team.id}
+                        onKeyDown={(e) => e.key === 'Enter' && handleUpdateTeam(team.id)}
+                      />
+                    </div>
                     <div className={styles.actions}>
                       <button
                         onClick={() => handleUpdateTeam(team.id)}
@@ -251,7 +265,7 @@ export default function TeamManagement() {
                         <>
                           <div className={styles.teamInfo}>
                             <div className={styles.teamHeader}>
-                              <span className={styles.teamName}>{team.name}</span>
+                              <span className={styles.teamName}>{team.alias || team.name}</span>
                               {team.memberCount !== undefined && (
                                 <span className={styles.memberCount}>
                                   <Users size={14} />
@@ -264,6 +278,9 @@ export default function TeamManagement() {
                                 ? 'Manually added team'
                                 : `iRacing ID: ${Math.abs(team.iracingTeamId)}`}
                             </span>
+                            {team.alias && (
+                              <span className={styles.teamId}>Official: {team.name}</span>
+                            )}
                           </div>
                           <div className={styles.actions}>
                             {!isManualTeam && (
