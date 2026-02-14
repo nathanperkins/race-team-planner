@@ -32,7 +32,14 @@ import EditableCarClass from './EditableCarClass'
 import AdminDriverSearch from './AdminDriverSearch'
 import TeamPickerTrigger from './TeamPickerTrigger'
 import { saveRaceEdits } from '@/app/actions'
-import { getAutoMaxDriversPerTeam, getLicenseColor, getRaceDurationMinutes } from '@/lib/utils'
+import {
+  getAutoMaxDriversPerTeam,
+  getLicenseColor,
+  getLicenseForId,
+  getLicenseLevelFromName,
+  getRaceDurationMinutes,
+  isLicenseEligible,
+} from '@/lib/utils'
 import { buildTeamChangeSummary } from '@/lib/team-change-summary'
 
 export interface RaceWithRegistrations {
@@ -121,6 +128,9 @@ interface Props {
   allDrivers?: Driver[]
   onDropdownToggle?: (open: boolean) => void
   discordGuildId?: string
+  eventId?: string
+  eventLicenseGroup?: number | null
+  userLicenseLevel?: number | null
 }
 
 type LocalTeam = { id: string; name: string }
@@ -237,11 +247,18 @@ export default function RaceDetails({
   allDrivers = [],
   onDropdownToggle,
   discordGuildId,
+  eventId,
+  eventLicenseGroup,
+  userLicenseLevel,
 }: Props) {
   const [isSaving, startSaveTransition] = useTransition()
   const now = new Date()
   const isRaceCompleted = now > new Date(race.endTime)
   const isRaceLive = now >= new Date(race.startTime) && now <= new Date(race.endTime)
+
+  // Calculate race license requirement for eligibility checking
+  const raceLicense =
+    eventId && eventLicenseGroup !== undefined ? getLicenseForId(eventId, eventLicenseGroup) : null
 
   const autoMaxDrivers =
     race.maxDriversPerTeam ??
@@ -1615,6 +1632,13 @@ export default function RaceDetails({
     const preferredStats = getPreferredStats(reg)
     const manualRating = reg.manualDriver?.irating
     const hasStats = preferredStats || manualRating !== undefined
+
+    // Check if racer is eligible for this race based on license level
+    const racerLicenseLevel = preferredStats
+      ? getLicenseLevelFromName(preferredStats.groupName)
+      : null
+    const isRacerEligible = !raceLicense || isLicenseEligible(racerLicenseLevel, raceLicense)
+
     const licenseColor = preferredStats ? getLicenseColor(preferredStats.groupName) : '#94a3b8'
     const licenseLabel = preferredStats
       ? preferredStats.groupName.replace('Class ', '').substring(0, 1)
@@ -1664,16 +1688,21 @@ export default function RaceDetails({
                 </div>
               )}
               <span
-                className={styles.statsBadge}
-                style={{
-                  borderColor: licenseColor || undefined,
-                  backgroundColor: lightBg,
-                  color: licenseColor || undefined,
-                }}
+                className={`${styles.statsBadge} ${!hasStats || !isRacerEligible ? styles.statsBadgeIneligible : ''}`}
+                style={
+                  hasStats && isRacerEligible
+                    ? {
+                        borderColor: licenseColor || undefined,
+                        backgroundColor: lightBg,
+                        color: licenseColor || undefined,
+                      }
+                    : undefined
+                }
               >
                 {hasStats ? (
                   <>
-                    {licenseLabel} {safetyRating} {irating}
+                    {!isRacerEligible && <ShieldX size={14} color="#ef4444" />} {licenseLabel}{' '}
+                    {safetyRating} {irating}
                   </>
                 ) : (
                   <>

@@ -428,9 +428,73 @@ describe('RaceDetails', () => {
     const svg = badge.querySelector('svg')
     expect(svg).toBeInTheDocument()
 
-    // Verify grey styling for unknown status (similar to ineligible races)
-    const computedStyle = window.getComputedStyle(badge)
-    expect(computedStyle.borderColor).toBe('rgb(148, 163, 184)') // slate-400 (#94a3b8)
-    expect(computedStyle.color).toBe('rgb(148, 163, 184)')
+    // Verify ineligible CSS class is applied for unknown status
+    expect(badge.classList.contains(styles.statsBadgeIneligible)).toBe(true)
+  })
+
+  it('shows red X shield for racer ineligible for the race', () => {
+    const mockRace = {
+      id: 'race-9',
+      startTime: new Date('2027-01-01T10:00:00Z'),
+      endTime: new Date('2027-01-01T12:00:00Z'),
+      teamsAssigned: false,
+      maxDriversPerTeam: 2,
+      teamAssignmentStrategy: 'BALANCED_IRATING' as const,
+      registrations: [
+        {
+          id: 'reg-ineligible',
+          carClass: { id: 'class-1', name: 'Class 1', shortName: 'C1' },
+          userId: 'user-rookie',
+          user: {
+            name: 'Rookie Driver',
+            image: null,
+            racerStats: [
+              {
+                category: 'Sports Car',
+                categoryId: 5,
+                irating: 1200,
+                safetyRating: 2.5,
+                groupName: 'Class D', // D license - ineligible for A/B license races
+              },
+            ],
+          },
+          manualDriver: null,
+          teamId: null,
+          team: null,
+        },
+      ],
+      discordTeamsThreadId: null,
+      discordTeamThreads: null,
+    }
+
+    const { container } = render(
+      <RaceDetails
+        race={mockRace}
+        userId="admin-user"
+        isAdmin
+        carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
+        teams={[]}
+        allDrivers={[]}
+        eventId="event-a-license"
+        eventLicenseGroup={5} // A license event (LicenseLevel.A = 5)
+        userLicenseLevel={5} // Admin has A license
+      />
+    )
+
+    // Find the stats badge
+    const badges = container.getElementsByClassName(styles.statsBadge)
+    expect(badges.length).toBe(1)
+
+    const badge = badges[0] as HTMLElement
+
+    // Verify red ShieldX icon is present for ineligible racer
+    const svg = badge.querySelector('svg')
+    expect(svg).toBeInTheDocument()
+    expect(badge.textContent).toContain('D') // License class
+    expect(badge.textContent).toContain('2.50') // Safety rating
+    expect(badge.textContent).toContain('1200') // iRating
+
+    // Verify ineligible CSS class is applied for ineligible racer
+    expect(badge.classList.contains(styles.statsBadgeIneligible)).toBe(true)
   })
 })

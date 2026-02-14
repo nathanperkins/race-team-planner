@@ -259,6 +259,9 @@ export default function EventDetailModal({
                   }))}
                   onDropdownToggle={(open) => handleDropdownToggle(race.id, open)}
                   discordGuildId={discordGuildId}
+                  eventId={event.id}
+                  eventLicenseGroup={event.licenseGroup}
+                  userLicenseLevel={userLicenseLevel}
                 />
               ))}
             </div>
