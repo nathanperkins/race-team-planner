@@ -16,13 +16,23 @@ import { appTimeZone } from './config'
  * const pastDate = dateWithTime(-7, 14, 0)
  */
 export function dateWithTime(daysOffset: number, hours: number, minutes: number = 0): Date {
-  // Get today's date
-  const today = new Date()
+  // Get the current date/time in the app's timezone
+  const now = new Date()
+  const formatted = now.toLocaleString('en-US', {
+    timeZone: appTimeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
 
-  // Add the day offset
-  const targetDate = new Date(today.getTime() + daysOffset * 24 * 60 * 60 * 1000)
+  // Parse to get the current date in app timezone
+  const [month, day, year] = formatted.split('/').map((s) => parseInt(s))
 
-  // Set the time in the app's timezone
+  // Add the day offset (in the app's timezone context)
+  const targetDay = day + daysOffset
+  const targetDate = new Date(Date.UTC(year, month - 1, targetDay, 0, 0, 0))
+
+  // Set the specific time in the app's timezone
   return setLocalTime(targetDate, hours, minutes)
 }
 

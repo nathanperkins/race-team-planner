@@ -165,4 +165,27 @@ describe('dateWithTime', () => {
 
     expect(formatted).toBe('10:00')
   })
+
+  it('should handle evening times correctly when UTC is next day (regression test)', () => {
+    // When it's 7:26 PM PST on Feb 14, that's 3:26 AM UTC on Feb 15
+    // We want "1 day ago" to give us Feb 13 in PST, not Feb 14
+    const now = new Date('2026-02-15T03:26:00Z') // 7:26 PM PST on Feb 14
+    vi.setSystemTime(now)
+
+    const result = dateWithTime(-1, 10, 40)
+
+    // Should be Feb 13 at 10:40 AM PT, not Feb 14
+    const formatted = result.toLocaleString('en-US', {
+      timeZone: 'America/Los_Angeles',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    })
+
+    expect(formatted).toContain('02/13/2026')
+    expect(formatted).toContain('10:40')
+  })
 })
