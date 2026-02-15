@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import EventDetailModal from './EventDetailModal'
 import { Prisma } from '@prisma/client'
@@ -82,6 +82,21 @@ export default function EventsClient({
     if (!selectedEventId) return null
     return weeks.flatMap((week) => week.events).find((evt) => evt.id === selectedEventId) || null
   }, [selectedEventId, weeks])
+
+  useEffect(() => {
+    if (!selectedEvent) return
+
+    const previousBodyOverflow = document.body.style.overflow
+    const previousHtmlOverflow = document.documentElement.style.overflow
+
+    document.body.style.overflow = 'hidden'
+    document.documentElement.style.overflow = 'hidden'
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow
+      document.documentElement.style.overflow = previousHtmlOverflow
+    }
+  }, [selectedEvent])
 
   // Update URL when event is selected
   const handleSelectEvent = (event: EventWithRaces) => {

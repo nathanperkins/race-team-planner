@@ -58,10 +58,6 @@ export default async function UserRegistrationsPage({ params }: Props) {
         <h1 className={styles.title}>
           {user.name === session.user?.name ? 'My Registrations' : `${user.name}'s Registrations`}
         </h1>
-        <p className={styles.subtitle}>
-          If teams are already assigned, timeslots and car classes are locked. Message an admin to
-          make changes or drop from the event.
-        </p>
       </header>
 
       <div className={styles.tableCard}>
@@ -83,75 +79,88 @@ export default async function UserRegistrationsPage({ params }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {registrations.map((reg) => (
-                  <tr key={reg.id} className={styles.tr}>
-                    <td className={`${styles.td} ${styles.eventCell}`} data-label="Event">
-                      <div className={styles.eventLine}>
-                        <Link
-                          href={`/events?eventId=${reg.race.eventId}`}
-                          className={styles.eventName}
+                {registrations.map((reg) => {
+                  const canEdit = userId === session.user?.id || isAdmin
+                  const raceCompleted = new Date() > reg.race.endTime
+                  const lockedByTeams = reg.race.teamsAssigned
+                  const readOnly = !canEdit || lockedByTeams || raceCompleted
+
+                  return (
+                    <tr key={reg.id} className={styles.tr}>
+                      <td className={`${styles.td} ${styles.eventCell}`} data-label="Event">
+                        <div className={styles.eventLine}>
+                          <Link
+                            href={`/events?eventId=${reg.race.eventId}`}
+                            className={styles.eventName}
+                          >
+                            {reg.race.event.name}
+                          </Link>
+                          <span className={styles.trackText}>{reg.race.event.track}</span>
+                        </div>
+                      </td>
+                      <td className={styles.td} data-label="Race Time">
+                        <div
+                          className={`${styles.timePill} ${lockedByTeams ? styles.lockedPillWrap : ''}`}
                         >
-                          {reg.race.event.name}
-                        </Link>
-                        <span className={styles.trackText}>{reg.race.event.track}</span>
-                      </div>
-                    </td>
-                    <td className={styles.td} data-label="Race Time">
-                      <div className={styles.timePill}>
-                        <EditableRaceTime
-                          registrationId={reg.id}
-                          currentRaceId={reg.raceId}
-                          currentRaceStartTime={reg.race.startTime}
-                          availableRaces={reg.race.event.races.map((r) => ({
-                            id: r.id,
-                            startTime: r.startTime,
-                          }))}
-                          readOnly={
-                            (userId !== session.user?.id && !isAdmin) ||
-                            reg.race.teamsAssigned ||
-                            new Date() > reg.race.endTime
-                          }
-                        />
-                      </div>
-                    </td>
-                    <td className={styles.td} data-label="Car Class">
-                      <div className={styles.classPill}>
-                        <EditableCarClass
-                          registrationId={reg.id}
-                          currentCarClassId={reg.carClassId}
-                          currentCarClassShortName={reg.carClass.shortName}
-                          carClasses={reg.race.event.carClasses}
-                          readOnly={
-                            (userId !== session.user?.id && !isAdmin) ||
-                            reg.race.teamsAssigned ||
-                            new Date() > reg.race.endTime
-                          }
-                          showLabel={false}
-                          variant="table"
-                        />
-                      </div>
-                    </td>
-                    <td className={styles.td} data-label="Team">
-                      {reg.team ? (
-                        <span className={styles.teamPill}>{reg.team.alias || reg.team.name}</span>
-                      ) : (
-                        <span className={styles.teamPill}>Team Unassigned</span>
-                      )}
-                    </td>
-                    {(userId === session.user?.id || session.user?.role === 'ADMIN') && (
-                      <td className={styles.td} data-label="Actions">
-                        {new Date() > reg.race.endTime ? (
-                          <span className={styles.completedText}>Completed</span>
-                        ) : (
-                          <DropRegistrationButton
+                          <EditableRaceTime
                             registrationId={reg.id}
-                            isAssignedToTeam={!!reg.team}
+                            currentRaceId={reg.raceId}
+                            currentRaceStartTime={reg.race.startTime}
+                            availableRaces={reg.race.event.races.map((r) => ({
+                              id: r.id,
+                              startTime: r.startTime,
+                            }))}
+                            readOnly={readOnly}
                           />
+                          {lockedByTeams && (
+                            <span className={styles.lockedTooltip} role="tooltip">
+                              Teams Assigned, contact an admin to change
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className={styles.td} data-label="Car Class">
+                        <div
+                          className={`${styles.classPill} ${lockedByTeams ? styles.lockedPillWrap : ''}`}
+                        >
+                          <EditableCarClass
+                            registrationId={reg.id}
+                            currentCarClassId={reg.carClassId}
+                            currentCarClassShortName={reg.carClass.shortName}
+                            carClasses={reg.race.event.carClasses}
+                            readOnly={readOnly}
+                            showLabel={false}
+                            variant="table"
+                          />
+                          {lockedByTeams && (
+                            <span className={styles.lockedTooltip} role="tooltip">
+                              Teams Assigned, contact an admin to change
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className={styles.td} data-label="Team">
+                        {reg.team ? (
+                          <span className={styles.teamPill}>{reg.team.alias || reg.team.name}</span>
+                        ) : (
+                          <span className={styles.teamPill}>Team Unassigned</span>
                         )}
                       </td>
-                    )}
-                  </tr>
-                ))}
+                      {(userId === session.user?.id || session.user?.role === 'ADMIN') && (
+                        <td className={styles.td} data-label="Actions">
+                          {new Date() > reg.race.endTime ? (
+                            <span className={styles.completedText}>Completed</span>
+                          ) : (
+                            <DropRegistrationButton
+                              registrationId={reg.id}
+                              isAssignedToTeam={!!reg.team}
+                            />
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
