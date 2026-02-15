@@ -513,7 +513,7 @@ export function buildRegistrationEmbed(
   data: RegistrationNotificationData,
   appTitle: string,
   options?: {
-    includeOtherRegisteredDrivers?: boolean
+    includeRegisteredDrivers?: boolean
     includeJoinEventLink?: boolean
     includeDiscussionLink?: boolean
   }
@@ -544,20 +544,28 @@ export function buildRegistrationEmbed(
     })
   }
 
-  if (options?.includeOtherRegisteredDrivers) {
+  if (options?.includeRegisteredDrivers) {
+    // Include the new registrant along with other registered drivers
+    const newRegistrant = {
+      name: data.userName,
+      carClassName: data.carClassName,
+      discordId: data.discordUser?.id,
+    }
     const others = (data.otherRegisteredDrivers ?? []).filter(
       (entry) => entry.name.trim().length > 0 && entry.carClassName.trim().length > 0
     )
-    const { grouped, truncatedCount } = buildRegisteredByClassGroups(others)
+    const allRegistrants = [newRegistrant, ...others]
+
+    const { grouped, truncatedCount } = buildRegisteredByClassGroups(allRegistrants)
     if (grouped.size === 0) {
       fields.push({
-        name: '👥 Already Registered By Class',
-        value: 'No one else yet.',
+        name: '👥 Registrations by Class',
+        value: 'No one registered yet.',
         inline: false,
       })
     } else {
       fields.push({
-        name: '👥 Already Registered By Class',
+        name: '👥 Registrations by Class',
         value: '\u200b',
         inline: false,
       })

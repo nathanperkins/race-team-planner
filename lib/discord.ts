@@ -506,7 +506,7 @@ export async function sendRegistrationNotification(
 
   try {
     const notificationEmbed = buildRegistrationEmbed(data, appTitle, {
-      includeOtherRegisteredDrivers: true,
+      includeRegisteredDrivers: true,
       includeDiscussionLink: false,
     })
     const threadEmbed = buildRegistrationEmbed(data, appTitle, {

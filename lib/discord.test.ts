@@ -658,7 +658,7 @@ describe('sendRegistrationNotification', () => {
     expect(buttonUrls).toContain('https://discord.com/channels/fake-guild-id/event-thread-123')
     const firstFields = firstPayload.embeds?.[0]?.fields ?? []
     expect(
-      firstFields.some((field: { name: string }) => field.name === '👥 Already Registered By Class')
+      firstFields.some((field: { name: string }) => field.name === '👥 Registrations by Class')
     ).toBe(true)
 
     const secondPayload = JSON.parse(

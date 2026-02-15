@@ -233,7 +233,7 @@ describe('Discord Utils', () => {
       expect(embed.thumbnail?.url).toBe('http://avatar.com')
     })
 
-    it('includes other registered drivers only when requested', () => {
+    it('includes registered drivers by class when requested (including new registrant)', () => {
       const embedWithout = buildRegistrationEmbed(
         {
           ...data,
@@ -245,7 +245,7 @@ describe('Discord Utils', () => {
         appTitle
       )
       expect(
-        embedWithout.fields.some((field) => String(field.name).includes('Already Registered'))
+        embedWithout.fields.some((field) => String(field.name).includes('Registrations by Class'))
       ).toBe(false)
 
       const embedWith = buildRegistrationEmbed(
@@ -257,22 +257,27 @@ describe('Discord Utils', () => {
           ],
         },
         appTitle,
-        { includeOtherRegisteredDrivers: true }
+        { includeRegisteredDrivers: true }
       )
       const rosterField = embedWith.fields.find((field) =>
-        String(field.name).includes('Already Registered')
+        String(field.name).includes('Registrations by Class')
       )
       expect(rosterField).toBeTruthy()
+      expect(rosterField?.name).toBe('👥 Registrations by Class')
       expect(rosterField?.value).toBe('\u200b')
 
+      // GT3 class should include the NEW registrant (Alice with Discord ID 123) AND the other GT3 driver
       const gt3Field = embedWith.fields.find((field) => field.name === 'GT3')
       expect(gt3Field).toBeTruthy()
-      expect(gt3Field?.value).toContain('<@111>')
+      expect(gt3Field?.value).toContain('<@123>') // New registrant Alice
+      expect(gt3Field?.value).toContain('<@111>') // Existing Driver One
       expect(gt3Field?.inline).toBe(true)
 
+      // LMP2 class should only have the other driver (not the new registrant)
       const lmp2Field = embedWith.fields.find((field) => field.name === 'LMP2')
       expect(lmp2Field).toBeTruthy()
       expect(lmp2Field?.value).toContain('Driver Two')
+      expect(lmp2Field?.value).not.toContain('Alice')
       expect(lmp2Field?.inline).toBe(true)
     })
   })
