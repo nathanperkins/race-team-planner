@@ -1688,7 +1688,7 @@ export default function RaceDetails({
                 </div>
               )}
               <span
-                className={`${styles.statsBadge} ${!hasStats || !isRacerEligible ? styles.statsBadgeIneligible : ''}`}
+                className={`${styles.statsBadge} ${!hasStats || !isRacerEligible ? `instant-tooltip ${styles.statsBadgeIneligible}` : ''}`}
                 style={
                   hasStats && isRacerEligible
                     ? {

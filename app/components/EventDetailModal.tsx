@@ -171,12 +171,17 @@ export default function EventDetailModal({
                 <div className={styles.titleWithBadge}>
                   <h1 className={styles.eventTitle}>{getSeriesNameOnly(event.name)}</h1>
                   <div
-                    className={styles.licenseBadgeInline}
+                    className={`instant-tooltip ${styles.licenseBadgeInline}`}
                     style={{
                       borderColor: licenseColor,
                       color: licenseColor,
                       backgroundColor: `${licenseColor}30`,
                     }}
+                    title={
+                      isEligible
+                        ? `You are eligible for this event`
+                        : 'You do not meet the license requirements for this event'
+                    }
                   >
                     {isEligible ? <ShieldCheck size={18} /> : <ShieldX size={18} color="#ef4444" />}
                     {license}

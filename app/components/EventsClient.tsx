@@ -219,7 +219,11 @@ export default function EventsClient({
                           )}
                           <div
                             className={styles.licenseBadge}
-                            title={`License ${license}`}
+                            title={
+                              !isEligible
+                                ? 'You do not meet the license requirements for this event'
+                                : `You are eligible for this event`
+                            }
                             style={{
                               borderColor: getLicenseColor(license),
                               color: getLicenseColor(license),
@@ -292,7 +296,7 @@ export default function EventsClient({
                         )}
                         {isUserRegistered && (
                           <span
-                            className={styles.registeredBadge}
+                            className={`instant-tooltip ${styles.registeredBadge}`}
                             role="status"
                             aria-label="You are registered for this event"
                             title="You are registered for this event"
@@ -302,12 +306,11 @@ export default function EventsClient({
                           </span>
                         )}
                         <div
-                          className={styles.licenseBadge}
-                          title={`License ${license}`}
-                          data-tooltip={
+                          className={`instant-tooltip ${styles.licenseBadge}`}
+                          title={
                             !isEligible
                               ? 'You do not meet the license requirements for this event'
-                              : undefined
+                              : `You are eligible for this event`
                           }
                           style={{
                             borderColor: getLicenseColor(license),
