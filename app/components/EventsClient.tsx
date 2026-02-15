@@ -14,7 +14,7 @@ import {
   LicenseLevel,
 } from '@/lib/utils'
 import type { CSSProperties } from 'react'
-import { ShieldCheck, ShieldX, Timer, User } from 'lucide-react'
+import { Check, ShieldCheck, ShieldX, Timer, User } from 'lucide-react'
 
 type EventWithRaces = Prisma.EventGetPayload<{
   include: {
@@ -153,6 +153,9 @@ export default function EventsClient({
                   return now >= start && now <= end
                 })
                 const isCompleted = lastRaceEnd ? now > lastRaceEnd : now > new Date(event.endTime)
+                const isUserRegistered = event.races.some((race) =>
+                  race.registrations.some((reg) => reg.userId === userId)
+                )
                 const totalDrivers = event.races.reduce(
                   (sum, race) => sum + race.registrations.length,
                   0
@@ -202,6 +205,17 @@ export default function EventsClient({
                               <span className={styles.liveDot} />
                               LIVE
                             </div>
+                          )}
+                          {isUserRegistered && (
+                            <span
+                              className={styles.registeredBadge}
+                              role="status"
+                              aria-label="You are registered for this event"
+                              title="You are registered for this event"
+                            >
+                              <Check size={14} />
+                              Registered
+                            </span>
                           )}
                           <div
                             className={styles.licenseBadge}
@@ -275,6 +289,17 @@ export default function EventsClient({
                             <span className={styles.liveDot} />
                             LIVE
                           </div>
+                        )}
+                        {isUserRegistered && (
+                          <span
+                            className={styles.registeredBadge}
+                            role="status"
+                            aria-label="You are registered for this event"
+                            title="You are registered for this event"
+                          >
+                            <Check size={14} />
+                            Registered
+                          </span>
                         )}
                         <div
                           className={styles.licenseBadge}

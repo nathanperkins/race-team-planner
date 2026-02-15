@@ -18,6 +18,260 @@ vi.mock('./EventDetailModal', () => ({
   ),
 }))
 
+describe('EventsClient registered badge', () => {
+  it('shows "Registered" badge for events the user is registered for', () => {
+    const weeks = [
+      {
+        weekStart: new Date('2026-02-09T00:00:00Z'),
+        weekEnd: new Date('2026-02-16T00:00:00Z'),
+        weekNumber: 5,
+        seasonYear: 2026,
+        seasonQuarter: 1,
+        official: true,
+        meta: {
+          events: 2,
+          tracks: ['Daytona', 'Spa'],
+          classes: ['IMSA23', 'GT3'],
+        },
+        events: [
+          {
+            id: 'event-registered',
+            name: 'IMSA Endurance Series',
+            startTime: new Date('2026-02-15T06:00:00Z'),
+            endTime: new Date('2026-02-15T08:00:00Z'),
+            licenseGroup: 3,
+            durationMins: 120,
+            track: 'Daytona',
+            trackConfig: 'Road',
+            externalId: null,
+            tempValue: null,
+            tempUnits: null,
+            relHumidity: null,
+            skies: null,
+            precipChance: null,
+            description: null,
+            carClasses: [{ id: 'class-1', name: 'IMSA23', shortName: 'IMSA23' }],
+            races: [
+              {
+                id: 'race-1',
+                startTime: new Date('2026-02-15T06:00:00Z'),
+                endTime: new Date('2026-02-15T08:00:00Z'),
+                registrations: [
+                  {
+                    id: 'reg-1',
+                    userId: 'user-123',
+                    user: { name: 'Test User', id: 'user-123', image: null, racerStats: [] },
+                    carClass: { id: 'class-1', name: 'IMSA23', shortName: 'IMSA23' },
+                    team: null,
+                    manualDriver: null,
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            id: 'event-not-registered',
+            name: 'GT3 Challenge Series',
+            startTime: new Date('2026-02-16T06:00:00Z'),
+            endTime: new Date('2026-02-16T08:00:00Z'),
+            licenseGroup: 3,
+            durationMins: 120,
+            track: 'Spa',
+            trackConfig: 'GP',
+            externalId: null,
+            tempValue: null,
+            tempUnits: null,
+            relHumidity: null,
+            skies: null,
+            precipChance: null,
+            description: null,
+            carClasses: [{ id: 'class-2', name: 'GT3', shortName: 'GT3' }],
+            races: [
+              {
+                id: 'race-2',
+                startTime: new Date('2026-02-16T06:00:00Z'),
+                endTime: new Date('2026-02-16T08:00:00Z'),
+                registrations: [],
+              },
+            ],
+          },
+        ],
+      },
+    ] as any
+
+    render(
+      <EventsClient
+        weeks={weeks}
+        isAdmin={false}
+        userId="user-123"
+        userLicenseLevel={null}
+        teams={[]}
+      />
+    )
+
+    // Should show "Registered" badge for the first event
+    const eventButtons = screen.getAllByRole('button')
+    const firstEventButton = eventButtons[0]
+    expect(firstEventButton).toHaveTextContent('Registered')
+
+    // Should NOT show "Registered" badge for the second event
+    const secondEventButton = eventButtons[1]
+    expect(secondEventButton).not.toHaveTextContent('Registered')
+  })
+
+  it('does not show "Registered" badge when user has no registrations', () => {
+    const weeks = [
+      {
+        weekStart: new Date('2026-02-09T00:00:00Z'),
+        weekEnd: new Date('2026-02-16T00:00:00Z'),
+        weekNumber: 5,
+        seasonYear: 2026,
+        seasonQuarter: 1,
+        official: true,
+        meta: {
+          events: 1,
+          tracks: ['Daytona'],
+          classes: ['IMSA23'],
+        },
+        events: [
+          {
+            id: 'event-1',
+            name: 'IMSA Endurance Series',
+            startTime: new Date('2026-02-15T06:00:00Z'),
+            endTime: new Date('2026-02-15T08:00:00Z'),
+            licenseGroup: 3,
+            durationMins: 120,
+            track: 'Daytona',
+            trackConfig: 'Road',
+            externalId: null,
+            tempValue: null,
+            tempUnits: null,
+            relHumidity: null,
+            skies: null,
+            precipChance: null,
+            description: null,
+            carClasses: [{ id: 'class-1', name: 'IMSA23', shortName: 'IMSA23' }],
+            races: [
+              {
+                id: 'race-1',
+                startTime: new Date('2026-02-15T06:00:00Z'),
+                endTime: new Date('2026-02-15T08:00:00Z'),
+                registrations: [
+                  {
+                    id: 'reg-1',
+                    userId: 'other-user',
+                    user: { name: 'Other User', id: 'other-user', image: null, racerStats: [] },
+                    carClass: { id: 'class-1', name: 'IMSA23', shortName: 'IMSA23' },
+                    team: null,
+                    manualDriver: null,
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ] as any
+
+    render(
+      <EventsClient
+        weeks={weeks}
+        isAdmin={false}
+        userId="user-123"
+        userLicenseLevel={null}
+        teams={[]}
+      />
+    )
+
+    const eventButton = screen.getAllByRole('button')[0]
+    expect(eventButton).not.toHaveTextContent('Registered')
+  })
+
+  it('shows "Registered" badge when user is registered for at least one race in multi-race event', () => {
+    const weeks = [
+      {
+        weekStart: new Date('2026-02-09T00:00:00Z'),
+        weekEnd: new Date('2026-02-16T00:00:00Z'),
+        weekNumber: 5,
+        seasonYear: 2026,
+        seasonQuarter: 1,
+        official: true,
+        meta: {
+          events: 1,
+          tracks: ['Daytona'],
+          classes: ['IMSA23'],
+        },
+        events: [
+          {
+            id: 'event-multi-race',
+            name: 'Multi-Race Event',
+            startTime: new Date('2026-02-15T06:00:00Z'),
+            endTime: new Date('2026-02-16T08:00:00Z'),
+            licenseGroup: 3,
+            durationMins: 240,
+            track: 'Daytona',
+            trackConfig: 'Road',
+            externalId: null,
+            tempValue: null,
+            tempUnits: null,
+            relHumidity: null,
+            skies: null,
+            precipChance: null,
+            description: null,
+            carClasses: [{ id: 'class-1', name: 'IMSA23', shortName: 'IMSA23' }],
+            races: [
+              {
+                id: 'race-1',
+                startTime: new Date('2026-02-15T06:00:00Z'),
+                endTime: new Date('2026-02-15T08:00:00Z'),
+                registrations: [
+                  {
+                    id: 'reg-1',
+                    userId: 'user-123',
+                    user: { name: 'Test User', id: 'user-123', image: null, racerStats: [] },
+                    carClass: { id: 'class-1', name: 'IMSA23', shortName: 'IMSA23' },
+                    team: null,
+                    manualDriver: null,
+                  },
+                ],
+              },
+              {
+                id: 'race-2',
+                startTime: new Date('2026-02-16T06:00:00Z'),
+                endTime: new Date('2026-02-16T08:00:00Z'),
+                registrations: [
+                  {
+                    id: 'reg-2',
+                    userId: 'other-user',
+                    user: { name: 'Other User', id: 'other-user', image: null, racerStats: [] },
+                    carClass: { id: 'class-1', name: 'IMSA23', shortName: 'IMSA23' },
+                    team: null,
+                    manualDriver: null,
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ] as any
+
+    render(
+      <EventsClient
+        weeks={weeks}
+        isAdmin={false}
+        userId="user-123"
+        userLicenseLevel={null}
+        teams={[]}
+      />
+    )
+
+    // Should show "Registered" badge even though user is only registered for 1 of 2 races
+    const eventButton = screen.getAllByRole('button')[0]
+    expect(eventButton).toHaveTextContent('Registered')
+  })
+})
+
 describe('EventsClient scroll lock', () => {
   it('locks page scrolling while the event modal is open', async () => {
     document.body.style.overflow = ''
