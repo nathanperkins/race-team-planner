@@ -1030,6 +1030,19 @@ export async function createOrUpdateEventThread(data: {
         content,
         embeds,
         allowed_mentions: { users: allowedIds, parse: [] as string[] },
+        components: [
+          {
+            type: 1,
+            components: [
+              {
+                type: 2,
+                style: 5,
+                label: 'Join Event',
+                url: data.raceUrl,
+              },
+            ],
+          },
+        ],
       }
 
       return upsertThreadMessage(id, payload, botToken)
@@ -1052,6 +1065,19 @@ export async function createOrUpdateEventThread(data: {
             content: undefined,
             embeds,
             allowed_mentions: { users: [], parse: [] },
+            components: [
+              {
+                type: 1,
+                components: [
+                  {
+                    type: 2,
+                    style: 5,
+                    label: 'Join Event',
+                    url: data.raceUrl,
+                  },
+                ],
+              },
+            ],
           },
         }),
       })

@@ -2295,6 +2295,117 @@ describe('createOrUpdateEventThread', () => {
       .mock.calls.filter((call) => call[0]?.toString().includes('/thread-members/'))
     expect(addUsersCalls).toHaveLength(0)
   })
+
+  it('should include a Join Event button in new event threads', async () => {
+    const mockThreadId = 'new-thread-123'
+    const raceUrl = 'https://example.com/race'
+
+    // Mock thread creation response
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ id: mockThreadId }),
+    } as Response)
+
+    await createOrUpdateEventThread({
+      eventName: 'GT3 Challenge',
+      raceUrl,
+      carClasses: ['GT3'],
+      timeslots: [
+        {
+          raceStartTime: new Date('2026-02-15T18:00:00Z'),
+          teams: [{ name: 'Team Alpha', members: [] }],
+        },
+      ],
+    })
+
+    // Verify the thread creation call included a Join Event button
+    const threadCreationCall = vi
+      .mocked(fetch)
+      .mock.calls.find((call) => call[0]?.toString().includes('/threads'))
+    expect(threadCreationCall).toBeDefined()
+
+    const body = JSON.parse(threadCreationCall![1]?.body as string)
+    expect(body.message.components).toBeDefined()
+    expect(body.message.components).toHaveLength(1)
+    expect(body.message.components[0].type).toBe(1) // Action row
+    expect(body.message.components[0].components).toHaveLength(1)
+    expect(body.message.components[0].components[0]).toMatchObject({
+      type: 2, // Button
+      style: 5, // Link button
+      label: 'Join Event',
+      url: raceUrl,
+    })
+  })
+
+  it('should include a Join Event button when updating event threads', async () => {
+    const existingThreadId = 'existing-thread-123'
+    const mockBotUserId = 'bot-user-id'
+    const raceUrl = 'https://example.com/race'
+
+    // Mock existing thread lookup
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ parent_id: forumId }),
+      } as Response)
+      // Mock bot user lookup
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: mockBotUserId }),
+      } as Response)
+      // Mock thread messages lookup
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => [
+          {
+            id: 'msg-1',
+            author: { id: mockBotUserId },
+          },
+        ],
+      } as Response)
+      // Mock message edit
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+      } as Response)
+
+    await createOrUpdateEventThread({
+      eventName: 'GT3 Challenge',
+      raceUrl,
+      carClasses: ['GT3'],
+      threadId: existingThreadId,
+      timeslots: [
+        {
+          raceStartTime: new Date('2026-02-15T18:00:00Z'),
+          teams: [{ name: 'Team Alpha', members: [] }],
+        },
+      ],
+    })
+
+    // Verify the message edit call included a Join Event button
+    const editCall = vi
+      .mocked(fetch)
+      .mock.calls.find(
+        (call) => call[1]?.method === 'PATCH' && call[0]?.toString().includes('/messages/')
+      )
+    expect(editCall).toBeDefined()
+
+    const body = JSON.parse(editCall![1]?.body as string)
+    expect(body.components).toBeDefined()
+    expect(body.components).toHaveLength(1)
+    expect(body.components[0].type).toBe(1) // Action row
+    expect(body.components[0].components).toHaveLength(1)
+    expect(body.components[0].components[0]).toMatchObject({
+      type: 2, // Button
+      style: 5, // Link button
+      label: 'Join Event',
+      url: raceUrl,
+    })
+  })
 })
 
 // NOTE: sendTeamsAssignedNotification has complex internal helpers that are difficult
