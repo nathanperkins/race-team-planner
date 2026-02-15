@@ -413,6 +413,21 @@ export async function assignRegistrationToTeam(registrationId: string, teamId: s
 
     if (!currentReg) throw new Error('Registration not found')
 
+    // Check if current team has a Discord thread (prevents changing after threads created)
+    if (currentReg.teamId && currentReg.teamId !== teamId) {
+      const race = await prisma.race.findUnique({
+        where: { id: currentReg.raceId },
+        select: { discordTeamThreads: true },
+      })
+
+      const threadMap = race?.discordTeamThreads as Record<string, string> | null
+      if (threadMap && threadMap[currentReg.teamId]) {
+        throw new Error(
+          'Cannot change team assignment: Discord thread already exists for this team'
+        )
+      }
+    }
+
     // Find if anyone else on this team in this race has a different car class
     const conflictReg = await prisma.registration.findFirst({
       where: {
@@ -463,10 +478,34 @@ export async function batchAssignTeams(
     throw new Error('Unauthorized')
   }
 
+  // Fetch race to check for Discord threads
+  const race = await prisma.race.findUnique({
+    where: { id: raceId },
+    select: { discordTeamThreads: true },
+  })
+  const threadMap = race?.discordTeamThreads as Record<string, string> | null
+
   // Use a transaction for reliability
   await prisma.$transaction(async (tx) => {
     for (const a of assignments) {
       if (a.registrationId && !a.registrationId.startsWith('M-')) {
+        // Check if current team has a Discord thread before updating
+        const currentReg = await tx.registration.findUnique({
+          where: { id: a.registrationId },
+          select: { teamId: true },
+        })
+
+        if (
+          currentReg?.teamId &&
+          currentReg.teamId !== a.teamId &&
+          threadMap &&
+          threadMap[currentReg.teamId]
+        ) {
+          throw new Error(
+            'Cannot change team assignment: Discord thread already exists for this team'
+          )
+        }
+
         // Update existing registration (User or existing manual)
         // Only update the team assignment, don't change raceId or carClassId
         await tx.registration.update({

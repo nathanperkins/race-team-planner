@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import RaceDetails from './RaceDetails'
 import React from 'react'
@@ -27,7 +27,11 @@ vi.mock('./AdminDriverSearch', () => ({
   default: () => <div data-testid="admin-driver-search" />,
 }))
 vi.mock('./TeamPickerTrigger', () => ({
-  default: () => <div data-testid="team-picker-trigger" />,
+  default: (props: { onOpen: () => void }) => (
+    <button data-testid="team-picker-trigger" onClick={props.onOpen}>
+      Pick Teams
+    </button>
+  ),
 }))
 vi.mock('next/image', () => ({
   default: (props: { src: string; alt: string }) => <img {...props} alt={props.alt} />,
@@ -571,5 +575,202 @@ describe('RaceDetails', () => {
     // Verify tooltip for racer with insufficient license
     const ineligibleBadge = badges[1] as HTMLElement
     expect(ineligibleBadge.title).toBe('This racer is ineligible for this race.')
+  })
+
+  it('should show locked team name (not dropdown) when team has Discord thread', () => {
+    const mockRace = {
+      id: 'race-discord-lock',
+      startTime: new Date('2027-01-01T10:00:00Z'),
+      endTime: new Date('2027-01-01T12:00:00Z'),
+      teamsAssigned: true,
+      maxDriversPerTeam: 2,
+      teamAssignmentStrategy: 'BALANCED_IRATING' as const,
+      registrations: [
+        {
+          id: 'reg-1',
+          carClass: { id: 'class-1', name: 'Class 1', shortName: 'C1' },
+          userId: 'user-1',
+          user: {
+            name: 'User 1',
+            image: null,
+            racerStats: [],
+          },
+          manualDriver: null,
+          teamId: 'team-1',
+          team: {
+            id: 'team-1',
+            name: 'Team Alpha',
+            alias: null,
+          },
+        },
+      ],
+      discordTeamsThreadId: null,
+      discordTeamThreads: { 'team-1': 'thread-123' }, // Team has Discord thread
+    }
+
+    const { container } = render(
+      <RaceDetails
+        race={mockRace}
+        userId="admin-user"
+        isAdmin
+        carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
+        teams={[{ id: 'team-1', name: 'Team Alpha' }]}
+        allDrivers={[]}
+      />
+    )
+
+    // Open the team assignment modal
+    const pickTeamsButton = screen.getByTestId('team-picker-trigger')
+    fireEvent.click(pickTeamsButton)
+
+    // Should show locked team name (not a button)
+    const lockedTeamNames = container.getElementsByClassName(styles.lockedTeamName)
+    expect(lockedTeamNames.length).toBeGreaterThan(0)
+
+    // Should NOT show team name button (dropdown)
+    const teamNameButtons = container.querySelectorAll(`.${styles.teamNameButton}`)
+    expect(teamNameButtons.length).toBe(0)
+
+    // Verify tooltip exists
+    const tooltips = container.getElementsByClassName(styles.lockedTooltip)
+    expect(tooltips.length).toBeGreaterThan(0)
+    expect(tooltips[0].textContent).toBe('Cannot change team - Discord thread exists')
+  })
+
+  it('should show dropdown button (not locked) when team has no Discord thread', () => {
+    const mockRace = {
+      id: 'race-no-discord',
+      startTime: new Date('2024-01-01T10:00:00Z'),
+      endTime: new Date('2024-01-01T12:00:00Z'),
+      teamsAssigned: true,
+      maxDriversPerTeam: 2,
+      teamAssignmentStrategy: 'BALANCED_IRATING' as const,
+      registrations: [
+        {
+          id: 'reg-1',
+          carClass: { id: 'class-1', name: 'Class 1', shortName: 'C1' },
+          userId: 'user-1',
+          user: {
+            name: 'User 1',
+            image: null,
+            racerStats: [],
+          },
+          manualDriver: null,
+          teamId: 'team-1',
+          team: {
+            id: 'team-1',
+            name: 'Team Alpha',
+            alias: null,
+          },
+        },
+      ],
+      discordTeamsThreadId: null,
+      discordTeamThreads: null, // No Discord threads
+    }
+
+    const { container } = render(
+      <RaceDetails
+        race={mockRace}
+        userId="admin-user"
+        isAdmin
+        carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
+        teams={[{ id: 'team-1', name: 'Team Alpha' }]}
+        allDrivers={[]}
+      />
+    )
+
+    // Should NOT show locked team name
+    const lockedTeamNames = container.getElementsByClassName(styles.lockedTeamName)
+    expect(lockedTeamNames.length).toBe(0)
+
+    // Should show team name button (dropdown) when modal is open
+    // Note: We need to check this doesn't show locked, the button won't be visible
+    // until the modal is opened, which requires clicking the "Pick Teams" button
+    const tooltips = container.querySelectorAll(
+      `.${styles.lockedTooltip}[role="tooltip"]`
+    ) as NodeListOf<HTMLElement>
+    const discordTooltips = Array.from(tooltips).filter((t) =>
+      t.textContent?.includes('Cannot change team - Discord thread exists')
+    )
+    expect(discordTooltips.length).toBe(0)
+  })
+
+  it('should show locked team for team with thread but allow dropdown for team without thread', () => {
+    const mockRace = {
+      id: 'race-mixed-threads',
+      startTime: new Date('2027-01-01T10:00:00Z'),
+      endTime: new Date('2027-01-01T12:00:00Z'),
+      teamsAssigned: true,
+      maxDriversPerTeam: 2,
+      teamAssignmentStrategy: 'BALANCED_IRATING' as const,
+      registrations: [
+        {
+          id: 'reg-1',
+          carClass: { id: 'class-1', name: 'Class 1', shortName: 'C1' },
+          userId: 'user-1',
+          user: {
+            name: 'User 1',
+            image: null,
+            racerStats: [],
+          },
+          manualDriver: null,
+          teamId: 'team-1',
+          team: {
+            id: 'team-1',
+            name: 'Team Alpha',
+            alias: null,
+          },
+        },
+        {
+          id: 'reg-2',
+          carClass: { id: 'class-1', name: 'Class 1', shortName: 'C1' },
+          userId: 'user-2',
+          user: {
+            name: 'User 2',
+            image: null,
+            racerStats: [],
+          },
+          manualDriver: null,
+          teamId: 'team-2',
+          team: {
+            id: 'team-2',
+            name: 'Team Beta',
+            alias: null,
+          },
+        },
+      ],
+      discordTeamsThreadId: null,
+      discordTeamThreads: { 'team-1': 'thread-123' }, // Only team-1 has thread
+    }
+
+    const { container } = render(
+      <RaceDetails
+        race={mockRace}
+        userId="admin-user"
+        isAdmin
+        carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
+        teams={[
+          { id: 'team-1', name: 'Team Alpha' },
+          { id: 'team-2', name: 'Team Beta' },
+        ]}
+        allDrivers={[]}
+      />
+    )
+
+    // Open the team assignment modal
+    const pickTeamsButton = screen.getByTestId('team-picker-trigger')
+    fireEvent.click(pickTeamsButton)
+
+    // Should show one locked team name (for team-1)
+    const lockedTeamNames = container.getElementsByClassName(styles.lockedTeamName)
+    expect(lockedTeamNames.length).toBe(1)
+
+    // Verify the locked team shows the correct tooltip
+    const tooltips = container.getElementsByClassName(styles.lockedTooltip)
+    expect(tooltips.length).toBeGreaterThan(0)
+    const discordTooltip = Array.from(tooltips).find((t) =>
+      t.textContent?.includes('Cannot change team - Discord thread exists')
+    )
+    expect(discordTooltip).toBeDefined()
   })
 })

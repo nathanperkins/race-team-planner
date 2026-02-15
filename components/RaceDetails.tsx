@@ -723,6 +723,14 @@ export default function RaceDetails({
     ]
   )
 
+  const hasDiscordThread = useCallback(
+    (teamId: string) => {
+      const threadMap = race.discordTeamThreads as Record<string, string> | null
+      return !!(threadMap && threadMap[teamId])
+    },
+    [race.discordTeamThreads]
+  )
+
   const initializeLockedTeams = useCallback(() => {
     if (!teamsAssigned) {
       setLockedTeamIds(new Set())
@@ -1896,103 +1904,112 @@ export default function RaceDetails({
             <div className={styles.teamHeaderContent}>
               <div className={styles.teamHeaderRow}>
                 {allowAdminEdits && isTeamModalOpen && teamId !== 'unassigned' ? (
-                  <div
-                    className={styles.teamNamePicker}
-                    ref={teamPickerId === teamId ? teamPickerRef : null}
-                  >
-                    <button
-                      type="button"
-                      className={styles.teamNameButton}
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        if (isLocked) return
-                        if (teamPickerId === teamId) {
-                          closeTeamPicker()
-                        } else {
-                          openTeamPicker(teamId)
-                        }
-                      }}
-                      title="Change team"
-                      disabled={isLocked}
-                    >
-                      <span className={styles.teamNameText}>
-                        {unassignedLabel ?? getTeamLabel(teamId)}
+                  hasDiscordThread(teamId) ? (
+                    <div className={styles.lockedTeamName}>
+                      <span>{unassignedLabel ?? getTeamLabel(teamId)}</span>
+                      <span className={styles.lockedTooltip} role="tooltip">
+                        Cannot change team - Discord thread exists
                       </span>
-                      <ChevronDown size={12} />
-                    </button>
-                    {teamPickerId === teamId && !isLocked && (
-                      <div className={styles.teamPickerDropdown}>
-                        <input
-                          className={styles.teamPickerInput}
-                          placeholder="Search teams..."
-                          value={teamPickerQuery}
-                          onChange={(event) => setTeamPickerQuery(event.target.value)}
-                          autoFocus
-                        />
-                        <div className={styles.teamPickerList}>
-                          {(() => {
-                            const usedTeamIds = new Set<string>()
-                            pendingRegistrations.forEach((reg) => {
-                              const id = reg.teamId ?? reg.team?.id
-                              if (id) usedTeamIds.add(id)
-                            })
-                            revealedTeamIds.forEach((id) => usedTeamIds.add(id))
-                            const availableTeams = teams.filter(
-                              (team) => !usedTeamIds.has(team.id) || team.id === teamId
-                            )
-                            const rawQuery = teamPickerQuery.trim()
-                            const queryLower = rawQuery.toLowerCase()
-                            const filteredTeams = queryLower
-                              ? availableTeams.filter((team) =>
-                                  team.name.toLowerCase().includes(queryLower)
-                                )
-                              : availableTeams
-                            const hasExactMatch = availableTeams.some(
-                              (team) => team.name.toLowerCase() === queryLower
-                            )
-
-                            if (filteredTeams.length === 0 && !rawQuery) {
-                              return (
-                                <div className={styles.teamPickerEmpty}>No teams available</div>
+                    </div>
+                  ) : (
+                    <div
+                      className={styles.teamNamePicker}
+                      ref={teamPickerId === teamId ? teamPickerRef : null}
+                    >
+                      <button
+                        type="button"
+                        className={styles.teamNameButton}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          if (isLocked) return
+                          if (teamPickerId === teamId) {
+                            closeTeamPicker()
+                          } else {
+                            openTeamPicker(teamId)
+                          }
+                        }}
+                        title="Change team"
+                        disabled={isLocked}
+                      >
+                        <span className={styles.teamNameText}>
+                          {unassignedLabel ?? getTeamLabel(teamId)}
+                        </span>
+                        <ChevronDown size={12} />
+                      </button>
+                      {teamPickerId === teamId && !isLocked && (
+                        <div className={styles.teamPickerDropdown}>
+                          <input
+                            className={styles.teamPickerInput}
+                            placeholder="Search teams..."
+                            value={teamPickerQuery}
+                            onChange={(event) => setTeamPickerQuery(event.target.value)}
+                            autoFocus
+                          />
+                          <div className={styles.teamPickerList}>
+                            {(() => {
+                              const usedTeamIds = new Set<string>()
+                              pendingRegistrations.forEach((reg) => {
+                                const id = reg.teamId ?? reg.team?.id
+                                if (id) usedTeamIds.add(id)
+                              })
+                              revealedTeamIds.forEach((id) => usedTeamIds.add(id))
+                              const availableTeams = teams.filter(
+                                (team) => !usedTeamIds.has(team.id) || team.id === teamId
                               )
-                            }
+                              const rawQuery = teamPickerQuery.trim()
+                              const queryLower = rawQuery.toLowerCase()
+                              const filteredTeams = queryLower
+                                ? availableTeams.filter((team) =>
+                                    team.name.toLowerCase().includes(queryLower)
+                                  )
+                                : availableTeams
+                              const hasExactMatch = availableTeams.some(
+                                (team) => team.name.toLowerCase() === queryLower
+                              )
 
-                            return (
-                              <>
-                                {filteredTeams.map((team) => (
-                                  <button
-                                    key={team.id}
-                                    type="button"
-                                    className={styles.teamPickerItem}
-                                    onClick={() =>
-                                      replaceTeamAssignments(teamId, team.id, team.name)
-                                    }
-                                  >
-                                    {team.name}
-                                  </button>
-                                ))}
-                                {rawQuery && !hasExactMatch && (
-                                  <button
-                                    type="button"
-                                    className={styles.teamPickerCreate}
-                                    onClick={() => {
-                                      const created = createTempTeam(rawQuery)
-                                      replaceTeamAssignments(teamId, created.id, created.name)
-                                    }}
-                                  >
-                                    Create &quot;{rawQuery}&quot;
-                                  </button>
-                                )}
-                                {filteredTeams.length === 0 && rawQuery && hasExactMatch && (
+                              if (filteredTeams.length === 0 && !rawQuery) {
+                                return (
                                   <div className={styles.teamPickerEmpty}>No teams available</div>
-                                )}
-                              </>
-                            )
-                          })()}
+                                )
+                              }
+
+                              return (
+                                <>
+                                  {filteredTeams.map((team) => (
+                                    <button
+                                      key={team.id}
+                                      type="button"
+                                      className={styles.teamPickerItem}
+                                      onClick={() =>
+                                        replaceTeamAssignments(teamId, team.id, team.name)
+                                      }
+                                    >
+                                      {team.name}
+                                    </button>
+                                  ))}
+                                  {rawQuery && !hasExactMatch && (
+                                    <button
+                                      type="button"
+                                      className={styles.teamPickerCreate}
+                                      onClick={() => {
+                                        const created = createTempTeam(rawQuery)
+                                        replaceTeamAssignments(teamId, created.id, created.name)
+                                      }}
+                                    >
+                                      Create &quot;{rawQuery}&quot;
+                                    </button>
+                                  )}
+                                  {filteredTeams.length === 0 && rawQuery && hasExactMatch && (
+                                    <div className={styles.teamPickerEmpty}>No teams available</div>
+                                  )}
+                                </>
+                              )
+                            })()}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
+                      )}
+                    </div>
+                  )
                 ) : (
                   <span>{unassignedLabel ?? getTeamLabel(teamId)}</span>
                 )}

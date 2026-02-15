@@ -45,13 +45,14 @@ describe('batchAssignTeams', () => {
     const raceId = 'race-123'
     const carClassId = 'class-gt3'
 
-    // Mock the race with existing snapshot
+    // Mock the race with existing snapshot and no Discord threads
     vi.mocked(prisma.race.findUnique).mockResolvedValue({
       id: raceId,
       teamsAssigned: true,
       discordTeamsSnapshot: {
         'reg-1': { teamId: 'team-1', driverName: 'Alice' },
       },
+      discordTeamThreads: null,
     } as any)
 
     // Mock the transaction to execute successfully
@@ -62,6 +63,7 @@ describe('batchAssignTeams', () => {
     // Mock the update to succeed
     vi.mocked(prisma as any).registration = {
       update: vi.fn().mockResolvedValue({}),
+      findUnique: vi.fn().mockResolvedValue({ teamId: null }),
     }
     vi.mocked(prisma.race as any).update = vi.fn().mockResolvedValue({})
 
@@ -79,13 +81,21 @@ describe('batchAssignTeams', () => {
     const raceId = 'race-123'
     const carClassId = 'class-gt3'
 
+    // Mock race with no Discord threads
+    vi.mocked(prisma.race.findUnique).mockResolvedValue({
+      id: raceId,
+      discordTeamThreads: null,
+    } as any)
+
     vi.mocked(prisma.$transaction).mockImplementation(async (callback) => {
       return callback(prisma as any)
     })
 
     const mockUpdate = vi.fn().mockResolvedValue({})
+    const mockFindUnique = vi.fn().mockResolvedValue({ teamId: null })
     vi.mocked(prisma as any).registration = {
       update: mockUpdate,
+      findUnique: mockFindUnique,
     }
     vi.mocked(prisma.race as any).update = vi.fn().mockResolvedValue({})
 
@@ -107,6 +117,12 @@ describe('batchAssignTeams', () => {
   it('inherits car class from team when creating new manual driver', async () => {
     const raceId = 'race-123'
     const carClassId = 'class-gt3'
+
+    // Mock race with no Discord threads
+    vi.mocked(prisma.race.findUnique).mockResolvedValue({
+      id: raceId,
+      discordTeamThreads: null,
+    } as any)
 
     vi.mocked(prisma.$transaction).mockImplementation(async (callback) => {
       return callback(prisma as any)
@@ -155,6 +171,12 @@ describe('batchAssignTeams', () => {
     const raceId = 'race-123'
     const carClassId = 'class-gt3'
 
+    // Mock race with no Discord threads
+    vi.mocked(prisma.race.findUnique).mockResolvedValue({
+      id: raceId,
+      discordTeamThreads: null,
+    } as any)
+
     vi.mocked(prisma.$transaction).mockImplementation(async (callback) => {
       return callback(prisma as any)
     })
@@ -202,12 +224,19 @@ describe('batchAssignTeams', () => {
     const raceId = 'race-123'
     const carClassId = 'class-gt3'
 
+    // Mock race with no Discord threads
+    vi.mocked(prisma.race.findUnique).mockResolvedValue({
+      id: raceId,
+      discordTeamThreads: null,
+    } as any)
+
     vi.mocked(prisma.$transaction).mockImplementation(async (callback) => {
       return callback(prisma as any)
     })
 
     const mockUpdate = vi.fn().mockResolvedValue({})
     const mockCreate = vi.fn().mockResolvedValue({})
+    const mockFindUnique = vi.fn().mockResolvedValue({ teamId: null })
     const mockFindFirst = vi
       .fn()
       // First call: find manual driver (returns null, will create)
@@ -221,6 +250,7 @@ describe('batchAssignTeams', () => {
     }
     vi.mocked(prisma as any).registration = {
       update: mockUpdate,
+      findUnique: mockFindUnique,
       findFirst: mockFindFirst,
       create: mockCreate,
     }
@@ -265,6 +295,12 @@ describe('batchAssignTeams', () => {
     const raceId = 'race-123'
     const carClassId = 'class-gt3'
 
+    // Mock race with no Discord threads
+    vi.mocked(prisma.race.findUnique).mockResolvedValue({
+      id: raceId,
+      discordTeamThreads: null,
+    } as any)
+
     vi.mocked(prisma.$transaction).mockImplementation(async (callback) => {
       return callback(prisma as any)
     })
@@ -274,6 +310,7 @@ describe('batchAssignTeams', () => {
 
     vi.mocked(prisma as any).registration = {
       update: mockUpdate,
+      findUnique: vi.fn().mockResolvedValue({ teamId: null }),
     }
     vi.mocked(prisma.race as any).update = mockRaceUpdate
 
