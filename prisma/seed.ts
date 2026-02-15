@@ -1,10 +1,14 @@
 import { PrismaClient } from '@prisma/client'
+import { dateWithTime } from '../lib/date-utils'
+
 const prisma = new PrismaClient()
 
 async function main() {
   const sebringId = 'cmk4taiyi0000kko837utrgwg'
   const daytonaId = 'cmk4taiyo0001kko8vmdko9av'
 
+  // Future event: 30 days from now at 2:00 PM
+  const sebringStart = dateWithTime(30, 14, 0)
   const sebring = await prisma.event.upsert({
     where: { id: sebringId },
     update: {
@@ -18,8 +22,8 @@ async function main() {
       id: sebringId,
       name: '[MOCK] Sebring 12hr',
       track: 'Mock Raceway Park',
-      startTime: new Date('2026-03-20T14:00:00Z'),
-      endTime: new Date('2026-03-21T02:00:00Z'),
+      startTime: sebringStart,
+      endTime: new Date(sebringStart.getTime() + 12 * 60 * 60 * 1000), // +12 hours
       description:
         'THIS IS MOCK DATA. The classic 12 hour endurance race around the bumps of Sebring.',
       tempValue: 78,
@@ -37,22 +41,26 @@ async function main() {
     create: {
       eventId: sebring.id,
       startTime: sebring.startTime,
-      endTime: new Date('2026-03-21T02:00:00Z'),
+      endTime: new Date(sebringStart.getTime() + 12 * 60 * 60 * 1000),
     },
   })
 
+  // Second race slot: 31 days from now at 6:00 AM
+  const sebringRace2Start = dateWithTime(31, 6, 0)
   const sebringRace2 = await prisma.race.upsert({
     where: {
-      eventId_startTime: { eventId: sebring.id, startTime: new Date('2026-03-21T06:00:00Z') },
+      eventId_startTime: { eventId: sebring.id, startTime: sebringRace2Start },
     },
     update: {},
     create: {
       eventId: sebring.id,
-      startTime: new Date('2026-03-21T06:00:00Z'),
-      endTime: new Date('2026-03-21T18:00:00Z'),
+      startTime: sebringRace2Start,
+      endTime: new Date(sebringRace2Start.getTime() + 12 * 60 * 60 * 1000),
     },
   })
 
+  // Completed event: 1 day ago at 10:40 AM
+  const daytonaStart = dateWithTime(-1, 10, 40)
   const daytona = await prisma.event.upsert({
     where: { id: daytonaId },
     update: {
@@ -64,8 +72,8 @@ async function main() {
       id: daytonaId,
       name: '[MOCK] Daytona 24hr',
       track: 'Simulated Speedway',
-      startTime: new Date('2026-01-24T18:40:00Z'),
-      endTime: new Date('2026-01-25T18:40:00Z'),
+      startTime: daytonaStart, // 1 day ago (completed)
+      endTime: new Date(daytonaStart.getTime() + 12 * 60 * 60 * 1000), // +12 hours
       description: 'THIS IS MOCK DATA. The start of the IMSA season, twice around the clock.',
       tempValue: 68,
       tempUnits: 0,
@@ -81,19 +89,20 @@ async function main() {
     create: {
       eventId: daytona.id,
       startTime: daytona.startTime,
-      endTime: new Date('2026-01-25T18:40:00Z'),
+      endTime: new Date(daytonaStart.getTime() + 12 * 60 * 60 * 1000),
     },
   })
 
+  const daytonaRace2Start = new Date(daytonaStart.getTime() + 6 * 60 * 60 * 1000) // +6 hours from race 1
   const daytonaRace2 = await prisma.race.upsert({
     where: {
-      eventId_startTime: { eventId: daytona.id, startTime: new Date('2026-01-25T06:40:00Z') },
+      eventId_startTime: { eventId: daytona.id, startTime: daytonaRace2Start },
     },
     update: {},
     create: {
       eventId: daytona.id,
-      startTime: new Date('2026-01-25T06:40:00Z'),
-      endTime: new Date('2026-01-26T06:40:00Z'),
+      startTime: daytonaRace2Start,
+      endTime: new Date(daytonaRace2Start.getTime() + 18 * 60 * 60 * 1000),
     },
   })
 
@@ -247,6 +256,25 @@ async function main() {
       raceId: daytonaRace1.id,
       carClassId: gt3.id,
       notes: 'Any GT3 car works.',
+    },
+  })
+
+  await prisma.registration.upsert({
+    where: {
+      userId_raceId: {
+        userId: bob.id,
+        raceId: sebringRace1.id,
+      },
+    },
+    update: {
+      carClassId: gt3.id,
+      notes: 'Looking forward to this one!',
+    },
+    create: {
+      userId: bob.id,
+      raceId: sebringRace1.id,
+      carClassId: gt3.id,
+      notes: 'Looking forward to this one!',
     },
   })
 
@@ -660,6 +688,8 @@ async function main() {
   })
 
   const pastSebringId = 'past_sebring_2025'
+  // Old completed event: 30 days ago at 7:00 AM
+  const pastSebringStart = dateWithTime(-30, 7, 0)
   const pastSebring = await prisma.event.upsert({
     where: { id: pastSebringId },
     update: {
@@ -671,8 +701,8 @@ async function main() {
       id: pastSebringId,
       name: '[MOCK] Sebring 12hr (2025)',
       track: 'Mock Raceway Park',
-      startTime: new Date('2025-03-15T14:00:00Z'),
-      endTime: new Date('2025-03-16T02:00:00Z'),
+      startTime: pastSebringStart, // 1 month ago (completed)
+      endTime: new Date(pastSebringStart.getTime() + 12 * 60 * 60 * 1000), // +12 hours
       description: "THIS IS MOCK DATA. Last year's classic.",
     },
   })

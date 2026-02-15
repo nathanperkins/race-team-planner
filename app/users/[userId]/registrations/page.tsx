@@ -10,13 +10,15 @@ import styles from './registrations.module.css'
 
 interface Props {
   params: Promise<{ userId: string }>
+  searchParams?: Promise<{ showCompleted?: string }>
 }
 
-export default async function UserRegistrationsPage({ params }: Props) {
+export default async function UserRegistrationsPage({ params, searchParams }: Props) {
   const session = await auth()
   if (!session) redirect('/login')
 
   const { userId } = await params
+  const { showCompleted } = (await searchParams) || {}
   const isAdmin = session.user?.role === 'ADMIN'
 
   const user = await prisma.user.findUnique({
@@ -29,8 +31,24 @@ export default async function UserRegistrationsPage({ params }: Props) {
     notFound()
   }
 
+  // Calculate cutoff date for filtering
+  const now = new Date()
+  const showAllCompleted = showCompleted === 'true'
+  const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+
+  // By default: show upcoming + past week of completed
+  // showCompleted=true: show ALL events (no filtering)
   const registrations = await prisma.registration.findMany({
-    where: { userId },
+    where: showAllCompleted
+      ? { userId }
+      : {
+          userId,
+          race: {
+            endTime: {
+              gte: oneWeekAgo,
+            },
+          },
+        },
     include: {
       race: {
         include: {
@@ -47,7 +65,7 @@ export default async function UserRegistrationsPage({ params }: Props) {
     },
     orderBy: {
       race: {
-        startTime: 'desc',
+        startTime: 'asc',
       },
     },
   })
@@ -60,6 +78,18 @@ export default async function UserRegistrationsPage({ params }: Props) {
         </h1>
       </header>
 
+      <div className={styles.subtitle}>
+        {showAllCompleted
+          ? 'Showing all events including old completed events.'
+          : 'Showing upcoming events and completed events from the past week.'}
+        <Link
+          href={`/users/${userId}/registrations${showAllCompleted ? '' : '?showCompleted=true'}`}
+          className={styles.toggleLink}
+        >
+          {showAllCompleted ? 'Hide old completed events' : 'Show all completed events'}
+        </Link>
+      </div>
+
       <div className={styles.tableCard}>
         {registrations.length === 0 ? (
           <p className={styles.emptyText}>No registrations found for {user.name}.</p>
@@ -70,7 +100,6 @@ export default async function UserRegistrationsPage({ params }: Props) {
                 <tr>
                   <th className={styles.th}>Event</th>
                   <th className={styles.th}>Race Time</th>
-                  <th className={styles.th}>Track</th>
                   <th className={styles.th}>Car Class</th>
                   <th className={styles.th}>Team</th>
                   {(userId === session.user?.id || session.user?.role === 'ADMIN') && (
