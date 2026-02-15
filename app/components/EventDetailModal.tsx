@@ -12,7 +12,7 @@ import {
   Calendar,
   Car,
 } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import RaceDetails from '@/components/RaceDetails'
 import EditEventButton from '@/app/admin/EditEventButton'
 import {
@@ -83,6 +83,22 @@ export default function EventDetailModal({
   const isEligible = isLicenseEligible(userLicenseLevel, license)
 
   const isAnyDropdownOpen = Object.values(openDropdowns).some(Boolean)
+  const displayRaces = useMemo(() => {
+    const currentTime = new Date().getTime()
+    const activeOrUpcoming: EventWithRaces['races'] = []
+    const completed: EventWithRaces['races'] = []
+
+    event.races.forEach((race) => {
+      const endTimeMs = new Date(race.endTime).getTime()
+      if (Number.isNaN(endTimeMs) || endTimeMs >= currentTime) {
+        activeOrUpcoming.push(race)
+      } else {
+        completed.push(race)
+      }
+    })
+
+    return [...activeOrUpcoming, ...completed]
+  }, [event.races])
 
   const handleDropdownToggle = useCallback((raceId: string, open: boolean) => {
     setOpenDropdowns((prev) => {
@@ -178,7 +194,7 @@ export default function EventDetailModal({
             </div>
 
             <div className={styles.carClassList}>
-              {event.races.map((race, idx) => (
+              {displayRaces.map((race, idx) => (
                 <span key={race.id} className={styles.carClassTag}>
                   <Calendar size={14} />{' '}
                   {new Date(race.startTime).toLocaleDateString('en-US', {
@@ -189,7 +205,7 @@ export default function EventDetailModal({
                   {new Date(race.startTime).toLocaleTimeString('en-US', {
                     hour: 'numeric',
                     minute: '2-digit',
-                    timeZoneName: idx === event.races.length - 1 ? 'short' : undefined,
+                    timeZoneName: idx === displayRaces.length - 1 ? 'short' : undefined,
                   })}
                 </span>
               ))}
@@ -244,7 +260,7 @@ export default function EventDetailModal({
 
             {/* Race Sessions */}
             <div className={styles.racesSection}>
-              {event.races.map((race) => (
+              {displayRaces.map((race) => (
                 <RaceDetails
                   key={race.id}
                   race={race}

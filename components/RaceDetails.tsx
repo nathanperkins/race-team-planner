@@ -1996,36 +1996,6 @@ export default function RaceDetails({
                 ) : (
                   <span>{unassignedLabel ?? getTeamLabel(teamId)}</span>
                 )}
-                {teamId !== 'unassigned' && (
-                  <div style={{ marginLeft: 'auto' }}>
-                    {(() => {
-                      const guildId = discordGuildId
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      const threads = race.discordTeamThreads as any
-                      const threadId = threads?.[teamId]
-                      if (guildId && threadId) {
-                        return (
-                          <a
-                            href={buildDiscordAppLink({ guildId, threadId })}
-                            className={styles.discordLink}
-                            title="Join the team discussion on Discord"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <DiscussionIcon size={16} />
-                          </a>
-                        )
-                      }
-                      return (
-                        <span
-                          className={`${styles.discordLink} ${styles.discordLinkInactive}`}
-                          title="The team thread has not been generated yet"
-                        >
-                          <DiscussionIcon size={16} />
-                        </span>
-                      )
-                    })()}
-                  </div>
-                )}
               </div>
               {teamId !== 'unassigned' && (
                 <div className={styles.teamGroupMeta}>
@@ -2064,31 +2034,61 @@ export default function RaceDetails({
                 </div>
               )}
             </div>
-            {allowAdminEdits && teamId !== 'unassigned' && (
-              <div className={styles.teamHeaderActions}>
-                <button
-                  type="button"
-                  className={`${styles.teamLockButton} ${
-                    isTeamLocked(teamId) ? styles.teamLockActive : ''
-                  }`}
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    toggleTeamLock(teamId)
-                  }}
-                  title={isTeamLocked(teamId) ? 'Unlock team' : 'Lock team'}
-                >
-                  {isTeamLocked(teamId) ? <Lock size={12} /> : <Unlock size={12} />}
-                </button>
-                {includeAddTeam && canAssignTeams && (
-                  <button
-                    type="button"
-                    className={styles.teamRemoveButton}
-                    onClick={() => removeTeam(teamId)}
-                    title="Remove team"
-                    disabled={isLocked}
-                  >
-                    <Trash2 size={14} />
-                  </button>
+            {teamId !== 'unassigned' && (
+              <div className={styles.teamHeaderRight}>
+                {(() => {
+                  const guildId = discordGuildId
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  const threads = race.discordTeamThreads as any
+                  const threadId = threads?.[teamId]
+                  if (guildId && threadId) {
+                    return (
+                      <a
+                        href={buildDiscordAppLink({ guildId, threadId })}
+                        className={`${styles.discordLink} ${styles.teamThreadLink}`}
+                        title="Join the team discussion on Discord"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <DiscussionIcon size={16} />
+                      </a>
+                    )
+                  }
+                  return (
+                    <span
+                      className={`${styles.discordLink} ${styles.discordLinkInactive} ${styles.teamThreadLink}`}
+                      title="The team thread has not been generated yet"
+                    >
+                      <DiscussionIcon size={16} />
+                    </span>
+                  )
+                })()}
+                {allowAdminEdits && (
+                  <div className={styles.teamHeaderActions}>
+                    <button
+                      type="button"
+                      className={`${styles.teamLockButton} ${
+                        isTeamLocked(teamId) ? styles.teamLockActive : ''
+                      }`}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        toggleTeamLock(teamId)
+                      }}
+                      title={isTeamLocked(teamId) ? 'Unlock team' : 'Lock team'}
+                    >
+                      {isTeamLocked(teamId) ? <Lock size={12} /> : <Unlock size={12} />}
+                    </button>
+                    {includeAddTeam && canAssignTeams && (
+                      <button
+                        type="button"
+                        className={styles.teamRemoveButton}
+                        onClick={() => removeTeam(teamId)}
+                        title="Remove team"
+                        disabled={isLocked}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             )}
@@ -2278,29 +2278,33 @@ export default function RaceDetails({
   }
 
   return (
-    <div className={styles.raceCard} data-timeslot-tile>
+    <div
+      className={`${styles.raceCard} ${isRaceCompleted ? styles.raceCardCompleted : ''}`}
+      data-timeslot-tile
+    >
       <div className={styles.raceCardContent}>
         <div className={styles.raceHeader}>
-          <h4 className={styles.raceTitle}>
-            Timeslot:{' '}
-            {new Intl.DateTimeFormat('en-US', {
-              month: 'numeric',
-              day: 'numeric',
-            }).format(race.startTime)}{' '}
-            {' \u2022 '}
-            {new Intl.DateTimeFormat('en-US', {
-              hour: 'numeric',
-              minute: '2-digit',
-              timeZoneName: 'short',
-            }).format(race.startTime)}
-          </h4>
-          {isRaceLive && (
-            <span className={styles.liveBadge}>
-              <span className={styles.liveDot} />
-              LIVE
-            </span>
-          )}
-          {isRaceCompleted && <span className={styles.completedBadge}>Completed</span>}
+          <div className={styles.raceHeaderLeft}>
+            <h4 className={styles.raceTitle}>
+              Timeslot:{' '}
+              {new Intl.DateTimeFormat('en-US', {
+                month: 'numeric',
+                day: 'numeric',
+              }).format(race.startTime)}{' '}
+              {' \u2022 '}
+              {new Intl.DateTimeFormat('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                timeZoneName: 'short',
+              }).format(race.startTime)}
+            </h4>
+            {isRaceLive && (
+              <span className={styles.liveBadge}>
+                <span className={styles.liveDot} />
+                LIVE
+              </span>
+            )}
+          </div>
           {(() => {
             const guildId = discordGuildId
             const threadId = race.discordTeamsThreadId
@@ -2318,7 +2322,6 @@ export default function RaceDetails({
             return (
               <span
                 className={`${styles.discordLink} ${styles.discordLinkInactive}`}
-                style={{ marginLeft: '12px' }}
                 title="The event thread has not been generated yet"
               >
                 <DiscussionIcon size={20} />
@@ -2646,6 +2649,11 @@ export default function RaceDetails({
           </div>
         )}
       </div>
+      {isRaceCompleted && (
+        <div className={styles.raceCardOverlay}>
+          <span className={styles.raceCardOverlayLabel}>Timeslot Completed</span>
+        </div>
+      )}
     </div>
   )
 }
