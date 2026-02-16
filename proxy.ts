@@ -39,7 +39,7 @@ export const handleProxy = (req: NextRequest & { auth: Session | null }) => {
     const status = getOnboardingStatus(session)
     const targetPath = ONBOARDING_PATHS[status]
 
-    logger.info(`Path: ${nextUrl.pathname}, Status: ${status}, Target: ${targetPath}`)
+    logger.debug(`Path: ${nextUrl.pathname}, Status: ${status}, Target: ${targetPath}`)
 
     if (targetPath && nextUrl.pathname !== targetPath) {
       logger.info(`Onboarding tunnel: State ${status}. Forcing redirect to ${targetPath}`)

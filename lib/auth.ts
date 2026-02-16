@@ -71,10 +71,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
       // 2. Auto-heal: Refresh from DB if info is missing OR if we're explicitly updating.
       if (token.id && shouldRefreshUser(token, trigger)) {
-        logger.info(`Refreshing data for user ${token.id} (trigger: ${trigger})`)
+        logger.debug(`Refreshing data for user ${token.id} (trigger: ${trigger})`)
         const dbUser = await refreshUserData(token.id as string)
         if (dbUser) {
-          logger.info(`Found DB user. ID: ${dbUser.iracingCustomerId}, Role: ${dbUser.role}`)
+          logger.debug(`Found DB user. ID: ${dbUser.iracingCustomerId}, Role: ${dbUser.role}`)
           token.role = dbUser.role
           token.iracingCustomerId = dbUser.iracingCustomerId
           token.expectationsVersion = dbUser.expectationsVersion
