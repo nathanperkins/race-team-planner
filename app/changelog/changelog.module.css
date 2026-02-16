@@ -103,6 +103,17 @@
   color: #ff79c6;
 }
 
+.content :global(a) {
+  color: #5b9eff;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.content :global(a:hover) {
+  color: #7db3ff;
+  text-decoration: underline;
+}
+
 @media (max-width: 768px) {
   .main {
     padding: 1rem;

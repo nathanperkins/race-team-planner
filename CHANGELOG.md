@@ -6,7 +6,7 @@ The most notable changes to this project are documented here.
 
 **Released on <time datetime="2026-02-16">February 16, 2026</time>**
 
-All work completed by **[Nathan]**, **[Steven]**, and **[Kaelan]**.
+47 issues completed for [Version 1.1] by [Nathan], **[Steven]**, and **[Kaelan]**.
 
 ### Highlights
 
@@ -39,7 +39,7 @@ Version 1.1 focuses on improving the Discord notification system, enhancing race
 
 #### Notification Fixes
 
-- **Drop notifications** - Fixed missing notifications when drivers drop from registrations or teams ([#61](https://github.com/nathanperkins/race-team-planner/issues/61) by [Steven], [#64](https://github.com/nathanperkins/race-team-planner/issues/64) by [Steven])
+- **Drop notifications** - Fixed missing notifications when drivers drop from registrations or teams ([#61](https://github.com/nathanperkins/race-team-planner/issues/61), [#64](https://github.com/nathanperkins/race-team-planner/issues/64) by [Steven])
 - **Car class changes** - Changing a team's car class now properly updates and sends notifications ([#62](https://github.com/nathanperkins/race-team-planner/issues/62) by [Nathan])
 - **Empty event handling** - Fixed notification errors when teams are picked for events with no registrations ([#63](https://github.com/nathanperkins/race-team-planner/issues/63) by [Steven])
 
@@ -54,7 +54,7 @@ Version 1.1 focuses on improving the Discord notification system, enhancing race
 ### Events Page
 
 - **Registration badges** - Events you're registered for now show a clear "Registered" badge in the events list ([#18](https://github.com/nathanperkins/race-team-planner/issues/18) by [Nathan])
-- **Completed event handling** - Improved visibility of completed races with dimmed styling and sorted to bottom of list ([#75](https://github.com/nathanperkins/race-team-planner/issues/75) by [Steven], [#82](https://github.com/nathanperkins/race-team-planner/issues/82) by [Steven])
+- **Completed event handling** - Improved visibility of completed races with dimmed styling and sorted to bottom of list ([#75](https://github.com/nathanperkins/race-team-planner/issues/75), [#82](https://github.com/nathanperkins/race-team-planner/issues/82) by [Steven])
 - **Change class button** - Re-added the ability to change car class from event details page, avoiding the drop/re-add workflow and enabling better Discord notifications ([#42](https://github.com/nathanperkins/race-team-planner/issues/42) by [Steven])
 - **UI refinements** - Removed dropdown triangle from "Pick Teams" button since it's now a single-click action ([#41](https://github.com/nathanperkins/race-team-planner/issues/41) by [Steven])
 - **Simplified controls** - Moved complex admin controls to team picker, streamlined event page for cleaner interface ([#9](https://github.com/nathanperkins/race-team-planner/issues/9) by [Steven])
@@ -85,7 +85,7 @@ Version 1.1 focuses on improving the Discord notification system, enhancing race
 
 **Released on <time datetime="2026-02-09">February 9, 2026</time>**
 
-All work completed by **[Nathan]** and **[Steven]**.
+All work completed by [Nathan] and **[Steven]**.
 
 ### Feedback Results
 
@@ -133,3 +133,4 @@ Thanks to our testers for these suggestions and bug reports!
 [Kaelan]: https://github.com/klanmiko
 [Nathan]: https://github.com/nathanperkins
 [Steven]: https://github.com/stevencase243
+[Version 1.1]: https://github.com/nathanperkins/race-team-planner/milestone/1
