@@ -21,6 +21,7 @@ import {
 // Mock prisma
 vi.mock('@/lib/prisma', () => ({
   default: {
+    $transaction: vi.fn((promises: any[]) => Promise.all(promises)),
     race: {
       findUnique: vi.fn(),
       findFirst: vi.fn(),
@@ -44,6 +45,8 @@ vi.mock('@/lib/prisma', () => ({
     },
     team: {
       findMany: vi.fn(),
+      update: vi.fn(),
+      create: vi.fn(),
     },
     event: {
       findUnique: vi.fn(),
@@ -1364,7 +1367,7 @@ describe('saveRaceEdits - Discord thread validation', () => {
     vi.clearAllMocks()
   })
 
-  it('prevents changing team assignment when current team has a Discord thread', async () => {
+  it('prevents renaming team when Discord thread exists', async () => {
     const mockSession = {
       user: { id: 'admin-1', role: 'ADMIN' },
       expires: '2026-12-31T23:59:59.999Z',
@@ -1385,16 +1388,16 @@ describe('saveRaceEdits - Discord thread validation', () => {
       discordTeamThreads: { 'team-1': 'thread-123' }, // team-1 has a thread
     } as any)
 
-    // Mock existing registration with team-1 assigned
-    vi.mocked(prisma.registration.findMany).mockResolvedValue([
+    // Mock existing teams
+    vi.mocked(prisma.team.findMany).mockResolvedValue([
       {
-        id: 'reg-1',
-        userId: 'user-1',
-        raceId: 'race-1',
-        teamId: 'team-1', // Current team
+        id: 'team-1',
+        name: 'Original Team Name',
+        iracingTeamId: 1001,
       },
     ] as any)
 
+    vi.mocked(prisma.registration.findMany).mockResolvedValue([])
     vi.mocked(prisma.registration.findFirst).mockResolvedValue(null)
 
     const formData = new FormData()
@@ -1402,30 +1405,21 @@ describe('saveRaceEdits - Discord thread validation', () => {
     formData.set('maxDriversPerTeam', '3')
     formData.set('teamAssignmentStrategy', 'BALANCED_IRATING')
     formData.set('applyRebalance', 'false')
-    formData.set(
-      'registrationUpdates',
-      JSON.stringify([
-        {
-          id: 'reg-1',
-          carClassId: 'class-1',
-          teamId: 'team-2', // Trying to change to team-2
-        },
-      ])
-    )
+    formData.set('registrationUpdates', '[]')
     formData.set('newTeams', '[]')
     formData.set('pendingAdditions', '[]')
     formData.set('pendingDrops', '[]')
-    formData.set('teamNameOverrides', '{}')
+    formData.set('teamNameOverrides', JSON.stringify({ 'team-1': 'New Team Name' }))
 
     const result = await saveRaceEdits(formData)
 
     expect(result.message).toBe(
-      'Cannot change team assignment: Discord thread already exists for this team'
+      'Cannot rename team: Discord thread already exists for this team. Team names are immutable after thread creation to prevent confusion.'
     )
-    expect(prisma.registration.update).not.toHaveBeenCalled()
+    expect(prisma.team.update).not.toHaveBeenCalled()
   })
 
-  it('allows changing team assignment when current team has no Discord thread', async () => {
+  it('allows moving drivers between teams even when source team has Discord thread', async () => {
     const mockSession = {
       user: { id: 'admin-1', role: 'ADMIN' },
       expires: '2026-12-31T23:59:59.999Z',
@@ -1433,7 +1427,7 @@ describe('saveRaceEdits - Discord thread validation', () => {
 
     vi.mocked(auth).mockResolvedValue(mockSession)
 
-    // Mock race with Discord threads for other teams
+    // Mock race with Discord threads
     vi.mocked(prisma.race.findUnique).mockResolvedValue({
       id: 'race-1',
       startTime: new Date('2026-03-01T20:00:00Z'),
@@ -1443,16 +1437,16 @@ describe('saveRaceEdits - Discord thread validation', () => {
       teamsAssigned: true,
       discordTeamsThreadId: null,
       discordTeamsSnapshot: null,
-      discordTeamThreads: { 'team-999': 'thread-999' }, // Different team has thread
+      discordTeamThreads: { 'team-1': 'thread-123' }, // team-1 has thread
     } as any)
 
-    // Mock existing registration with team-1 assigned (no thread)
+    // Mock existing registration with team-1 assigned
     vi.mocked(prisma.registration.findMany).mockResolvedValue([
       {
         id: 'reg-1',
         userId: 'user-1',
         raceId: 'race-1',
-        teamId: 'team-1', // Current team (no thread)
+        teamId: 'team-1', // Current team (has thread)
       },
     ] as any)
 
@@ -1471,7 +1465,7 @@ describe('saveRaceEdits - Discord thread validation', () => {
         {
           id: 'reg-1',
           carClassId: 'class-1',
-          teamId: 'team-2', // Changing to team-2 (allowed)
+          teamId: 'team-2', // Moving to team-2 (allowed - drivers can move between teams)
         },
       ])
     )
@@ -1482,7 +1476,7 @@ describe('saveRaceEdits - Discord thread validation', () => {
 
     await saveRaceEdits(formData)
 
-    // Should allow the update
+    // Should allow the update - drivers can move between teams
     expect(prisma.registration.update).toHaveBeenCalledWith({
       where: { id: 'reg-1' },
       data: {
@@ -1492,7 +1486,7 @@ describe('saveRaceEdits - Discord thread validation', () => {
     })
   })
 
-  it('allows keeping the same team assignment even when thread exists', async () => {
+  it('allows keeping the same team assignment when thread exists', async () => {
     const mockSession = {
       user: { id: 'admin-1', role: 'ADMIN' },
       expires: '2026-12-31T23:59:59.999Z',
@@ -1555,6 +1549,76 @@ describe('saveRaceEdits - Discord thread validation', () => {
       data: {
         carClassId: 'class-1',
         teamId: 'team-1',
+      },
+    })
+  })
+
+  it('allows removing driver from team (to unassigned) even when thread exists', async () => {
+    const mockSession = {
+      user: { id: 'admin-1', role: 'ADMIN' },
+      expires: '2026-12-31T23:59:59.999Z',
+    }
+
+    vi.mocked(auth).mockResolvedValue(mockSession)
+
+    // Mock race with Discord threads
+    vi.mocked(prisma.race.findUnique).mockResolvedValue({
+      id: 'race-1',
+      startTime: new Date('2026-03-01T20:00:00Z'),
+      endTime: new Date('2026-03-01T22:00:00Z'),
+      eventId: 'event-1',
+      maxDriversPerTeam: 3,
+      teamsAssigned: true,
+      discordTeamsThreadId: null,
+      discordTeamsSnapshot: null,
+      discordTeamThreads: { 'team-1': 'thread-123' }, // team-1 has a thread
+    } as any)
+
+    // Mock existing registration with team-1 assigned
+    vi.mocked(prisma.registration.findMany).mockResolvedValue([
+      {
+        id: 'reg-1',
+        userId: 'user-1',
+        raceId: 'race-1',
+        teamId: 'team-1', // Current team (has thread)
+      },
+    ] as any)
+
+    vi.mocked(prisma.registration.findFirst).mockResolvedValue(null)
+    vi.mocked(prisma.registration.update).mockResolvedValue({} as any)
+    vi.mocked(prisma.race.update).mockResolvedValue({} as any)
+
+    const formData = new FormData()
+    formData.set('raceId', 'race-1')
+    formData.set('maxDriversPerTeam', '3')
+    formData.set('teamAssignmentStrategy', 'BALANCED_IRATING')
+    formData.set('applyRebalance', 'false')
+    formData.set(
+      'registrationUpdates',
+      JSON.stringify([
+        {
+          id: 'reg-1',
+          carClassId: 'class-1',
+          teamId: null, // Removing from team (should be allowed)
+        },
+      ])
+    )
+    formData.set('newTeams', '[]')
+    formData.set('pendingAdditions', '[]')
+    formData.set('pendingDrops', '[]')
+    formData.set('teamNameOverrides', '{}')
+
+    const result = await saveRaceEdits(formData)
+
+    // Should allow the update (removing from team is always allowed)
+    expect(result.message).not.toBe(
+      'Cannot change team assignment: Discord thread already exists for this team'
+    )
+    expect(prisma.registration.update).toHaveBeenCalledWith({
+      where: { id: 'reg-1' },
+      data: {
+        carClassId: 'class-1',
+        teamId: null,
       },
     })
   })

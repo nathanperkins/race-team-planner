@@ -48,6 +48,7 @@ Thanks to our testers for [these suggestions and bug reports][Feedback 1]!
 #### Notification Fixes
 
 - **Drop notifications** - Fixed missing notifications when drivers drop from registrations or teams ([#61](https://github.com/nathanperkins/race-team-planner/issues/61), [#64](https://github.com/nathanperkins/race-team-planner/issues/64) by [Steven])
+- **Discussion post updates** - Event and team discussion posts now update when drivers drop from events, and unassigned drivers are properly shown ([#92](https://github.com/nathanperkins/race-team-planner/issues/92) by [Nathan])
 - **Car class changes** - Changing a team's car class now properly updates and sends notifications ([#62](https://github.com/nathanperkins/race-team-planner/issues/62) by [Nathan])
 - **Empty event handling** - Fixed notification errors when teams are picked for events with no registrations ([#63](https://github.com/nathanperkins/race-team-planner/issues/63) by [Steven])
 
@@ -70,6 +71,7 @@ Thanks to our testers for [these suggestions and bug reports][Feedback 1]!
 ### Team Picker
 
 - **Immutable team names** - Team names can no longer be changed after initial creation to prevent Discord thread name mismatches ([#68](https://github.com/nathanperkins/race-team-planner/issues/68) by [Nathan])
+- **Remove from team** - Fixed bug preventing removal of team members when Discord threads exist - now only blocks moving between teams ([#93](https://github.com/nathanperkins/race-team-planner/issues/93) by [Nathan])
 - **Confirmation dialog** - Added confirmation modal showing diff of all changes, highlighting destructive changes (team moves, class changes) and which Discord threads will be created ([#5](https://github.com/nathanperkins/race-team-planner/issues/5) by [Steven])
 - **Stable class sorting** - Fixed unassigned racer class groups shifting position while dragging drivers to teams ([#74](https://github.com/nathanperkins/race-team-planner/issues/74) by [Steven])
 - **Rebalance fixes** - Team rebalance button now creates the correct number of teams based on max-per-team constraint ([#6](https://github.com/nathanperkins/race-team-planner/issues/6) by [Steven])

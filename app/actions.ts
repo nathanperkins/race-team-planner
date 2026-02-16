@@ -1357,6 +1357,19 @@ export async function saveRaceEdits(formData: FormData) {
     }
 
     if (isAdmin && renameUpdates.length > 0) {
+      // Check if any teams being renamed have Discord threads
+      const threadMap = race.discordTeamThreads as Record<string, string> | null
+      if (threadMap) {
+        for (const update of renameUpdates) {
+          if (threadMap[update.id]) {
+            return {
+              message:
+                'Cannot rename team: Discord thread already exists for this team. Team names are immutable after thread creation to prevent confusion.',
+            }
+          }
+        }
+      }
+
       await prisma.$transaction(
         renameUpdates.map((update) =>
           prisma.team.update({
@@ -1451,25 +1464,6 @@ export async function saveRaceEdits(formData: FormData) {
         select: { id: true, userId: true, raceId: true, teamId: true },
       })
       const regMap = new Map(regs.map((reg) => [reg.id, reg]))
-
-      // Check if any team changes are blocked by Discord threads
-      const threadMap = race.discordTeamThreads as Record<string, string> | null
-      if (threadMap) {
-        for (const update of updates) {
-          const reg = regMap.get(update.id)
-          if (!reg) continue
-
-          const currentTeamId = reg.teamId
-          const newTeamId = update.teamId ? (tempTeamMap.get(update.teamId) ?? update.teamId) : null
-
-          // If team is changing and current team has a Discord thread, block it
-          if (currentTeamId && currentTeamId !== newTeamId && threadMap[currentTeamId]) {
-            return {
-              message: 'Cannot change team assignment: Discord thread already exists for this team',
-            }
-          }
-        }
-      }
 
       const tx: Prisma.PrismaPromise<unknown>[] = []
       for (const update of updates) {
