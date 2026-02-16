@@ -12,6 +12,8 @@ The most notable changes to this project are documented here.
 
 Version 1.1 focuses on improving the Discord notification system, enhancing race eligibility handling, and refining the team picker experience. This release includes significant improvements to notification clarity, better visual indicators for race eligibility, and numerous bug fixes.
 
+WARNING: you may find that certain actions are slow in this release (registering, dropping, picking teams) due to high latency handling Discord notifications. We will be addressing this in future releases.
+
 ### Feedback Results
 
 Thanks to our testers for [these suggestions and bug reports][Feedback 1]!

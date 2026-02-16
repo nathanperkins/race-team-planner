@@ -13,6 +13,7 @@ import {
   createOrUpdateEventThread,
   createOrUpdateTeamThread,
   postRosterChangeNotifications,
+  refreshAllTeamThreads,
   sendRegistrationNotification,
   sendTeamsAssignedNotification,
 } from '@/lib/discord'
@@ -68,6 +69,7 @@ vi.mock('@/lib/discord', async (importOriginal) => ({
   sendRegistrationNotification: vi.fn(),
   sendTeamsAssignedNotification: vi.fn(),
   postRosterChangeNotifications: vi.fn(),
+  refreshAllTeamThreads: vi.fn(),
 }))
 
 describe('sendTeamsAssignmentNotification', () => {
@@ -575,6 +577,245 @@ describe('deleteRegistration notifications', () => {
       {},
       expect.any(Map)
     )
+  })
+
+  it('updates the main event discussion post when user drops from event', async () => {
+    vi.mocked(prisma.registration.findUnique).mockResolvedValue({
+      id: 'reg-3',
+      userId: 'user-1',
+      teamId: 'team-1',
+      team: { id: 'team-1', name: 'Team One', alias: null },
+      user: { name: 'User One' },
+      manualDriver: null,
+      race: {
+        id: 'race-1',
+        endTime: new Date('2099-01-01T00:00:00Z'),
+        eventId: 'event-1',
+        discordTeamsThreadId: 'event-thread-1',
+      },
+    } as any)
+    vi.mocked(prisma.registration.delete).mockResolvedValue({} as any)
+    vi.mocked(prisma.race.findFirst).mockResolvedValue({
+      discordTeamsThreadId: 'event-thread-1',
+      discordTeamThreads: { 'team-1': 'team-thread-1' },
+    } as any)
+    vi.mocked(postRosterChangeNotifications).mockResolvedValue(undefined as any)
+    vi.mocked(prisma.race.findMany).mockResolvedValue([
+      {
+        id: 'race-1',
+        startTime: new Date('2099-01-01T10:00:00Z'),
+        endTime: new Date('2099-01-01T12:00:00Z'),
+        eventId: 'event-1',
+        discordTeamsThreadId: 'event-thread-1',
+        registrations: [],
+        event: {
+          id: 'event-1',
+          name: 'Test Event',
+          track: 'Test Track',
+          trackConfig: null,
+          tempValue: null,
+          precipChance: null,
+          carClasses: [{ name: 'GT3' }],
+          customCarClasses: [],
+        },
+      },
+    ] as any)
+    vi.mocked(createOrUpdateEventThread).mockResolvedValue({ ok: true })
+    process.env.NEXTAUTH_URL = 'http://localhost:3000'
+
+    await deleteRegistration('reg-3')
+
+    expect(createOrUpdateEventThread).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventName: 'Test Event',
+        threadId: 'event-thread-1',
+      })
+    )
+
+    delete process.env.NEXTAUTH_URL
+  })
+
+  it('updates team discussion posts when user drops from event', async () => {
+    vi.mocked(prisma.registration.findUnique).mockResolvedValue({
+      id: 'reg-4',
+      userId: 'user-1',
+      teamId: 'team-1',
+      team: { id: 'team-1', name: 'Team One', alias: null },
+      user: { name: 'User One' },
+      manualDriver: null,
+      race: {
+        id: 'race-1',
+        endTime: new Date('2099-01-01T00:00:00Z'),
+        eventId: 'event-1',
+        discordTeamsThreadId: 'event-thread-1',
+      },
+    } as any)
+    vi.mocked(prisma.registration.delete).mockResolvedValue({} as any)
+    vi.mocked(prisma.race.findFirst).mockResolvedValue({
+      discordTeamsThreadId: 'event-thread-1',
+      discordTeamThreads: { 'team-1': 'team-thread-1', 'team-2': 'team-thread-2' },
+    } as any)
+    vi.mocked(postRosterChangeNotifications).mockResolvedValue(undefined as any)
+    vi.mocked(prisma.race.findMany).mockResolvedValue([
+      {
+        id: 'race-1',
+        startTime: new Date('2099-01-01T10:00:00Z'),
+        endTime: new Date('2099-01-01T12:00:00Z'),
+        eventId: 'event-1',
+        discordTeamsThreadId: 'event-thread-1',
+        registrations: [
+          {
+            id: 'reg-other',
+            teamId: 'team-1',
+            user: {
+              name: 'Other Driver',
+              image: null,
+              accounts: [{ provider: 'discord', providerAccountId: 'discord-2' }],
+            },
+            manualDriver: null,
+            team: {
+              id: 'team-1',
+              name: 'Team One',
+              alias: null,
+            },
+            carClass: { name: 'GT3' },
+          },
+        ],
+        event: {
+          id: 'event-1',
+          name: 'Test Event',
+          track: 'Test Track',
+          trackConfig: null,
+          tempValue: null,
+          precipChance: null,
+          carClasses: [{ name: 'GT3' }],
+          customCarClasses: [],
+        },
+      },
+    ] as any)
+    vi.mocked(createOrUpdateEventThread).mockResolvedValue({ ok: true })
+    vi.mocked(refreshAllTeamThreads).mockResolvedValue(undefined)
+    process.env.NEXTAUTH_URL = 'http://localhost:3000'
+
+    await deleteRegistration('reg-4')
+
+    expect(refreshAllTeamThreads).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'race-1',
+          startTime: new Date('2099-01-01T10:00:00Z'),
+          event: expect.objectContaining({
+            id: 'event-1',
+            name: 'Test Event',
+          }),
+          teams: expect.arrayContaining([
+            expect.objectContaining({
+              id: 'team-1',
+              name: 'Team One',
+            }),
+          ]),
+        }),
+      ]),
+      { 'team-1': 'team-thread-1', 'team-2': 'team-thread-2' },
+      expect.any(String),
+      'http://localhost:3000'
+    )
+
+    delete process.env.NEXTAUTH_URL
+  })
+
+  it('includes unassigned drivers when updating event thread after drop', async () => {
+    vi.mocked(prisma.registration.findUnique).mockResolvedValue({
+      id: 'reg-5',
+      userId: 'user-1',
+      teamId: null,
+      team: null,
+      user: { name: 'Alice' },
+      manualDriver: null,
+      race: {
+        id: 'race-1',
+        endTime: new Date('2099-01-01T00:00:00Z'),
+        eventId: 'event-1',
+        discordTeamsThreadId: 'event-thread-1',
+      },
+    } as any)
+    vi.mocked(prisma.registration.delete).mockResolvedValue({} as any)
+    vi.mocked(prisma.race.findFirst).mockResolvedValue({
+      discordTeamsThreadId: 'event-thread-1',
+      discordTeamThreads: {},
+    } as any)
+    vi.mocked(postRosterChangeNotifications).mockResolvedValue(undefined as any)
+    vi.mocked(prisma.race.findMany).mockResolvedValue([
+      {
+        id: 'race-1',
+        startTime: new Date('2099-01-01T10:00:00Z'),
+        endTime: new Date('2099-01-01T12:00:00Z'),
+        eventId: 'event-1',
+        discordTeamsThreadId: 'event-thread-1',
+        registrations: [
+          {
+            id: 'reg-unassigned-1',
+            teamId: null,
+            user: {
+              name: 'Bob',
+              image: null,
+              accounts: [{ provider: 'discord', providerAccountId: 'discord-3' }],
+            },
+            manualDriver: null,
+            team: null,
+            carClass: { name: 'GT3' },
+          },
+          {
+            id: 'reg-unassigned-2',
+            teamId: null,
+            user: {
+              name: 'Charlie',
+              image: null,
+              accounts: [],
+            },
+            manualDriver: null,
+            team: null,
+            carClass: { name: 'GTE' },
+          },
+        ],
+        event: {
+          id: 'event-1',
+          name: 'Test Event',
+          track: 'Test Track',
+          trackConfig: null,
+          tempValue: null,
+          precipChance: null,
+          carClasses: [{ name: 'GT3' }, { name: 'GTE' }],
+          customCarClasses: [],
+        },
+      },
+    ] as any)
+    vi.mocked(createOrUpdateEventThread).mockResolvedValue({ ok: true })
+    process.env.NEXTAUTH_URL = 'http://localhost:3000'
+
+    await deleteRegistration('reg-5')
+
+    expect(createOrUpdateEventThread).toHaveBeenCalledWith(
+      expect.objectContaining({
+        timeslots: expect.arrayContaining([
+          expect.objectContaining({
+            unassigned: expect.arrayContaining([
+              expect.objectContaining({
+                name: 'Bob',
+                carClass: 'GT3',
+                discordId: 'discord-3',
+              }),
+              expect.objectContaining({
+                name: 'Charlie',
+                carClass: 'GTE',
+              }),
+            ]),
+          }),
+        ]),
+      })
+    )
+
+    delete process.env.NEXTAUTH_URL
   })
 })
 

@@ -1566,3 +1566,77 @@ export async function createOrUpdateTeamThread(options: {
   }
   return threadId
 }
+
+/**
+ * Refreshes all team thread discussion posts for the given races.
+ * This updates the team rosters shown in each team's discussion post.
+ */
+export async function refreshAllTeamThreads(
+  races: Array<{
+    id: string
+    startTime: Date
+    event: {
+      id: string
+      name: string
+      track: string | null
+      trackConfig: string | null
+      tempValue: number | null
+      precipChance: number | null
+    }
+    teams: Array<{
+      id: string
+      name: string
+      alias: string | null
+      carClass: { name: string } | null
+      registrations: Array<{
+        id: string
+        user: {
+          name: string | null
+          image: string | null
+          accounts: Array<{ provider: string; providerAccountId: string }>
+        } | null
+        manualDriver: { name: string } | null
+      }>
+    }>
+  }>,
+  teamThreads: Record<string, string>,
+  botToken: string,
+  baseUrl: string
+): Promise<void> {
+  // Build a map of team ID to team data across all races
+  const teamsById = new Map<string, (typeof races)[0]['teams'][0] & { raceStartTime: Date }>()
+  for (const race of races) {
+    for (const team of race.teams) {
+      teamsById.set(team.id, { ...team, raceStartTime: race.startTime })
+    }
+  }
+
+  // Update each team thread
+  for (const [teamId, threadId] of Object.entries(teamThreads)) {
+    const team = teamsById.get(teamId)
+    if (!team || !races[0]?.event) continue
+
+    const event = races[0].event
+    const memberNames = team.registrations.map(
+      (reg) => reg.user?.name || reg.manualDriver?.name || 'Unknown'
+    )
+    const memberDiscordIds = team.registrations
+      .map((reg) => reg.user?.accounts.find((acc) => acc.provider === 'discord')?.providerAccountId)
+      .filter((id): id is string => Boolean(id))
+
+    await createOrUpdateTeamThread({
+      teamName: team.alias || team.name,
+      eventName: event.name,
+      raceStartTime: team.raceStartTime,
+      existingThreadId: threadId,
+      raceUrl: `${baseUrl}/events?eventId=${event.id}`,
+      track: event.track ?? undefined,
+      trackConfig: event.trackConfig ?? undefined,
+      tempValue: event.tempValue,
+      precipChance: event.precipChance,
+      carClassName: team.carClass?.name,
+      members: memberNames,
+      memberDiscordIds,
+    })
+  }
+}
