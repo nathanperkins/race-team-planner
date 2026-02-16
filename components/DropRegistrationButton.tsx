@@ -4,6 +4,9 @@ import { useState } from 'react'
 import { deleteRegistration } from '@/app/actions'
 import styles from './DropRegistrationButton.module.css'
 import { Trash2, Check, X, Loader2, ChevronDown } from 'lucide-react'
+import { createLogger } from '@/lib/logger'
+
+const logger = createLogger('DropRegistrationButton')
 
 interface Props {
   registrationId: string
@@ -47,7 +50,7 @@ export default function DropRegistrationButton({
       // Redirect happens on server, so we might unmount.
       // If no redirect, we just stay here, but usually component will unmount or re-render.
     } catch (error) {
-      console.error('Failed to drop', error)
+      logger.error({ err: error, registrationId }, 'Failed to drop registration')
       setStatus('idle')
       onConfirmingChange?.(false)
       alert('Failed to drop registration. Please try again.')

@@ -1,6 +1,9 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { createLogger } from '@/lib/logger'
+
+const logger = createLogger('team-management')
 import {
   Plus,
   Trash2,
@@ -76,7 +79,7 @@ export default function TeamManagement() {
       setTeams(data)
     } catch (err) {
       setError('Failed to load teams')
-      console.error(err)
+      logger.error({ err }, 'Failed to load teams')
     } finally {
       setLoading(false)
     }

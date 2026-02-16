@@ -4,6 +4,9 @@ import { useState } from 'react'
 import { triggerWeeklyReportAction } from './actions'
 import { Send, X } from 'lucide-react'
 import styles from './TriggerReportButton.module.css'
+import { createLogger } from '@/lib/logger'
+
+const logger = createLogger('trigger-report-button')
 
 export default function TriggerReportButton() {
   const [isSending, setIsSending] = useState(false)
@@ -30,7 +33,7 @@ export default function TriggerReportButton() {
     } catch (error) {
       setStatus('error')
       setMessage(`An unexpected error occurred.`)
-      console.error(error)
+      logger.error({ err: error }, 'Failed to trigger weekly report')
     } finally {
       setIsSending(false)
     }

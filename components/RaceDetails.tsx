@@ -41,6 +41,9 @@ import {
   isLicenseEligible,
 } from '@/lib/utils'
 import { buildTeamChangeSummary } from '@/lib/team-change-summary'
+import { createLogger } from '@/lib/logger'
+
+const logger = createLogger('RaceDetails')
 
 export interface RaceWithRegistrations {
   id: string
@@ -1525,7 +1528,7 @@ export default function RaceDetails({
           driverDetails = (await response.json()) as DriverDetailsResponse
         }
       } catch (error) {
-        console.error('Failed to fetch selected driver details:', error)
+        logger.error({ err: error, driverId: driver.id }, 'Failed to fetch selected driver details')
       }
       const isManual = driverDetails?.type === 'manual'
       const name = driverDetails?.name ?? driver.name

@@ -4,6 +4,9 @@ import { auth } from '@/lib/auth'
 import { UserRole } from '@prisma/client'
 import { runIRacingSync, syncUserStats } from '@/lib/services/sync-service'
 import { SyncSource } from '@prisma/client'
+import { createLogger } from '@/lib/logger'
+
+const logger = createLogger('sync')
 
 /**
  * Triggers a global iRacing synchronization (events and all drivers).
@@ -32,7 +35,7 @@ export async function syncCurrentUserAction() {
     return result
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error('SERVER ACTION ERROR: Failed to sync user stats:', error)
+    logger.error({ err: error }, 'Failed to sync user stats')
     return {
       success: false,
       error: message,

@@ -4,6 +4,9 @@ import prisma from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { revalidatePath } from 'next/cache'
 import { syncUserStats } from '@/lib/services/sync-service'
+import { createLogger } from '@/lib/logger'
+
+const logger = createLogger('update-profile')
 
 export async function updateProfile(formData: FormData) {
   const session = await auth()
@@ -109,7 +112,7 @@ export async function updateProfile(formData: FormData) {
           })
         }
       } catch (notifyError) {
-        console.error('Failed to send onboarding notification:', notifyError)
+        logger.error({ err: notifyError }, 'Failed to send onboarding notification')
       }
     }
 
@@ -123,7 +126,7 @@ export async function updateProfile(formData: FormData) {
       },
     }
   } catch (error) {
-    console.error('Update profile error:', error)
+    logger.error({ err: error }, 'Update profile error')
     const message = error instanceof Error ? error.message : 'Failed to update profile'
     return { success: false, error: message }
   }
@@ -145,7 +148,7 @@ export async function validateCustomerId(customerId: number) {
 
     return { success: true, name: memberInfo.displayName }
   } catch (error) {
-    console.error('Validate customer ID error:', error)
+    logger.error({ err: error }, 'Validate customer ID error')
     return { success: false, error: 'Failed to validate iRacing Customer ID.' }
   }
 }

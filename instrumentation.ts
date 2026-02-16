@@ -1,20 +1,23 @@
 import { features, appTitle, feedbackUrl, appLocale, appTimeZone } from '@/lib/config'
+import { createLogger } from '@/lib/logger'
+
+const logger = createLogger('instrumentation')
 
 export async function register() {
-  console.log(`🚧 ${appTitle} Startup 🚧`)
-  console.log(`[Config] Locale: ${appLocale}`)
-  console.log(`[Config] Timezone: ${appTimeZone || 'Default (America/Los_Angeles)'}`)
+  logger.info(`🚧 ${appTitle} Startup 🚧`)
+  logger.info(`[Config] Locale: ${appLocale}`)
+  logger.info(`[Config] Timezone: ${appTimeZone || 'Default (America/Los_Angeles)'}`)
 
-  console.log(`[Feature] Discord Auth: ${features.discordAuth ? 'Enabled ✅' : 'Disabled ❌'}`)
-  console.log(
+  logger.info(`[Feature] Discord Auth: ${features.discordAuth ? 'Enabled ✅' : 'Disabled ❌'}`)
+  logger.info(
     `[Feature] Discord Membership Check: ${features.discordMembership ? 'Configured ✅' : 'NOT Configured ⚠️'}`
   )
-  console.log(`[Feature] Mock Auth: ${features.mockAuth ? 'Enabled (Dev Mode) ✅' : 'Disabled ❌'}`)
-  console.log(`[Feature] iRacing Sync: ${features.iracingSync ? 'Enabled ✅' : 'Disabled ❌'}`)
+  logger.info(`[Feature] Mock Auth: ${features.mockAuth ? 'Enabled (Dev Mode) ✅' : 'Disabled ❌'}`)
+  logger.info(`[Feature] iRacing Sync: ${features.iracingSync ? 'Enabled ✅' : 'Disabled ❌'}`)
   if (features.feedback) {
-    console.log(`[Notice] Feedback URL is CONFIGURED: ${feedbackUrl} 📢`)
+    logger.info(`[Notice] Feedback URL is CONFIGURED: ${feedbackUrl} 📢`)
   } else {
-    console.log('[Notice] Feedback URL is NOT configured (Optional) ⚠️')
+    logger.info('[Notice] Feedback URL is NOT configured (Optional) ⚠️')
   }
 
   if (features.discordMembership) {
@@ -29,16 +32,16 @@ export async function register() {
     // 1. Verify Token
     const bot = await verifyBotToken()
     if (bot) {
-      console.log(`[Discord] Bot Identity Verified: ${bot.name} (${bot.id}) ✅`)
+      logger.info(`[Discord] Bot Identity Verified: ${bot.name} (${bot.id}) ✅`)
 
       // 2. Verify Guild Access
       const guild = await verifyGuildAccess()
       if (guild) {
-        console.log(
+        logger.info(
           `[Discord] Guild Access Verified: "${guild.name}" (${process.env.DISCORD_GUILD_ID}) ✅`
         )
       } else {
-        console.error(
+        logger.error(
           `[Discord] Guild Access FAILED ❌ (Is the bot in Server ID: ${process.env.DISCORD_GUILD_ID}?)`
         )
       }
@@ -46,43 +49,43 @@ export async function register() {
       // 3. Verify Admin Roles
       const adminRoles = await verifyAdminRoles()
       if (adminRoles.length > 0) {
-        console.log(`[Discord] Admin Roles Verified: ${adminRoles.join(', ')} ✅`)
+        logger.info(`[Discord] Admin Roles Verified: ${adminRoles.join(', ')} ✅`)
       } else if (process.env.DISCORD_ADMIN_ROLE_IDS) {
-        console.error('[Discord] Admin Roles NOT FOUND ❌ (Check IDs in .env)')
+        logger.error('[Discord] Admin Roles NOT FOUND ❌ (Check IDs in .env)')
       }
 
       // 4. Verify Notifications Channel
       const notificationsChannel = await verifyNotificationsChannel()
       if (notificationsChannel) {
-        console.log(
+        logger.info(
           `[Discord] Notifications Channel Verified: #${notificationsChannel.name} (${process.env.DISCORD_NOTIFICATIONS_CHANNEL_ID}) ✅`
         )
       } else if (process.env.DISCORD_NOTIFICATIONS_CHANNEL_ID) {
-        console.error(
+        logger.error(
           '[Discord] Notifications Channel NOT FOUND ❌ (Check DISCORD_NOTIFICATIONS_CHANNEL_ID in .env)'
         )
       } else {
-        console.log('[Discord] Notifications Channel: Not Configured (Optional) ⚠️')
+        logger.info('[Discord] Notifications Channel: Not Configured (Optional) ⚠️')
       }
 
       // 5. Verify Events Forum
       const eventsForum = await verifyEventsForum()
       if (eventsForum) {
-        console.log(
+        logger.info(
           `[Discord] Events Forum Verified: #${eventsForum.name} (${process.env.DISCORD_EVENTS_FORUM_ID}) ✅`
         )
       } else if (process.env.DISCORD_EVENTS_FORUM_ID) {
-        console.error('[Discord] Events Forum NOT FOUND ❌ (Check DISCORD_EVENTS_FORUM_ID in .env)')
+        logger.error('[Discord] Events Forum NOT FOUND ❌ (Check DISCORD_EVENTS_FORUM_ID in .env)')
       } else {
-        console.log('[Discord] Events Forum: Not Configured (Optional) ⚠️')
+        logger.info('[Discord] Events Forum: Not Configured (Optional) ⚠️')
       }
     } else {
-      console.error('[Discord] Bot Token is INVALID ❌ (Received 401/Unauthorized)')
+      logger.error('[Discord] Bot Token is INVALID ❌ (Received 401/Unauthorized)')
     }
   }
 
   if (!features.discordAuth && !features.mockAuth) {
-    console.error('❌ CRITICAL: No authentication providers enabled. Application will not start.')
+    logger.error('❌ CRITICAL: No authentication providers enabled. Application will not start.')
     if (process.env.NEXT_RUNTIME === 'nodejs') {
       process.exit(1)
     }

@@ -14,6 +14,9 @@ import {
   formatISODate,
   normalizeSeriesName,
 } from './discord-utils'
+import { createLogger } from './logger'
+
+const logger = createLogger('discord')
 
 const DISCORD_API_BASE = 'https://discord.com/api/v10'
 
@@ -104,7 +107,7 @@ export async function checkGuildMembership(userId: string): Promise<{
   const guildId = process.env.DISCORD_GUILD_ID
 
   if (!botToken || !guildId) {
-    console.warn(
+    logger.warn(
       '⚠️ Discord membership check skipped: DISCORD_BOT_TOKEN or DISCORD_GUILD_ID missing'
     )
     return { status: GuildMembershipStatus.CONFIG_ERROR }
@@ -128,13 +131,13 @@ export async function checkGuildMembership(userId: string): Promise<{
     } else if (response.status === 404) {
       return { status: GuildMembershipStatus.NOT_MEMBER }
     } else {
-      console.error(
+      logger.error(
         `Discord API error checking membership for ${userId}: ${response.status} ${response.statusText}`
       )
       return { status: GuildMembershipStatus.API_ERROR }
     }
   } catch (error) {
-    console.error('Failed to check Discord guild membership:', error)
+    logger.error({ err: error }, 'Failed to check Discord guild membership')
     return { status: GuildMembershipStatus.API_ERROR }
   }
 }
@@ -158,14 +161,14 @@ export async function verifyBotToken(): Promise<{ name: string; id: string } | n
       return { name: data.username, id: data.id }
     } else {
       const text = await response.text()
-      console.error(
-        `❌ Discord Token Verification Failed: ${response.status} ${response.statusText}`,
-        text
+      logger.error(
+        { status: response.status, statusText: response.statusText, text },
+        '❌ Discord Token Verification Failed'
       )
       return null
     }
   } catch (error) {
-    console.error('❌ Failed to connect to Discord API during verification:', error)
+    logger.error({ err: error }, '❌ Failed to connect to Discord API during verification')
     return null
   }
 }
@@ -191,14 +194,14 @@ export async function verifyGuildAccess(): Promise<{ name: string } | null> {
       return { name: data.name }
     } else {
       const text = await response.text()
-      console.error(
-        `❌ Discord Guild Access Failed: ${response.status} ${response.statusText}`,
-        text
+      logger.error(
+        { status: response.status, statusText: response.statusText, text },
+        '❌ Discord Guild Access Failed'
       )
       return null
     }
   } catch (error) {
-    console.error('❌ Failed to connect to Discord API during guild verification:', error)
+    logger.error({ err: error }, '❌ Failed to connect to Discord API during guild verification')
     return null
   }
 }
@@ -339,18 +342,18 @@ export async function upsertThreadMessage(
       )
 
       if (editResponse.ok) {
-        console.log(`✏️ [Discord] Updated existing message in thread ${threadId}`)
+        logger.info(`✏️ Updated existing message in thread ${threadId}`)
         return editResponse
       }
       if (editResponse.status === 404) {
-        console.log(`[Discord] Message ${existingMessageId} not found, will create new message`)
+        logger.info({ existingMessageId }, 'Message not found, will create new message')
         // Fall through to create new message
       }
     } catch (error) {
       // Edit failed after retries - log and fall through to create new message
-      console.warn(
-        `Failed to edit existing message ${existingMessageId} in thread ${threadId} after retries:`,
-        error
+      logger.warn(
+        { err: error, existingMessageId, threadId },
+        'Failed to edit existing message after retries'
       )
       // Fall through to create new message
     }
@@ -378,10 +381,10 @@ export async function upsertThreadMessage(
   )
 
   if (resp.ok) {
-    console.log(`✅ [Discord] Created new message in thread ${threadId}`)
+    logger.info(`✅ Created new message in thread ${threadId}`)
   } else {
-    console.warn(
-      `❌ [Discord] Failed to create message in thread ${threadId}: ${resp.status} ${resp.statusText}`
+    logger.warn(
+      `❌ Failed to create message in thread ${threadId}: ${resp.status} ${resp.statusText}`
     )
   }
   return resp
@@ -411,11 +414,11 @@ export async function verifyAdminRoles(): Promise<string[]> {
       const foundRoles = roles.filter((r) => adminRoleIds.includes(r.id)).map((r) => r.name)
       return foundRoles
     } else {
-      console.error(`❌ Discord Admin Role Verification Failed: ${response.status}`)
+      logger.error(`❌ Discord Admin Role Verification Failed: ${response.status}`)
       return []
     }
   } catch (error) {
-    console.error('❌ Failed to connect to Discord API during role verification:', error)
+    logger.error({ err: error }, '❌ Failed to connect to Discord API during role verification')
     return []
   }
 }
@@ -441,14 +444,14 @@ export async function verifyNotificationsChannel(): Promise<{ name: string } | n
       return { name: data.name }
     } else {
       const text = await response.text()
-      console.error(
-        `❌ Discord Notifications Channel Access Failed: ${response.status} ${response.statusText}`,
-        text
+      logger.error(
+        { status: response.status, statusText: response.statusText, text },
+        '❌ Discord Notifications Channel Access Failed'
       )
       return null
     }
   } catch (error) {
-    console.error('❌ Failed to connect to Discord API during channel verification:', error)
+    logger.error({ err: error }, '❌ Failed to connect to Discord API during channel verification')
     return null
   }
 }
@@ -474,14 +477,14 @@ export async function verifyEventsForum(): Promise<{ name: string } | null> {
       return { name: data.name }
     } else {
       const text = await response.text()
-      console.error(
-        `❌ Discord Events Forum Access Failed: ${response.status} ${response.statusText}`,
-        text
+      logger.error(
+        { status: response.status, statusText: response.statusText, text },
+        '❌ Discord Events Forum Access Failed'
       )
       return null
     }
   } catch (error) {
-    console.error('❌ Failed to connect to Discord API during forum verification:', error)
+    logger.error({ err: error }, '❌ Failed to connect to Discord API during forum verification')
     return null
   }
 }
@@ -498,7 +501,7 @@ export async function sendRegistrationNotification(
   const channelId = process.env.DISCORD_NOTIFICATIONS_CHANNEL_ID
 
   if (!botToken || !channelId) {
-    console.warn(
+    logger.warn(
       'Discord registration notification skipped: DISCORD_BOT_TOKEN or DISCORD_NOTIFICATIONS_CHANNEL_ID not configured'
     )
     return false
@@ -546,8 +549,10 @@ export async function sendRegistrationNotification(
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error(
-        `Failed to send Discord registration notification: ${response.status} ${response.statusText}`,
+      logger.error(
+        'Failed to send Discord registration notification: %d %s: %s',
+        response.status,
+        response.statusText,
         errorText
       )
       return false
@@ -568,17 +573,23 @@ export async function sendRegistrationNotification(
 
       if (!threadResponse.ok) {
         const threadErrorText = await threadResponse.text()
-        console.error(
-          `Failed to send Discord registration notification to thread ${data.threadId}: ${threadResponse.status} ${threadResponse.statusText}`,
+        logger.error(
+          'Failed to send Discord registration notification to thread %s: %d %s: %s',
+          data.threadId,
+          threadResponse.status,
+          threadResponse.statusText,
           threadErrorText
         )
       }
     }
 
-    console.log(`Registration notification sent for ${data.userName} in ${data.eventName}`)
+    logger.info(
+      { userName: data.userName, eventName: data.eventName },
+      'Registration notification sent'
+    )
     return true
   } catch (error) {
-    console.error('Error sending Discord registration notification:', error)
+    logger.error({ err: error }, 'Error sending Discord registration notification')
     return false
   }
 }
@@ -594,7 +605,7 @@ export async function sendOnboardingNotification(
   const channelId = process.env.DISCORD_NOTIFICATIONS_CHANNEL_ID
 
   if (!botToken || !channelId) {
-    console.warn(
+    logger.warn(
       '⚠️ Discord onboarding notification skipped: DISCORD_BOT_TOKEN or DISCORD_NOTIFICATIONS_CHANNEL_ID not configured'
     )
     return false
@@ -617,17 +628,17 @@ export async function sendOnboardingNotification(
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error(
-        `Failed to send Discord onboarding notification: ${response.status} ${response.statusText}`,
-        errorText
+      logger.error(
+        { status: response.status, statusText: response.statusText, errorText },
+        'Failed to send Discord onboarding notification'
       )
       return false
     }
 
-    console.log(`✅ [Discord] Onboarding notification sent for ${data.userName}`)
+    logger.info({ userName: data.userName }, '✅ Onboarding notification sent')
     return true
   } catch (error) {
-    console.error('Error sending Discord onboarding notification:', error)
+    logger.error({ err: error }, 'Error sending Discord onboarding notification')
     return false
   }
 }
@@ -642,7 +653,7 @@ export async function sendWeeklyScheduleNotification(
   const channelId = process.env.DISCORD_NOTIFICATIONS_CHANNEL_ID
 
   if (!botToken || !channelId) {
-    console.warn(
+    logger.warn(
       '⚠️ Discord weekly schedule notification skipped: DISCORD_BOT_TOKEN or DISCORD_NOTIFICATIONS_CHANNEL_ID not configured'
     )
     return false
@@ -678,12 +689,18 @@ export async function sendWeeklyScheduleNotification(
         }),
       })
       if (resp.ok) {
-        console.log(`✅ [Discord] Weekly schedule chunk ${chunkIndex}/${chunks.length} sent`)
+        logger.info({ chunkIndex, totalChunks: chunks.length }, '✅ Weekly schedule chunk sent')
       } else {
         const errorText = await resp.text()
-        console.error(
-          `❌ [Discord] Failed to send weekly schedule chunk ${chunkIndex}/${chunks.length}: ${resp.status} ${resp.statusText}`,
-          errorText
+        logger.error(
+          {
+            chunkIndex,
+            totalChunks: chunks.length,
+            status: resp.status,
+            statusText: resp.statusText,
+            errorText,
+          },
+          '❌ Failed to send weekly schedule chunk'
         )
         allSucceeded = false
       }
@@ -691,7 +708,7 @@ export async function sendWeeklyScheduleNotification(
 
     return allSucceeded
   } catch (error) {
-    console.error('Error sending Discord weekly schedule notification:', error)
+    logger.error({ err: error }, 'Error sending Discord weekly schedule notification')
     return false
   }
 }
@@ -740,15 +757,18 @@ export async function postRosterChangeNotifications(
 
       if (!response.ok) {
         const errorText = await response.text()
-        console.error(
-          `Failed to post roster changes to ${label}: ${response.status} ${response.statusText}`,
+        logger.error(
+          'Failed to post roster changes to %s: %d %s: %s',
+          label,
+          response.status,
+          response.statusText,
           errorText
         )
       } else {
-        console.log(`✅ [Discord] Posted roster changes to ${label}`)
+        logger.info('✅ Posted roster changes to %s', label)
       }
     } catch (error) {
-      console.error(`Error posting roster changes to ${label}:`, error)
+      logger.error({ err: error, label }, 'Error posting roster changes')
     }
   }
 
@@ -854,7 +874,7 @@ export async function sendTeamsAssignedNotification(
   const guildId = process.env.DISCORD_GUILD_ID
 
   if (!botToken || !channelId) {
-    console.warn(
+    logger.warn(
       '⚠️ Discord teams notification skipped: DISCORD_BOT_TOKEN or DISCORD_NOTIFICATIONS_CHANNEL_ID not configured'
     )
     return false
@@ -884,11 +904,14 @@ export async function sendTeamsAssignedNotification(
       })
 
       if (chatResp.ok) {
-        console.log(`✅ [Discord] Posted teams assigned notification to chat channel ${channelId}`)
+        logger.info(`✅ Posted teams assigned notification to chat channel ${channelId}`)
       } else {
         const errorText = await chatResp.text()
-        console.error(
-          `❌ [Discord] Failed to post teams notification to chat channel ${channelId}: ${chatResp.status} ${chatResp.statusText}`,
+        logger.error(
+          '❌ Failed to post teams notification to chat channel %s: %d %s: %s',
+          channelId,
+          chatResp.status,
+          chatResp.statusText,
           errorText
         )
         return false
@@ -911,7 +934,7 @@ export async function sendTeamsAssignedNotification(
 
     return true
   } catch (error) {
-    console.error('Error sending teams assigned notification:', error)
+    logger.error({ err: error }, 'Error sending teams assigned notification')
     return false
   }
 }
@@ -940,13 +963,19 @@ export async function addUsersToThread(threadId: string, discordUserIds: string[
 
         if (!response.ok && response.status !== 409) {
           const errorText = await response.text()
-          console.error(
-            `Failed to add user ${userId} to thread ${threadId}: ${response.status} ${response.statusText}`,
-            errorText
+          logger.error(
+            {
+              userId,
+              threadId,
+              status: response.status,
+              statusText: response.statusText,
+              errorText,
+            },
+            'Failed to add user to thread'
           )
         }
       } catch (error) {
-        console.error(`Failed to add user ${userId} to thread ${threadId}:`, error)
+        logger.error({ err: error, userId, threadId }, 'Failed to add user to thread')
       }
     })
   )
@@ -978,7 +1007,7 @@ export async function createOrUpdateEventThread(data: {
   const forumId = process.env.DISCORD_EVENTS_FORUM_ID
 
   if (!botToken || !channelId) {
-    console.warn(
+    logger.warn(
       '⚠️ Discord event thread creation skipped: DISCORD_BOT_TOKEN or DISCORD_NOTIFICATIONS_CHANNEL_ID not configured'
     )
     return { ok: false }
@@ -1003,11 +1032,11 @@ export async function createOrUpdateEventThread(data: {
     if (threadId) {
       const threadInfo = await getDiscordThreadParentInfo({ threadId, botToken })
       if (!threadInfo.exists) {
-        console.warn(`⚠️ [Discord] Event thread ${threadId} missing; creating a new one`)
+        logger.warn(`⚠️ Event thread ${threadId} missing; creating a new one`)
         threadId = null
       } else if (forumId && threadInfo.parentId !== forumId) {
-        console.warn(
-          `⚠️ [Discord] Event thread ${threadId} is not in forum ${forumId}; creating a replacement in forum`
+        logger.warn(
+          `⚠️ Event thread ${threadId} is not in forum ${forumId}; creating a replacement in forum`
         )
         threadId = null
       }
@@ -1090,9 +1119,12 @@ export async function createOrUpdateEventThread(data: {
         } catch {
           errorBody = { raw: errorText }
         }
-        console.error(
-          `❌ [Discord] Failed to create event thread in ${threadParentId}: ${threadResponse.status} ${threadResponse.statusText}`,
-          JSON.stringify(errorBody, null, 2)
+        logger.error(
+          '❌ Failed to create event thread in %s: %d %s: %o',
+          threadParentId,
+          threadResponse.status,
+          threadResponse.statusText,
+          errorBody
         )
         return null
       }
@@ -1100,7 +1132,7 @@ export async function createOrUpdateEventThread(data: {
       const thread = await threadResponse.json()
       const newId = (thread.id as string) ?? null
       if (newId) {
-        console.log(`✅ [Discord] Created event thread: ${newId} in ${threadParentId}`)
+        logger.info(`✅ Created event thread: ${newId} in ${threadParentId}`)
         const allMemberDiscordIds = Array.from(allDiscordIds.values())
         if (allMemberDiscordIds.length > 0) {
           await addUsersToThread(newId, allMemberDiscordIds)
@@ -1126,8 +1158,10 @@ export async function createOrUpdateEventThread(data: {
       return { ok: true, threadId }
     } else if (!postResponse.ok) {
       const errorText = await postResponse.text()
-      console.error(
-        `Failed to update event thread: ${postResponse.status} ${postResponse.statusText}`,
+      logger.error(
+        'Failed to update event thread: %d %s: %s',
+        postResponse.status,
+        postResponse.statusText,
         errorText
       )
       return { ok: false, threadId: threadId ?? undefined }
@@ -1141,7 +1175,7 @@ export async function createOrUpdateEventThread(data: {
 
     return { ok: true, threadId: threadId ?? undefined }
   } catch (error) {
-    console.error('Error creating or updating event thread:', error)
+    logger.error({ err: error }, 'Error creating or updating event thread')
     return { ok: false }
   }
 }
@@ -1161,7 +1195,7 @@ export async function createEventDiscussionThread(options: {
   const forumId = process.env.DISCORD_EVENTS_FORUM_ID
 
   if (!botToken || (!channelId && !forumId)) {
-    console.warn(
+    logger.warn(
       '⚠️ Discord event thread creation skipped: DISCORD_BOT_TOKEN and either DISCORD_NOTIFICATIONS_CHANNEL_ID or DISCORD_EVENTS_FORUM_ID must be configured'
     )
     return null
@@ -1175,9 +1209,7 @@ export async function createEventDiscussionThread(options: {
     if (exists) {
       return options.existingThreadId
     }
-    console.warn(
-      `⚠️ [Discord] Event thread ${options.existingThreadId} missing; creating a replacement`
-    )
+    logger.warn(`⚠️ Event thread ${options.existingThreadId} missing; creating a replacement`)
   }
 
   const threadParentId = forumId || channelId
@@ -1250,9 +1282,11 @@ export async function createEventDiscussionThread(options: {
     } catch {
       errorBody = { raw: errorText }
     }
-    console.error(
-      `❌ [Discord] Failed to create event discussion thread: ${threadResponse.status} ${threadResponse.statusText}`,
-      JSON.stringify(errorBody, null, 2)
+    logger.error(
+      '❌ Failed to create event discussion thread: %d %s: %o',
+      threadResponse.status,
+      threadResponse.statusText,
+      errorBody
     )
     return null
   }
@@ -1260,7 +1294,7 @@ export async function createEventDiscussionThread(options: {
   const thread = await threadResponse.json()
   const threadId = thread.id ?? null
   if (threadId) {
-    console.log(`✅ [Discord] Created event discussion thread: ${threadId} in ${threadParentId}`)
+    logger.info(`✅ Created event discussion thread: ${threadId} in ${threadParentId}`)
   }
   return threadId
 }
@@ -1286,7 +1320,7 @@ export async function createOrUpdateTeamThread(options: {
   const forumId = process.env.DISCORD_EVENTS_FORUM_ID
 
   if (!botToken || (!channelId && !forumId)) {
-    console.warn(
+    logger.warn(
       '⚠️ Discord team thread creation skipped: DISCORD_BOT_TOKEN and either DISCORD_NOTIFICATIONS_CHANNEL_ID or DISCORD_EVENTS_FORUM_ID must be configured'
     )
     return null
@@ -1422,12 +1456,10 @@ export async function createOrUpdateTeamThread(options: {
     })
 
     if (!existingInfo.exists) {
-      console.warn(
-        `⚠️ [Discord] Team thread ${options.existingThreadId} missing; creating a replacement`
-      )
+      logger.warn(`⚠️ Team thread ${options.existingThreadId} missing; creating a replacement`)
     } else if (forumId && existingInfo.parentId !== forumId) {
-      console.warn(
-        `⚠️ [Discord] Team thread ${options.existingThreadId} is not in forum ${forumId}; creating a replacement in forum`
+      logger.warn(
+        `⚠️ Team thread ${options.existingThreadId} is not in forum ${forumId}; creating a replacement in forum`
       )
     } else {
       try {
@@ -1464,7 +1496,7 @@ export async function createOrUpdateTeamThread(options: {
 
         // If upsert succeeded, the thread exists and was updated
         if (upsertResponse.ok) {
-          console.log(`✅ [Discord] Reused existing team thread: ${options.existingThreadId}`)
+          logger.info(`✅ Reused existing team thread: ${options.existingThreadId}`)
 
           // Add all current members to the thread (ensures new drivers are added)
           if (options.memberDiscordIds?.length) {
@@ -1476,21 +1508,23 @@ export async function createOrUpdateTeamThread(options: {
 
         // If 404, thread was deleted - fall through to create a new one
         if (upsertResponse.status === 404) {
-          console.warn(
-            `⚠️ [Discord] Team thread ${options.existingThreadId} missing; creating a replacement`
-          )
+          logger.warn(`⚠️ Team thread ${options.existingThreadId} missing; creating a replacement`)
         } else {
           // Other error - log it but continue to create new thread
           const errorText = await upsertResponse.text()
-          console.warn(
-            `⚠️ [Discord] Failed to update team thread ${options.existingThreadId}: ${upsertResponse.status} ${upsertResponse.statusText}`,
+          logger.warn(
+            '⚠️ Failed to update team thread %s: %d %s: %s',
+            options.existingThreadId,
+            upsertResponse.status,
+            upsertResponse.statusText,
             errorText
           )
         }
       } catch (error) {
-        console.warn(
-          `⚠️ [Discord] Failed to update team thread ${options.existingThreadId}; creating a replacement`,
-          error
+        logger.warn(
+          { err: error },
+          '⚠️ Failed to update team thread %s; creating a replacement',
+          options.existingThreadId
         )
       }
     }
@@ -1549,9 +1583,11 @@ export async function createOrUpdateTeamThread(options: {
     } catch {
       errorBody = { raw: errorText }
     }
-    console.error(
-      `❌ [Discord] Failed to create team thread: ${threadResponse.status} ${threadResponse.statusText}`,
-      JSON.stringify(errorBody, null, 2)
+    logger.error(
+      '❌ Failed to create team thread: %d %s: %o',
+      threadResponse.status,
+      threadResponse.statusText,
+      errorBody
     )
     return null
   }
@@ -1559,7 +1595,7 @@ export async function createOrUpdateTeamThread(options: {
   const thread = await threadResponse.json()
   const threadId = thread.id ?? null
   if (threadId) {
-    console.log(`✅ [Discord] Created team thread: ${threadId} in ${threadParentId}`)
+    logger.info(`✅ Created team thread: ${threadId} in ${threadParentId}`)
   }
   if (threadId && options.memberDiscordIds?.length) {
     await addUsersToThread(threadId, options.memberDiscordIds)

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { sendWeeklyScheduleNotification } from '@/lib/discord'
+import { createLogger } from '@/lib/logger'
+
+const logger = createLogger('api-cron-weekly-notification')
 
 export async function GET(request: NextRequest) {
   // Authorization check (Cron Secret)
@@ -16,8 +19,8 @@ export async function GET(request: NextRequest) {
     const endWindow = new Date()
     endWindow.setDate(endWindow.getDate() + 7)
 
-    console.log(
-      `[WeeklyNotification] Fetching events between ${startWindow.toISOString()} and ${endWindow.toISOString()}`
+    logger.info(
+      `Fetching events between ${startWindow.toISOString()} and ${endWindow.toISOString()}`
     )
 
     // 2. Fetch Events
@@ -56,7 +59,7 @@ export async function GET(request: NextRequest) {
     })
 
     if (events.length === 0) {
-      console.log('[WeeklyNotification] No events found for the weekend.')
+      logger.info('No events found for the weekend.')
       return NextResponse.json({ message: 'No events found', count: 0 })
     }
 
@@ -113,7 +116,7 @@ export async function GET(request: NextRequest) {
       message: success ? 'Notification sent' : 'Failed to send notification',
     })
   } catch (error) {
-    console.error('[WeeklyNotification] Error:', error)
+    logger.error({ err: error }, '[WeeklyNotification] Error')
     return new NextResponse('Internal Server Error', { status: 500 })
   }
 }

@@ -3,6 +3,9 @@ import prisma from '@/lib/prisma'
 import { features } from '@/lib/config'
 import { SyncStatus, SyncSource } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
+import { createLogger } from '@/lib/logger'
+
+const logger = createLogger('sync-service')
 
 /**
  * Orchestrates the synchronization of car classes, special events, and driver stats from iRacing.
@@ -27,8 +30,8 @@ export async function runIRacingSync(source: SyncSource = SyncSource.MANUAL) {
       fetchSpecialEvents(),
       fetchCarClasses(),
     ])
-    console.log(
-      `[SyncService][${source}] Fetched ${externalEvents.length} events and ${externalCarClasses.length} car classes from iRacing.`
+    logger.info(
+      `[${source}] Fetched ${externalEvents.length} events and ${externalCarClasses.length} car classes from iRacing.`
     )
 
     // 3. Sync Car Classes First
@@ -48,7 +51,7 @@ export async function runIRacingSync(source: SyncSource = SyncSource.MANUAL) {
       })
       carClassMap.set(carClass.carClassId, upserted.id)
     }
-    console.log(`[SyncService][${source}] Upserted ${carClassMap.size} car classes.`)
+    logger.info(`[${source}] Upserted ${carClassMap.size} car classes.`)
 
     // 4. Sync Special Events
     for (const event of externalEvents) {
@@ -124,7 +127,7 @@ export async function runIRacingSync(source: SyncSource = SyncSource.MANUAL) {
         }
       })
     }
-    console.log(`[SyncService][${source}] Upserted ${externalEvents.length} events.`)
+    logger.info(`[${source}] Upserted ${externalEvents.length} events.`)
 
     // 5. Sync Driver Stats for all users with iracingCustomerId
     const usersToSync = await prisma.user.findMany({
@@ -134,20 +137,17 @@ export async function runIRacingSync(source: SyncSource = SyncSource.MANUAL) {
       select: { id: true, iracingCustomerId: true },
     })
 
-    console.log(`[SyncService][${source}] Syncing stats for ${usersToSync.length} users...`)
+    logger.info(`[${source}] Syncing stats for ${usersToSync.length} users...`)
 
     for (const user of usersToSync) {
       try {
         await syncUserStats(user.id)
       } catch (userError) {
-        console.error(
-          `[SyncService][${source}] Failed to sync stats for user ${user.id}:`,
-          userError
-        )
+        logger.error({ err: userError, userId: user.id, source }, 'Failed to sync stats for user')
         // Continue to next user
       }
     }
-    console.log(`[SyncService][${source}] Finished syncing stats.`)
+    logger.info(`[${source}] Finished syncing stats.`)
 
     // 6. Update Log to Success
     await prisma.syncLog.update({
@@ -170,7 +170,7 @@ export async function runIRacingSync(source: SyncSource = SyncSource.MANUAL) {
     }
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error(`[SyncService][${source}] Failed to sync iRacing data:`, error)
+    logger.error({ err: error, source }, 'Failed to sync iRacing data')
 
     // 7. Update Log to Failure
     await prisma.syncLog.update({

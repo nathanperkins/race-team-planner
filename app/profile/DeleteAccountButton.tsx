@@ -4,6 +4,9 @@ import { useState } from 'react'
 import { signOut } from 'next-auth/react'
 import { deleteAccount } from '@/app/actions/delete-account'
 import styles from './profile.module.css'
+import { createLogger } from '@/lib/logger'
+
+const logger = createLogger('DeleteAccountButton')
 
 interface DeleteAccountButtonProps {
   userName: string
@@ -40,7 +43,7 @@ export default function DeleteAccountButton({ userName }: DeleteAccountButtonPro
         setError(result.error || 'Failed to delete account')
       }
     } catch (err) {
-      console.error('Delete account error:', err)
+      logger.error({ err }, 'Delete account error')
       setError('An unexpected error occurred')
     } finally {
       setIsDeleting(false)

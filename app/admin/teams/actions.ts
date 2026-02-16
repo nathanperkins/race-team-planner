@@ -4,6 +4,9 @@ import { auth } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { fetchTeamInfo, fetchTeamMembers } from '@/lib/iracing'
+import { createLogger } from '@/lib/logger'
+
+const logger = createLogger('admin-teams-actions')
 
 export async function getTeams() {
   const teams = await prisma.team.findMany({
@@ -221,7 +224,11 @@ export async function createTeam(iracingTeamId: number) {
     throw new Error('Unauthorized')
   }
 
-  console.log('[createTeam] Input iracingTeamId:', iracingTeamId, 'Type:', typeof iracingTeamId)
+  logger.debug(
+    '[createTeam] Input iracingTeamId: %d, Type: %s',
+    iracingTeamId,
+    typeof iracingTeamId
+  )
 
   if (!iracingTeamId) {
     throw new Error('iRacing Team ID is required')
@@ -237,9 +244,9 @@ export async function createTeam(iracingTeamId: number) {
   }
 
   // Fetch team info from iRacing API
-  console.log('[createTeam] Fetching team info for ID:', iracingTeamId)
+  logger.info('[createTeam] Fetching team info for ID: %d', iracingTeamId)
   const teamInfo = await fetchTeamInfo(iracingTeamId)
-  console.log('[createTeam] Team info received:', JSON.stringify(teamInfo, null, 2))
+  logger.info('[createTeam] Team info received: %o', teamInfo)
 
   if (!teamInfo) {
     throw new Error(
@@ -248,9 +255,9 @@ export async function createTeam(iracingTeamId: number) {
   }
 
   // Fetch team members to check against our users
-  console.log('[createTeam] Fetching team members for ID:', iracingTeamId)
+  logger.info('[createTeam] Fetching team members for ID: %d', iracingTeamId)
   const teamMembers = await fetchTeamMembers(iracingTeamId)
-  console.log('[createTeam] Team members count:', teamMembers.length)
+  logger.info('[createTeam] Team members count: %d', teamMembers.length)
 
   // Get all users with iRacing customer IDs
   const users = await prisma.user.findMany({
@@ -264,7 +271,7 @@ export async function createTeam(iracingTeamId: number) {
       iracingCustomerId: true,
     },
   })
-  console.log('[createTeam] Found', users.length, 'users with iRacing IDs')
+  logger.info('[createTeam] Found %d users with iRacing IDs', users.length)
 
   // Find which users are members of this team
   const memberCustomerIds = new Set(teamMembers.map((m) => m.custId))
@@ -273,12 +280,11 @@ export async function createTeam(iracingTeamId: number) {
       (user) => user.iracingCustomerId !== null && memberCustomerIds.has(user.iracingCustomerId)
     )
     .map((user) => ({ id: user.id }))
-  console.log('[createTeam] Matched', matchingUserIds.length, 'users to team members')
+  logger.info('[createTeam] Matched %d users to team members', matchingUserIds.length)
 
-  console.log(
-    '[createTeam] Creating team with iracingTeamId:',
+  logger.info(
+    '[createTeam] Creating team with iracingTeamId: %d, Type: %s',
     teamInfo.teamId,
-    'Type:',
     typeof teamInfo.teamId
   )
 
@@ -324,7 +330,10 @@ export async function createTeam(iracingTeamId: number) {
     },
   })
 
-  console.log('[createTeam] Team created successfully with DB iracingTeamId:', team.iracingTeamId)
+  logger.info(
+    '[createTeam] Team created successfully with DB iracingTeamId: %d',
+    team.iracingTeamId
+  )
   revalidatePath('/admin')
   revalidatePath('/roster')
   return team
@@ -515,7 +524,7 @@ export async function batchAssignTeams(
     const { sendTeamsAssignmentNotification } = await import('@/app/actions')
     await sendTeamsAssignmentNotification(raceId)
   } catch (error) {
-    console.error('Failed to send Discord notification after batch assign:', error)
+    logger.error({ err: error }, 'Failed to send Discord notification after batch assign')
     // Don't throw - the team assignment succeeded, notification failure is non-fatal
   }
 }

@@ -1,6 +1,9 @@
 import crypto from 'node:crypto'
 import { writeFile } from 'node:fs/promises'
 import path from 'node:path'
+import { createLogger } from '@/lib/logger'
+
+const logger = createLogger('iracing')
 
 export interface IRacingRace {
   externalId?: string
@@ -128,7 +131,7 @@ function getMockMemberInfo(custId: number): IRacingMemberInfo {
   const variantIndex = licenseIndex !== -1 ? licenseIndex : licenseVariants.length - 1
   const variant = licenseVariants[variantIndex]
 
-  console.log(`[Mock iRacing] custId=${custId} → ${variant.groupName} (irating=${variant.irating})`)
+  logger.info(`Mock: custId=${custId} → ${variant.groupName} (irating=${variant.irating})`)
 
   return {
     ...MOCK_MEMBER_INFO,
@@ -224,7 +227,7 @@ async function getAccessToken(): Promise<string | null> {
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('[getAccessToken] iRacing OAuth failed:', response.status, errorText)
+      logger.error({ status: response.status, errorText }, 'iRacing OAuth failed')
 
       // Parse rate limit error
       try {
@@ -235,7 +238,7 @@ async function getAccessToken(): Promise<string | null> {
         ) {
           const retryMatch = errorData.error_description.match(/retry after (\d+) seconds/)
           if (retryMatch) {
-            console.error(`[getAccessToken] RATE LIMITED - Retry after ${retryMatch[1]} seconds`)
+            logger.error({ retryAfterSeconds: retryMatch[1] }, 'RATE LIMITED')
           }
         }
       } catch {}
@@ -247,11 +250,11 @@ async function getAccessToken(): Promise<string | null> {
     // Cache the token with expiry (iRacing tokens typically last 1 hour)
     cachedToken = data.access_token
     tokenExpiry = Date.now() + (data.expires_in || 3600) * 1000
-    console.log('[getAccessToken] New token cached, expires in', data.expires_in || 3600, 'seconds')
+    logger.info({ expiresInSeconds: data.expires_in || 3600 }, 'New token cached')
 
     return data.access_token
   } catch (error) {
-    console.error('[getAccessToken] Exception:', error)
+    logger.error({ err: error }, 'Exception during token fetch')
     return null
   }
 }
@@ -292,7 +295,7 @@ export async function fetchSpecialEvents(): Promise<IRacingEvent[]> {
 
   if (!hasCreds) {
     if (process.env.NODE_ENV === 'development') {
-      console.warn('⚠️ No iRacing credentials found. Using MOCK data.')
+      logger.warn('⚠️ No iRacing credentials found. Using MOCK data.')
       return fetchMockEvents()
     }
     throw new Error('Missing iRacing credentials.')
@@ -357,14 +360,14 @@ export async function fetchTeamInfo(teamId: number): Promise<IRacingTeam | null>
     const response = await fetchFromIRacing(`/data/team/get?team_id=${teamId}`, token)
     if (!response) return null
 
-    console.log('[fetchTeamInfo] iRacing API Response:', JSON.stringify(response, null, 2))
+    logger.info({ response }, 'iRacing API Response')
 
     return {
       teamId: response.team_id,
       teamName: response.team_name,
     }
   } catch (error) {
-    console.error(`Failed to fetch team ${teamId}:`, error)
+    logger.error({ err: error, teamId }, 'Failed to fetch team')
     return null
   }
 }
@@ -499,7 +502,7 @@ async function fetchRealEvents(token: string): Promise<IRacingEvent[]> {
     const dump = JSON.stringify(seasons, null, 2)
     const outPath = path.join(process.cwd(), 'iracing-seasons.json')
     await writeFile(outPath, dump, 'utf-8')
-    console.log('iRacing seasons raw written to:', outPath)
+    logger.info('iRacing seasons raw written to: %s', outPath)
   }
 
   const specialKeywords = [

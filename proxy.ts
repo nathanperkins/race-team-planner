@@ -2,6 +2,9 @@ import NextAuth, { type Session } from 'next-auth'
 import type { NextRequest } from 'next/server'
 import { authConfig } from '@/lib/auth.config'
 import { getOnboardingStatus, ONBOARDING_PATHS } from '@/lib/onboarding'
+import { createLogger } from '@/lib/logger'
+
+const logger = createLogger('proxy')
 
 // Use the base auth for middleware
 const { auth } = NextAuth(authConfig)
@@ -26,7 +29,7 @@ export const handleProxy = (req: NextRequest & { auth: Session | null }) => {
   if (isLoggedIn && session) {
     // Session Sanity Check: If the session exists but has NO ID, force a fresh login.
     if (!session.user?.id) {
-      console.log(`[proxy] Critical: Session missing ID. Redirecting to /login`)
+      logger.info(`Critical: Session missing ID. Redirecting to /login`)
       const loginUrl = new URL('/login', nextUrl)
       loginUrl.searchParams.set('reason', 'stale_session')
       return Response.redirect(loginUrl)
@@ -36,10 +39,10 @@ export const handleProxy = (req: NextRequest & { auth: Session | null }) => {
     const status = getOnboardingStatus(session)
     const targetPath = ONBOARDING_PATHS[status]
 
-    console.log(`[proxy] Path: ${nextUrl.pathname}, Status: ${status}, Target: ${targetPath}`)
+    logger.info(`Path: ${nextUrl.pathname}, Status: ${status}, Target: ${targetPath}`)
 
     if (targetPath && nextUrl.pathname !== targetPath) {
-      console.log(`[proxy] Onboarding tunnel: State ${status}. Forcing redirect to ${targetPath}`)
+      logger.info(`Onboarding tunnel: State ${status}. Forcing redirect to ${targetPath}`)
       return Response.redirect(new URL(targetPath, nextUrl))
     }
   }

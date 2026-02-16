@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { createLogger } from '@/lib/logger'
+
+const logger = createLogger('api-drivers-id')
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -58,7 +61,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
 
     return NextResponse.json({ error: 'Driver not found' }, { status: 404 })
   } catch (error) {
-    console.error('Failed to fetch driver details:', error)
+    logger.error({ err: error }, 'Failed to fetch driver details')
     return NextResponse.json({ error: 'Failed to fetch driver details' }, { status: 500 })
   }
 }

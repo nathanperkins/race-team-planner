@@ -1,5 +1,8 @@
 import { auth } from '@/lib/auth'
 import prisma from '@/lib/prisma'
+import { createLogger } from '@/lib/logger'
+
+const logger = createLogger('api-car-classes')
 
 export async function GET() {
   try {
@@ -22,7 +25,7 @@ export async function GET() {
 
     return Response.json(carClasses)
   } catch (error) {
-    console.error('Error fetching car classes:', error)
+    logger.error({ err: error }, 'Error fetching car classes')
     return Response.json({ error: 'Failed to fetch car classes' }, { status: 500 })
   }
 }

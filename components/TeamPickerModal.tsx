@@ -23,6 +23,9 @@ import { batchAssignTeams } from '@/app/admin/teams/actions'
 import FormattedDate from './FormattedDate'
 import styles from './TeamPickerModal.module.css'
 import { RaceWithRegistrations, ExtendedRegistration } from './RaceDetails'
+import { createLogger } from '@/lib/logger'
+
+const logger = createLogger('TeamPickerModal')
 
 interface Driver {
   id: string
@@ -368,7 +371,7 @@ export default function TeamPickerModal({
       await batchAssignTeams(assignments, raceId, carClassId)
       onClose()
     } catch (err) {
-      console.error(err)
+      logger.error({ err, raceId, carClassId }, 'Failed to save team assignments')
       alert('Failed to save team assignments')
     } finally {
       setSaving(false)

@@ -13,6 +13,9 @@ import {
   Car,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createLogger } from '@/lib/logger'
+
+const logger = createLogger('EventDetailModal')
 import RaceDetails from '@/components/RaceDetails'
 import EditEventButton from '@/app/admin/EditEventButton'
 import {
@@ -113,7 +116,7 @@ export default function EventDetailModal({
       fetch('/api/drivers')
         .then((res) => res.json())
         .then((data) => setAllDrivers(data))
-        .catch((err) => console.error('Failed to fetch drivers:', err))
+        .catch((err) => logger.error({ err }, 'Failed to fetch drivers'))
     }
   }, [isAdmin])
 

@@ -2,6 +2,9 @@ import prisma from '@/lib/prisma'
 import { UserRole } from '@prisma/client'
 import { CURRENT_EXPECTATIONS_VERSION, SESSION_VERSION } from '@/lib/config'
 import type { JWT } from 'next-auth/jwt'
+import { createLogger } from '@/lib/logger'
+
+const logger = createLogger('auth-service')
 
 export interface UserRefreshData {
   role: UserRole
@@ -77,7 +80,7 @@ export async function syncDiscordProfile(
 
     return updatedUser
   } catch (error) {
-    console.error('[auth-service][syncDiscordProfile] Failed to sync:', error)
+    logger.error({ err: error }, '[syncDiscordProfile] Failed to sync')
     throw error
   }
 }
@@ -90,7 +93,7 @@ export async function verifyGuildMembership(discordId: string): Promise<string |
   const { status } = await checkGuildMembership(discordId)
 
   if (status !== GuildMembershipStatus.MEMBER) {
-    console.log(`[auth-service][verifyGuildMembership] Denying access: ${status}`)
+    logger.info(`[verifyGuildMembership] Denying access: ${status}`)
     return `/not-found?error=${status}`
   }
 

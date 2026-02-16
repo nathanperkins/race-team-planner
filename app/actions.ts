@@ -7,6 +7,9 @@ import { z } from 'zod'
 import { CURRENT_EXPECTATIONS_VERSION } from '@/lib/config'
 import { getAutoMaxDriversPerTeam, getRaceDurationMinutes } from '@/lib/utils'
 import { Prisma, TeamAssignmentStrategy } from '@prisma/client'
+import { createLogger } from '@/lib/logger'
+
+const logger = createLogger('actions')
 
 const RegistrationSchema = z.object({
   raceId: z.string(),
@@ -496,7 +499,7 @@ async function upsertEventDiscussionThread(options: {
     return { threadId: result.threadId, createdOrReplaced }
   }
 
-  console.error('Failed to create or update event discussion thread')
+  logger.error('Failed to create or update event discussion thread')
   return { threadId: null, createdOrReplaced: false }
 }
 
@@ -663,13 +666,13 @@ export async function registerForRace(prevState: State, formData: FormData) {
       }
     } catch (notificationError) {
       // Log but don't fail the registration if notification fails
-      console.error('Failed to send Discord notification:', notificationError)
+      logger.error({ err: notificationError }, 'Failed to send Discord notification')
     }
 
     revalidatePath(`/events/${race.eventId}`)
     return { message: 'Success' }
   } catch (e) {
-    console.error('Registration error:', e)
+    logger.error({ err: e }, 'Registration error')
     if (isRegistrationUserForeignKeyError(e)) {
       return {
         message:
@@ -951,7 +954,7 @@ export async function deleteRegistration(registrationId: string): Promise<void> 
         }
       }
     } catch (notificationError) {
-      console.error('Failed to send drop notification:', notificationError)
+      logger.error({ err: notificationError }, 'Failed to send drop notification')
     }
 
     if (registration.race?.eventId) {
@@ -959,7 +962,7 @@ export async function deleteRegistration(registrationId: string): Promise<void> 
     }
     revalidatePath(`/users/${registration.userId}/registrations`)
   } catch (e) {
-    console.error('Delete registration error:', e)
+    logger.error({ err: e }, 'Delete registration error')
     throw new Error('Failed to delete registration')
   }
 
@@ -1037,7 +1040,7 @@ export async function updateRegistrationCarClass(prevState: State, formData: For
 
     return { message: 'Success', timestamp: Date.now() }
   } catch (e) {
-    console.error('Update registration error:', e)
+    logger.error({ err: e }, 'Update registration error')
     return { message: 'Failed to update registration', timestamp: Date.now() }
   }
 }
@@ -1123,7 +1126,7 @@ export async function updateRegistrationRaceTime(prevState: State, formData: For
 
     return { message: 'Success', timestamp: Date.now() }
   } catch (e) {
-    console.error('Update race time error:', e)
+    logger.error({ err: e }, 'Update race time error')
     // Handle unique constraint error
     if (e && typeof e === 'object' && 'code' in e && (e as { code: string }).code === 'P2002') {
       return { message: 'You are already registered for that race session.', timestamp: Date.now() }
@@ -1511,7 +1514,7 @@ export async function saveRaceEdits(formData: FormData) {
         try {
           await sendTeamsAssignmentNotification(raceId)
         } catch (notificationError) {
-          console.error('Failed to send teams assigned notification:', notificationError)
+          logger.error({ err: notificationError }, 'Failed to send teams assigned notification')
         }
       }
     }
@@ -1537,7 +1540,7 @@ export async function saveRaceEdits(formData: FormData) {
 
     return { message: 'Success' }
   } catch (error) {
-    console.error('Save race edits error:', error)
+    logger.error({ err: error }, 'Save race edits error')
     if (error instanceof Prisma.PrismaClientInitializationError) {
       return { message: 'Database connection failed' }
     }
@@ -1814,7 +1817,7 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
           teamThreads[teamId] = threadId
         }
       } catch (error) {
-        console.error('Failed to create team thread:', error)
+        logger.error({ err: error }, 'Failed to create team thread')
       }
     }
 
@@ -2020,7 +2023,7 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
     })
 
     if (!threadResult.ok) {
-      console.error('Failed to create/update event thread')
+      logger.error('Failed to create/update event thread')
       return { message: 'Failed to create event thread' }
     }
 
@@ -2071,7 +2074,7 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
 
     return { message: 'Success' }
   } catch (error) {
-    console.error('Failed to send teams assigned notification:', error)
+    logger.error({ err: error }, 'Failed to send teams assigned notification')
     return { message: 'Failed to send notification' }
   }
 }
@@ -2297,23 +2300,23 @@ export async function adminRegisterDriver(prevState: State, formData: FormData) 
       }
     } catch (notificationError) {
       // Log but don't fail the registration if notification fails
-      console.error('Failed to send Discord notification:', notificationError)
+      logger.error({ err: notificationError }, 'Failed to send Discord notification')
     }
 
     if (race.teamsAssigned) {
       try {
         await sendTeamsAssignmentNotification(raceId)
       } catch (notificationError) {
-        console.error(
-          'Failed to refresh teams assigned notification after adding driver:',
-          notificationError
+        logger.error(
+          { err: notificationError },
+          'Failed to refresh teams assigned notification after adding driver'
         )
       }
     }
 
     return { message: 'Success', timestamp: Date.now(), registration }
   } catch (e) {
-    console.error('Admin register driver error:', e)
+    logger.error({ err: e }, 'Admin register driver error')
     if (isRegistrationUserForeignKeyError(e)) {
       return {
         message:

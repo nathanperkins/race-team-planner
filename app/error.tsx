@@ -5,6 +5,9 @@ import { useEffect } from 'react'
 import Link from 'next/link'
 import { AlertTriangle, RotateCcw, Home } from 'lucide-react'
 import styles from './error.module.css'
+import { createLogger } from '@/lib/logger'
+
+const logger = createLogger('AppError')
 
 export default function Error({
   error,
@@ -15,7 +18,7 @@ export default function Error({
 }) {
   useEffect(() => {
     // Log the error to an error reporting service
-    console.error('Application Error:', error)
+    logger.error({ err: error, digest: error.digest }, 'Application error')
   }, [error])
 
   return (

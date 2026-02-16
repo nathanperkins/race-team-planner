@@ -2,6 +2,9 @@
 
 import prisma from '@/lib/prisma'
 import { auth } from '@/lib/auth'
+import { createLogger } from '@/lib/logger'
+
+const logger = createLogger('delete-account')
 
 export async function deleteAccount() {
   const session = await auth()
@@ -16,7 +19,7 @@ export async function deleteAccount() {
 
     return { success: true }
   } catch (error) {
-    console.error('Delete account error:', error)
+    logger.error({ err: error }, 'Delete account error')
     return { success: false, error: 'Failed to delete account' }
   }
 }

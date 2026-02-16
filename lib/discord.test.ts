@@ -19,6 +19,20 @@ import {
 } from './discord'
 import type { WeeklyScheduleEvent } from './discord-utils'
 
+// Create mock logger singleton using vi.hoisted to avoid hoisting issues
+const mockLogger = vi.hoisted(() => ({
+  info: vi.fn(),
+  error: vi.fn(),
+  warn: vi.fn(),
+  debug: vi.fn(),
+}))
+
+// Mock the logger module
+vi.mock('./logger', () => ({
+  createLogger: () => mockLogger,
+  logger: mockLogger,
+}))
+
 describe('checkGuildMembership', () => {
   const userId = '123456789'
   const botToken = 'fake-bot-token'
@@ -29,9 +43,8 @@ describe('checkGuildMembership', () => {
     // Save original env
     vi.stubEnv('DISCORD_BOT_TOKEN', botToken)
     vi.stubEnv('DISCORD_GUILD_ID', guildId)
-    // Silence console during tests
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
-    vi.spyOn(console, 'error').mockImplementation(() => {})
+    // Clear all mocks
+    vi.clearAllMocks()
   })
 
   afterEach(() => {
@@ -44,7 +57,7 @@ describe('checkGuildMembership', () => {
     vi.stubEnv('DISCORD_BOT_TOKEN', '')
     const result = await checkGuildMembership(userId)
     expect(result.status).toBe(GuildMembershipStatus.CONFIG_ERROR)
-    expect(console.warn).toHaveBeenCalledWith(
+    expect(mockLogger.warn).toHaveBeenCalledWith(
       expect.stringContaining('DISCORD_BOT_TOKEN or DISCORD_GUILD_ID missing')
     )
   })
@@ -105,7 +118,7 @@ describe('checkGuildMembership', () => {
 
     const result = await checkGuildMembership(userId)
     expect(result.status).toBe(GuildMembershipStatus.API_ERROR)
-    expect(console.error).toHaveBeenCalled()
+    expect(mockLogger.error).toHaveBeenCalled()
   })
 
   it('returns API_ERROR when fetch throws an error', async () => {
@@ -113,9 +126,9 @@ describe('checkGuildMembership', () => {
 
     const result = await checkGuildMembership(userId)
     expect(result.status).toBe(GuildMembershipStatus.API_ERROR)
-    expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to check Discord guild membership'),
-      expect.any(Error)
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { err: expect.any(Error) },
+      'Failed to check Discord guild membership'
     )
   })
 })
@@ -126,7 +139,7 @@ describe('verifyBotToken', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn())
     vi.stubEnv('DISCORD_BOT_TOKEN', botToken)
-    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.clearAllMocks()
   })
 
   afterEach(() => {
@@ -179,9 +192,9 @@ describe('verifyBotToken', () => {
 
     const result = await verifyBotToken()
     expect(result).toBeNull()
-    expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Discord Token Verification Failed: 401 Unauthorized'),
-      'Invalid Token'
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { status: 401, statusText: 'Unauthorized', text: 'Invalid Token' },
+      '❌ Discord Token Verification Failed'
     )
   })
 
@@ -191,9 +204,9 @@ describe('verifyBotToken', () => {
 
     const result = await verifyBotToken()
     expect(result).toBeNull()
-    expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to connect to Discord API during verification:'),
-      error
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { err: error },
+      '❌ Failed to connect to Discord API during verification'
     )
   })
 })
@@ -206,7 +219,7 @@ describe('verifyGuildAccess', () => {
     vi.stubGlobal('fetch', vi.fn())
     vi.stubEnv('DISCORD_BOT_TOKEN', botToken)
     vi.stubEnv('DISCORD_GUILD_ID', guildId)
-    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.clearAllMocks()
   })
 
   afterEach(() => {
@@ -263,9 +276,9 @@ describe('verifyGuildAccess', () => {
 
     const result = await verifyGuildAccess()
     expect(result).toBeNull()
-    expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Discord Guild Access Failed: 403 Forbidden'),
-      'Missing Access'
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { status: 403, statusText: 'Forbidden', text: 'Missing Access' },
+      '❌ Discord Guild Access Failed'
     )
   })
 
@@ -275,9 +288,9 @@ describe('verifyGuildAccess', () => {
 
     const result = await verifyGuildAccess()
     expect(result).toBeNull()
-    expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to connect to Discord API during guild verification:'),
-      error
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { err: error },
+      '❌ Failed to connect to Discord API during guild verification'
     )
   })
 })
@@ -292,7 +305,7 @@ describe('verifyAdminRoles', () => {
     vi.stubEnv('DISCORD_BOT_TOKEN', botToken)
     vi.stubEnv('DISCORD_GUILD_ID', guildId)
     vi.stubEnv('DISCORD_ADMIN_ROLE_IDS', adminRoleIds)
-    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.clearAllMocks()
   })
 
   afterEach(() => {
@@ -355,7 +368,7 @@ describe('verifyAdminRoles', () => {
 
     const result = await verifyAdminRoles()
     expect(result).toEqual([])
-    expect(console.error).toHaveBeenCalledWith(
+    expect(mockLogger.error).toHaveBeenCalledWith(
       expect.stringContaining('❌ Discord Admin Role Verification Failed: 401')
     )
   })
@@ -366,9 +379,9 @@ describe('verifyAdminRoles', () => {
 
     const result = await verifyAdminRoles()
     expect(result).toEqual([])
-    expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('❌ Failed to connect to Discord API during role verification:'),
-      error
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { err: error },
+      '❌ Failed to connect to Discord API during role verification'
     )
   })
 })
@@ -381,7 +394,7 @@ describe('verifyNotificationsChannel', () => {
     vi.stubGlobal('fetch', vi.fn())
     vi.stubEnv('DISCORD_BOT_TOKEN', botToken)
     vi.stubEnv('DISCORD_NOTIFICATIONS_CHANNEL_ID', channelId)
-    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.clearAllMocks()
   })
 
   afterEach(() => {
@@ -438,9 +451,9 @@ describe('verifyNotificationsChannel', () => {
 
     const result = await verifyNotificationsChannel()
     expect(result).toBeNull()
-    expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Discord Notifications Channel Access Failed: 403 Forbidden'),
-      'Missing Permissions'
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { status: 403, statusText: 'Forbidden', text: 'Missing Permissions' },
+      '❌ Discord Notifications Channel Access Failed'
     )
   })
 
@@ -450,9 +463,9 @@ describe('verifyNotificationsChannel', () => {
 
     const result = await verifyNotificationsChannel()
     expect(result).toBeNull()
-    expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to connect to Discord API during channel verification:'),
-      error
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { err: error },
+      '❌ Failed to connect to Discord API during channel verification'
     )
   })
 })
@@ -465,7 +478,7 @@ describe('verifyEventsForum', () => {
     vi.stubGlobal('fetch', vi.fn())
     vi.stubEnv('DISCORD_BOT_TOKEN', botToken)
     vi.stubEnv('DISCORD_EVENTS_FORUM_ID', forumId)
-    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.clearAllMocks()
   })
 
   afterEach(() => {
@@ -514,9 +527,9 @@ describe('verifyEventsForum', () => {
 
     const result = await verifyEventsForum()
     expect(result).toBeNull()
-    expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Discord Events Forum Access Failed: 404 Not Found'),
-      'Channel not found'
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { status: 404, statusText: 'Not Found', text: 'Channel not found' },
+      '❌ Discord Events Forum Access Failed'
     )
   })
 
@@ -526,9 +539,9 @@ describe('verifyEventsForum', () => {
 
     const result = await verifyEventsForum()
     expect(result).toBeNull()
-    expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to connect to Discord API during forum verification:'),
-      error
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { err: error },
+      '❌ Failed to connect to Discord API during forum verification'
     )
   })
 })
@@ -552,9 +565,7 @@ describe('sendRegistrationNotification', () => {
     vi.stubGlobal('fetch', vi.fn())
     vi.stubEnv('DISCORD_BOT_TOKEN', botToken)
     vi.stubEnv('DISCORD_NOTIFICATIONS_CHANNEL_ID', channelId)
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
-    vi.spyOn(console, 'error').mockImplementation(() => {})
-    vi.spyOn(console, 'log').mockImplementation(() => {})
+    vi.clearAllMocks()
   })
 
   afterEach(() => {
@@ -567,7 +578,7 @@ describe('sendRegistrationNotification', () => {
     vi.stubEnv('DISCORD_BOT_TOKEN', '')
     const result = await sendRegistrationNotification(data)
     expect(result).toBe(false)
-    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('skipped'))
+    expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('skipped'))
   })
 
   it('returns true when API returns 200 OK', async () => {
@@ -690,10 +701,11 @@ describe('sendRegistrationNotification', () => {
 
     expect(result).toBe(true) // Still returns true since notification channel succeeded
     expect(fetch).toHaveBeenCalledTimes(2)
-    expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining(
-        'Failed to send Discord registration notification to thread event-thread-123'
-      ),
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      'Failed to send Discord registration notification to thread %s: %d %s: %s',
+      'event-thread-123',
+      404,
+      'Not Found',
       'Thread not found'
     )
   })
@@ -708,8 +720,10 @@ describe('sendRegistrationNotification', () => {
 
     const result = await sendRegistrationNotification(data)
     expect(result).toBe(false)
-    expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to send Discord registration notification: 400 Bad Request'),
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      'Failed to send Discord registration notification: %d %s: %s',
+      400,
+      'Bad Request',
       'Error message'
     )
   })
@@ -720,9 +734,9 @@ describe('sendRegistrationNotification', () => {
 
     const result = await sendRegistrationNotification(data)
     expect(result).toBe(false)
-    expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Error sending Discord registration notification:'),
-      error
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { err: error },
+      'Error sending Discord registration notification'
     )
   })
 })
@@ -741,9 +755,7 @@ describe('sendOnboardingNotification', () => {
     vi.stubGlobal('fetch', vi.fn())
     vi.stubEnv('DISCORD_BOT_TOKEN', botToken)
     vi.stubEnv('DISCORD_NOTIFICATIONS_CHANNEL_ID', channelId)
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
-    vi.spyOn(console, 'error').mockImplementation(() => {})
-    vi.spyOn(console, 'log').mockImplementation(() => {})
+    vi.clearAllMocks()
   })
 
   afterEach(() => {
@@ -756,7 +768,7 @@ describe('sendOnboardingNotification', () => {
     vi.stubEnv('DISCORD_BOT_TOKEN', '')
     const result = await sendOnboardingNotification(data)
     expect(result).toBe(false)
-    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('skipped'))
+    expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('skipped'))
   })
 
   it('returns true when API returns 200 OK', async () => {
@@ -789,9 +801,9 @@ describe('sendOnboardingNotification', () => {
 
     const result = await sendOnboardingNotification(data)
     expect(result).toBe(false)
-    expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to send Discord onboarding notification: 403 Forbidden'),
-      'Missing Permissions'
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { status: 403, statusText: 'Forbidden', errorText: 'Missing Permissions' },
+      'Failed to send Discord onboarding notification'
     )
   })
 
@@ -801,9 +813,9 @@ describe('sendOnboardingNotification', () => {
 
     const result = await sendOnboardingNotification(data)
     expect(result).toBe(false)
-    expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Error sending Discord onboarding notification:'),
-      error
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { err: error },
+      'Error sending Discord onboarding notification'
     )
   })
 })
@@ -814,7 +826,7 @@ describe('findBotMessageInThread', () => {
 
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn())
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.clearAllMocks()
   })
 
   afterEach(() => {
@@ -950,8 +962,7 @@ describe('upsertThreadMessage', () => {
 
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn())
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
-    vi.spyOn(console, 'log').mockImplementation(() => {})
+    vi.clearAllMocks()
   })
 
   afterEach(() => {
@@ -1064,9 +1075,9 @@ describe('upsertThreadMessage', () => {
     expect(result.ok).toBe(true)
     // Get bot ID + Get messages + 4 edit attempts + 1 post = 7 total
     expect(fetch).toHaveBeenCalledTimes(7)
-    expect(console.warn).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to edit existing message msg-1'),
-      expect.any(Error)
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      { err: expect.any(Error), existingMessageId: 'msg-1', threadId: 'thread-123' },
+      'Failed to edit existing message after retries'
     )
   })
 
@@ -1133,7 +1144,7 @@ describe('upsertThreadMessage', () => {
 
     expect(result.ok).toBe(false)
     expect(result.status).toBe(404)
-    expect(console.warn).toHaveBeenCalledWith(
+    expect(mockLogger.warn).toHaveBeenCalledWith(
       expect.stringContaining('Failed to create message in thread thread-123')
     )
   })
@@ -1145,8 +1156,7 @@ describe('postRosterChangeNotifications', () => {
 
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn())
-    vi.spyOn(console, 'log').mockImplementation(() => {})
-    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.clearAllMocks()
   })
 
   afterEach(() => {
@@ -1305,9 +1315,12 @@ describe('postRosterChangeNotifications', () => {
 
     await postRosterChangeNotifications(eventThreadId, rosterChanges, botToken, 'Admin User')
 
-    expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to post roster changes'),
-      expect.anything()
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      'Failed to post roster changes to %s: %d %s: %s',
+      'event thread',
+      500,
+      'Internal Server Error',
+      'Error details'
     )
   })
 
@@ -1444,9 +1457,7 @@ describe('sendWeeklyScheduleNotification', () => {
     vi.stubGlobal('fetch', vi.fn())
     vi.stubEnv('DISCORD_BOT_TOKEN', 'fake-bot-token')
     vi.stubEnv('DISCORD_NOTIFICATIONS_CHANNEL_ID', 'fake-channel-id')
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
-    vi.spyOn(console, 'error').mockImplementation(() => {})
-    vi.spyOn(console, 'log').mockImplementation(() => {})
+    vi.clearAllMocks()
   })
 
   afterEach(() => {
@@ -1463,7 +1474,7 @@ describe('sendWeeklyScheduleNotification', () => {
     const result = await sendWeeklyScheduleNotification(events)
 
     expect(result).toBe(false)
-    expect(console.warn).toHaveBeenCalledWith(
+    expect(mockLogger.warn).toHaveBeenCalledWith(
       expect.stringContaining(
         'DISCORD_BOT_TOKEN or DISCORD_NOTIFICATIONS_CHANNEL_ID not configured'
       )
@@ -1479,7 +1490,7 @@ describe('sendWeeklyScheduleNotification', () => {
     const result = await sendWeeklyScheduleNotification(events)
 
     expect(result).toBe(false)
-    expect(console.warn).toHaveBeenCalledWith(
+    expect(mockLogger.warn).toHaveBeenCalledWith(
       expect.stringContaining(
         'DISCORD_BOT_TOKEN or DISCORD_NOTIFICATIONS_CHANNEL_ID not configured'
       )
@@ -1516,8 +1527,9 @@ describe('sendWeeklyScheduleNotification', () => {
         body: expect.stringContaining('Upcoming Races for this Weekend'),
       })
     )
-    expect(console.log).toHaveBeenCalledWith(
-      expect.stringContaining('Weekly schedule chunk 1/1 sent')
+    expect(mockLogger.info).toHaveBeenCalledWith(
+      { chunkIndex: 1, totalChunks: 1 },
+      '✅ Weekly schedule chunk sent'
     )
   })
 
@@ -1548,11 +1560,13 @@ describe('sendWeeklyScheduleNotification', () => {
     expect(secondBody.content).toBeUndefined()
     expect(secondBody.embeds).toHaveLength(1)
 
-    expect(console.log).toHaveBeenCalledWith(
-      expect.stringContaining('Weekly schedule chunk 1/2 sent')
+    expect(mockLogger.info).toHaveBeenCalledWith(
+      { chunkIndex: 1, totalChunks: 2 },
+      '✅ Weekly schedule chunk sent'
     )
-    expect(console.log).toHaveBeenCalledWith(
-      expect.stringContaining('Weekly schedule chunk 2/2 sent')
+    expect(mockLogger.info).toHaveBeenCalledWith(
+      { chunkIndex: 2, totalChunks: 2 },
+      '✅ Weekly schedule chunk sent'
     )
   })
 
@@ -1576,12 +1590,19 @@ describe('sendWeeklyScheduleNotification', () => {
 
     // Returns false if ANY chunk fails (all-or-nothing)
     expect(result).toBe(false)
-    expect(console.log).toHaveBeenCalledWith(
-      expect.stringContaining('Weekly schedule chunk 1/2 sent')
+    expect(mockLogger.info).toHaveBeenCalledWith(
+      { chunkIndex: 1, totalChunks: 2 },
+      '✅ Weekly schedule chunk sent'
     )
-    expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to send weekly schedule chunk 2/2'),
-      'Server error details'
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      {
+        chunkIndex: 2,
+        totalChunks: 2,
+        status: 500,
+        statusText: 'Internal Server Error',
+        errorText: 'Server error details',
+      },
+      '❌ Failed to send weekly schedule chunk'
     )
   })
 
@@ -1593,9 +1614,9 @@ describe('sendWeeklyScheduleNotification', () => {
     const result = await sendWeeklyScheduleNotification(events)
 
     expect(result).toBe(false)
-    expect(console.error).toHaveBeenCalledWith(
-      'Error sending Discord weekly schedule notification:',
-      expect.any(Error)
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { err: expect.any(Error) },
+      'Error sending Discord weekly schedule notification'
     )
   })
 })
@@ -1607,7 +1628,7 @@ describe('addUsersToThread', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn())
     vi.stubEnv('DISCORD_BOT_TOKEN', botToken)
-    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.clearAllMocks()
   })
 
   afterEach(() => {
@@ -1681,7 +1702,7 @@ describe('addUsersToThread', () => {
 
     await addUsersToThread(threadId, discordUserIds)
 
-    expect(console.error).not.toHaveBeenCalled()
+    expect(mockLogger.error).not.toHaveBeenCalled()
   })
 
   it('should log errors for non-409 failures', async () => {
@@ -1696,9 +1717,15 @@ describe('addUsersToThread', () => {
 
     await addUsersToThread(threadId, discordUserIds)
 
-    expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to add user user-1'),
-      expect.any(String)
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      {
+        status: 500,
+        statusText: 'Internal Server Error',
+        errorText: 'Something went wrong',
+        userId: 'user-1',
+        threadId: 'thread-123',
+      },
+      'Failed to add user to thread'
     )
   })
 
@@ -1721,9 +1748,7 @@ describe('createOrUpdateTeamThread', () => {
     vi.stubEnv('DISCORD_BOT_TOKEN', botToken)
     vi.stubEnv('DISCORD_NOTIFICATIONS_CHANNEL_ID', channelId)
     vi.stubEnv('DISCORD_EVENTS_FORUM_ID', forumId)
-    vi.spyOn(console, 'log').mockImplementation(() => {})
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
-    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.clearAllMocks()
   })
 
   afterEach(() => {
@@ -2092,9 +2117,7 @@ describe('createOrUpdateEventThread', () => {
     vi.stubEnv('DISCORD_NOTIFICATIONS_CHANNEL_ID', channelId)
     vi.stubEnv('DISCORD_EVENTS_FORUM_ID', forumId)
     vi.stubEnv('DISCORD_GUILD_ID', guildId)
-    vi.spyOn(console, 'log').mockImplementation(() => {})
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
-    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.clearAllMocks()
   })
 
   afterEach(() => {

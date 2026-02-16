@@ -4,6 +4,9 @@ import { useState } from 'react'
 import { syncGlobalDataAction } from '@/app/actions/sync'
 import { Cloud, X } from 'lucide-react'
 import styles from './sync-button.module.css'
+import { createLogger } from '@/lib/logger'
+
+const logger = createLogger('SyncButton')
 
 export default function SyncButton() {
   const [isSyncing, setIsSyncing] = useState(false)
@@ -35,7 +38,7 @@ export default function SyncButton() {
     } catch (error) {
       setStatus('error')
       setMessage(`An unexpected error occurred.`)
-      console.error(error)
+      logger.error({ err: error }, 'Sync failed with unexpected error')
     } finally {
       setIsSyncing(false)
     }

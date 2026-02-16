@@ -15,6 +15,19 @@ const eslintConfig = defineConfig([
     'next-env.d.ts',
   ]),
   {
+    // Global rules for all files
+    rules: {
+      'no-console': 'error',
+    },
+  },
+  {
+    // Allow console in scripts and seed files
+    files: ['scripts/**/*.{js,ts}', 'prisma/seed.ts'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
+  {
     files: ['**/*.test.{js,jsx,ts,tsx}', '**/*.spec.{js,jsx,ts,tsx}'],
     rules: {
       '@next/next/no-img-element': 'off',

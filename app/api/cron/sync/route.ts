@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { runIRacingSync } from '@/lib/services/sync-service'
 import { SyncSource } from '@prisma/client'
+import { createLogger } from '@/lib/logger'
+
+const logger = createLogger('api-cron-sync')
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization')
@@ -10,7 +13,7 @@ export async function GET(request: NextRequest) {
     return new NextResponse('Unauthorized', { status: 401 })
   }
 
-  console.log('[Cron] Starting automated iRacing synchronization...')
+  logger.info('Starting automated iRacing synchronization...')
   const result = await runIRacingSync(SyncSource.CRON)
 
   if (result.success) {

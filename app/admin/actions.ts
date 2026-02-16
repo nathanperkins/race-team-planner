@@ -3,6 +3,9 @@
 import { auth } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
+import { createLogger } from '@/lib/logger'
+
+const logger = createLogger('admin-actions')
 
 interface State {
   message: string
@@ -137,7 +140,7 @@ export async function createCustomEvent(prevState: State, formData: FormData): P
 
     return { message: 'Success' }
   } catch (error: unknown) {
-    console.error('Error creating custom event:', error)
+    logger.error({ err: error }, 'Error creating custom event')
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to create event. Please try again.'
     return { message: `Error: ${errorMessage}` }
@@ -309,7 +312,7 @@ export async function updateCustomEvent(prevState: State, formData: FormData): P
 
     return { message: 'Success' }
   } catch (error: unknown) {
-    console.error('Error updating custom event:', error)
+    logger.error({ err: error }, 'Error updating custom event')
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to update event. Please try again.'
     return { message: `Error: ${errorMessage}` }
@@ -350,7 +353,7 @@ export async function deleteCustomEvent(
 
     return { success: true, message: 'Event deleted successfully.' }
   } catch (error) {
-    console.error('Error deleting custom event:', error)
+    logger.error({ err: error }, 'Error deleting custom event')
     return { success: false, message: 'Failed to delete event. Please try again.' }
   }
 }
@@ -463,7 +466,7 @@ export async function triggerWeeklyReportAction() {
         : 'Failed to send notification via Discord API.',
     }
   } catch (error) {
-    console.error('Error triggering weekly report:', error)
+    logger.error({ err: error }, 'Error triggering weekly report')
     return { success: false, message: 'Internal server error' }
   }
 }

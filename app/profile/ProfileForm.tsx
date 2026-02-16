@@ -7,6 +7,9 @@ import { useSession } from 'next-auth/react'
 import { Lock, Loader2 } from 'lucide-react'
 import { getOnboardingStatus, OnboardingStatus } from '@/lib/onboarding'
 import styles from './profile.module.css'
+import { createLogger } from '@/lib/logger'
+
+const logger = createLogger('ProfileForm')
 
 interface Props {
   userId: string
@@ -55,7 +58,7 @@ export default function ProfileForm({ initialCustomerId, initialIracingName }: P
           setMessage({ type: 'error', text: result.error || 'Failed to update' })
         }
       } catch (err) {
-        console.error('Update profile error:', err)
+        logger.error({ err }, 'Update profile error')
         setMessage({ type: 'error', text: 'An unexpected error occurred' })
       }
     })
@@ -103,7 +106,7 @@ export default function ProfileForm({ initialCustomerId, initialIracingName }: P
           formData,
         })
       } catch (err) {
-        console.error('Validation error:', err)
+        logger.error({ err }, 'Validation error')
         setMessage({ type: 'error', text: 'Failed to validate customer ID' })
       }
     })
