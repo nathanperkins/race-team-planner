@@ -6,7 +6,7 @@ The most notable changes to this project are documented here.
 
 **Released on <time datetime="2026-02-16">February 16, 2026</time>**
 
-[47 issues completed][Milestone 1] by **[Nathan]**, **[Steven]**, and **[Kaelan]**.
+[45 issues completed][Milestone 1] by **[Nathan]**, **[Steven]**, and **[Kaelan]**.
 
 ### Highlights
 
@@ -139,5 +139,5 @@ Thanks to our testers for these suggestions and bug reports!
 [Kaelan]: https://github.com/klanmiko
 [Nathan]: https://github.com/nathanperkins
 [Steven]: https://github.com/stevencase243
-[Milestone 1]: https://github.com/nathanperkins/race-team-planner/milestone/1?closed=1
-[Feedback 1]: https://github.com/nathanperkins/race-team-planner/issues?q=is%3Aissue%20state%3Aclosed%20label%3Afeedback
+[Milestone 1]: https://github.com/nathanperkins/race-team-planner/issues?q=milestone%3A1.1+is%3Aclosed+reason%3Acompleted
+[Feedback 1]: https://github.com/nathanperkins/race-team-planner/issues?q=is%3Aissue%20state%3Aclosed%20label%3Afeedback%20reason%3Acompleted
