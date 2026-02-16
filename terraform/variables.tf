@@ -170,3 +170,9 @@ variable "app_timezone" {
   type        = string
   default     = ""
 }
+
+variable "log_level" {
+  description = "The log level for application logging (debug, info, warn, error). The app defaults to info in production."
+  type        = string
+  default     = ""
+}

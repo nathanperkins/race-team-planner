@@ -33,3 +33,4 @@ discord_events_forum_id          = "your-discord-forum-id"
  backup_encryption_key    = ""  # GPG passphrase for encrypting backups (generate a strong random string)
  domain_name              = ""  # e.g. planner.example.com (optional)
  feedback_url             = ""  # URL for feedback and bugs (optional)
+ log_level                = ""  # Log level: debug, info, warn, error (optional, defaults to info in production)

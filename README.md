@@ -92,6 +92,13 @@ will use a mock data set suitable for local development.
   - Set `FEEDBACK_URL` to a full URL (e.g., Discord forum post or GitHub issues) to add a link in the sidebar for community feedback.
   - If unset, the link will not be shown.
 
+### Logging
+
+- **Log Level**:
+  - Set `LOG_LEVEL` to control logging verbosity: `debug`, `info`, `warn`, or `error`.
+  - Default: `debug` in development, `info` in production.
+  - Use this to override the default behavior in specific environments.
+
 ### Database Backups
 
 Automated encrypted backups are configured in production via Cloud Run Jobs and Cloud Scheduler.

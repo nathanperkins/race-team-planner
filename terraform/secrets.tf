@@ -32,6 +32,7 @@ APP_TITLE="${var.app_title}"
 APP_LOCALE="${var.app_locale}"
 APP_TIMEZONE="${var.app_timezone}"
 FEEDBACK_URL="${var.feedback_url}"
+LOG_LEVEL="${var.log_level}"
 EOT
 }
 
