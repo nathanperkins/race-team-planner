@@ -2,11 +2,90 @@
 
 The most notable changes to this project are documented here.
 
+## Version 1.1 {#version-1.1}
+
+**Released on <time datetime="2026-02-16">February 16, 2026</time>**
+
+All work completed by **[Nathan]**, **[Steven]**, and **[Kaelan]**.
+
+### Highlights
+
+Version 1.1 focuses on improving the Discord notification system, enhancing race eligibility handling, and refining the team picker experience. This release includes significant improvements to notification clarity, better visual indicators for race eligibility, and numerous bug fixes.
+
+### Discord Notifications
+
+#### Enhanced Notification System
+
+- **Simplified registration notifications** - Reduced notification size by consolidating event info and showing only same-class racers, making notifications easier to scan at a glance ([#85](https://github.com/nathanperkins/race-team-planner/issues/85) by [Nathan])
+- **Include new registrant in member lists** - New race registrations now appear in the "Racers in Class" section of notifications ([#86](https://github.com/nathanperkins/race-team-planner/issues/86) by [Nathan])
+- **Thread-based notifications** - Registration notifications are now posted in both the main channel and the event thread ([#22](https://github.com/nathanperkins/race-team-planner/issues/22) by [Steven])
+- **Join Event button** - Added quick-action button to join races directly from Discord notifications and event threads ([#11](https://github.com/nathanperkins/race-team-planner/issues/11) by [Steven], [#83](https://github.com/nathanperkins/race-team-planner/issues/83) by [Nathan])
+- **Roster display** - Added "Already Registered" list showing other racers in registration notifications ([#33](https://github.com/nathanperkins/race-team-planner/issues/33) by [Steven])
+
+#### Thread Management
+
+- **Event-level threads** - Changed from race-specific to event-level discussion threads for better organization ([#2](https://github.com/nathanperkins/race-team-planner/issues/2) by [Steven])
+- **Thread recovery** - Automatically creates new discussion threads if previous ones are lost or deleted ([#20](https://github.com/nathanperkins/race-team-planner/issues/20) by [Steven])
+- **Multi-timeslot support** - Event discussion posts now properly show teams for all time slots ([#60](https://github.com/nathanperkins/race-team-planner/issues/60) by [Nathan])
+- **Team thread links** - Added navigation links back to main event thread from team threads ([#57](https://github.com/nathanperkins/race-team-planner/issues/57) by [Steven])
+- **Thread link fixes** - Fixed team thread links to work in both Discord app and browser ([#3](https://github.com/nathanperkins/race-team-planner/issues/3) by [Nathan])
+
+#### Notification Updates
+
+- **Live updates** - Discussion posts are now edited in place instead of creating new replies ([#7](https://github.com/nathanperkins/race-team-planner/issues/7) by [Nathan])
+- **Team updates** - Adding members to existing teams now updates the team notification ([#8](https://github.com/nathanperkins/race-team-planner/issues/8) by [Nathan])
+- **Driver mentions** - Team creators are now tagged when teams are formed ([#46](https://github.com/nathanperkins/race-team-planner/issues/46) by [Nathan])
+- **Thread membership** - All involved drivers are automatically added to event and team threads ([#4](https://github.com/nathanperkins/race-team-planner/issues/4), [#65](https://github.com/nathanperkins/race-team-planner/issues/65), [#66](https://github.com/nathanperkins/race-team-planner/issues/66) by [Nathan])
+
+#### Notification Fixes
+
+- **Drop notifications** - Fixed missing notifications when drivers drop from registrations or teams ([#61](https://github.com/nathanperkins/race-team-planner/issues/61) by [Steven], [#64](https://github.com/nathanperkins/race-team-planner/issues/64) by [Steven])
+- **Car class changes** - Changing a team's car class now properly updates and sends notifications ([#62](https://github.com/nathanperkins/race-team-planner/issues/62) by [Nathan])
+- **Empty event handling** - Fixed notification errors when teams are picked for events with no registrations ([#63](https://github.com/nathanperkins/race-team-planner/issues/63) by [Steven])
+
+### Race Eligibility & Safety
+
+- **Ineligibility indicators** - Added red X shield icon next to racers registered for races they're ineligible for due to license or safety rating ([#77](https://github.com/nathanperkins/race-team-planner/issues/77) by [Nathan])
+- **Registration warnings** - Show warning popup when ineligible users attempt to register for a race, but allow them to proceed ([#78](https://github.com/nathanperkins/race-team-planner/issues/78) by [Nathan])
+- **Eligibility tooltips** - Added tooltips explaining why racers are ineligible for specific races ([#80](https://github.com/nathanperkins/race-team-planner/issues/80) by [Nathan])
+- **Safety score improvements** - Enhanced handling of races with safety score requirements - shows warnings without blocking registration ([#32](https://github.com/nathanperkins/race-team-planner/issues/32) by [Kaelan])
+- **Unknown safety score handling** - Added score badges for all racers, marking those with unknown stats as ineligible with red X shield ([#79](https://github.com/nathanperkins/race-team-planner/issues/79) by [Nathan])
+
+### Events Page
+
+- **Registration badges** - Events you're registered for now show a clear "Registered" badge in the events list ([#18](https://github.com/nathanperkins/race-team-planner/issues/18) by [Nathan])
+- **Completed event handling** - Improved visibility of completed races with dimmed styling and sorted to bottom of list ([#75](https://github.com/nathanperkins/race-team-planner/issues/75) by [Steven], [#82](https://github.com/nathanperkins/race-team-planner/issues/82) by [Steven])
+- **Change class button** - Re-added the ability to change car class from event details page, avoiding the drop/re-add workflow and enabling better Discord notifications ([#42](https://github.com/nathanperkins/race-team-planner/issues/42) by [Steven])
+- **UI refinements** - Removed dropdown triangle from "Pick Teams" button since it's now a single-click action ([#41](https://github.com/nathanperkins/race-team-planner/issues/41) by [Steven])
+- **Simplified controls** - Moved complex admin controls to team picker, streamlined event page for cleaner interface ([#9](https://github.com/nathanperkins/race-team-planner/issues/9) by [Steven])
+
+### Team Picker
+
+- **Immutable team names** - Team names can no longer be changed after initial creation to prevent Discord thread name mismatches ([#68](https://github.com/nathanperkins/race-team-planner/issues/68) by [Nathan])
+- **Confirmation dialog** - Added confirmation modal showing diff of all changes, highlighting destructive changes (team moves, class changes) and which Discord threads will be created ([#5](https://github.com/nathanperkins/race-team-planner/issues/5) by [Steven])
+- **Stable class sorting** - Fixed unassigned racer class groups shifting position while dragging drivers to teams ([#74](https://github.com/nathanperkins/race-team-planner/issues/74) by [Steven])
+- **Rebalance fixes** - Team rebalance button now creates the correct number of teams based on max-per-team constraint ([#6](https://github.com/nathanperkins/race-team-planner/issues/6) by [Steven])
+- **Performance fix** - Resolved infinite loading when removing newly registered drivers from team assignments ([#10](https://github.com/nathanperkins/race-team-planner/issues/10) by [Steven])
+
+### User Experience
+
+- **My Registrations sorting** - Upcoming events now show first ([#29](https://github.com/nathanperkins/race-team-planner/issues/29) by [Nathan])
+- **Lock tooltip** - Moved iRacing ID lock explanation to a tooltip for cleaner UI ([#23](https://github.com/nathanperkins/race-team-planner/issues/23) by [Steven])
+- **Modal scroll fix** - Disabled background scroll when event details modal is open ([#31](https://github.com/nathanperkins/race-team-planner/issues/31) by [Steven])
+- **Badge styling** - Improved appearance of race badges to look more consistent ([#76](https://github.com/nathanperkins/race-team-planner/issues/76) by [Steven])
+- **Expired event labels** - Fixed confusing "Teams pending assignment" message for expired events ([#52](https://github.com/nathanperkins/race-team-planner/issues/52) by [Steven])
+- **Icon alignment** - Fixed misaligned thread icon in team picker ([#51](https://github.com/nathanperkins/race-team-planner/issues/51) by [Steven])
+
+### Project Updates
+
+- **Public release** - Renamed project and moved to public repository ([#27](https://github.com/nathanperkins/race-team-planner/issues/27) by [Nathan])
+- **Legacy app retirement** - Decommissioned the previous planner application ([#54](https://github.com/nathanperkins/race-team-planner/issues/54) by [Steven])
+
 ## Version 1.0 {#version-1.0}
 
 **Released on <time datetime="2026-02-09">February 9, 2026</time>**
 
-All work completed by **Nathan Perkins** and **Steven Case**.
+All work completed by **[Nathan]** and **[Steven]**.
 
 ### Feedback Results
 
@@ -50,3 +129,7 @@ Thanks to our testers for these suggestions and bug reports!
 - **Discord user login** with roles pulled from the Discord server.
 - **Automated sync** with the iRacing API for event, racer, and team data.
 - **Onboarding flow** for new users with expectations and profile setup.
+
+[Kaelan]: https://github.com/klanmiko
+[Nathan]: https://github.com/nathanperkins
+[Steven]: https://github.com/stevencase243
