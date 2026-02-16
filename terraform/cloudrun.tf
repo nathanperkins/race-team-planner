@@ -5,6 +5,10 @@ resource "google_cloud_run_v2_service" "default" {
   ingress  = "INGRESS_TRAFFIC_ALL"
   deletion_protection = false
 
+  labels = {
+    name = "${var.app_name}-service"
+  }
+
   template {
     service_account = google_service_account.cloud_run_sa.email
 

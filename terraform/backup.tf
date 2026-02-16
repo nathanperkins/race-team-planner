@@ -65,6 +65,10 @@ resource "google_cloud_run_v2_job" "db_backup" {
   location = var.region
   deletion_protection = false
 
+  labels = {
+    name = "${var.app_name}-db-backup-job"
+  }
+
   template {
     task_count = 1
 
@@ -156,6 +160,10 @@ resource "google_cloud_run_v2_job" "db_restore" {
   location = var.region
   deletion_protection = false
 
+  labels = {
+    name = "${var.app_name}-db-restore-job"
+  }
+
   template {
     task_count = 1
 
@@ -214,6 +222,10 @@ resource "google_cloud_run_v2_job" "db_restore_test" {
   name     = "${var.app_name}-db-restore-test"
   location = var.region
   deletion_protection = false
+
+  labels = {
+    name = "${var.app_name}-db-restore-test-job"
+  }
 
   template {
     task_count = 1
@@ -310,6 +322,10 @@ resource "google_cloud_run_v2_job" "db_wipe" {
   name     = "${var.app_name}-db-wipe"
   location = var.region
   deletion_protection = false
+
+  labels = {
+    name = "${var.app_name}-db-wipe-job"
+  }
 
   template {
     task_count = 1

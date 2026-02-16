@@ -3,6 +3,10 @@ resource "google_cloud_run_v2_job" "migrate" {
   location = var.region
   deletion_protection = false
 
+  labels = {
+    name = "${var.app_name}-migrate-job"
+  }
+
   template {
     task_count  = 1
 
