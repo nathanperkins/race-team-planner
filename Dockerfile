@@ -5,6 +5,7 @@ WORKDIR /app
 
 COPY package.json package-lock.json* ./
 COPY prisma ./prisma
+COPY lib/logger.ts ./lib/logger.ts
 COPY scripts/setup-env.ts ./scripts/setup-env.ts
 COPY .env.example ./.env.example
 RUN npm ci
