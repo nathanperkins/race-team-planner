@@ -6,11 +6,17 @@ The most notable changes to this project are documented here.
 
 **Released on <time datetime="2026-02-16">February 16, 2026</time>**
 
-47 issues completed for [Version 1.1] by [Nathan], **[Steven]**, and **[Kaelan]**.
+[47 issues completed][Milestone 1] by **[Nathan]**, **[Steven]**, and **[Kaelan]**.
 
 ### Highlights
 
 Version 1.1 focuses on improving the Discord notification system, enhancing race eligibility handling, and refining the team picker experience. This release includes significant improvements to notification clarity, better visual indicators for race eligibility, and numerous bug fixes.
+
+### Feedback Results
+
+Thanks to our testers for [these suggestions and bug reports][Feedback 1]!
+
+- **Max** - Add a badge to events in the list you are registered for ([#18](https://github.com/nathanperkins/race-team-planner/issues/18) by [Nathan])
 
 ### Discord Notifications
 
@@ -85,7 +91,7 @@ Version 1.1 focuses on improving the Discord notification system, enhancing race
 
 **Released on <time datetime="2026-02-09">February 9, 2026</time>**
 
-All work completed by [Nathan] and **[Steven]**.
+All work completed by **[Nathan]** and **[Steven]**.
 
 ### Feedback Results
 
@@ -133,4 +139,5 @@ Thanks to our testers for these suggestions and bug reports!
 [Kaelan]: https://github.com/klanmiko
 [Nathan]: https://github.com/nathanperkins
 [Steven]: https://github.com/stevencase243
-[Version 1.1]: https://github.com/nathanperkins/race-team-planner/milestone/1
+[Milestone 1]: https://github.com/nathanperkins/race-team-planner/milestone/1?closed=1
+[Feedback 1]: https://github.com/nathanperkins/race-team-planner/issues?q=is%3Aissue%20state%3Aclosed%20label%3Afeedback
