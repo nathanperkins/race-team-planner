@@ -613,6 +613,8 @@ export async function registerForRace(prevState: State, formData: FormData) {
                 select: {
                   id: true,
                   name: true,
+                  track: true,
+                  trackConfig: true,
                 },
               },
             },
@@ -653,6 +655,8 @@ export async function registerForRace(prevState: State, formData: FormData) {
             otherRegisteredDrivers,
             threadId: discussionThreadId,
             guildId,
+            track: registrationData.race.event.track ?? undefined,
+            trackConfig: registrationData.race.event.trackConfig ?? undefined,
           })
         }
       }
@@ -2111,6 +2115,8 @@ export async function adminRegisterDriver(prevState: State, formData: FormData) 
           otherRegisteredDrivers,
           threadId: discussionThreadId,
           guildId,
+          track: registration.race.event.track ?? undefined,
+          trackConfig: registration.race.event.trackConfig ?? undefined,
         })
       }
     } catch (notificationError) {

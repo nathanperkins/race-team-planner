@@ -656,10 +656,10 @@ describe('sendRegistrationNotification', () => {
     expect(buttonUrls).toHaveLength(2)
     expect(buttonUrls).toContain('http://example.com')
     expect(buttonUrls).toContain('https://discord.com/channels/fake-guild-id/event-thread-123')
-    const firstFields = firstPayload.embeds?.[0]?.fields ?? []
-    expect(
-      firstFields.some((field: { name: string }) => field.name === '👥 Registrations by Class')
-    ).toBe(true)
+    // Notification channel uses simplified format - racers in description, not fields
+    const firstDescription = firstPayload.embeds?.[0]?.description ?? ''
+    expect(firstDescription).toContain('🧑‍🚀 Racers in Class')
+    expect(firstPayload.embeds?.[0]?.fields).toEqual([])
 
     const secondPayload = JSON.parse(
       (vi.mocked(fetch).mock.calls[1]?.[1] as RequestInit).body as string

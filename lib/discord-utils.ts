@@ -76,6 +76,8 @@ export interface RegistrationNotificationData {
   otherRegisteredDrivers?: Array<{ name: string; carClassName: string; discordId?: string }>
   threadId: string
   guildId: string
+  track?: string
+  trackConfig?: string
 }
 
 type DiscordMessageComponent = Record<string, unknown>
@@ -523,6 +525,71 @@ export function buildRegistrationEmbed(
 
   const threadUrl = buildDiscordWebLink({ guildId: data.guildId, threadId: data.threadId })
 
+  // Use simplified format when includeRegisteredDrivers is true
+  if (options?.includeRegisteredDrivers) {
+    const newRegistrant = {
+      name: data.userName,
+      carClassName: data.carClassName,
+      discordId: data.discordUser?.id,
+    }
+    const others = (data.otherRegisteredDrivers ?? []).filter(
+      (entry) => entry.name.trim().length > 0 && entry.carClassName.trim().length > 0
+    )
+
+    // Only include racers in the same class
+    const sameClassRacers = [newRegistrant, ...others].filter(
+      (racer) => racer.carClassName === data.carClassName
+    )
+
+    const descriptionLines: string[] = []
+    descriptionLines.push(`🏆 ${data.eventName}`)
+
+    if (data.track) {
+      const trackLine = data.trackConfig ? `${data.track} - ${data.trackConfig}` : data.track
+      descriptionLines.push(`🏟️ ${trackLine}`)
+    }
+
+    descriptionLines.push(`📅 ${discordTimestamp}`)
+    descriptionLines.push(`🏎️ ${data.carClassName}`)
+    descriptionLines.push('')
+    descriptionLines.push('🧑‍🚀 Racers in Class')
+
+    sameClassRacers.forEach((racer) => {
+      const label = racer.discordId ? `<@${racer.discordId}>` : racer.name
+      descriptionLines.push(`- ${label}`)
+    })
+
+    const embed: {
+      title: string
+      description: string
+      color: number
+      fields: Array<{ name: string; value: string; inline: boolean }>
+      url: string
+      timestamp: string
+      footer: { text: string }
+      thumbnail?: { url: string }
+    } = {
+      title: `🚦 ${data.userName} registered for a race!`,
+      description: descriptionLines.join('\n'),
+      color: 0x5865f2, // Discord blurple color
+      fields: [],
+      url: data.eventUrl,
+      timestamp: new Date().toISOString(),
+      footer: {
+        text: appTitle,
+      },
+    }
+
+    if (data.userAvatarUrl) {
+      embed.thumbnail = {
+        url: data.userAvatarUrl,
+      }
+    }
+
+    return embed
+  }
+
+  // Legacy format for backward compatibility
   const fields: Array<{ name: string; value: string; inline: boolean }> = [
     {
       name: '🏎️ Car Class',
@@ -542,50 +609,6 @@ export function buildRegistrationEmbed(
       value: `[View Event Thread](${threadUrl})`,
       inline: true,
     })
-  }
-
-  if (options?.includeRegisteredDrivers) {
-    // Include the new registrant along with other registered drivers
-    const newRegistrant = {
-      name: data.userName,
-      carClassName: data.carClassName,
-      discordId: data.discordUser?.id,
-    }
-    const others = (data.otherRegisteredDrivers ?? []).filter(
-      (entry) => entry.name.trim().length > 0 && entry.carClassName.trim().length > 0
-    )
-    const allRegistrants = [newRegistrant, ...others]
-
-    const { grouped, truncatedCount } = buildRegisteredByClassGroups(allRegistrants)
-    if (grouped.size === 0) {
-      fields.push({
-        name: '👥 Registrations by Class',
-        value: 'No one registered yet.',
-        inline: false,
-      })
-    } else {
-      fields.push({
-        name: '👥 Registrations by Class',
-        value: '\u200b',
-        inline: false,
-      })
-
-      grouped.forEach((drivers, className) => {
-        fields.push({
-          name: className,
-          value: drivers.join('\n'),
-          inline: true,
-        })
-      })
-
-      if (truncatedCount > 0) {
-        fields.push({
-          name: 'More',
-          value: `...and ${truncatedCount} more`,
-          inline: false,
-        })
-      }
-    }
   }
 
   if (options?.includeJoinEventLink) {

@@ -233,7 +233,7 @@ describe('Discord Utils', () => {
       expect(embed.thumbnail?.url).toBe('http://avatar.com')
     })
 
-    it('includes registered drivers by class when requested (including new registrant)', () => {
+    it('does not include registered drivers when not requested', () => {
       const embedWithout = buildRegistrationEmbed(
         {
           ...data,
@@ -244,41 +244,51 @@ describe('Discord Utils', () => {
         },
         appTitle
       )
+      // Without includeRegisteredDrivers, should use legacy format with basic fields
       expect(
         embedWithout.fields.some((field) => String(field.name).includes('Registrations by Class'))
       ).toBe(false)
+      expect(embedWithout.title).toBe('🏁 New Race Registration')
+      expect(embedWithout.fields.some((field) => field.name === '🏎️ Car Class')).toBe(true)
+      expect(embedWithout.fields.some((field) => field.name === '🕐 Race Time')).toBe(true)
+    })
 
-      const embedWith = buildRegistrationEmbed(
-        {
-          ...data,
-          otherRegisteredDrivers: [
-            { name: 'Driver One', carClassName: 'GT3', discordId: '111' },
-            { name: 'Driver Two', carClassName: 'LMP2' },
-          ],
-        },
-        appTitle,
-        { includeRegisteredDrivers: true }
-      )
-      const rosterField = embedWith.fields.find((field) =>
-        String(field.name).includes('Registrations by Class')
-      )
-      expect(rosterField).toBeTruthy()
-      expect(rosterField?.name).toBe('👥 Registrations by Class')
-      expect(rosterField?.value).toBe('\u200b')
+    it('uses simplified format with only same-class racers when includeRegisteredDrivers is true', () => {
+      const dataWithTrack = {
+        ...data,
+        track: 'Sebring Motorsports Park',
+        trackConfig: 'Grand Prix',
+        otherRegisteredDrivers: [
+          { name: 'Driver One', carClassName: 'GT3', discordId: '111' },
+          { name: 'Driver Two', carClassName: 'GT3' },
+          { name: 'Driver Three', carClassName: 'LMP2' }, // Different class, should be excluded
+        ],
+      }
 
-      // GT3 class should include the NEW registrant (Alice with Discord ID 123) AND the other GT3 driver
-      const gt3Field = embedWith.fields.find((field) => field.name === 'GT3')
-      expect(gt3Field).toBeTruthy()
-      expect(gt3Field?.value).toContain('<@123>') // New registrant Alice
-      expect(gt3Field?.value).toContain('<@111>') // Existing Driver One
-      expect(gt3Field?.inline).toBe(true)
+      const embed = buildRegistrationEmbed(dataWithTrack, appTitle, {
+        includeRegisteredDrivers: true,
+      })
 
-      // LMP2 class should only have the other driver (not the new registrant)
-      const lmp2Field = embedWith.fields.find((field) => field.name === 'LMP2')
-      expect(lmp2Field).toBeTruthy()
-      expect(lmp2Field?.value).toContain('Driver Two')
-      expect(lmp2Field?.value).not.toContain('Alice')
-      expect(lmp2Field?.inline).toBe(true)
+      // Title should be personalized
+      expect(embed.title).toBe('🚦 Alice registered for a race!')
+
+      // Description should contain all info in simplified format
+      expect(embed.description).toContain('🏆 GT3 Challenge')
+      expect(embed.description).toContain('🏟️ Sebring Motorsports Park - Grand Prix')
+      expect(embed.description).toContain('📅')
+      expect(embed.description).toContain('🏎️ GT3')
+      expect(embed.description).toContain('🧑‍🚀 Racers in Class')
+
+      // Should show only same-class racers (GT3)
+      // Alice has Discord ID, so should show as mention
+      expect(embed.description).toContain('<@123>')
+      expect(embed.description).toContain('<@111>') // Driver One has Discord ID
+      expect(embed.description).toContain('Driver Two') // No Discord ID, show plain name
+      expect(embed.description).not.toContain('Driver Three') // Different class
+      expect(embed.description).not.toContain('LMP2')
+
+      // Should not have fields in the simplified format
+      expect(embed.fields).toEqual([])
     })
   })
 
