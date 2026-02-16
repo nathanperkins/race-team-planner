@@ -140,4 +140,4 @@ Thanks to our testers for these suggestions and bug reports!
 [Nathan]: https://github.com/nathanperkins
 [Steven]: https://github.com/stevencase243
 [Milestone 1]: https://github.com/nathanperkins/race-team-planner/issues?q=milestone%3A1.1+is%3Aclosed+reason%3Acompleted
-[Feedback 1]: https://github.com/nathanperkins/race-team-planner/issues?q=is%3Aissue%20state%3Aclosed%20label%3Afeedback%20reason%3Acompleted
+[Feedback 1]: https://github.com/nathanperkins/race-team-planner/issues?q=milestone%3A1.1%20is%3Aclosed%20reason%3Acompleted%20label%3Afeedback
