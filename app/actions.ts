@@ -486,7 +486,9 @@ async function upsertEventDiscussionThread(options: {
 
   if (result.ok && result.threadId) {
     const previousThreadId = existingEventThread?.discordTeamsThreadId ?? null
-    const createdOrReplaced = previousThreadId !== result.threadId
+    // Only suppress notification if we're REPLACING an existing thread (recovery scenario)
+    // If previousThreadId is null, this is a NEW thread (first registration), so send notification
+    const createdOrReplaced = previousThreadId !== null && previousThreadId !== result.threadId
     await prisma.race.updateMany({
       where: { eventId: options.eventId },
       data: { discordTeamsThreadId: result.threadId },
@@ -588,7 +590,6 @@ export async function registerForRace(prevState: State, formData: FormData) {
         precipChance: race.event.precipChance,
       })
       const discussionThreadId = discussionThread.threadId
-      const suppressRegistrationNotification = discussionThread.createdOrReplaced
 
       const registrationData = await prisma.registration.findFirst({
         where: {
@@ -638,7 +639,7 @@ export async function registerForRace(prevState: State, formData: FormData) {
 
         // Only send notification if we have both thread ID and guild ID
         const guildId = process.env.DISCORD_GUILD_ID
-        if (discussionThreadId && guildId && !suppressRegistrationNotification) {
+        if (discussionThreadId && guildId) {
           await sendRegistrationNotification({
             userName: registrationData.user.name || 'Unknown User',
             userAvatarUrl: registrationData.user.image || undefined,
@@ -2261,17 +2262,11 @@ export async function adminRegisterDriver(prevState: State, formData: FormData) 
         precipChance: registration?.race.event.precipChance ?? null,
       })
       const discussionThreadId = discussionThread.threadId
-      const suppressRegistrationNotification = discussionThread.createdOrReplaced
 
       // Send registration notification for regular users (not manual drivers)
       // Only send if we have both thread ID and guild ID
       const guildId = process.env.DISCORD_GUILD_ID
-      if (
-        registration?.user &&
-        discussionThreadId &&
-        guildId &&
-        !suppressRegistrationNotification
-      ) {
+      if (registration?.user && discussionThreadId && guildId) {
         const { sendRegistrationNotification } = await import('@/lib/discord')
 
         const discordAccount = registration.user.accounts[0]

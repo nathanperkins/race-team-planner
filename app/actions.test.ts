@@ -912,7 +912,13 @@ describe('registerForRace', () => {
       where: { eventId: 'event-123' },
       data: { discordTeamsThreadId: 'event-thread-id' },
     })
-    expect(sendRegistrationNotification).not.toHaveBeenCalled()
+    // Should send registration notification for first registration (fixes #94)
+    expect(sendRegistrationNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        threadId: 'event-thread-id',
+        guildId: 'test-guild-id',
+      })
+    )
   })
 
   it('reuses existing event discussion thread when self-registering', async () => {
@@ -1250,7 +1256,13 @@ describe('adminRegisterDriver', () => {
       where: { eventId: 'event-123' },
       data: { discordTeamsThreadId: 'new-event-thread-id' },
     })
-    expect(sendRegistrationNotification).not.toHaveBeenCalled()
+    // Should send registration notification for first registration (fixes #94)
+    expect(sendRegistrationNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        threadId: 'new-event-thread-id',
+        guildId: 'test-guild-id',
+      })
+    )
   })
 
   it('reuses existing event discussion thread when admin registers driver', async () => {

@@ -6,7 +6,7 @@ The most notable changes to this project are documented here.
 
 **Released on <time datetime="2026-02-16">February 16, 2026</time>**
 
-[47 issues completed][Milestone 1] by **[Nathan]**, **[Steven]**, and **[Kaelan]**.
+[48 issues completed][Milestone 1] by **[Nathan]**, **[Steven]**, and **[Kaelan]**.
 
 ### Highlights
 
@@ -48,6 +48,7 @@ Thanks to our testers for [these suggestions and bug reports][Feedback 1]!
 #### Notification Fixes
 
 - **Drop notifications** - Fixed missing notifications when drivers drop from registrations or teams ([#61](https://github.com/nathanperkins/race-team-planner/issues/61), [#64](https://github.com/nathanperkins/race-team-planner/issues/64) by [Steven])
+- **First registration** - Fixed missing notification when registering for an event with no existing registrations ([#94](https://github.com/nathanperkins/race-team-planner/issues/94) by [Nathan])
 - **Discussion post updates** - Event and team discussion posts now update when drivers drop from events, and unassigned drivers are properly shown ([#92](https://github.com/nathanperkins/race-team-planner/issues/92) by [Nathan])
 - **Car class changes** - Changing a team's car class now properly updates and sends notifications ([#62](https://github.com/nathanperkins/race-team-planner/issues/62) by [Nathan])
 - **Empty event handling** - Fixed notification errors when teams are picked for events with no registrations ([#63](https://github.com/nathanperkins/race-team-planner/issues/63) by [Steven])
