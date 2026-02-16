@@ -5,6 +5,7 @@ const logger = createLogger('instrumentation')
 
 export async function register() {
   logger.info(`🚧 ${appTitle} Startup 🚧`)
+  logger.info(`[Config] Log Level: ${logger.level}`)
   logger.info(`[Config] Locale: ${appLocale}`)
   logger.info(`[Config] Timezone: ${appTimeZone || 'Default (America/Los_Angeles)'}`)
 
