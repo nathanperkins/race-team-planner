@@ -17,14 +17,8 @@ const eslintConfig = defineConfig([
   {
     // Global rules for all files
     rules: {
+      // Use pino logger.info() and related methods instead of console.log().
       'no-console': 'error',
-    },
-  },
-  {
-    // Allow console in scripts and seed files
-    files: ['scripts/**/*.{js,ts}', 'prisma/seed.ts'],
-    rules: {
-      'no-console': 'off',
     },
   },
   {

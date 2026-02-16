@@ -1,4 +1,5 @@
 import prisma from '../lib/prisma'
+import { logger } from '../lib/logger'
 
 async function main() {
   // Find user by email
@@ -12,27 +13,27 @@ async function main() {
   })
 
   if (!user) {
-    console.log('User not found')
+    logger.info('User not found')
     return
   }
 
-  console.log('User Details:')
-  console.log('  Name:', user.name)
-  console.log('  Email:', user.email)
-  console.log('  iRacing Customer ID:', user.iracingCustomerId)
-  console.log('  Teams:', user.teams.length)
+  logger.info('User Details:')
+  logger.info('  Name: %s', user.name)
+  logger.info('  Email: %s', user.email)
+  logger.info('  iRacing Customer ID: %s', user.iracingCustomerId)
+  logger.info('  Teams: %d', user.teams.length)
 
   if (user.teams.length > 0) {
-    console.log('\nTeams:')
+    logger.info('\nTeams:')
     user.teams.forEach((team) => {
-      console.log(`  - ${team.name} (iRacing ID: ${team.iracingTeamId})`)
+      logger.info(`  - ${team.name} (iRacing ID: ${team.iracingTeamId})`)
     })
   } else {
-    console.log('\n❌ No teams linked to this user')
+    logger.info('\n❌ No teams linked to this user')
   }
 
   // Check all teams
-  console.log('\n--- All Teams in Database ---')
+  logger.info('\n--- All Teams in Database ---')
   const allTeams = await prisma.team.findMany({
     include: {
       members: {
@@ -47,10 +48,10 @@ async function main() {
   })
 
   allTeams.forEach((team) => {
-    console.log(`\nTeam: ${team.name} (iRacing ID: ${team.iracingTeamId})`)
-    console.log(`  Members in DB: ${team.members.length}`)
+    logger.info(`\nTeam: ${team.name} (iRacing ID: ${team.iracingTeamId})`)
+    logger.info(`  Members in DB: ${team.members.length}`)
     team.members.forEach((member) => {
-      console.log(
+      logger.info(
         `    - ${member.name} (${member.email}) - iRacing ID: ${member.iracingCustomerId}`
       )
     })
@@ -59,7 +60,7 @@ async function main() {
 
 main()
   .catch((e) => {
-    console.error(e)
+    logger.error({ err: e }, 'Failed to check user teams')
     process.exit(1)
   })
   .finally(async () => {

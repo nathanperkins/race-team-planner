@@ -1,19 +1,20 @@
 import prisma from '../lib/prisma'
+import { logger } from '../lib/logger'
 
 async function main() {
   const teams = await prisma.team.findMany()
-  console.log('Current teams in database:')
+  logger.info('Current teams in database:')
   teams.forEach((team) => {
-    console.log(`  ID: ${team.id}`)
-    console.log(`  Name: ${team.name}`)
-    console.log(`  iRacing Team ID: ${team.iracingTeamId}`)
-    console.log(`  ---`)
+    logger.info('  ID: %s', team.id)
+    logger.info('  Name: %s', team.name)
+    logger.info('  iRacing Team ID: %s', team.iracingTeamId)
+    logger.info('  ---')
   })
 }
 
 main()
   .catch((e) => {
-    console.error(e)
+    logger.error({ err: e })
     process.exit(1)
   })
   .finally(async () => {

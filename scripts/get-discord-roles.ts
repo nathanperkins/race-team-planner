@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs'
+import { logger } from '../lib/logger'
 
 /**
  * Script to fetch all roles from the configured Discord guild.
@@ -20,12 +21,12 @@ async function main() {
   const guildId = process.env.DISCORD_GUILD_ID
 
   if (!botToken || !guildId) {
-    console.error('\n❌ Error: Missing configuration in .env')
-    console.error('   Please ensure DISCORD_BOT_TOKEN and DISCORD_GUILD_ID are set.')
+    logger.error('\n❌ Error: Missing configuration in .env')
+    logger.error('   Please ensure DISCORD_BOT_TOKEN and DISCORD_GUILD_ID are set.')
     process.exit(1)
   }
 
-  console.log(`\n🔍 Fetching roles for Guild ID: ${guildId}...`)
+  logger.info(`\n🔍 Fetching roles for Guild ID: ${guildId}...`)
 
   try {
     const response = await fetch(`https://discord.com/api/v10/guilds/${guildId}/roles`, {
@@ -36,8 +37,8 @@ async function main() {
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error(`❌ Discord API Error: ${response.status} ${response.statusText}`)
-      console.error(`   Message: ${errorText}`)
+      logger.error(`❌ Discord API Error: ${response.status} ${response.statusText}`)
+      logger.error(`   Message: ${errorText}`)
       process.exit(1)
     }
 
@@ -55,24 +56,24 @@ async function main() {
     // Sort roles by position descending
     roles.sort((a, b) => b.position - a.position)
 
-    console.log('\n' + '='.repeat(60))
-    console.log(`${'ROLE ID'.padEnd(25)} | ROLE NAME`)
-    console.log('-'.repeat(60))
+    logger.info('\n' + '='.repeat(60))
+    logger.info(`${'ROLE ID'.padEnd(25)} | ROLE NAME`)
+    logger.info('-'.repeat(60))
 
     roles.forEach((role) => {
-      console.log(`${role.id.padEnd(25)} | ${role.name}`)
+      logger.info(`${role.id.padEnd(25)} | ${role.name}`)
     })
 
-    console.log('='.repeat(60))
-    console.log(`✅ Found ${roles.length} roles total.`)
-    console.log('')
+    logger.info('='.repeat(60))
+    logger.info(`✅ Found ${roles.length} roles total.`)
+    logger.info('')
   } catch (error) {
-    console.error('❌ Unexpected error fetching Discord roles:', error)
+    logger.error({ err: error }, '❌ Unexpected error fetching Discord roles')
     process.exit(1)
   }
 }
 
 main().catch((err) => {
-  console.error('Fatal error:', err)
+  logger.error({ err }, 'Fatal error')
   process.exit(1)
 })

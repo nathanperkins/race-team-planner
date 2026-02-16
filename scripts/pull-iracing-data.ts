@@ -2,6 +2,7 @@ import { writeFile, mkdir } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
+import { logger } from '../lib/logger'
 
 /**
  * iRacing Masking Logic
@@ -23,7 +24,7 @@ async function getAccessToken(): Promise<string | null> {
   const password = process.env.IRACING_PASSWORD
 
   if (!clientId || !clientSecret || !username || !password) {
-    console.error('Missing iRacing credentials in .env')
+    logger.error('Missing iRacing credentials in .env')
     return null
   }
 
@@ -46,13 +47,13 @@ async function getAccessToken(): Promise<string | null> {
     })
 
     if (!response.ok) {
-      console.error(`Auth failed: ${response.status} ${response.statusText}`)
+      logger.error('Auth failed: %d %s', response.status, response.statusText)
       return null
     }
     const data = await response.json()
     return data.access_token
   } catch (error) {
-    console.error('Auth error:', error)
+    logger.error({ err: error }, 'Auth error')
     return null
   }
 }
@@ -72,7 +73,7 @@ async function fetchFromIRacing(endpoint: string, token: string) {
   const data = await response.json()
   // iRacing often returns a wrapper with a 'link' property where the JSON actually resides
   if (data.link) {
-    console.log(`  ...following link: ${data.link.split('?')[0]}`)
+    logger.info(`  ...following link: ${data.link.split('?')[0]}`)
     const dataResponse = await fetch(data.link)
     if (!dataResponse.ok) {
       throw new Error(
@@ -99,7 +100,7 @@ async function main() {
     process.loadEnvFile()
   }
 
-  console.log('Authenticating with iRacing...')
+  logger.info('Authenticating with iRacing...')
   const token = await getAccessToken()
 
   if (!token) {
@@ -110,23 +111,20 @@ async function main() {
   await mkdir(outputDir, { recursive: true })
 
   for (const endpoint of ENDPOINTS) {
-    console.log(`Fetching ${endpoint.name} [${endpoint.path}]...`)
+    logger.info(`Fetching ${endpoint.name} [${endpoint.path}]...`)
     try {
       const data = await fetchFromIRacing(endpoint.path, token)
       const fileName = `${endpoint.name}.json`
       const filePath = path.join(outputDir, fileName)
       await writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8')
-      console.log(`✅ Saved to raw_data/${fileName}`)
+      logger.info(`✅ Saved to raw_data/${fileName}`)
     } catch (error) {
-      console.error(
-        `❌ Failed to fetch ${endpoint.name}:`,
-        error instanceof Error ? error.message : error
-      )
+      logger.error({ err: error, endpoint: endpoint.name }, '❌ Failed to fetch endpoint')
     }
   }
 }
 
 main().catch((err) => {
-  console.error('Fatal error:', err)
+  logger.error({ err }, 'Fatal error')
   process.exit(1)
 })

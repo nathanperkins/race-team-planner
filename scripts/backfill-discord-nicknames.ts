@@ -1,5 +1,6 @@
 import prisma from '../lib/prisma'
 import { checkGuildMembership } from '../lib/discord'
+import { logger } from '../lib/logger'
 
 async function main() {
   // Find all linked Discord accounts
@@ -8,12 +9,12 @@ async function main() {
     select: { providerAccountId: true, userId: true },
   })
 
-  console.log(`Found ${accounts.length} discord-linked accounts`)
+  logger.info(`Found ${accounts.length} discord-linked accounts`)
 
   for (const a of accounts) {
     const discordId = a.providerAccountId
     if (!discordId) {
-      console.log(`Skipping account without providerAccountId for user ${a.userId}`)
+      logger.info(`Skipping account without providerAccountId for user ${a.userId}`)
       continue
     }
     try {
@@ -21,12 +22,12 @@ async function main() {
       if (res?.nick) {
         // Update the corresponding user record
         await prisma.user.update({ where: { id: a.userId }, data: { name: res.nick } })
-        console.log(`Updated user ${a.userId} -> ${res.nick}`)
+        logger.info(`Updated user ${a.userId} -> ${res.nick}`)
       } else {
-        console.log(`No nick for discordId ${discordId}`)
+        logger.info(`No nick for discordId ${discordId}`)
       }
     } catch (err) {
-      console.error(`Failed for discordId ${discordId}:`, err)
+      logger.error({ err, discordId }, 'Failed to backfill Discord nickname')
     }
   }
 }
@@ -34,10 +35,10 @@ async function main() {
 main()
   .then(async () => {
     await prisma.$disconnect()
-    console.log('Backfill complete')
+    logger.info('Backfill complete')
   })
   .catch(async (e) => {
-    console.error('Backfill error', e)
+    logger.error({ err: e }, 'Backfill error')
     await prisma.$disconnect()
     process.exit(1)
   })

@@ -2,41 +2,42 @@ import fs from 'fs'
 import path from 'path'
 import crypto from 'crypto'
 import { generateKey } from '@47ng/cloak'
+import { logger } from '../lib/logger'
 
 const envPath = path.join(process.cwd(), '.env')
 const examplePath = path.join(process.cwd(), '.env.example')
 
 // Check if .env already exists
 if (fs.existsSync(envPath)) {
-  console.log('⚠️  .env already exists. Skipping generation to avoid overwriting your secrets.')
-  console.log('   If you want to regenerate it, please delete .env first.')
+  logger.info('⚠️  .env already exists. Skipping generation to avoid overwriting your secrets.')
+  logger.info('   If you want to regenerate it, please delete .env first.')
   process.exit(0)
 }
 
 // Check if .env.example exists
 if (!fs.existsSync(examplePath)) {
-  console.error('❌ .env.example not found! Cannot generate .env.')
+  logger.error('❌ .env.example not found! Cannot generate .env.')
   process.exit(1)
 }
 
-console.log('Generating secure keys...')
+logger.info('Generating secure keys...')
 ;(async () => {
   try {
     // Generate AUTH_SECRET (32 bytes base64)
     const authSecret = crypto.randomBytes(32).toString('base64')
-    console.log('✅ Generated AUTH_SECRET')
+    logger.info('✅ Generated AUTH_SECRET')
 
     // Generate PRISMA_FIELD_ENCRYPTION_KEY using cloak library directly
     const cloakKey = await generateKey()
-    console.log('✅ Generated PRISMA_FIELD_ENCRYPTION_KEY')
+    logger.info('✅ Generated PRISMA_FIELD_ENCRYPTION_KEY')
 
     // Generate CRON_SECRET (32 bytes base64)
     const cronSecret = crypto.randomBytes(32).toString('base64')
-    console.log('✅ Generated CRON_SECRET')
+    logger.info('✅ Generated CRON_SECRET')
 
     // Generate BACKUP_ENCRYPTION_KEY (32 bytes hex for GPG passphrase)
     const backupKey = crypto.randomBytes(32).toString('hex')
-    console.log('✅ Generated BACKUP_ENCRYPTION_KEY')
+    logger.info('✅ Generated BACKUP_ENCRYPTION_KEY')
 
     // Read .env.example and replace values
     let content = fs.readFileSync(examplePath, 'utf8')
@@ -52,10 +53,10 @@ console.log('Generating secure keys...')
     // Write to .env
     fs.writeFileSync(envPath, content)
 
-    console.log('\n🚀 Successfully created .env with generated secrets!')
-    console.log('   You can now run "npm run dev" to start the application.')
+    logger.info('\n🚀 Successfully created .env with generated secrets!')
+    logger.info('   You can now run "npm run dev" to start the application.')
   } catch (error) {
-    console.error('❌ Failed to generate keys:', (error as Error).message)
+    logger.error({ err: error }, '❌ Failed to generate keys')
     process.exit(1)
   }
 })()

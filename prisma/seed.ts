@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import { dateWithTime } from '../lib/date-utils'
+import { logger } from '../lib/logger'
 
 const prisma = new PrismaClient()
 
@@ -205,12 +206,7 @@ async function main() {
     },
   })
 
-  console.log('Mock teams seeded:', {
-    teamRed,
-    teamBlue,
-    teamGreen,
-    teamYellow,
-  })
+  logger.info({ teamRed, teamBlue, teamGreen, teamYellow }, 'Mock teams seeded')
 
   const alice = await prisma.user.upsert({
     where: { id: 'user_alice' },
@@ -795,17 +791,10 @@ async function main() {
     },
   })
 
-  console.log('Mock drivers seeded:', {
-    alice,
-    bob,
-    charlie,
-    david,
-    emma,
-    frank,
-    grace,
-    henry,
-    manualDriver,
-  })
+  logger.info(
+    { alice, bob, charlie, david, emma, frank, grace, henry, manualDriver },
+    'Mock drivers seeded'
+  )
 }
 
 main()
@@ -813,7 +802,7 @@ main()
     await prisma.$disconnect()
   })
   .catch(async (e) => {
-    console.error(e)
+    logger.error({ err: e }, 'Failed to seed database')
     await prisma.$disconnect()
     process.exit(1)
   })

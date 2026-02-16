@@ -1,4 +1,6 @@
 import { PrismaClient } from '@prisma/client'
+import { logger } from '../lib/logger'
+
 const prisma = new PrismaClient()
 
 async function main() {
@@ -22,7 +24,7 @@ async function main() {
     },
   })
 
-  console.log('Created live event:', event.name, 'with ID:', event.id)
+  logger.info('Created live event: %s with ID: %s', event.name, event.id)
 }
 
 main()
@@ -30,7 +32,7 @@ main()
     await prisma.$disconnect()
   })
   .catch(async (e) => {
-    console.error(e)
+    logger.error({ err: e }, 'Failed to create live event')
     await prisma.$disconnect()
     process.exit(1)
   })

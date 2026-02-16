@@ -1,7 +1,8 @@
 import prisma from '../lib/prisma'
+import { logger } from '../lib/logger'
 
 async function main() {
-  console.log('Deleting teams with negative iRacing Team IDs...')
+  logger.info('Deleting teams with negative iRacing Team IDs...')
 
   const result = await prisma.team.deleteMany({
     where: {
@@ -11,12 +12,12 @@ async function main() {
     },
   })
 
-  console.log(`Deleted ${result.count} teams with negative IDs`)
+  logger.info('Deleted %d teams with negative IDs', result.count)
 }
 
 main()
   .catch((e) => {
-    console.error(e)
+    logger.error({ err: e }, 'Failed to delete negative teams')
     process.exit(1)
   })
   .finally(async () => {
