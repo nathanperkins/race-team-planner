@@ -16,10 +16,19 @@ resource "google_artifact_registry_repository" "app_repo" {
   }
 
   cleanup_policies {
+    id     = "delete-untagged"
+    action = "DELETE"
+    condition {
+      tag_state  = "UNTAGGED"
+      older_than = "14400s" # 4 hours
+    }
+  }
+
+  cleanup_policies {
     id     = "delete-old-versions"
     action = "DELETE"
     condition {
-      older_than = "604800s" # 7 days
+      older_than = "14400s" # 4 hours (except latest tag)
     }
   }
 
