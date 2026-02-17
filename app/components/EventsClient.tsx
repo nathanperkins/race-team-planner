@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import EventDetailModal from './EventDetailModal'
 import { Prisma } from '@prisma/client'
@@ -60,9 +60,9 @@ interface EventsClientProps {
   isAdmin: boolean
   userId: string
   userLicenseLevel: LicenseLevel | null
-  initialEventId?: string
   teams: Array<{ id: string; name: string; iracingTeamId: number | null; memberCount?: number }>
   discordGuildId?: string
+  selectedEvent?: EventWithRaces | null
 }
 
 export default function EventsClient({
@@ -70,18 +70,12 @@ export default function EventsClient({
   isAdmin,
   userId,
   userLicenseLevel,
-  initialEventId,
   teams,
   discordGuildId,
+  selectedEvent,
 }: EventsClientProps) {
   const router = useRouter()
-  const [selectedEventId, setSelectedEventId] = useState<string | null>(initialEventId ?? null)
   const now = new Date()
-
-  const selectedEvent = useMemo(() => {
-    if (!selectedEventId) return null
-    return weeks.flatMap((week) => week.events).find((evt) => evt.id === selectedEventId) || null
-  }, [selectedEventId, weeks])
 
   useEffect(() => {
     if (!selectedEvent) return
@@ -100,13 +94,11 @@ export default function EventsClient({
 
   // Update URL when event is selected
   const handleSelectEvent = (event: EventWithRaces) => {
-    setSelectedEventId(event.id)
     router.push(`?eventId=${event.id}`, { scroll: false })
   }
 
   // Clear URL when modal is closed
   const handleCloseModal = () => {
-    setSelectedEventId(null)
     router.push('?', { scroll: false })
   }
 

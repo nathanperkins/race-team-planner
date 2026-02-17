@@ -273,53 +273,53 @@ describe('EventsClient registered badge', () => {
 })
 
 describe('EventsClient scroll lock', () => {
+  const weeks = [
+    {
+      weekStart: new Date('2026-02-09T00:00:00Z'),
+      weekEnd: new Date('2026-02-16T00:00:00Z'),
+      weekNumber: 5,
+      seasonYear: 2026,
+      seasonQuarter: 1,
+      official: true,
+      meta: {
+        events: 1,
+        tracks: ['Daytona'],
+        classes: ['IMSA23'],
+      },
+      events: [
+        {
+          id: 'event-1',
+          name: 'IMSA Endurance Series - 2026 Season 1 - Week 5',
+          startTime: new Date('2026-02-15T06:00:00Z'),
+          endTime: new Date('2026-02-15T08:00:00Z'),
+          licenseGroup: 'C',
+          durationMins: 120,
+          track: 'Daytona',
+          trackConfig: 'Road',
+          externalId: null,
+          tempValue: null,
+          tempUnits: null,
+          relHumidity: null,
+          skies: null,
+          precipChance: null,
+          description: null,
+          carClasses: [{ id: 'class-1', name: 'IMSA23', shortName: 'IMSA23' }],
+          races: [
+            {
+              id: 'race-1',
+              startTime: new Date('2026-02-15T06:00:00Z'),
+              endTime: new Date('2026-02-15T08:00:00Z'),
+              registrations: [],
+            },
+          ],
+        },
+      ],
+    },
+  ] as any
+
   it('locks page scrolling while the event modal is open', async () => {
     document.body.style.overflow = ''
     document.documentElement.style.overflow = ''
-
-    const weeks = [
-      {
-        weekStart: new Date('2026-02-09T00:00:00Z'),
-        weekEnd: new Date('2026-02-16T00:00:00Z'),
-        weekNumber: 5,
-        seasonYear: 2026,
-        seasonQuarter: 1,
-        official: true,
-        meta: {
-          events: 1,
-          tracks: ['Daytona'],
-          classes: ['IMSA23'],
-        },
-        events: [
-          {
-            id: 'event-1',
-            name: 'IMSA Endurance Series - 2026 Season 1 - Week 5',
-            startTime: new Date('2026-02-15T06:00:00Z'),
-            endTime: new Date('2026-02-15T08:00:00Z'),
-            licenseGroup: 'C',
-            durationMins: 120,
-            track: 'Daytona',
-            trackConfig: 'Road',
-            externalId: null,
-            tempValue: null,
-            tempUnits: null,
-            relHumidity: null,
-            skies: null,
-            precipChance: null,
-            description: null,
-            carClasses: [{ id: 'class-1', name: 'IMSA23', shortName: 'IMSA23' }],
-            races: [
-              {
-                id: 'race-1',
-                startTime: new Date('2026-02-15T06:00:00Z'),
-                endTime: new Date('2026-02-15T08:00:00Z'),
-                registrations: [],
-              },
-            ],
-          },
-        ],
-      },
-    ] as any
 
     render(
       <EventsClient
@@ -327,6 +327,7 @@ describe('EventsClient scroll lock', () => {
         isAdmin={false}
         userId="user-1"
         userLicenseLevel={null}
+        selectedEvent={weeks[0].events[0]}
         teams={[]}
       />
     )
@@ -334,15 +335,31 @@ describe('EventsClient scroll lock', () => {
     const eventButton = screen.getAllByRole('button')[0]
     fireEvent.click(eventButton)
 
-    expect(screen.getByTestId('event-modal')).toBeInTheDocument()
+    expect(screen.queryByTestId('event-modal')).toBeInTheDocument()
     expect(document.body.style.overflow).toBe('hidden')
     expect(document.documentElement.style.overflow).toBe('hidden')
+    const urlParams = new URLSearchParams(window.location.search)
+    expect(urlParams.has('eventId'))
 
     fireEvent.click(screen.getByRole('button', { name: 'Close Modal' }))
+    const urlParamsAfter = new URLSearchParams(window.location.search)
+    expect(!urlParamsAfter.has('eventId'))
+  })
 
-    await waitFor(() => {
-      expect(document.body.style.overflow).toBe('')
-      expect(document.documentElement.style.overflow).toBe('')
-    })
+  it('should not render details modal with no selected event', () => {
+    render(
+      <EventsClient
+        weeks={weeks}
+        isAdmin={false}
+        userId="user-1"
+        userLicenseLevel={null}
+        selectedEvent={null}
+        teams={[]}
+      />
+    )
+
+    expect(screen.queryByTestId('event-modal')).not.toBeInTheDocument()
+    expect(document.body.style.overflow).toBe('')
+    expect(document.documentElement.style.overflow).toBe('')
   })
 })

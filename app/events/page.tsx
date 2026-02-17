@@ -6,6 +6,7 @@ import LastSyncStatus from '@/components/LastSyncStatus'
 import EventsClient from '../components/EventsClient'
 import { Prisma } from '@prisma/client'
 import { getLicenseLevelFromName, getLicenseForId, isLicenseEligible } from '@/lib/utils'
+import { getEvent } from '@/lib/queries'
 
 import styles from './events.module.css'
 import { getIracingSeasonInfo } from '@/lib/season-utils'
@@ -349,6 +350,11 @@ export default async function EventsPage({ searchParams }: PageProps) {
     },
   }))
 
+  // Find the selected event from search params
+  const selectedEvent = params.eventId
+    ? events.find((event) => event.id === params.eventId) || (await getEvent(params.eventId))
+    : null
+
   return (
     <main className={styles.main}>
       <div className={styles.topRow}>
@@ -365,9 +371,9 @@ export default async function EventsPage({ searchParams }: PageProps) {
         isAdmin={session.user.role === 'ADMIN'}
         userId={session.user.id}
         userLicenseLevel={userLicenseLevel}
-        initialEventId={params.eventId}
         teams={teams}
         discordGuildId={process.env.DISCORD_GUILD_ID}
+        selectedEvent={selectedEvent}
       />
     </main>
   )
