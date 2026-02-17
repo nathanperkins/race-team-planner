@@ -8,6 +8,7 @@ import { CURRENT_EXPECTATIONS_VERSION } from '@/lib/config'
 import { getAutoMaxDriversPerTeam, getRaceDurationMinutes } from '@/lib/utils'
 import { Prisma, TeamAssignmentStrategy } from '@prisma/client'
 import { createLogger } from '@/lib/logger'
+import { postRosterChangeNotifications } from '@/lib/discord'
 
 const logger = createLogger('actions')
 
@@ -756,7 +757,6 @@ export async function deleteRegistration(registrationId: string): Promise<void> 
           registration.user?.name || registration.manualDriver?.name || 'Unknown Driver'
         const fromTeam = registration.team?.alias || registration.team?.name || 'Unassigned'
 
-        const { postRosterChangeNotifications } = await import('@/lib/discord')
         await postRosterChangeNotifications(
           eventThreadId,
           [{ type: 'dropped', driverName, fromTeam }],
@@ -987,7 +987,13 @@ export async function updateRegistrationCarClass(prevState: State, formData: For
   try {
     const registration = await prisma.registration.findUnique({
       where: { id: registrationId },
-      include: { race: true },
+      include: {
+        race: true,
+        team: true,
+        user: true,
+        manualDriver: true,
+        carClass: true,
+      },
     })
 
     if (!registration) return { message: 'Registration not found', timestamp: Date.now() }
@@ -1038,10 +1044,55 @@ export async function updateRegistrationCarClass(prevState: State, formData: For
     revalidatePath(`/events/${registration.race.eventId}`)
     revalidatePath(`/users/${registration.userId}/registrations`)
 
+    await postCarClassChangeNotification(registration, carClassId, session.user.name)
+
     return { message: 'Success', timestamp: Date.now() }
   } catch (e) {
     logger.error({ err: e }, 'Update registration error')
     return { message: 'Failed to update registration', timestamp: Date.now() }
+  }
+}
+
+async function postCarClassChangeNotification(
+  registration: Prisma.RegistrationGetPayload<{
+    include: {
+      carClass: true
+      team: true
+      user: true
+      manualDriver: true
+      race: true
+    }
+  }>,
+  carClassId: string,
+  userName: string | null | undefined
+) {
+  const oldCarClass = registration.carClass
+  // Get the new car class name
+  const newCarClass = await prisma.carClass.findUnique({
+    where: { id: carClassId },
+  })
+
+  // Get team information
+  const teamName = registration.team?.alias || registration.team?.name || 'Unassigned'
+
+  // Get driver name
+  const driverName = registration.user?.name || registration.manualDriver?.name || 'Unknown Driver'
+
+  if (registration.race.discordTeamsThreadId && oldCarClass?.name && newCarClass?.name) {
+    await postRosterChangeNotifications(
+      registration.race.discordTeamsThreadId,
+      [
+        {
+          type: 'teamClassChanged',
+          teamName,
+          fromClass: oldCarClass.name,
+          toClass: newCarClass.name,
+          drivers: [driverName],
+        },
+      ],
+      process.env.DISCORD_BOT_TOKEN || '',
+      userName || driverName
+    )
   }
 }
 

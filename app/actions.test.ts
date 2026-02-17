@@ -51,6 +51,9 @@ vi.mock('@/lib/prisma', () => ({
     event: {
       findUnique: vi.fn(),
     },
+    carClass: {
+      findUnique: vi.fn(),
+    },
   },
 }))
 
@@ -1357,8 +1360,20 @@ describe('updateRegistrationCarClass', () => {
         maxDriversPerTeam: null,
         teamAssignmentStrategy: 'BALANCED_IRATING',
       },
+      carClass: {
+        id: 'class-1',
+        name: 'Old Class',
+      },
     } as any)
     vi.mocked(prisma.registration.update).mockResolvedValue({} as any)
+    vi.mocked(prisma.race.findUnique).mockResolvedValue({
+      id: 'race-1',
+      discordTeamsThreadId: 'thread-1',
+    } as any)
+    vi.mocked(prisma.carClass.findUnique).mockResolvedValue({
+      id: 'class-2',
+      name: 'New Class',
+    } as any)
 
     const formData = new FormData()
     formData.set('registrationId', 'reg-1')
