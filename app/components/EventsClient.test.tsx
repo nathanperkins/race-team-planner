@@ -273,6 +273,67 @@ describe('EventsClient registered badge', () => {
   })
 })
 
+describe('EventsClient optimistic modal', () => {
+  const weeks = [
+    {
+      weekStart: new Date('2026-02-09T00:00:00Z'),
+      weekEnd: new Date('2026-02-16T00:00:00Z'),
+      weekNumber: 5,
+      seasonYear: 2026,
+      seasonQuarter: 1,
+      official: true,
+      meta: { events: 1, tracks: ['Daytona'], classes: ['IMSA23'] },
+      events: [
+        {
+          id: 'event-1',
+          name: 'IMSA Endurance Series',
+          startTime: new Date('2026-02-15T06:00:00Z'),
+          endTime: new Date('2026-02-15T08:00:00Z'),
+          licenseGroup: 3,
+          durationMins: 120,
+          track: 'Daytona',
+          trackConfig: 'Road',
+          externalId: null,
+          tempValue: null,
+          tempUnits: null,
+          relHumidity: null,
+          skies: null,
+          precipChance: null,
+          description: null,
+          carClasses: [{ id: 'class-1', name: 'IMSA23', shortName: 'IMSA23' }],
+          races: [
+            {
+              id: 'race-1',
+              startTime: new Date('2026-02-15T06:00:00Z'),
+              endTime: new Date('2026-02-15T08:00:00Z'),
+              registrations: [],
+            },
+          ],
+        },
+      ],
+    },
+  ] as any
+
+  it('opens the modal immediately when an event card is clicked, before RSC responds', () => {
+    render(
+      <EventsClient
+        weeks={weeks}
+        isAdmin={false}
+        userId="user-1"
+        userLicenseLevel={null}
+        selectedEvent={null}
+        teams={[]}
+      />
+    )
+
+    expect(screen.queryByTestId('event-modal')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /IMSA Endurance Series/i }))
+
+    expect(screen.getByTestId('event-modal')).toBeInTheDocument()
+  })
+})
+
 describe('EventsClient scroll lock', () => {
   const weeks = [
     {

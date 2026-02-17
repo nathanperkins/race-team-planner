@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import EventDetailModal from './EventDetailModal'
 import { Prisma } from '@prisma/client'
@@ -77,10 +77,23 @@ export default function EventsClient({
   const router = useRouter()
   const searchParams = useSearchParams()
   const now = new Date()
-  const selectedEventId = selectedEvent?.id
+
+  // Show modal immediately on click without waiting for the RSC round-trip
+  const [optimisticEvent, setOptimisticEvent] = useState<EventWithRaces | null>(null)
+
+  // Reset optimistic state when the server confirms no event is selected (e.g. browser back button).
+  // Done during render (not an effect) to keep the state machine consistent.
+  const [prevSelectedEvent, setPrevSelectedEvent] = useState(selectedEvent)
+  if (prevSelectedEvent !== selectedEvent) {
+    setPrevSelectedEvent(selectedEvent)
+    if (!selectedEvent) setOptimisticEvent(null)
+  }
+
+  const displayEvent = selectedEvent ?? optimisticEvent
+  const displayEventId = displayEvent?.id
 
   useEffect(() => {
-    if (!selectedEventId) return
+    if (!displayEventId) return
 
     const previousBodyOverflow = document.body.style.overflow
     const previousHtmlOverflow = document.documentElement.style.overflow
@@ -92,15 +105,17 @@ export default function EventsClient({
       document.body.style.overflow = previousBodyOverflow
       document.documentElement.style.overflow = previousHtmlOverflow
     }
-  }, [selectedEventId])
+  }, [displayEventId])
 
-  // Update URL when event is selected
+  // Update URL when event is selected; show modal immediately via optimistic state
   const handleSelectEvent = (event: EventWithRaces) => {
+    setOptimisticEvent(event)
     router.push(`?eventId=${event.id}`, { scroll: false })
   }
 
   // Clear URL when modal is closed, preserving other active filter params
   const handleCloseModal = () => {
+    setOptimisticEvent(null)
     const params = new URLSearchParams(searchParams.toString())
     params.delete('eventId')
     router.push(`?${params.toString()}`, { scroll: false })
@@ -337,9 +352,9 @@ export default function EventsClient({
         ))}
       </div>
 
-      {selectedEvent && (
+      {displayEvent && (
         <EventDetailModal
-          event={selectedEvent}
+          event={displayEvent}
           onClose={handleCloseModal}
           isAdmin={isAdmin}
           userId={userId}
