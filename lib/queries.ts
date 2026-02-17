@@ -11,9 +11,7 @@ export async function getEvent(eventId: string) {
           registrations: {
             include: {
               user: {
-                include: {
-                  racerStats: true,
-                },
+                select: { name: true, id: true, image: true, racerStats: true },
               },
               carClass: true,
               team: true,
