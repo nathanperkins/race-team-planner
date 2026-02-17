@@ -282,64 +282,6 @@ export default async function EventsPage({ searchParams }: PageProps) {
     memberCount: team.teamMembers.length,
   }))
 
-  // --- TEST: inject a mock 4th event into the matching week by date (UI-only) ---
-  try {
-    const now = new Date()
-    const mockEvent: EventWithRaces = {
-      id: 'mock-week3-extra',
-      externalId: null,
-      name: 'Mock Extra Event Week 3 (test)',
-      track: 'Test Circuit',
-      trackConfig: null,
-      startTime: new Date('2026-01-17T19:00:00Z'),
-      endTime: new Date('2026-01-17T21:00:00Z'),
-      description: null,
-      customCarClasses: [],
-      carClasses: [],
-      races: [
-        {
-          id: 'mock-race-1',
-          externalId: null,
-          startTime: new Date('2026-01-17T19:00:00Z'),
-          endTime: new Date('2026-01-17T21:00:00Z'),
-          eventId: 'mock-week3-extra',
-          teamsAssigned: false,
-          discordTeamsThreadId: null,
-          discordTeamsSnapshot: null,
-          discordTeamThreads: null,
-          maxDriversPerTeam: null,
-          teamAssignmentStrategy: 'BALANCED_IRATING',
-          registrations: [],
-          createdAt: now,
-          updatedAt: now,
-        },
-      ],
-      licenseGroup: 3,
-      durationMins: null,
-      tempValue: null,
-      tempUnits: null,
-      relHumidity: null,
-      skies: null,
-      precipChance: null,
-      createdAt: now,
-      updatedAt: now,
-    }
-    const target = weeks.find((w) => {
-      const s = new Date(w.weekStart).getTime()
-      const e = new Date(w.weekEnd).getTime()
-      const t = new Date(mockEvent.startTime).getTime()
-      return t >= s && t <= e
-    })
-    if (target) {
-      target.events.push(mockEvent)
-      target.meta.events = (target.meta.events || 0) + 1
-      target.meta.tracks.add(mockEvent.track)
-      target.events.sort(
-        (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
-      )
-    }
-  } catch {}
-
   // Serialize weeks data for client component (convert Sets to arrays)
   const serializedWeeks = weeks.map((week) => ({
     ...week,

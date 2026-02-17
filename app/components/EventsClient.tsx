@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import EventDetailModal from './EventDetailModal'
 import { Prisma } from '@prisma/client'
 import styles from '../events/events.module.css'
@@ -75,10 +75,12 @@ export default function EventsClient({
   selectedEvent,
 }: EventsClientProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const now = new Date()
+  const selectedEventId = selectedEvent?.id
 
   useEffect(() => {
-    if (!selectedEvent) return
+    if (!selectedEventId) return
 
     const previousBodyOverflow = document.body.style.overflow
     const previousHtmlOverflow = document.documentElement.style.overflow
@@ -90,16 +92,18 @@ export default function EventsClient({
       document.body.style.overflow = previousBodyOverflow
       document.documentElement.style.overflow = previousHtmlOverflow
     }
-  }, [selectedEvent])
+  }, [selectedEventId])
 
   // Update URL when event is selected
   const handleSelectEvent = (event: EventWithRaces) => {
     router.push(`?eventId=${event.id}`, { scroll: false })
   }
 
-  // Clear URL when modal is closed
+  // Clear URL when modal is closed, preserving other active filter params
   const handleCloseModal = () => {
-    router.push('?', { scroll: false })
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('eventId')
+    router.push(`?${params.toString()}`, { scroll: false })
   }
 
   return (

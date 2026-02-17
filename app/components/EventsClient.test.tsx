@@ -6,6 +6,7 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: vi.fn(),
   }),
+  useSearchParams: () => new URLSearchParams(),
 }))
 
 vi.mock('./EventDetailModal', () => ({
@@ -321,7 +322,7 @@ describe('EventsClient scroll lock', () => {
     document.body.style.overflow = ''
     document.documentElement.style.overflow = ''
 
-    render(
+    const { rerender } = render(
       <EventsClient
         weeks={weeks}
         isAdmin={false}
@@ -332,18 +333,25 @@ describe('EventsClient scroll lock', () => {
       />
     )
 
-    const eventButton = screen.getAllByRole('button')[0]
-    fireEvent.click(eventButton)
-
     expect(screen.queryByTestId('event-modal')).toBeInTheDocument()
     expect(document.body.style.overflow).toBe('hidden')
     expect(document.documentElement.style.overflow).toBe('hidden')
-    const urlParams = new URLSearchParams(window.location.search)
-    expect(urlParams.has('eventId'))
 
     fireEvent.click(screen.getByRole('button', { name: 'Close Modal' }))
-    const urlParamsAfter = new URLSearchParams(window.location.search)
-    expect(!urlParamsAfter.has('eventId'))
+    rerender(
+      <EventsClient
+        weeks={weeks}
+        isAdmin={false}
+        userId="user-1"
+        userLicenseLevel={null}
+        selectedEvent={null}
+        teams={[]}
+      />
+    )
+    await waitFor(() => {
+      expect(document.body.style.overflow).toBe('')
+      expect(document.documentElement.style.overflow).toBe('')
+    })
   })
 
   it('should not render details modal with no selected event', () => {

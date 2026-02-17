@@ -6,6 +6,7 @@ export async function getEvent(eventId: string) {
     include: {
       carClasses: true,
       races: {
+        orderBy: { startTime: 'asc' as const },
         include: {
           registrations: {
             include: {
