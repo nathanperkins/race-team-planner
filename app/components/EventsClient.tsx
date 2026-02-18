@@ -113,7 +113,9 @@ export default function EventsClient({
   // Update URL when event is selected; show modal immediately via optimistic state
   const handleSelectEvent = (event: EventWithRaces) => {
     setOptimisticEvent(event)
-    router.push(`?eventId=${event.id}`, { scroll: false })
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('eventId', event.id)
+    router.push(`?${params.toString()}`, { scroll: false })
   }
 
   // Clear URL when modal is closed, preserving other active filter params
