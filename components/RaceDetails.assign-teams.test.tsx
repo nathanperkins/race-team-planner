@@ -522,7 +522,8 @@ describe('RaceDetails Assign Teams', () => {
       })
     }
 
-    for (let maxPerTeam = 1; maxPerTeam <= 8; maxPerTeam += 1) {
+    // Only test values where team count changes; 5-8 all yield the same result (2 teams each).
+    for (const maxPerTeam of [1, 2, 3, 4, 5]) {
       const modal = document.querySelector('div[class*="teamModal_"]') as HTMLElement
       const maxInput = modal.querySelector('input[type="number"]') as HTMLInputElement | null
       expect(maxInput).toBeTruthy()
