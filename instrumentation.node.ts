@@ -1,3 +1,4 @@
+import { diag, DiagLogLevel, type DiagLogger } from '@opentelemetry/api'
 import { NodeSDK } from '@opentelemetry/sdk-node'
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto'
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-proto'
@@ -12,6 +13,18 @@ import { createLogger } from '@/lib/logger'
 import { appTitle } from '@/lib/config'
 
 const logger = createLogger('otel')
+
+// Route OTel SDK internal diagnostics through pino so they appear in
+// Cloud Logging / local console with the same format as app logs.
+// Without this, export failures are silently swallowed by the no-op DiagAPI.
+const otelDiagLogger: DiagLogger = {
+  verbose: (msg, ...args) => logger.trace({ args: args.length ? args : undefined }, msg),
+  debug: (msg, ...args) => logger.debug({ args: args.length ? args : undefined }, msg),
+  info: (msg, ...args) => logger.info({ args: args.length ? args : undefined }, msg),
+  warn: (msg, ...args) => logger.warn({ args: args.length ? args : undefined }, msg),
+  error: (msg, ...args) => logger.error({ args: args.length ? args : undefined }, msg),
+}
+diag.setLogger(otelDiagLogger, DiagLogLevel.ERROR)
 
 // K_SERVICE is set automatically by the Cloud Run runtime.
 const isCloudRun = !!process.env.K_SERVICE
