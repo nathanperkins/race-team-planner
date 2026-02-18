@@ -28,5 +28,27 @@ services:
       - NEXTAUTH_URL=http://localhost:3000
       - AUTH_TRUST_HOST=true
 
+  jaeger:
+    image: jaegertracing/jaeger:latest
+    restart: always
+    ports:
+      - '16686:16686'
+
+  prometheus:
+    image: prom/prometheus:latest
+    restart: always
+    ports:
+      - '9090:9090'
+    volumes:
+      - './prometheus-config.yaml:/etc/prometheus/prometheus.yml:Z'
+
+  otel-col:
+    image: otel/opentelemetry-collector
+    ports:
+      - '4317:4317'
+      - '4318:4318'
+    volumes:
+      - './otel-collector-config.yaml:/etc/otelcol/config.yaml:Z'
+
 volumes:
   db-data:

@@ -1,0 +1,28 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+exporters:
+  debug:
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    namespace: default
+  otlp/jaeger: # Jaeger supports OTLP directly. The default port for OTLP/gRPC is 4317
+    endpoint: http://jaeger:4317
+    tls:
+      insecure: true
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [debug, otlp/jaeger]
+    metrics:
+      receivers: [otlp]
+      exporters: [debug, prometheus]
+    logs:
+      receivers: [otlp]
+      exporters: [debug]
