@@ -129,7 +129,7 @@ export default function EventsClient({
       <div className={styles.weekGrid}>
         {weeks.map((week, idx) => (
           <div
-            key={week.weekNumber}
+            key={`S${week.seasonYear}-Q${week.seasonQuarter}-W${week.weekNumber}`}
             className={`${styles.weekTile} ${idx % 2 === 1 ? styles.alt : ''}`}
           >
             <div className={styles.weekHeader}>
