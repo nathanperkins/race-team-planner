@@ -127,6 +127,12 @@ export async function updateProfile(formData: FormData) {
     }
   } catch (error) {
     logger.error({ err: error }, 'Update profile error')
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
+      return {
+        success: false,
+        error: 'That iRacing Customer ID is already linked to another account.',
+      }
+    }
     const message = error instanceof Error ? error.message : 'Failed to update profile'
     return { success: false, error: message }
   }

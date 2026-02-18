@@ -76,6 +76,9 @@ export default function EventsClient({
 }: EventsClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  // Captured once at render. On a long-lived page, time-based flags (isLive,
+  // isRaceStarted) can go stale. Acceptable for now; a useNow() hook could
+  // refresh on an interval if accuracy becomes important.
   const now = new Date()
 
   // Show modal immediately on click without waiting for the RSC round-trip
@@ -257,12 +260,12 @@ export default function EventsClient({
 
                       <div className={styles.racePills}>
                         {event.races.map((race) => {
-                          const isRaceCompleted = now > new Date(race.startTime)
+                          const isRaceStarted = now > new Date(race.startTime)
                           return (
                             <div
                               key={race.id}
                               className={`${styles.racePill} ${
-                                isRaceCompleted ? styles.racePillCompleted : ''
+                                isRaceStarted ? styles.racePillCompleted : ''
                               }`}
                             >
                               {new Date(race.startTime).toLocaleDateString('en-US', {
