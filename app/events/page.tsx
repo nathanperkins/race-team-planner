@@ -141,7 +141,8 @@ export default async function EventsPage({ searchParams }: PageProps) {
   }
 
   if (params.from) {
-    startTimeFilter.gte = new Date(params.from)
+    const d = new Date(params.from)
+    if (!isNaN(d.getTime())) startTimeFilter.gte = d
   } else {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -149,7 +150,8 @@ export default async function EventsPage({ searchParams }: PageProps) {
   }
 
   if (params.to) {
-    startTimeFilter.lte = new Date(params.to)
+    const d = new Date(params.to)
+    if (!isNaN(d.getTime())) startTimeFilter.lte = d
   }
 
   where.startTime = startTimeFilter

@@ -178,6 +178,59 @@ export default function EventsClient({
                   ['--licColor']: getLicenseColor(license),
                 }
 
+                const eventRight = (variant: 'mobile' | 'desktop') => {
+                  const tooltip = variant === 'desktop' ? 'instant-tooltip ' : ''
+                  const variantClass =
+                    variant === 'mobile' ? styles.eventRightMobile : styles.eventRightDesktop
+                  return (
+                    <div className={`${styles.eventRight} ${variantClass}`}>
+                      <div className={styles.eventRightTop}>
+                        {isLive && (
+                          <div className={styles.liveBadge}>
+                            <span className={styles.liveDot} />
+                            LIVE
+                          </div>
+                        )}
+                        {isUserRegistered && (
+                          <span
+                            className={`${tooltip}${styles.registeredBadge}`}
+                            role="status"
+                            aria-label="You are registered for this event"
+                            title="You are registered for this event"
+                          >
+                            <Check size={14} />
+                            Registered
+                          </span>
+                        )}
+                        <div
+                          className={`${tooltip}${styles.licenseBadge}`}
+                          title={
+                            !isEligible
+                              ? 'You do not meet the license requirements for this event'
+                              : `You are eligible for this event`
+                          }
+                          style={{
+                            borderColor: getLicenseColor(license),
+                            color: getLicenseColor(license),
+                            backgroundColor: `${getLicenseColor(license)}30`,
+                          }}
+                        >
+                          {isEligible ? (
+                            <ShieldCheck size={14} />
+                          ) : (
+                            <ShieldX size={14} color="#ef4444" />
+                          )}
+                          {license}
+                        </div>
+                      </div>
+                      <div className={styles.driverPill}>
+                        <User size={12} className={styles.driverIcon} />
+                        {totalDrivers}
+                      </div>
+                    </div>
+                  )
+                }
+
                 return (
                   <button
                     key={event.id}
@@ -212,51 +265,7 @@ export default function EventsClient({
                         {event.track}
                       </div>
                       <div className={styles.trackConfig}>{event.trackConfig || ''}</div>
-                      <div className={`${styles.eventRight} ${styles.eventRightMobile}`}>
-                        <div className={styles.eventRightTop}>
-                          {isLive && (
-                            <div className={styles.liveBadge}>
-                              <span className={styles.liveDot} />
-                              LIVE
-                            </div>
-                          )}
-                          {isUserRegistered && (
-                            <span
-                              className={styles.registeredBadge}
-                              role="status"
-                              aria-label="You are registered for this event"
-                              title="You are registered for this event"
-                            >
-                              <Check size={14} />
-                              Registered
-                            </span>
-                          )}
-                          <div
-                            className={styles.licenseBadge}
-                            title={
-                              !isEligible
-                                ? 'You do not meet the license requirements for this event'
-                                : `You are eligible for this event`
-                            }
-                            style={{
-                              borderColor: getLicenseColor(license),
-                              color: getLicenseColor(license),
-                              backgroundColor: `${getLicenseColor(license)}30`,
-                            }}
-                          >
-                            {isEligible ? (
-                              <ShieldCheck size={14} />
-                            ) : (
-                              <ShieldX size={14} color="#ef4444" />
-                            )}
-                            {license}
-                          </div>
-                        </div>
-                        <div className={styles.driverPill}>
-                          <User size={12} className={styles.driverIcon} />
-                          {totalDrivers}
-                        </div>
-                      </div>
+                      {eventRight('mobile')}
 
                       <div className={styles.racePills}>
                         {event.races.map((race) => {
@@ -300,51 +309,7 @@ export default function EventsClient({
                       </div>
                     </div>
 
-                    <div className={`${styles.eventRight} ${styles.eventRightDesktop}`}>
-                      <div className={styles.eventRightTop}>
-                        {isLive && (
-                          <div className={styles.liveBadge}>
-                            <span className={styles.liveDot} />
-                            LIVE
-                          </div>
-                        )}
-                        {isUserRegistered && (
-                          <span
-                            className={`instant-tooltip ${styles.registeredBadge}`}
-                            role="status"
-                            aria-label="You are registered for this event"
-                            title="You are registered for this event"
-                          >
-                            <Check size={14} />
-                            Registered
-                          </span>
-                        )}
-                        <div
-                          className={`instant-tooltip ${styles.licenseBadge}`}
-                          title={
-                            !isEligible
-                              ? 'You do not meet the license requirements for this event'
-                              : `You are eligible for this event`
-                          }
-                          style={{
-                            borderColor: getLicenseColor(license),
-                            color: getLicenseColor(license),
-                            backgroundColor: `${getLicenseColor(license)}30`,
-                          }}
-                        >
-                          {isEligible ? (
-                            <ShieldCheck size={14} />
-                          ) : (
-                            <ShieldX size={14} color="#ef4444" />
-                          )}
-                          {license}
-                        </div>
-                      </div>
-                      <div className={styles.driverPill}>
-                        <User size={12} className={styles.driverIcon} />
-                        {totalDrivers}
-                      </div>
-                    </div>
+                    {eventRight('desktop')}
                   </button>
                 )
               })}
