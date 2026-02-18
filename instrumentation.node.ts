@@ -25,7 +25,7 @@ const otelDiagLogger: DiagLogger = {
   warn: (msg, ...args) => logger.warn({ args: args.length ? args : undefined }, msg),
   error: (msg, ...args) => logger.error({ args: args.length ? args : undefined }, msg),
 }
-diag.setLogger(otelDiagLogger, DiagLogLevel.ERROR)
+diag.setLogger(otelDiagLogger, DiagLogLevel.WARN)
 
 // K_SERVICE is set automatically by the Cloud Run runtime.
 const isCloudRun = !!process.env.K_SERVICE
@@ -53,10 +53,12 @@ if (!isCloudRun && !process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
     // in its Service filter rather than falling back to a generic resource type.
     resourceDetectors: isCloudRun ? [gcpDetector] : [],
     spanProcessors: [spanProcessor],
-    metricReader: new PeriodicExportingMetricReader({
-      exporter: metricExporter,
-      exportIntervalMillis: 60_000,
-    }),
+    metricReaders: [
+      new PeriodicExportingMetricReader({
+        exporter: metricExporter,
+        exportIntervalMillis: 60_000,
+      }),
+    ],
     // Selective instrumentations only — avoids loading unused packages (AWS,
     // Cassandra, gRPC, Kafka, MongoDB, etc.) that increase cold start time.
     instrumentations: [
