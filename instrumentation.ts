@@ -91,4 +91,8 @@ export async function register() {
       process.exit(1)
     }
   }
+
+  if (process.env.NEXT_RUNTIME === 'nodejs') {
+    await import('./instrumentation.node')
+  }
 }

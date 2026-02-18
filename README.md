@@ -144,6 +144,12 @@ npx prisma migrate dev --name <descriptive_migration_name>
   npx prisma studio
   ```
 
+### Local Observability
+
+- Prometheus: http://localhost:9090
+- Jaeger: http://localhost:16686
+- OpenTelemetry Collector: gRPC on port 4317, HTTP on port 4318
+
 ### Pre-Submission Testing
 
 Before submitting changes, run the following to ensure code quality. **Note**: These checks run automatically via a Git pre-commit hook.
