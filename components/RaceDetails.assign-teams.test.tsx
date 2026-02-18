@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, it, expect, vi } from 'vitest'
 import RaceDetails from './RaceDetails'
 import React from 'react'
@@ -523,25 +523,26 @@ describe('RaceDetails Assign Teams', () => {
     }
 
     // Only test values where team count changes; 5-8 all yield the same result (2 teams each).
+    // runRebalance is synchronous, so act() flushes all state updates without polling.
     for (const maxPerTeam of [1, 2, 3, 4, 5]) {
       const modal = document.querySelector('div[class*="teamModal_"]') as HTMLElement
       const maxInput = modal.querySelector('input[type="number"]') as HTMLInputElement | null
       expect(maxInput).toBeTruthy()
       fireEvent.change(maxInput!, { target: { value: String(maxPerTeam) } })
-      fireEvent.click(screen.getByRole('button', { name: 'Form/Rebalance Teams' }))
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Form/Rebalance Teams' }))
+      })
 
-      await waitFor(() => {
-        const teamTiles = getTeamTiles()
-        expect(teamTiles.length).toBe(expectedTeamCount(maxPerTeam))
-        teamTiles.forEach((tile) => {
-          const rows = tile.querySelectorAll('div[class*="driverRow_"]')
-          expect(rows.length).toBeLessThanOrEqual(maxPerTeam)
+      const teamTiles = getTeamTiles()
+      expect(teamTiles.length).toBe(expectedTeamCount(maxPerTeam))
+      teamTiles.forEach((tile) => {
+        const rows = tile.querySelectorAll('div[class*="driverRow_"]')
+        expect(rows.length).toBeLessThanOrEqual(maxPerTeam)
 
-          const text = tile.textContent || ''
-          const hasA = /A-Driver|A-New/.test(text)
-          const hasB = /B-Driver/.test(text)
-          expect(hasA && hasB).toBe(false)
-        })
+        const text = tile.textContent || ''
+        const hasA = /A-Driver|A-New/.test(text)
+        const hasB = /B-Driver/.test(text)
+        expect(hasA && hasB).toBe(false)
       })
     }
 
