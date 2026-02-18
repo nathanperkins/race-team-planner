@@ -44,6 +44,7 @@ services:
 
   otel-col:
     image: otel/opentelemetry-collector
+    restart: always
     ports:
       - '4317:4317'
       - '4318:4318'

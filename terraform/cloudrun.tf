@@ -32,6 +32,10 @@ resource "google_cloud_run_v2_service" "default" {
         name  = "AUTH_TRUST_HOST"
         value = "true"
       }
+      env {
+        name  = "OTEL_EXPORTER_OTLP_ENDPOINT"
+        value = "https://telemetry.googleapis.com"
+      }
 
       resources {
         limits = {
