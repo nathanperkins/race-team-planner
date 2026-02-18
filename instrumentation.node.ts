@@ -4,6 +4,7 @@ import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto'
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-proto'
 import { TraceExporter } from '@google-cloud/opentelemetry-cloud-trace-exporter'
 import { MetricExporter } from '@google-cloud/opentelemetry-cloud-monitoring-exporter'
+import { gcpDetector } from '@opentelemetry/resource-detector-gcp'
 import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics'
 import { PrismaInstrumentation } from '@prisma/instrumentation'
 import { BatchSpanProcessor, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-node'
@@ -47,6 +48,10 @@ if (!isCloudRun && !process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
 
   const sdk = new NodeSDK({
     serviceName,
+    // On Cloud Run, detect the GCP monitored resource (cloud_run_revision) so
+    // Cloud Trace Explorer can surface the service name, revision, and region
+    // in its Service filter rather than falling back to a generic resource type.
+    resourceDetectors: isCloudRun ? [gcpDetector] : [],
     spanProcessors: [spanProcessor],
     metricReader: new PeriodicExportingMetricReader({
       exporter: metricExporter,
