@@ -63,16 +63,16 @@ export default async function EventsPage({ searchParams }: PageProps) {
 
   const params = await searchParams
 
-  const currentUser = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    include: { racerStats: true },
-  })
-  const preferredStats =
-    currentUser?.racerStats?.find((s) => s.categoryId === 5) ?? currentUser?.racerStats?.[0]
-  const userLicenseLevel = getLicenseLevelFromName(preferredStats?.groupName)
+  const userLicenseLevelPromise = prisma.user
+    .findUnique({
+      where: { id: session.user.id },
+      include: { racerStats: true },
+    })
+    .then((user) => user?.racerStats?.find((s) => s.categoryId === 5) ?? user?.racerStats?.[0])
+    .then((stats) => getLicenseLevelFromName(stats?.groupName))
 
   // Fetch unique racers (users who have signed up)
-  const racers = await prisma.user.findMany({
+  const racersPromise = prisma.user.findMany({
     where: {
       registrations: {
         some: {},
@@ -86,6 +86,24 @@ export default async function EventsPage({ searchParams }: PageProps) {
       name: 'asc',
     },
   })
+
+  const teamsPromise = prisma.team
+    .findMany({
+      orderBy: { createdAt: 'asc' },
+      include: {
+        teamMembers: {
+          select: { id: true },
+        },
+      },
+    })
+    .then((teams) =>
+      teams.map((team) => ({
+        id: team.id,
+        name: team.alias || team.name,
+        iracingTeamId: team.iracingTeamId,
+        memberCount: team.teamMembers.length,
+      }))
+    )
 
   // Build Prisma filter object (similar to dashboard)
   const where: Prisma.EventWhereInput = {}
@@ -163,7 +181,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
   }
 
   // Fetch unique car classes for the filter dropdown based on current filters
-  const carClasses = await prisma.carClass.findMany({
+  const carClassesPromise = prisma.carClass.findMany({
     where: {
       events: {
         some: where,
@@ -224,6 +242,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
 
   // Apply eligible filter if requested
   if (params.eligible === 'true') {
+    const userLicenseLevel = await userLicenseLevelPromise
     events = events.filter((event) => {
       const license = getLicenseForGroup(event.licenseGroup)
       return isLicenseEligible(userLicenseLevel, license)
@@ -268,21 +287,6 @@ export default async function EventsPage({ searchParams }: PageProps) {
     (a, b) => a.weekStart.getTime() - b.weekStart.getTime()
   )
 
-  const rawTeams = await prisma.team.findMany({
-    orderBy: { createdAt: 'asc' },
-    include: {
-      teamMembers: {
-        select: { id: true },
-      },
-    },
-  })
-  const teams = rawTeams.map((team) => ({
-    id: team.id,
-    name: team.alias || team.name,
-    iracingTeamId: team.iracingTeamId,
-    memberCount: team.teamMembers.length,
-  }))
-
   // Serialize weeks data for client component (convert Sets to arrays)
   const serializedWeeks = weeks.map((week) => ({
     ...week,
@@ -294,9 +298,17 @@ export default async function EventsPage({ searchParams }: PageProps) {
   }))
 
   // Find the selected event from search params
-  const selectedEvent = params.eventId
-    ? events.find((event) => event.id === params.eventId) || (await getEvent(params.eventId))
-    : null
+  const selectedEventPromise = params.eventId
+    ? events.find((event) => event.id === params.eventId) || getEvent(params.eventId)
+    : Promise.resolve(null)
+
+  const [carClasses, racers, userLicenseLevel, teams, selectedEvent] = await Promise.all([
+    carClassesPromise,
+    racersPromise,
+    userLicenseLevelPromise,
+    teamsPromise,
+    selectedEventPromise,
+  ])
 
   return (
     <main className={styles.main}>
