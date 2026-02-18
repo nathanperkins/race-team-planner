@@ -24,6 +24,8 @@
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
+    "@google-cloud/opentelemetry-cloud-monitoring-exporter": "^0.21.0",
+    "@google-cloud/opentelemetry-cloud-trace-exporter": "^3.0.0",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/instrumentation-http": "^0.212.0",
     "@opentelemetry/instrumentation-undici": "^0.10.0",
