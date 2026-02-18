@@ -62,7 +62,14 @@ if (!isCloudRun && !process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
     // Selective instrumentations only — avoids loading unused packages (AWS,
     // Cassandra, gRPC, Kafka, MongoDB, etc.) that increase cold start time.
     instrumentations: [
-      new HttpInstrumentation(),
+      new HttpInstrumentation({
+        // Suppress incoming-request spans to avoid a time-source mismatch
+        // (performance timer vs wall clock) that logs startTime > endTime
+        // warnings on every request in dev/Turbopack restarts.
+        // Outgoing HTTP calls (iRacing API, Discord, etc.) still get traced.
+        // See: https://github.com/open-telemetry/opentelemetry-js-contrib/issues/1209
+        ignoreIncomingRequestHook: () => true,
+      }),
       new UndiciInstrumentation(),
       new PrismaInstrumentation(),
     ],
