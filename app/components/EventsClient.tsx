@@ -174,8 +174,14 @@ export default function EventsClient({
                   (sum, race) => sum + race.registrations.length,
                   0
                 )
+                const licenseColor = getLicenseColor(license)
                 const licenseStyle: LicenseStyle = {
-                  ['--licColor']: getLicenseColor(license),
+                  ['--licColor']: licenseColor,
+                }
+                const badgeStyle = {
+                  borderColor: licenseColor,
+                  color: licenseColor,
+                  backgroundColor: `${licenseColor}30`,
                 }
 
                 const eventRight = (variant: 'mobile' | 'desktop') => {
@@ -209,11 +215,7 @@ export default function EventsClient({
                               ? 'You do not meet the license requirements for this event'
                               : `You are eligible for this event`
                           }
-                          style={{
-                            borderColor: getLicenseColor(license),
-                            color: getLicenseColor(license),
-                            backgroundColor: `${getLicenseColor(license)}30`,
-                          }}
+                          style={badgeStyle}
                         >
                           {isEligible ? (
                             <ShieldCheck size={14} />
