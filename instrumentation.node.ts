@@ -5,6 +5,9 @@ import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentation
 import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics'
 import { PrismaInstrumentation } from '@prisma/instrumentation'
 import { BatchSpanProcessor, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-node'
+import { createLogger } from '@/lib/logger'
+
+const logger = createLogger('otel')
 
 const traceExporter = new OTLPTraceExporter({})
 const spanProcessors = []
@@ -23,3 +26,10 @@ const sdk = new NodeSDK({
   instrumentations: [getNodeAutoInstrumentations(), new PrismaInstrumentation()],
 })
 sdk.start()
+
+process.on('SIGTERM', async () => {
+  logger.info('SIGTERM received, flushing telemetry...')
+  await sdk.shutdown()
+  logger.info('Telemetry flushed, exiting.')
+  process.exit(0)
+})
