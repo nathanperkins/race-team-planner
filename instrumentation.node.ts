@@ -26,10 +26,16 @@ const sdk = new NodeSDK({
   instrumentations: [getNodeAutoInstrumentations(), new PrismaInstrumentation()],
 })
 sdk.start()
+logger.info(
+  `OpenTelemetry SDK started (endpoint: ${process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? 'default'})`
+)
 
-process.on('SIGTERM', async () => {
-  logger.info('SIGTERM received, flushing telemetry...')
+const shutdown = async (signal: string) => {
+  logger.info(`${signal} received, flushing telemetry...`)
   await sdk.shutdown()
   logger.info('Telemetry flushed, exiting.')
   process.exit(0)
-})
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))
