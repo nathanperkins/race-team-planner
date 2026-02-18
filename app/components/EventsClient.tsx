@@ -6,7 +6,7 @@ import EventDetailModal from './EventDetailModal'
 import { Prisma } from '@prisma/client'
 import styles from '../events/events.module.css'
 import {
-  getLicenseForId,
+  getLicenseForGroup,
   getLicenseColor,
   formatDuration,
   getSeriesNameOnly,
@@ -154,7 +154,7 @@ export default function EventsClient({
 
             <div className={styles.weekBody}>
               {week.events.map((event) => {
-                const license = getLicenseForId(event.id, event.licenseGroup)
+                const license = getLicenseForGroup(event.licenseGroup)
                 const isEligible = isLicenseEligible(userLicenseLevel, license)
                 const lastRaceEnd = event.races.reduce<Date | null>((latest, race) => {
                   const end = new Date(race.endTime)

@@ -19,7 +19,7 @@ const logger = createLogger('EventDetailModal')
 import RaceDetails from '@/components/RaceDetails'
 import EditEventButton from '@/app/admin/EditEventButton'
 import {
-  getLicenseForId,
+  getLicenseForGroup,
   getLicenseColor,
   formatDuration,
   getSeriesNameOnly,
@@ -81,7 +81,7 @@ export default function EventDetailModal({
   const [allDrivers, setAllDrivers] = useState<Driver[]>([])
   const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({})
 
-  const license = getLicenseForId(event.id, event.licenseGroup)
+  const license = getLicenseForGroup(event.licenseGroup)
   const licenseColor = getLicenseColor(license)
   const isEligible = isLicenseEligible(userLicenseLevel, license)
 

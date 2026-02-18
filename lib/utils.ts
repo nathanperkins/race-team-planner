@@ -18,7 +18,7 @@ const LICENSE_NAMES: Record<LicenseLevel, string> = {
   [LicenseLevel.PWC]: 'PWC',
 }
 
-export function getLicenseForId(id: string, licenseGroup?: number | null): string {
+export function getLicenseForGroup(licenseGroup?: number | null): string {
   if (licenseGroup && LICENSE_NAMES[licenseGroup as LicenseLevel]) {
     return LICENSE_NAMES[licenseGroup as LicenseLevel]
   }

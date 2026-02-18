@@ -1,51 +1,49 @@
 import { describe, it, expect } from 'vitest'
-import { getLicenseForId, LicenseLevel } from './utils'
+import { getLicenseForGroup, LicenseLevel } from './utils'
 
-describe('getLicenseForId', () => {
-  const mockEventId = 'event-123'
-
+describe('getLicenseForGroup', () => {
   it('returns "Rookie" when licenseGroup is 1', () => {
-    expect(getLicenseForId(mockEventId, LicenseLevel.ROOKIE)).toBe('Rookie')
+    expect(getLicenseForGroup(LicenseLevel.ROOKIE)).toBe('Rookie')
   })
 
   it('returns "Class D" when licenseGroup is 2', () => {
-    expect(getLicenseForId(mockEventId, LicenseLevel.D)).toBe('Class D')
+    expect(getLicenseForGroup(LicenseLevel.D)).toBe('Class D')
   })
 
   it('returns "Class C" when licenseGroup is 3', () => {
-    expect(getLicenseForId(mockEventId, LicenseLevel.C)).toBe('Class C')
+    expect(getLicenseForGroup(LicenseLevel.C)).toBe('Class C')
   })
 
   it('returns "Class B" when licenseGroup is 4', () => {
-    expect(getLicenseForId(mockEventId, LicenseLevel.B)).toBe('Class B')
+    expect(getLicenseForGroup(LicenseLevel.B)).toBe('Class B')
   })
 
   it('returns "Class A" when licenseGroup is 5', () => {
-    expect(getLicenseForId(mockEventId, LicenseLevel.A)).toBe('Class A')
+    expect(getLicenseForGroup(LicenseLevel.A)).toBe('Class A')
   })
 
   it('returns "Pro" when licenseGroup is 6', () => {
-    expect(getLicenseForId(mockEventId, LicenseLevel.PRO)).toBe('Pro')
+    expect(getLicenseForGroup(LicenseLevel.PRO)).toBe('Pro')
   })
 
   it('returns "PWC" when licenseGroup is 7', () => {
-    expect(getLicenseForId(mockEventId, LicenseLevel.PWC)).toBe('PWC')
+    expect(getLicenseForGroup(LicenseLevel.PWC)).toBe('PWC')
   })
 
   it('returns "N/A" when licenseGroup is null', () => {
-    expect(getLicenseForId(mockEventId, null)).toBe('N/A')
+    expect(getLicenseForGroup(null)).toBe('N/A')
   })
 
   it('returns "N/A" when licenseGroup is undefined', () => {
-    expect(getLicenseForId(mockEventId, undefined)).toBe('N/A')
+    expect(getLicenseForGroup(undefined)).toBe('N/A')
   })
 
   it('returns "N/A" when licenseGroup is 0', () => {
-    expect(getLicenseForId(mockEventId, 0)).toBe('N/A')
+    expect(getLicenseForGroup(0)).toBe('N/A')
   })
 
   it('returns "N/A" when licenseGroup is an invalid number', () => {
-    expect(getLicenseForId(mockEventId, 99)).toBe('N/A')
-    expect(getLicenseForId(mockEventId, -1)).toBe('N/A')
+    expect(getLicenseForGroup(99)).toBe('N/A')
+    expect(getLicenseForGroup(-1)).toBe('N/A')
   })
 })

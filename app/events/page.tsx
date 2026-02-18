@@ -5,7 +5,7 @@ import EventFilters from '../components/EventFilters'
 import LastSyncStatus from '@/components/LastSyncStatus'
 import EventsClient from '../components/EventsClient'
 import { Prisma } from '@prisma/client'
-import { getLicenseLevelFromName, getLicenseForId, isLicenseEligible } from '@/lib/utils'
+import { getLicenseLevelFromName, getLicenseForGroup, isLicenseEligible } from '@/lib/utils'
 import { getEvent } from '@/lib/queries'
 
 import styles from './events.module.css'
@@ -61,7 +61,6 @@ export default async function EventsPage({ searchParams }: PageProps) {
   const session = await auth()
   if (!session) redirect('/login')
 
-  // TODO (kaelan): Convert to hook
   const params = await searchParams
 
   const currentUser = await prisma.user.findUnique({
@@ -226,7 +225,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
   // Apply eligible filter if requested
   if (params.eligible === 'true') {
     events = events.filter((event) => {
-      const license = getLicenseForId(event.id, event.licenseGroup)
+      const license = getLicenseForGroup(event.licenseGroup)
       return isLicenseEligible(userLicenseLevel, license)
     })
   }

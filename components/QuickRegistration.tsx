@@ -4,7 +4,7 @@ import { useActionState, useState, useEffect, useRef } from 'react'
 import { registerForRace } from '@/app/actions'
 import { ChevronDown, AlertTriangle } from 'lucide-react'
 import styles from './QuickRegistration.module.css'
-import { isLicenseEligible, getLicenseForId, LicenseLevel } from '@/lib/utils'
+import { isLicenseEligible, getLicenseForGroup, LicenseLevel } from '@/lib/utils'
 
 interface Props {
   raceId: string
@@ -95,7 +95,7 @@ export default function QuickRegistration({
       userLicenseLevel !== null &&
       userLicenseLevel !== undefined
     ) {
-      const eventLicense = getLicenseForId(eventId, eventLicenseGroup)
+      const eventLicense = getLicenseForGroup(eventLicenseGroup)
       const isEligible = isLicenseEligible(userLicenseLevel, eventLicense)
 
       if (!isEligible) {

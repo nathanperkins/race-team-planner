@@ -35,7 +35,7 @@ import { saveRaceEdits } from '@/app/actions'
 import {
   getAutoMaxDriversPerTeam,
   getLicenseColor,
-  getLicenseForId,
+  getLicenseForGroup,
   getLicenseLevelFromName,
   getRaceDurationMinutes,
   isLicenseEligible,
@@ -260,8 +260,7 @@ export default function RaceDetails({
   const isRaceLive = now >= new Date(race.startTime) && now <= new Date(race.endTime)
 
   // Calculate race license requirement for eligibility checking
-  const raceLicense =
-    eventId && eventLicenseGroup !== undefined ? getLicenseForId(eventId, eventLicenseGroup) : null
+  const raceLicense = eventLicenseGroup !== undefined ? getLicenseForGroup(eventLicenseGroup) : null
 
   const autoMaxDrivers =
     race.maxDriversPerTeam ??
