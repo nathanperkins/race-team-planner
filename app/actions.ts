@@ -707,7 +707,13 @@ export async function deleteRegistration(registrationId: string): Promise<void> 
         user: { select: { name: true } },
         manualDriver: { select: { name: true } },
         race: {
-          select: { id: true, endTime: true, eventId: true, discordTeamsThreadId: true },
+          select: {
+            id: true,
+            endTime: true,
+            eventId: true,
+            discordTeamsThreadId: true,
+            discordTeamThreads: true,
+          },
         },
       },
     })
@@ -728,47 +734,49 @@ export async function deleteRegistration(registrationId: string): Promise<void> 
       throw new Error('Cannot drop from a completed race')
     }
 
-    await prisma.registration.delete({
+    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+
+    const deletePromise = prisma.registration.delete({
       where: {
         id: registrationId,
       },
     })
 
+    const parallelWork = [deletePromise as unknown as Promise<void>]
+
     // Emit roster-change notifications for user/admin drops without blocking the drop flow.
     try {
-      const eventThreadRecord = await prisma.race.findFirst({
-        where: {
-          eventId: registration.race.eventId,
-          NOT: { discordTeamsThreadId: null },
-        },
-        select: { discordTeamsThreadId: true, discordTeamThreads: true },
-      })
-
-      const eventThreadId =
-        eventThreadRecord?.discordTeamsThreadId ?? registration.race.discordTeamsThreadId ?? null
+      const eventThreadId = registration.race.discordTeamsThreadId ?? null
+      const teamThreads =
+        (registration.race.discordTeamThreads as Record<string, string> | null) ?? {}
       if (eventThreadId) {
-        const teamThreads =
-          (eventThreadRecord?.discordTeamThreads as Record<string, string> | null) ?? {}
-        const teams = await prisma.team.findMany({
-          select: { id: true, name: true, alias: true },
-        })
-        const teamNameById = new Map(teams.map((team) => [team.id, team.alias || team.name]))
-        const driverName =
-          registration.user?.name || registration.manualDriver?.name || 'Unknown Driver'
-        const fromTeam = registration.team?.alias || registration.team?.name || 'Unassigned'
+        const rosterUpdate = prisma.team
+          .findMany({
+            select: { id: true, name: true, alias: true },
+            where: {
+              id: { in: Object.keys(teamThreads) },
+            },
+          })
+          .then((teams) => {
+            const teamNameById = new Map(teams.map((team) => [team.id, team.alias || team.name]))
+            const driverName =
+              registration.user?.name || registration.manualDriver?.name || 'Unknown Driver'
+            const fromTeam = registration.team?.alias || registration.team?.name || 'Unassigned'
 
-        await postRosterChangeNotifications(
-          eventThreadId,
-          [{ type: 'dropped', driverName, fromTeam }],
-          process.env.DISCORD_BOT_TOKEN || '',
-          session.user.name || driverName,
-          teamThreads,
-          teamNameById
-        )
+            return postRosterChangeNotifications(
+              eventThreadId,
+              [{ type: 'dropped', driverName, fromTeam }],
+              process.env.DISCORD_BOT_TOKEN || '',
+              session.user.name || driverName,
+              teamThreads,
+              teamNameById
+            )
+          })
+        parallelWork.push(rosterUpdate)
 
         // Update the main event discussion post and team discussion posts to reflect the drop
         const { createOrUpdateEventThread, refreshAllTeamThreads } = await import('@/lib/discord')
-        const races = await prisma.race.findMany({
+        const races = prisma.race.findMany({
           where: { eventId: registration.race.eventId },
           select: {
             id: true,
@@ -813,146 +821,47 @@ export async function deleteRegistration(registrationId: string): Promise<void> 
           },
         })
 
-        if (races.length > 0 && races[0].event) {
-          const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
-          const event = races[0].event
-          const carClasses = [...event.carClasses.map((cc) => cc.name), ...event.customCarClasses]
+        const updateEventThread = races.then((races) => {
+          if (races.length > 0 && races[0].event) {
+            const event = races[0].event
+            const carClasses = [...event.carClasses.map((cc) => cc.name), ...event.customCarClasses]
 
-          // Build timeslots data for the event discussion post
-          const timeslots = races.map((race) => {
-            // Group registrations by team
-            const teamMap = new Map<
-              string,
-              {
-                name: string
-                carClassName: string
-                members: Array<{
-                  name: string
-                  carClass: string
-                  discordId?: string
-                  registrationId?: string
-                }>
-              }
-            >()
-            const unassignedDrivers: Array<{
-              name: string
-              carClass: string
-              discordId?: string
-              registrationId?: string
-            }> = []
+            // Build timeslots data for the event discussion post
+            const timeslots = buildTimeslotsForEventThread(races)
 
-            race.registrations.forEach((reg) => {
-              if (reg.team && reg.teamId) {
-                if (!teamMap.has(reg.teamId)) {
-                  teamMap.set(reg.teamId, {
-                    name: reg.team.alias || reg.team.name,
-                    carClassName: reg.carClass.name,
-                    members: [],
-                  })
-                }
-                teamMap.get(reg.teamId)!.members.push({
-                  name: reg.user?.name || reg.manualDriver?.name || 'Unknown',
-                  carClass: reg.carClass.name,
-                  discordId:
-                    reg.user?.accounts.find((acc) => acc.provider === 'discord')
-                      ?.providerAccountId || undefined,
-                  registrationId: reg.id,
-                })
-              } else {
-                // Unassigned driver
-                unassignedDrivers.push({
-                  name: reg.user?.name || reg.manualDriver?.name || 'Unknown',
-                  carClass: reg.carClass.name,
-                  discordId:
-                    reg.user?.accounts.find((acc) => acc.provider === 'discord')
-                      ?.providerAccountId || undefined,
-                  registrationId: reg.id,
-                })
-              }
+            // Update the main event discussion post
+            return createOrUpdateEventThread({
+              eventName: event.name,
+              raceUrl: `${baseUrl}/events?eventId=${event.id}`,
+              track: event.track ?? undefined,
+              trackConfig: event.trackConfig ?? undefined,
+              tempValue: event.tempValue,
+              precipChance: event.precipChance,
+              carClasses,
+              timeslots,
+              threadId: eventThreadId,
             })
+          }
+        })
 
-            return {
-              raceId: race.id,
-              raceStartTime: race.startTime,
-              raceEndTime: race.endTime,
-              teams: Array.from(teamMap.values()),
-              unassigned: unassignedDrivers.length > 0 ? unassignedDrivers : undefined,
-            }
-          })
+        parallelWork.push(updateEventThread as Promise<void>)
 
-          // Update the main event discussion post
-          await createOrUpdateEventThread({
-            eventName: event.name,
-            raceUrl: `${baseUrl}/events?eventId=${event.id}`,
-            track: event.track ?? undefined,
-            trackConfig: event.trackConfig ?? undefined,
-            tempValue: event.tempValue,
-            precipChance: event.precipChance,
-            carClasses,
-            timeslots,
-            threadId: eventThreadId,
-          })
-
-          // Update all team discussion posts
-          if (Object.keys(teamThreads).length > 0) {
-            // Build races data with teams for refreshAllTeamThreads
-            const racesWithTeams = races.map((race) => {
-              // Group registrations by team
-              const teamMap = new Map<
-                string,
-                {
-                  id: string
-                  name: string
-                  alias: string | null
-                  carClass: { name: string } | null
-                  registrations: Array<{
-                    id: string
-                    user: {
-                      name: string | null
-                      image: string | null
-                      accounts: Array<{ provider: string; providerAccountId: string }>
-                    } | null
-                    manualDriver: { name: string } | null
-                  }>
-                }
-              >()
-
-              race.registrations.forEach((reg) => {
-                if (reg.team && reg.teamId) {
-                  if (!teamMap.has(reg.teamId)) {
-                    teamMap.set(reg.teamId, {
-                      id: reg.team.id,
-                      name: reg.team.name,
-                      alias: reg.team.alias,
-                      carClass: reg.carClass,
-                      registrations: [],
-                    })
-                  }
-                  teamMap.get(reg.teamId)!.registrations.push({
-                    id: reg.id,
-                    user: reg.user,
-                    manualDriver: reg.manualDriver,
-                  })
-                }
-              })
-
-              return {
-                id: race.id,
-                startTime: race.startTime,
-                event: race.event!,
-                teams: Array.from(teamMap.values()),
-              }
-            })
-
-            await refreshAllTeamThreads(
-              racesWithTeams,
+        // Update all team discussion posts
+        if (Object.keys(teamThreads).length > 0) {
+          // Build races data with teams for refreshAllTeamThreads
+          const refreshTeamThreads = races.then((races) =>
+            refreshAllTeamThreads(
+              racesWithTeams(races),
               teamThreads,
               process.env.DISCORD_BOT_TOKEN || '',
               baseUrl
             )
-          }
+          )
+
+          parallelWork.push(refreshTeamThreads)
         }
       }
+      await Promise.all(parallelWork)
     } catch (notificationError) {
       logger.error({ err: notificationError }, 'Failed to send drop notification')
     }
@@ -1721,6 +1630,209 @@ function buildTeamsFromRegistrations(
   unassigned.sort((a, b) => a.name.localeCompare(b.name))
 
   return { teamsMap, teamsList, unassigned }
+}
+
+function racesWithTeams(
+  // the typescript here is disgusting
+  races: Array<{
+    id: string
+    startTime: Date
+    registrations: Array<{
+      teamId?: string | null
+      team?: { id: string; name: string; alias?: string | null } | null
+      carClass: { name: string }
+      user?: {
+        name?: string | null
+        image?: string | null
+        accounts?: Array<{ provider: string; providerAccountId: string }>
+      } | null
+      manualDriver?: { name?: string | null } | null
+      id: string
+    }>
+    event: {
+      id: string
+      name: string
+      track?: string | null | undefined
+      trackConfig?: string | null | undefined
+      tempValue?: number | null | undefined
+      precipChance?: number | null | undefined
+      carClasses: Array<{ name: string }>
+      customCarClasses: string[]
+    }
+  }>
+): Array<{
+  id: string
+  startTime: Date
+  event: {
+    id: string
+    name: string
+    track: string | null
+    trackConfig: string | null
+    tempValue: number | null
+    precipChance: number | null
+    carClasses: Array<{ name: string }>
+    customCarClasses: string[]
+  }
+  teams: Array<{
+    id: string
+    name: string
+    alias: string | null
+    carClass: { name: string } | null
+    registrations: Array<{
+      id: string
+      user: {
+        name: string | null
+        image: string | null
+        accounts: Array<{ provider: string; providerAccountId: string }>
+      } | null
+      manualDriver: { name: string } | null
+    }>
+  }>
+}> {
+  // Group registrations by team
+  const teamMap = new Map<
+    string,
+    {
+      id: string
+      name: string
+      alias: string | null
+      carClass: { name: string } | null
+      registrations: Array<{
+        id: string
+        user: {
+          name: string | null
+          image: string | null
+          accounts: Array<{ provider: string; providerAccountId: string }>
+        } | null
+        manualDriver: { name: string } | null
+      }>
+    }
+  >()
+
+  return races.map((race) => {
+    race.registrations.forEach((reg) => {
+      if (reg.team && reg.teamId) {
+        if (!teamMap.has(reg.teamId)) {
+          teamMap.set(reg.teamId, {
+            id: reg.team.id,
+            name: reg.team.name,
+            alias: reg.team.alias ?? null,
+            carClass: reg.carClass,
+            registrations: [],
+          })
+        }
+        teamMap.get(reg.teamId)!.registrations.push({
+          id: reg.id,
+          user: reg.user
+            ? {
+                name: reg.user.name ?? null,
+                image: reg.user.image ?? null,
+                accounts: reg.user.accounts ?? [],
+              }
+            : null,
+          manualDriver: reg.manualDriver ? { name: reg.manualDriver.name ?? 'Unknown' } : null,
+        })
+      }
+    })
+
+    return {
+      id: race.id,
+      startTime: race.startTime,
+      event: {
+        ...race.event!,
+        track: race.event!.track ?? null,
+        trackConfig: race.event!.trackConfig ?? null,
+        tempValue: race.event!.tempValue ?? null,
+        precipChance: race.event!.precipChance ?? null,
+      },
+      teams: Array.from(teamMap.values()),
+    }
+  })
+}
+
+/**
+ * Builds timeslots data for event discussion post.
+ * This function processes race registrations and organizes them by team
+ * for display in the event discussion thread.
+ */
+function buildTimeslotsForEventThread(
+  races: Array<{
+    id: string
+    startTime: Date
+    endTime: Date
+    registrations: Array<{
+      teamId?: string | null
+      team?: { name: string; alias?: string | null } | null
+      carClass: { name: string }
+      user?: {
+        name?: string | null
+        accounts?: Array<{ provider: string; providerAccountId: string }>
+      } | null
+      manualDriver?: { name?: string | null } | null
+      id: string
+    }>
+  }>
+) {
+  return races.map((race) => {
+    // Group registrations by team
+    const teamMap = new Map<
+      string,
+      {
+        name: string
+        carClassName: string
+        members: Array<{
+          name: string
+          carClass: string
+          discordId?: string
+          registrationId?: string
+        }>
+      }
+    >()
+    const unassignedDrivers: Array<{
+      name: string
+      carClass: string
+      discordId?: string
+      registrationId?: string
+    }> = []
+
+    race.registrations.forEach((reg) => {
+      if (reg.teamId && reg.team) {
+        if (!teamMap.has(reg.teamId)) {
+          teamMap.set(reg.teamId, {
+            name: reg.team.alias || reg.team.name,
+            carClassName: reg.carClass.name,
+            members: [],
+          })
+        }
+        teamMap.get(reg.teamId)!.members.push({
+          name: reg.user?.name || reg.manualDriver?.name || 'Unknown',
+          carClass: reg.carClass.name,
+          discordId:
+            reg.user?.accounts?.find((acc) => acc.provider === 'discord')?.providerAccountId ||
+            undefined,
+          registrationId: reg.id,
+        })
+      } else {
+        // Unassigned driver
+        unassignedDrivers.push({
+          name: reg.user?.name || reg.manualDriver?.name || 'Unknown',
+          carClass: reg.carClass.name,
+          discordId:
+            reg.user?.accounts?.find((acc) => acc.provider === 'discord')?.providerAccountId ||
+            undefined,
+          registrationId: reg.id,
+        })
+      }
+    })
+
+    return {
+      raceId: race.id,
+      raceStartTime: race.startTime,
+      raceEndTime: race.endTime,
+      teams: Array.from(teamMap.values()),
+      unassigned: unassignedDrivers.length > 0 ? unassignedDrivers : undefined,
+    }
+  })
 }
 
 /**
