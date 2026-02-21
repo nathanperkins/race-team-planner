@@ -1689,27 +1689,26 @@ function racesWithTeams(
     }>
   }>
 }> {
-  // Group registrations by team
-  const teamMap = new Map<
-    string,
-    {
-      id: string
-      name: string
-      alias: string | null
-      carClass: { name: string } | null
-      registrations: Array<{
-        id: string
-        user: {
-          name: string | null
-          image: string | null
-          accounts: Array<{ provider: string; providerAccountId: string }>
-        } | null
-        manualDriver: { name: string } | null
-      }>
-    }
-  >()
-
   return races.map((race) => {
+    // Group registrations by team — must be declared per-race to avoid accumulation
+    const teamMap = new Map<
+      string,
+      {
+        id: string
+        name: string
+        alias: string | null
+        carClass: { name: string } | null
+        registrations: Array<{
+          id: string
+          user: {
+            name: string | null
+            image: string | null
+            accounts: Array<{ provider: string; providerAccountId: string }>
+          } | null
+          manualDriver: { name: string } | null
+        }>
+      }
+    >()
     race.registrations.forEach((reg) => {
       if (reg.team && reg.teamId) {
         if (!teamMap.has(reg.teamId)) {

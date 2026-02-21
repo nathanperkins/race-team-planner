@@ -814,6 +814,95 @@ describe('deleteRegistration notifications', () => {
 
     delete process.env.NEXTAUTH_URL
   })
+
+  it('passes each race only its own teams to refreshAllTeamThreads for multi-race events', async () => {
+    vi.mocked(prisma.registration.findUnique).mockResolvedValue({
+      id: 'reg-6',
+      userId: 'user-1',
+      teamId: 'team-1',
+      team: { id: 'team-1', name: 'Team One', alias: null },
+      user: { name: 'User One' },
+      manualDriver: null,
+      race: {
+        id: 'race-1',
+        endTime: new Date('2099-01-01T00:00:00Z'),
+        eventId: 'event-1',
+        discordTeamsThreadId: 'event-thread-1',
+        discordTeamThreads: { 'team-1': 'team-thread-1', 'team-2': 'team-thread-2' },
+      },
+    } as any)
+    vi.mocked(prisma.registration.delete).mockResolvedValue({} as any)
+    vi.mocked(postRosterChangeNotifications).mockResolvedValue(undefined as any)
+
+    const sharedEvent = {
+      id: 'event-1',
+      name: 'Test Event',
+      track: 'Test Track',
+      trackConfig: null,
+      tempValue: null,
+      precipChance: null,
+      carClasses: [{ name: 'GT3' }],
+      customCarClasses: [],
+    }
+
+    vi.mocked(prisma.race.findMany).mockResolvedValue([
+      {
+        id: 'race-1',
+        startTime: new Date('2099-01-01T10:00:00Z'),
+        endTime: new Date('2099-01-01T14:00:00Z'),
+        eventId: 'event-1',
+        discordTeamsThreadId: 'event-thread-1',
+        registrations: [
+          {
+            id: 'reg-other-1',
+            teamId: 'team-1',
+            user: { name: 'Driver A', image: null, accounts: [] },
+            manualDriver: null,
+            team: { id: 'team-1', name: 'Team One', alias: null },
+            carClass: { name: 'GT3' },
+          },
+        ],
+        event: sharedEvent,
+      },
+      {
+        id: 'race-2',
+        startTime: new Date('2099-01-02T10:00:00Z'),
+        endTime: new Date('2099-01-02T14:00:00Z'),
+        eventId: 'event-1',
+        discordTeamsThreadId: null,
+        registrations: [
+          {
+            id: 'reg-other-2',
+            teamId: 'team-2',
+            user: { name: 'Driver B', image: null, accounts: [] },
+            manualDriver: null,
+            team: { id: 'team-2', name: 'Team Two', alias: null },
+            carClass: { name: 'GT3' },
+          },
+        ],
+        event: sharedEvent,
+      },
+    ] as any)
+    vi.mocked(createOrUpdateEventThread).mockResolvedValue({ ok: true })
+    vi.mocked(refreshAllTeamThreads).mockResolvedValue(undefined)
+    process.env.NEXTAUTH_URL = 'http://localhost:3000'
+
+    await deleteRegistration('reg-6')
+
+    const callArgs = vi.mocked(refreshAllTeamThreads).mock.calls[0][0]
+    const race1Result = callArgs.find((r: any) => r.id === 'race-1')
+    const race2Result = callArgs.find((r: any) => r.id === 'race-2')
+
+    // race-1 should only have team-1
+    expect(race1Result.teams).toHaveLength(1)
+    expect(race1Result.teams[0].id).toBe('team-1')
+
+    // race-2 should only have team-2 (not team-1 bleeding over due to shared teamMap)
+    expect(race2Result.teams).toHaveLength(1)
+    expect(race2Result.teams[0].id).toBe('team-2')
+
+    delete process.env.NEXTAUTH_URL
+  })
 })
 
 describe('registerForRace', () => {
