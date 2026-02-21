@@ -742,13 +742,29 @@ export async function deleteRegistration(registrationId: string): Promise<void> 
       },
     })
 
+    // If the dropped race has no Discord thread, look for one from a sibling race in the
+    // event. Run in parallel with the delete so there's no extra latency in that case.
+    const eventThreadFallbackPromise = registration.race.discordTeamsThreadId
+      ? Promise.resolve(null)
+      : prisma.race.findFirst({
+          where: {
+            eventId: registration.race.eventId,
+            NOT: { discordTeamsThreadId: null },
+          },
+          select: { discordTeamsThreadId: true, discordTeamThreads: true },
+        })
+
     const parallelWork = [deletePromise as unknown as Promise<void>]
 
     // Emit roster-change notifications for user/admin drops without blocking the drop flow.
     try {
-      const eventThreadId = registration.race.discordTeamsThreadId ?? null
+      const eventThreadFallback = await eventThreadFallbackPromise
+      const eventThreadId =
+        registration.race.discordTeamsThreadId ?? eventThreadFallback?.discordTeamsThreadId ?? null
       const teamThreads =
-        (registration.race.discordTeamThreads as Record<string, string> | null) ?? {}
+        (registration.race.discordTeamThreads as Record<string, string> | null) ??
+        (eventThreadFallback?.discordTeamThreads as Record<string, string> | null) ??
+        {}
       if (eventThreadId) {
         const rosterUpdate = prisma.team
           .findMany({
@@ -776,50 +792,52 @@ export async function deleteRegistration(registrationId: string): Promise<void> 
 
         // Update the main event discussion post and team discussion posts to reflect the drop
         const { createOrUpdateEventThread, refreshAllTeamThreads } = await import('@/lib/discord')
-        const races = prisma.race.findMany({
-          where: { eventId: registration.race.eventId },
-          select: {
-            id: true,
-            startTime: true,
-            endTime: true,
-            eventId: true,
-            discordTeamsThreadId: true,
-            registrations: {
-              select: {
-                id: true,
-                teamId: true,
-                user: {
-                  select: {
-                    name: true,
-                    image: true,
-                    accounts: { select: { provider: true, providerAccountId: true } },
+        const races = deletePromise.then(() =>
+          prisma.race.findMany({
+            where: { eventId: registration.race.eventId },
+            select: {
+              id: true,
+              startTime: true,
+              endTime: true,
+              eventId: true,
+              discordTeamsThreadId: true,
+              registrations: {
+                select: {
+                  id: true,
+                  teamId: true,
+                  user: {
+                    select: {
+                      name: true,
+                      image: true,
+                      accounts: { select: { provider: true, providerAccountId: true } },
+                    },
                   },
-                },
-                manualDriver: { select: { name: true } },
-                team: {
-                  select: {
-                    id: true,
-                    name: true,
-                    alias: true,
+                  manualDriver: { select: { name: true } },
+                  team: {
+                    select: {
+                      id: true,
+                      name: true,
+                      alias: true,
+                    },
                   },
+                  carClass: { select: { name: true } },
                 },
-                carClass: { select: { name: true } },
+              },
+              event: {
+                select: {
+                  id: true,
+                  name: true,
+                  track: true,
+                  trackConfig: true,
+                  tempValue: true,
+                  precipChance: true,
+                  carClasses: { select: { name: true } },
+                  customCarClasses: true,
+                },
               },
             },
-            event: {
-              select: {
-                id: true,
-                name: true,
-                track: true,
-                trackConfig: true,
-                tempValue: true,
-                precipChance: true,
-                carClasses: { select: { name: true } },
-                customCarClasses: true,
-              },
-            },
-          },
-        })
+          })
+        )
 
         const updateEventThread = races.then((races) => {
           if (races.length > 0 && races[0].event) {
@@ -1633,7 +1651,7 @@ function buildTeamsFromRegistrations(
 }
 
 function racesWithTeams(
-  // the typescript here is disgusting
+  // TODO: extract input/output into shared types to simplify this signature
   races: Array<{
     id: string
     startTime: Date

@@ -517,6 +517,41 @@ describe('deleteRegistration notifications', () => {
     ] as any)
   })
 
+  it('sends notification when the dropped race has no thread but a sibling race in the event does', async () => {
+    vi.mocked(prisma.registration.findUnique).mockResolvedValue({
+      id: 'reg-cross',
+      userId: 'user-1',
+      teamId: 'team-1',
+      team: { id: 'team-1', name: 'Team One' },
+      user: { name: 'User One' },
+      manualDriver: null,
+      race: {
+        id: 'race-2',
+        endTime: new Date('2099-01-01T00:00:00Z'),
+        eventId: 'event-1',
+        discordTeamsThreadId: null, // this race has no thread
+        discordTeamThreads: null,
+      },
+    } as any)
+    vi.mocked(prisma.registration.delete).mockResolvedValue({} as any)
+    vi.mocked(prisma.race.findFirst).mockResolvedValue({
+      discordTeamsThreadId: 'event-thread-from-race-1',
+      discordTeamThreads: { 'team-1': 'team-thread-1' },
+    } as any)
+    vi.mocked(postRosterChangeNotifications).mockResolvedValue(undefined as any)
+
+    await deleteRegistration('reg-cross')
+
+    expect(postRosterChangeNotifications).toHaveBeenCalledWith(
+      'event-thread-from-race-1',
+      [{ type: 'dropped', driverName: 'User One', fromTeam: 'Team One' }],
+      expect.any(String),
+      'User One',
+      { 'team-1': 'team-thread-1' },
+      expect.any(Map)
+    )
+  })
+
   it('posts drop notification to event and team thread when user drops from team', async () => {
     vi.mocked(prisma.registration.findUnique).mockResolvedValue({
       id: 'reg-1',
@@ -902,6 +937,63 @@ describe('deleteRegistration notifications', () => {
     expect(race2Result.teams[0].id).toBe('team-2')
 
     delete process.env.NEXTAUTH_URL
+  })
+
+  it('only fetches races for thread update after the registration is deleted', async () => {
+    let deleteCompleted = false
+    let findManyCalledBeforeDelete = false
+
+    vi.mocked(prisma.registration.findUnique).mockResolvedValue({
+      id: 'reg-7',
+      userId: 'user-1',
+      teamId: 'team-1',
+      team: { id: 'team-1', name: 'Team One', alias: null },
+      user: { name: 'User One' },
+      manualDriver: null,
+      race: {
+        id: 'race-1',
+        endTime: new Date('2099-01-01T00:00:00Z'),
+        eventId: 'event-1',
+        discordTeamsThreadId: 'event-thread-1',
+        discordTeamThreads: { 'team-1': 'team-thread-1' },
+      },
+    } as any)
+    vi.mocked(prisma.registration.delete).mockImplementation(async () => {
+      // Simulate async delete that takes a moment
+      await new Promise((resolve) => setTimeout(resolve, 10))
+      deleteCompleted = true
+      return {} as any
+    })
+    vi.mocked(postRosterChangeNotifications).mockResolvedValue(undefined as any)
+    vi.mocked(prisma.race.findMany).mockImplementation(() => {
+      if (!deleteCompleted) findManyCalledBeforeDelete = true
+      return Promise.resolve([
+        {
+          id: 'race-1',
+          startTime: new Date('2099-01-01T10:00:00Z'),
+          endTime: new Date('2099-01-01T12:00:00Z'),
+          eventId: 'event-1',
+          discordTeamsThreadId: 'event-thread-1',
+          registrations: [],
+          event: {
+            id: 'event-1',
+            name: 'Test Event',
+            track: null,
+            trackConfig: null,
+            tempValue: null,
+            precipChance: null,
+            carClasses: [],
+            customCarClasses: [],
+          },
+        },
+      ]) as any
+    })
+    vi.mocked(createOrUpdateEventThread).mockResolvedValue({ ok: true })
+    vi.mocked(refreshAllTeamThreads).mockResolvedValue(undefined)
+
+    await deleteRegistration('reg-7')
+
+    expect(findManyCalledBeforeDelete).toBe(false)
   })
 })
 

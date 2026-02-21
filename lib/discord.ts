@@ -1019,20 +1019,16 @@ export async function createOrUpdateEventThread(data: {
   const threadParentId = forumId || channelId
 
   try {
-    // Parallelize independent operations
-    const [, threadName, allDiscordIds, embeds] = await Promise.all([
-      Promise.resolve(data.timeslots[0]?.raceStartTime ?? new Date()),
-      Promise.resolve(
-        buildEventThreadName(data.eventName, data.timeslots[0]?.raceStartTime ?? new Date(), {
-          locale: appLocale,
-          timeZone: appTimeZone,
-        })
-      ),
-      Promise.resolve(collectDiscordIds(data.timeslots)),
-      Promise.resolve(
-        buildTeamsAssignedEmbeds(data, appTitle, { locale: appLocale, timeZone: appTimeZone })
-      ),
-    ])
+    const threadName = buildEventThreadName(
+      data.eventName,
+      data.timeslots[0]?.raceStartTime ?? new Date(),
+      { locale: appLocale, timeZone: appTimeZone }
+    )
+    const allDiscordIds = collectDiscordIds(data.timeslots)
+    const embeds = buildTeamsAssignedEmbeds(data, appTitle, {
+      locale: appLocale,
+      timeZone: appTimeZone,
+    })
 
     let threadId = data.threadId ?? null
     if (threadId) {
@@ -1152,12 +1148,10 @@ export async function createOrUpdateEventThread(data: {
       return { ok: true, threadId }
     }
 
-    // Update existing thread - parallelize independent operations
+    // Update existing thread
     const mentionSet = new Set(data.mentionRegistrationIds ?? [])
-    const [postResponse, allMemberDiscordIds] = await Promise.all([
-      upsertThreadMessageWithMentions(threadId, embeds, mentionSet),
-      Promise.resolve(Array.from(allDiscordIds.values())),
-    ])
+    const allMemberDiscordIds = Array.from(allDiscordIds.values())
+    const postResponse = await upsertThreadMessageWithMentions(threadId, embeds, mentionSet)
 
     if (!postResponse.ok && postResponse.status === 404) {
       // Thread deleted or inaccessible; create a new one.
