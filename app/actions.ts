@@ -1845,386 +1845,147 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
   }
 
   try {
-    const raceWithEvent = await prisma.race.findUnique({
-      where: { id: raceId },
-      select: {
-        id: true,
-        startTime: true,
-        teamsAssigned: true,
-        discordTeamsThreadId: true,
-        discordTeamsSnapshot: true,
-        discordTeamThreads: true,
-        event: {
-          select: {
-            id: true,
-            name: true,
-            track: true,
-            trackConfig: true,
-            tempValue: true,
-            precipChance: true,
-            carClasses: { select: { name: true } },
-            customCarClasses: true,
-          },
-        },
-      },
-    })
-    if (!raceWithEvent?.event) {
-      return { message: 'Race not found' }
-    }
+    // Load all necessary data from database
+    const data = await loadRaceAssignmentData(raceId)
 
-    const registrationInclude = {
-      team: { select: { name: true, alias: true, id: true } },
-      carClass: { select: { id: true, name: true, shortName: true } },
-      user: {
-        select: {
-          name: true,
-          accounts: {
-            where: { provider: 'discord' as const },
-            select: { providerAccountId: true },
-          },
-          racerStats: { select: { categoryId: true, category: true, irating: true } },
-        },
-      },
-      manualDriver: { select: { name: true, irating: true } },
-    }
-
-    const registrations = await prisma.registration.findMany({
-      where: { raceId },
-      include: registrationInclude,
-    })
-
-    const currentSnapshot: Record<
-      string,
-      { teamId: string | null; driverName: string; carClassId: string; carClassName: string }
-    > = {}
-    registrations.forEach((reg) => {
-      const driverName = reg.user?.name || reg.manualDriver?.name || 'Driver'
-      currentSnapshot[reg.id] = {
-        teamId: reg.teamId ?? reg.team?.id ?? null,
-        driverName,
-        carClassId: reg.carClass.id,
-        carClassName: reg.carClass.shortName || reg.carClass.name,
-      }
-    })
-
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
-    const raceUrl = `${baseUrl}/events/${raceWithEvent.event.id}`
-
-    const teamThreads = (raceWithEvent.discordTeamThreads as Record<string, string> | null) ?? {}
-    const newlyCreatedOrReplacedTeamThreadIds = new Set<string>()
-    const guildId = process.env.DISCORD_GUILD_ID
-    const { addUsersToThread, buildDiscordWebLink, createOrUpdateTeamThread } =
-      await import('@/lib/discord')
-
-    const existingEventThreadRecord = await prisma.race.findFirst({
-      where: {
-        eventId: raceWithEvent.event.id,
-        NOT: { discordTeamsThreadId: null },
-      },
-      select: { discordTeamsThreadId: true },
-    })
-    const existingEventThreadId =
-      existingEventThreadRecord?.discordTeamsThreadId ?? raceWithEvent.discordTeamsThreadId
-    const mainEventThreadUrl =
-      guildId && existingEventThreadId
-        ? buildDiscordWebLink({ guildId, threadId: existingEventThreadId })
-        : undefined
-
-    const { teamsMap, teamsList, unassigned } = buildTeamsFromRegistrations(
-      registrations as RegistrationRow[],
-      teamThreads,
-      guildId,
-      buildDiscordWebLink
+    // Execute the notification logic with preloaded data
+    return await sendTeamsAssignmentNotificationWithData(
+      data.raceWithEvent,
+      data.raceWithEvent.event,
+      data.registrations,
+      data.allTeams,
+      data.existingEventThreadRecord,
+      data.siblingRaces,
+      data.siblingRaceRegistrations,
+      { id: session.user.id, name: session.user.name || undefined, role: session.user.role },
+      raceId
     )
-
-    for (const [teamId, team] of teamsMap.entries()) {
-      const memberDiscordIds = team.members
-        .map((member) => member.discordId)
-        .filter((id): id is string => Boolean(id))
-      try {
-        const existingThreadId = teamThreads[teamId]
-        const threadId = await createOrUpdateTeamThread({
-          teamName: team.name,
-          eventName: raceWithEvent.event.name,
-          raceStartTime: raceWithEvent.startTime,
-          existingThreadId,
-          mainEventThreadUrl,
-          memberDiscordIds,
-          raceUrl,
-          track: raceWithEvent.event.track,
-          trackConfig: raceWithEvent.event.trackConfig ?? undefined,
-          tempValue: raceWithEvent.event.tempValue,
-          precipChance: raceWithEvent.event.precipChance,
-          carClassName: team.carClassName,
-          members: team.members.map((m) => m.name),
-          actorName: session.user.name || 'Admin',
-        })
-        if (threadId) {
-          if (threadId !== existingThreadId) {
-            newlyCreatedOrReplacedTeamThreadIds.add(threadId)
-          }
-          teamThreads[teamId] = threadId
-        }
-      } catch (error) {
-        logger.error({ err: error }, 'Failed to create team thread')
-      }
-    }
-
-    for (const [teamId, team] of teamsMap.entries()) {
-      const threadId = teamThreads[teamId]
-      if (!threadId) continue
-      const memberDiscordIds = team.members
-        .map((member) => member.discordId)
-        .filter((id): id is string => Boolean(id))
-      if (memberDiscordIds.length === 0) continue
-      await addUsersToThread(threadId, memberDiscordIds)
-    }
-
-    // Update thread URLs in teamsList after creating threads
-    for (const team of teamsList) {
-      const teamId = Array.from(teamsMap.entries()).find(([, t]) => t.name === team.name)?.[0]
-      if (teamId && teamThreads[teamId] && guildId) {
-        team.threadUrl = buildDiscordWebLink({ guildId, threadId: teamThreads[teamId] })
-      }
-    }
-
-    // Determine mentions: only users whose assignments changed in the current race
-    const previousSnapshot =
-      (raceWithEvent.discordTeamsSnapshot as
-        | Record<
-            string,
-            {
-              teamId: string | null
-              driverName: string
-              carClassId?: string
-              carClassName?: string
-            }
-          >
-        | Record<string, string | null>
-        | null) ?? null
-    const mentionRegistrationIds = new Set<string>()
-
-    // Build team name mapping - include ALL teams, not just those with current members
-    // This ensures we can look up team names for drivers who moved FROM teams
-    const allTeams = await prisma.team.findMany({
-      select: { id: true, name: true, alias: true },
-    })
-    const teamNameById = new Map(allTeams.map((team) => [team.id, team.alias || team.name]))
-
-    const { buildRosterChangesFromTeamChangeDetails, buildTeamChangeDetails } =
-      await import('@/lib/team-change-summary')
-    const isLegacyPreviousSnapshot =
-      previousSnapshot &&
-      Object.values(previousSnapshot).some((v) => typeof v === 'string' || v === null)
-    const normalizedPreviousSnapshot: Record<
-      string,
-      { teamId: string | null; driverName: string; carClassName?: string }
-    > | null = previousSnapshot
-      ? isLegacyPreviousSnapshot
-        ? Object.fromEntries(
-            Object.entries(previousSnapshot as Record<string, string | null>).map(
-              ([id, teamId]) => [id, { teamId, driverName: 'Driver', carClassName: undefined }]
-            )
-          )
-        : (previousSnapshot as Record<
-            string,
-            { teamId: string | null; driverName: string; carClassName?: string }
-          >)
-      : null
-
-    const originalRecords = normalizedPreviousSnapshot
-      ? Object.entries(normalizedPreviousSnapshot).map(([id, snapshot]) => ({
-          id,
-          driverName: snapshot.driverName || currentSnapshot[id]?.driverName || 'Driver',
-          teamId: snapshot.teamId,
-          teamName: snapshot.teamId ? (teamNameById.get(snapshot.teamId) ?? null) : null,
-          carClassName: snapshot.carClassName || currentSnapshot[id]?.carClassName || 'Unknown',
-        }))
-      : []
-    const pendingRecords = Object.entries(currentSnapshot).map(([id, snapshot]) => ({
-      id,
-      driverName: snapshot.driverName,
-      teamId: snapshot.teamId,
-      teamName: snapshot.teamId ? (teamNameById.get(snapshot.teamId) ?? null) : null,
-      carClassName: snapshot.carClassName,
-    }))
-    const sharedChangeDetails = buildTeamChangeDetails({
-      originalRecords,
-      pendingRecords,
-      teamNameById,
-    })
-    const rosterChanges = normalizedPreviousSnapshot
-      ? buildRosterChangesFromTeamChangeDetails(sharedChangeDetails)
-      : []
-
-    // Event-thread mentions: only newly registered drivers.
-    if (normalizedPreviousSnapshot) {
-      Object.entries(currentSnapshot).forEach(([regId]) => {
-        if (!(regId in normalizedPreviousSnapshot)) {
-          mentionRegistrationIds.add(regId)
-        }
-      })
-    }
-
-    // Team-thread mentions: drivers added/moved into a team during this save.
-    const registrationDiscordIdById = new Map<string, string>()
-    registrations.forEach((reg) => {
-      const discordId = reg.user?.accounts?.[0]?.providerAccountId
-      if (discordId) {
-        registrationDiscordIdById.set(reg.id, discordId)
-      }
-    })
-    const teamMentionDiscordIdsByTeamId = new Map<string, Set<string>>()
-    sharedChangeDetails.forEach((detail) => {
-      if (!detail.toTeamId) return
-      if (detail.type !== 'added' && detail.type !== 'moved') return
-      const discordId = registrationDiscordIdById.get(detail.registrationId)
-      if (!discordId) return
-      const existing = teamMentionDiscordIdsByTeamId.get(detail.toTeamId) ?? new Set<string>()
-      existing.add(discordId)
-      teamMentionDiscordIdsByTeamId.set(detail.toTeamId, existing)
-    })
-    const teamMentionDiscordIdsRecord = Object.fromEntries(
-      Array.from(teamMentionDiscordIdsByTeamId.entries()).map(([teamId, ids]) => [
-        teamId,
-        Array.from(ids),
-      ])
-    )
-
-    // Build timeslots: current race + all other races in the event
-    const siblingRaces = await prisma.race.findMany({
-      where: {
-        eventId: raceWithEvent.event.id,
-        id: { not: raceId },
-      },
-      select: { id: true, startTime: true, discordTeamThreads: true, teamsAssigned: true },
-      orderBy: { startTime: 'asc' },
-    })
-
-    const timeslots: Array<{
-      raceStartTime: Date
-      teams: typeof teamsList
-      unassigned?: typeof unassigned
-    }> = []
-
-    // Add current race timeslot
-    timeslots.push({
-      raceStartTime: raceWithEvent.startTime,
-      teams: teamsList,
-      unassigned: unassigned.length > 0 ? unassigned : undefined,
-    })
-
-    // Add sibling race timeslots
-    for (const sibling of siblingRaces) {
-      if (sibling.teamsAssigned) {
-        const siblingRegs = await prisma.registration.findMany({
-          where: { raceId: sibling.id },
-          include: registrationInclude,
-        })
-        const siblingThreads = (sibling.discordTeamThreads as Record<string, string> | null) ?? {}
-        const { teamsList: sibTeams, unassigned: sibUnassigned } = buildTeamsFromRegistrations(
-          siblingRegs as RegistrationRow[],
-          siblingThreads,
-          guildId,
-          buildDiscordWebLink
-        )
-        timeslots.push({
-          raceStartTime: sibling.startTime,
-          teams: sibTeams,
-          unassigned: sibUnassigned.length > 0 ? sibUnassigned : undefined,
-        })
-      } else {
-        // Show empty timeslot for races without teams assigned yet
-        timeslots.push({
-          raceStartTime: sibling.startTime,
-          teams: [],
-        })
-      }
-    }
-
-    // Sort timeslots by start time
-    timeslots.sort((a, b) => a.raceStartTime.getTime() - b.raceStartTime.getTime())
-
-    // Determine if event thread already exists (meaning this is a 2nd+ timeslot assignment)
-    const existingThreadId = existingEventThreadId
-
-    // Combine car classes from relations and custom car classes
-    const carClasses = [
-      ...raceWithEvent.event.carClasses.map((cc) => cc.name),
-      ...raceWithEvent.event.customCarClasses,
-    ]
-
-    const { createOrUpdateEventThread, sendTeamsAssignedNotification } =
-      await import('@/lib/discord')
-
-    // 1. Create or update the event thread with team composition
-    const threadResult = await createOrUpdateEventThread({
-      eventName: raceWithEvent.event.name,
-      raceUrl,
-      track: raceWithEvent.event.track,
-      trackConfig: raceWithEvent.event.trackConfig ?? undefined,
-      tempValue: raceWithEvent.event.tempValue,
-      precipChance: raceWithEvent.event.precipChance,
-      carClasses,
-      timeslots,
-      threadId: existingThreadId,
-      mentionRegistrationIds: Array.from(mentionRegistrationIds),
-    })
-
-    if (!threadResult.ok) {
-      logger.error('Failed to create/update event thread')
-      return { message: 'Failed to create event thread' }
-    }
-
-    const threadId = threadResult.threadId!
-
-    // 2. Send chat notification
-    // - First assignment: Send initial notification
-    // - Subsequent updates: Send roster changes notification
-    const hasTeamsAssigned = teamsList.length > 0
-    const isFirstAssignment = previousSnapshot === null
-    const isUpdate = previousSnapshot !== null && raceWithEvent.teamsAssigned
-    const rosterChangesForNotification =
-      !isFirstAssignment && rosterChanges.length > 0 ? rosterChanges : undefined
-
-    if (hasTeamsAssigned && (isFirstAssignment || isUpdate)) {
-      await sendTeamsAssignedNotification(
-        threadId,
-        {
-          eventName: raceWithEvent.event.name,
-          timeslots,
-          eventUrl: raceUrl,
-          rosterChanges: rosterChangesForNotification,
-          adminName: session.user.name || 'Admin',
-          teamThreads,
-          teamNameById,
-          suppressTeamThreadIds: Array.from(newlyCreatedOrReplacedTeamThreadIds),
-          teamMentionDiscordIdsByTeamId: teamMentionDiscordIdsRecord,
-        },
-        {
-          title: isFirstAssignment ? '🏁 Teams Assigned' : '🏁 Teams Updated',
-        }
-      )
-    }
-
-    // 3. Update database with thread info and roster snapshot
-    await prisma.race.update({
-      where: { id: raceId },
-      data: {
-        discordTeamsSnapshot: currentSnapshot,
-        discordTeamThreads: teamThreads,
-      },
-    })
-
-    await prisma.race.updateMany({
-      where: { eventId: raceWithEvent.event.id },
-      data: { discordTeamsThreadId: threadId },
-    })
-
-    return { message: 'Success' }
   } catch (error) {
     logger.error({ err: error }, 'Failed to send teams assigned notification')
     return { message: 'Failed to send notification' }
+  }
+}
+
+/**
+ * Loads all necessary data from the database for team assignment notifications
+ */
+export async function loadRaceAssignmentData(raceId: string) {
+  const registrationInclude = {
+    team: { select: { name: true, alias: true, id: true } },
+    carClass: { select: { id: true, name: true, shortName: true } },
+    user: {
+      select: {
+        name: true,
+        accounts: {
+          where: { provider: 'discord' as const },
+          select: { providerAccountId: true },
+        },
+        racerStats: { select: { categoryId: true, category: true, irating: true } },
+      },
+    },
+    manualDriver: { select: { name: true, irating: true } },
+  }
+
+  // Load race with event data
+  const raceWithEvent = await prisma.race.findUnique({
+    where: { id: raceId },
+    select: {
+      id: true,
+      startTime: true,
+      teamsAssigned: true,
+      discordTeamsThreadId: true,
+      discordTeamsSnapshot: true,
+      discordTeamThreads: true,
+      event: {
+        select: {
+          id: true,
+          name: true,
+          track: true,
+          trackConfig: true,
+          tempValue: true,
+          precipChance: true,
+          carClasses: { select: { name: true } },
+          customCarClasses: true,
+        },
+      },
+    },
+  })
+
+  if (!raceWithEvent?.event) {
+    throw new Error('Race not found')
+  }
+
+  // Load data in parallel after getting the base race information
+  const [currentRegistrations, allTeams, existingEventThreadRecord, siblingRaces] =
+    await Promise.all([
+      // Load registrations for the current race
+      prisma.registration.findMany({
+        where: { raceId },
+        include: registrationInclude,
+      }),
+
+      // Load all teams for team name mapping
+      prisma.team.findMany({
+        select: { id: true, name: true, alias: true },
+      }),
+
+      // Load existing event thread
+      prisma.race.findFirst({
+        where: {
+          eventId: raceWithEvent.event.id,
+          NOT: { discordTeamsThreadId: null },
+        },
+        select: { discordTeamsThreadId: true },
+      }),
+
+      // Load sibling races
+      prisma.race.findMany({
+        where: {
+          eventId: raceWithEvent.event.id,
+          id: { not: raceId },
+        },
+        select: { id: true, startTime: true, discordTeamThreads: true, teamsAssigned: true },
+        orderBy: { startTime: 'asc' },
+      }),
+    ])
+
+  // Load registrations for sibling races that have teams assigned
+  const siblingRegistrations = await prisma.registration.findMany({
+    where: {
+      raceId: {
+        in: siblingRaces.filter((sibling) => sibling.teamsAssigned).map((sibling) => sibling.id),
+      },
+    },
+    include: registrationInclude,
+  })
+
+  // Transform results into the expected format
+  const formattedsiblingRegistrations = siblingRegistrations.reduce(
+    (acc, registration) => {
+      const raceId = registration.raceId
+      if (!acc[raceId]) {
+        acc[raceId] = []
+      }
+      acc[raceId].push(registration)
+      return acc
+    },
+    {} as Record<string, typeof siblingRegistrations>
+  )
+
+  const siblingRaceRegistrations = Object.entries(formattedsiblingRegistrations).map(
+    ([raceId, registrations]) => ({
+      raceId,
+      registrations,
+    })
+  )
+
+  return {
+    raceWithEvent,
+    registrations: currentRegistrations,
+    allTeams,
+    existingEventThreadRecord,
+    siblingRaces,
+    siblingRaceRegistrations,
   }
 }
 
@@ -2474,5 +2235,395 @@ export async function adminRegisterDriver(prevState: State, formData: FormData) 
       }
     }
     return { message: 'Failed to register driver', timestamp: Date.now() }
+  }
+}
+
+/**
+ * Sends team assignment notifications with preloaded database data
+ */
+export async function sendTeamsAssignmentNotificationWithData(
+  race: {
+    id: string
+    startTime: Date
+    teamsAssigned: boolean
+    discordTeamsThreadId: string | null
+    discordTeamsSnapshot: Prisma.JsonValue | null
+    discordTeamThreads: Prisma.JsonValue | null
+  },
+  event: {
+    id: string
+    name: string
+    track: string | null
+    trackConfig: string | null
+    tempValue: number | null
+    precipChance: number | null
+    carClasses: Array<{ name: string }>
+    customCarClasses: string[]
+  },
+  registrations: Array<{
+    id: string
+    teamId: string | null
+    carClassId: string
+    userId: string | null
+    manualDriverId: string | null
+    team: { id: string; name: string; alias: string | null } | null
+    carClass: { id: string; name: string; shortName: string | null }
+    user: {
+      name: string | null
+      accounts: Array<{ providerAccountId: string }>
+      racerStats: Array<{ categoryId: number; category: string; irating: number }>
+    } | null
+    manualDriver: { name: string; irating: number | null } | null
+  }>,
+  allTeams: Array<{ id: string; name: string; alias: string | null }>,
+  existingEventThreadRecord: { discordTeamsThreadId: string | null } | null,
+  siblingRaces: Array<{
+    id: string
+    startTime: Date
+    discordTeamThreads: Prisma.JsonValue | null
+    teamsAssigned: boolean
+  }>,
+  siblingRaceRegistrations: Array<{
+    raceId: string
+    registrations: Array<{
+      id: string
+      teamId: string | null
+      carClassId: string
+      userId: string | null
+      manualDriverId: string | null
+      team: { id: string; name: string; alias: string | null } | null
+      carClass: { id: string; name: string; shortName: string | null }
+      user: {
+        name: string | null
+        accounts: Array<{ providerAccountId: string }>
+        racerStats: Array<{ categoryId: number; category: string; irating: number }>
+      } | null
+      manualDriver: { name: string; irating: number | null } | null
+    }>
+  }>,
+  user: { id: string; name?: string; role: string },
+  raceId: string
+): Promise<{ message: string }> {
+  try {
+    // Build current snapshot from registrations
+    const currentSnapshot: Record<
+      string,
+      { teamId: string | null; driverName: string; carClassId: string; carClassName: string }
+    > = {}
+    registrations.forEach((reg) => {
+      const driverName = reg.user?.name || reg.manualDriver?.name || 'Driver'
+      currentSnapshot[reg.id] = {
+        teamId: reg.teamId ?? reg.team?.id ?? null,
+        driverName,
+        carClassId: reg.carClass.id,
+        carClassName: reg.carClass.shortName || reg.carClass.name,
+      }
+    })
+
+    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+    const raceUrl = `${baseUrl}/events/${event.id}`
+
+    const teamThreads = (race.discordTeamThreads as Record<string, string> | null) ?? {}
+    const newlyCreatedOrReplacedTeamThreadIds = new Set<string>()
+    const guildId = process.env.DISCORD_GUILD_ID
+    const { addUsersToThread, buildDiscordWebLink, createOrUpdateTeamThread } =
+      await import('@/lib/discord')
+
+    const existingEventThreadId =
+      existingEventThreadRecord?.discordTeamsThreadId ?? race.discordTeamsThreadId
+    const mainEventThreadUrl =
+      guildId && existingEventThreadId
+        ? buildDiscordWebLink({ guildId, threadId: existingEventThreadId })
+        : undefined
+
+    const { teamsMap, teamsList, unassigned } = buildTeamsFromRegistrations(
+      registrations as RegistrationRow[],
+      teamThreads,
+      guildId,
+      buildDiscordWebLink
+    )
+
+    await Promise.all(
+      Array.from(teamsMap.entries()).map(async ([teamId, team]) => {
+        const memberDiscordIds = team.members
+          .map((member) => member.discordId)
+          .filter((id): id is string => Boolean(id))
+
+        try {
+          const existingThreadId = teamThreads[teamId]
+          const threadId = await createOrUpdateTeamThread({
+            teamName: team.name,
+            eventName: event.name,
+            raceStartTime: race.startTime,
+            existingThreadId,
+            mainEventThreadUrl,
+            memberDiscordIds,
+            raceUrl,
+            track: event.track ?? undefined,
+            trackConfig: event.trackConfig ?? undefined,
+            tempValue: event.tempValue,
+            precipChance: event.precipChance,
+            carClassName: team.carClassName,
+            members: team.members.map((m) => m.name),
+            actorName: user.name || 'Admin',
+          })
+          if (threadId) {
+            if (threadId !== existingThreadId) {
+              newlyCreatedOrReplacedTeamThreadIds.add(threadId)
+            }
+            teamThreads[teamId] = threadId
+          }
+        } catch (error) {
+          logger.error({ err: error }, 'Failed to create team thread')
+        }
+      })
+    )
+
+    await Promise.all(
+      Array.from(teamsMap.entries()).map(async ([teamId, team]) => {
+        const threadId = teamThreads[teamId]
+        if (!threadId) return
+        const memberDiscordIds = team.members
+          .map((member) => member.discordId)
+          .filter((id): id is string => Boolean(id))
+        if (memberDiscordIds.length === 0) return
+        await addUsersToThread(threadId, memberDiscordIds)
+      })
+    )
+
+    // Update thread URLs in teamsList after creating threads
+    for (const team of teamsList) {
+      const teamId = Array.from(teamsMap.entries()).find(([, t]) => t.name === team.name)?.[0]
+      if (teamId && teamThreads[teamId] && guildId) {
+        team.threadUrl = buildDiscordWebLink({ guildId, threadId: teamThreads[teamId] })
+      }
+    }
+
+    // Determine mentions: only users whose assignments changed in the current race
+    const previousSnapshot =
+      (race.discordTeamsSnapshot as
+        | Record<
+            string,
+            {
+              teamId: string | null
+              driverName: string
+              carClassId?: string
+              carClassName?: string
+            }
+          >
+        | Record<string, string | null>
+        | null) ?? null
+    const mentionRegistrationIds = new Set<string>()
+
+    // Build team name mapping - include ALL teams, not just those with current members
+    // This ensures we can look up team names for drivers who moved FROM teams
+    const teamNameById = new Map(allTeams.map((team) => [team.id, team.alias || team.name]))
+
+    const { buildRosterChangesFromTeamChangeDetails, buildTeamChangeDetails } =
+      await import('@/lib/team-change-summary')
+    const isLegacyPreviousSnapshot =
+      previousSnapshot &&
+      Object.values(previousSnapshot).some((v) => typeof v === 'string' || v === null)
+    const normalizedPreviousSnapshot: Record<
+      string,
+      { teamId: string | null; driverName: string; carClassName?: string }
+    > | null = previousSnapshot
+      ? isLegacyPreviousSnapshot
+        ? Object.fromEntries(
+            Object.entries(previousSnapshot as Record<string, string | null>).map(
+              ([id, teamId]) => [id, { teamId, driverName: 'Driver', carClassName: undefined }]
+            )
+          )
+        : (previousSnapshot as Record<
+            string,
+            { teamId: string | null; driverName: string; carClassName?: string }
+          >)
+      : null
+
+    const originalRecords = normalizedPreviousSnapshot
+      ? Object.entries(normalizedPreviousSnapshot).map(([id, snapshot]) => ({
+          id,
+          driverName: snapshot.driverName || currentSnapshot[id]?.driverName || 'Driver',
+          teamId: snapshot.teamId,
+          teamName: snapshot.teamId ? (teamNameById.get(snapshot.teamId) ?? null) : null,
+          carClassName: snapshot.carClassName || currentSnapshot[id]?.carClassName || 'Unknown',
+        }))
+      : []
+    const pendingRecords = Object.entries(currentSnapshot).map(([id, snapshot]) => ({
+      id,
+      driverName: snapshot.driverName,
+      teamId: snapshot.teamId,
+      teamName: snapshot.teamId ? (teamNameById.get(snapshot.teamId) ?? null) : null,
+      carClassName: snapshot.carClassName,
+    }))
+    const sharedChangeDetails = buildTeamChangeDetails({
+      originalRecords,
+      pendingRecords,
+      teamNameById,
+    })
+    const rosterChanges = normalizedPreviousSnapshot
+      ? buildRosterChangesFromTeamChangeDetails(sharedChangeDetails)
+      : []
+
+    // Event-thread mentions: only newly registered drivers.
+    if (normalizedPreviousSnapshot) {
+      Object.entries(currentSnapshot).forEach(([regId]) => {
+        if (!(regId in normalizedPreviousSnapshot)) {
+          mentionRegistrationIds.add(regId)
+        }
+      })
+    }
+
+    // Team-thread mentions: drivers added/moved into a team during this save.
+    const registrationDiscordIdById = new Map<string, string>()
+    registrations.forEach((reg) => {
+      const discordId = reg.user?.accounts?.[0]?.providerAccountId
+      if (discordId) {
+        registrationDiscordIdById.set(reg.id, discordId)
+      }
+    })
+    const teamMentionDiscordIdsByTeamId = new Map<string, Set<string>>()
+    sharedChangeDetails.forEach((detail) => {
+      if (!detail.toTeamId) return
+      if (detail.type !== 'added' && detail.type !== 'moved') return
+      const discordId = registrationDiscordIdById.get(detail.registrationId)
+      if (!discordId) return
+      const existing = teamMentionDiscordIdsByTeamId.get(detail.toTeamId) ?? new Set<string>()
+      existing.add(discordId)
+      teamMentionDiscordIdsByTeamId.set(detail.toTeamId, existing)
+    })
+    const teamMentionDiscordIdsRecord = Object.fromEntries(
+      Array.from(teamMentionDiscordIdsByTeamId.entries()).map(([teamId, ids]) => [
+        teamId,
+        Array.from(ids),
+      ])
+    )
+
+    // Build timeslots: current race + all other races in the event
+    const timeslots: Array<{
+      raceStartTime: Date
+      teams: typeof teamsList
+      unassigned?: typeof unassigned
+    }> = []
+
+    // Add current race timeslot
+    timeslots.push({
+      raceStartTime: race.startTime,
+      teams: teamsList,
+      unassigned: unassigned.length > 0 ? unassigned : undefined,
+    })
+
+    // Add sibling race timeslots
+    for (const sibling of siblingRaces) {
+      if (sibling.teamsAssigned) {
+        const siblingRegs = siblingRaceRegistrations.find(
+          (sr) => sr.raceId === sibling.id
+        )?.registrations
+        if (siblingRegs) {
+          const siblingThreads = (sibling.discordTeamThreads as Record<string, string> | null) ?? {}
+          const { teamsList: sibTeams, unassigned: sibUnassigned } = buildTeamsFromRegistrations(
+            siblingRegs as RegistrationRow[],
+            siblingThreads,
+            guildId,
+            buildDiscordWebLink
+          )
+          timeslots.push({
+            raceStartTime: sibling.startTime,
+            teams: sibTeams,
+            unassigned: sibUnassigned.length > 0 ? sibUnassigned : undefined,
+          })
+        }
+      } else {
+        // Show empty timeslot for races without teams assigned yet
+        timeslots.push({
+          raceStartTime: sibling.startTime,
+          teams: [],
+        })
+      }
+    }
+
+    // Sort timeslots by start time
+    timeslots.sort((a, b) => a.raceStartTime.getTime() - b.raceStartTime.getTime())
+
+    // Determine if event thread already exists (meaning this is a 2nd+ timeslot assignment)
+    const existingThreadId = existingEventThreadId
+
+    // Combine car classes from relations and custom car classes
+    const carClasses = [
+      ...event.carClasses.map((carClass) => carClass.name),
+      ...event.customCarClasses,
+    ]
+
+    const { createOrUpdateEventThread, sendTeamsAssignedNotification } =
+      await import('@/lib/discord')
+
+    // 1. Create or update the event thread with team composition
+    const threadResult = await createOrUpdateEventThread({
+      eventName: event.name,
+      raceUrl,
+      track: event.track ?? undefined,
+      trackConfig: event.trackConfig ?? undefined,
+      tempValue: event.tempValue,
+      precipChance: event.precipChance,
+      carClasses,
+      timeslots,
+      threadId: existingThreadId,
+      mentionRegistrationIds: Array.from(mentionRegistrationIds),
+    })
+
+    if (!threadResult.ok) {
+      logger.error('Failed to create/update event thread')
+      return { message: 'Failed to create event thread' }
+    }
+
+    const threadId = threadResult.threadId!
+
+    // 2. Send chat notification
+    // - First assignment: Send initial notification
+    // - Subsequent updates: Send roster changes notification
+    const hasTeamsAssigned = teamsList.length > 0
+    const isFirstAssignment = previousSnapshot === null
+    const isUpdate = previousSnapshot !== null && race.teamsAssigned
+    const rosterChangesForNotification =
+      !isFirstAssignment && rosterChanges.length > 0 ? rosterChanges : undefined
+
+    if (hasTeamsAssigned && (isFirstAssignment || isUpdate)) {
+      await sendTeamsAssignedNotification(
+        threadId,
+        {
+          eventName: event.name,
+          timeslots,
+          eventUrl: raceUrl,
+          rosterChanges: rosterChangesForNotification,
+          adminName: user.name || 'Admin',
+          teamThreads,
+          teamNameById,
+          suppressTeamThreadIds: Array.from(newlyCreatedOrReplacedTeamThreadIds),
+          teamMentionDiscordIdsByTeamId: teamMentionDiscordIdsRecord,
+        },
+        {
+          title: isFirstAssignment ? '🏁 Teams Assigned' : '🏁 Teams Updated',
+        }
+      )
+    }
+
+    // 3. Update database with thread info and roster snapshot
+    await prisma.race.update({
+      where: { id: raceId },
+      data: {
+        discordTeamsSnapshot: currentSnapshot,
+        discordTeamThreads: teamThreads,
+      },
+    })
+
+    await prisma.race.updateMany({
+      where: { eventId: event.id },
+      data: { discordTeamsThreadId: threadId },
+    })
+
+    return { message: 'Success' }
+  } catch (error) {
+    logger.error({ err: error }, 'Failed to send teams assigned notification')
+    return { message: 'Failed to send notification' }
   }
 }
