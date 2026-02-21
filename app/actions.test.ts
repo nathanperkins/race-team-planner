@@ -53,6 +53,7 @@ vi.mock('@/lib/prisma', () => ({
     },
     carClass: {
       findUnique: vi.fn(),
+      findUniqueOrThrow: vi.fn(),
     },
   },
 }))
@@ -1006,20 +1007,14 @@ describe('registerForRace', () => {
     vi.setSystemTime(FIXED_TIME)
     vi.mocked(auth).mockResolvedValue(mockSession as any)
     vi.mocked(prisma.registration.create).mockResolvedValue({ id: 'reg-created' } as any)
-    vi.mocked(prisma.registration.update).mockResolvedValue({} as any)
-    vi.mocked(prisma.registration.findFirst).mockResolvedValue({
-      user: {
-        name: 'User 1',
-        image: null,
-        accounts: [{ providerAccountId: 'discord-1' }],
-      },
-      race: {
-        startTime: new Date('2026-02-11T20:00:00Z'),
-        event: { id: 'event-123', name: 'GT3' },
-      },
-      carClass: { name: 'GT3' },
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+      expectationsVersion: 1,
+      name: 'User 1',
+      image: null,
+      accounts: [{ providerAccountId: 'discord-1' }],
     } as any)
-    vi.mocked(prisma.user.findUnique).mockResolvedValue({ expectationsVersion: 1 } as any)
+    vi.mocked(prisma.carClass.findUnique).mockResolvedValue({ name: 'GT3' } as any)
+    vi.mocked(prisma.carClass.findUniqueOrThrow).mockResolvedValue({ name: 'GT3' } as any)
     vi.mocked(prisma.race.findFirst).mockResolvedValue(null)
     vi.mocked(prisma.race.findMany).mockResolvedValue([
       { id: 'race-123', startTime: new Date('2026-02-11T20:00:00Z'), registrations: [] },
