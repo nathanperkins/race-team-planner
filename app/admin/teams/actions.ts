@@ -5,6 +5,7 @@ import prisma from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { fetchTeamInfo, fetchTeamMembers } from '@/lib/iracing'
 import { createLogger } from '@/lib/logger'
+import type { Prisma } from '@prisma/client'
 
 const logger = createLogger('admin-teams-actions')
 
@@ -407,6 +408,265 @@ export async function deleteTeam(id: string) {
   revalidatePath('/admin')
 }
 
+/**
+ * Helper function to check for Discord thread conflicts
+ */
+async function checkDiscordThreadConflicts(
+  tx: Prisma.TransactionClient,
+  existingRegistrations: Array<{
+    registrationId?: string
+    manualName?: string
+    manualIR?: number
+    teamId: string | null
+  }>,
+  threadMap: Record<string, string> | null
+): Promise<Map<string, { id: string; teamId: string | null }>> {
+  if (existingRegistrations.length === 0) return new Map()
+
+  const currentRegs = await tx.registration.findMany({
+    where: {
+      id: {
+        in: existingRegistrations
+          .map((a) => a.registrationId!)
+          .filter((id): id is string => id !== undefined),
+      },
+    },
+    select: {
+      id: true,
+      teamId: true,
+    },
+  })
+
+  const currentRegMap = new Map(currentRegs.map((reg) => [reg.id, reg]))
+
+  for (const a of existingRegistrations) {
+    const currentReg = currentRegMap.get(a.registrationId!)
+    if (
+      currentReg?.teamId &&
+      currentReg.teamId !== a.teamId &&
+      threadMap &&
+      threadMap[currentReg.teamId]
+    ) {
+      throw new Error('Cannot change team assignment: Discord thread already exists for this team')
+    }
+  }
+
+  return currentRegMap
+}
+
+/**
+ * Helper function to update existing registrations
+ */
+async function updateExistingRegistrations(
+  tx: Prisma.TransactionClient,
+  existingRegistrations: Array<{
+    registrationId?: string
+    manualName?: string
+    manualIR?: number
+    teamId: string | null
+  }>
+): Promise<void> {
+  if (existingRegistrations.length === 0) return
+
+  // Group registrations by teamId to optimize updates
+  const registrationsByTeam = existingRegistrations.reduce<Record<string, string[]>>(
+    (acc, assignment) => {
+      const teamId = assignment.teamId
+      if (!teamId) return acc
+
+      if (!acc[teamId]) {
+        acc[teamId] = []
+      }
+      if (assignment.registrationId) {
+        acc[teamId].push(assignment.registrationId)
+      }
+      return acc
+    },
+    {}
+  )
+
+  // Perform updateMany for each group of registrations with the same team assignment
+  for (const [teamId, registrationIds] of Object.entries(registrationsByTeam)) {
+    if (registrationIds.length > 0) {
+      await tx.registration.updateMany({
+        where: {
+          id: {
+            in: registrationIds,
+          },
+        },
+        data: {
+          teamId: teamId,
+        },
+      })
+    }
+  }
+}
+
+/**
+ * Helper function to process manual driver assignments
+ */
+async function processManualDrivers(
+  tx: Prisma.TransactionClient,
+  newManualDrivers: Array<{
+    registrationId?: string
+    manualName?: string
+    manualIR?: number
+    teamId: string | null
+  }>,
+  raceId: string,
+  carClassId: string,
+  currentRegMap: Map<string, { id: string; teamId: string | null }>
+): Promise<void> {
+  if (newManualDrivers.length === 0) return
+
+  // Find existing manual drivers
+  const existingManualDrivers = await tx.manualDriver.findMany({
+    where: {
+      name: {
+        in: newManualDrivers
+          .map((a) => a.manualName!)
+          .filter((name): name is string => name !== undefined),
+      },
+    },
+  })
+
+  const existingManualMap = new Map(existingManualDrivers.map((driver) => [driver.name, driver]))
+
+  // Prepare create and update operations
+  const createOperations: Prisma.ManualDriverCreateManyInput[] = []
+  const updateOperations: Prisma.ManualDriverUpdateArgs[] = []
+
+  for (const a of newManualDrivers) {
+    const existingDriver = existingManualMap.get(a.manualName!)
+
+    if (!existingDriver) {
+      createOperations.push({
+        name: a.manualName!,
+        irating: a.manualIR || 1350,
+        image: `https://api.dicebear.com/9.x/avataaars/png?seed=${a.manualName}`,
+      })
+    } else if (a.manualIR !== undefined && existingDriver?.irating !== a.manualIR) {
+      updateOperations.push({
+        where: { id: existingDriver.id! },
+        data: { irating: a.manualIR },
+      })
+    }
+  }
+
+  // Create new manual drivers
+  let createdDriverMap: Map<string, { id: string; name: string }> = new Map()
+  if (createOperations.length > 0) {
+    const createdDrivers = await tx.manualDriver.createMany({
+      data: createOperations,
+      skipDuplicates: true,
+    })
+
+    if (createdDrivers.count > 0) {
+      // Query the database to get the actual IDs of created drivers
+      // since createMany doesn't return the driver objects
+      const createdDriverRecords = await tx.manualDriver.findMany({
+        where: {
+          name: {
+            in: createOperations.map((op) => op.name),
+          },
+        },
+      })
+
+      // Create a map of created drivers using the actual database IDs
+      createdDriverMap = new Map(
+        createdDriverRecords.map((driver) => [
+          driver.name,
+          {
+            id: driver.id,
+            name: driver.name,
+            irating: driver.irating,
+          },
+        ])
+      )
+    }
+  }
+
+  // Update existing manual drivers
+  if (updateOperations.length > 0) {
+    for (const op of updateOperations) {
+      await tx.manualDriver.update(op)
+    }
+  }
+
+  // Determine target car classes for all teams
+  const teamsWithRegistrations = new Set(
+    newManualDrivers.filter((a) => a.teamId).map((a) => a.teamId)
+  )
+
+  const teamCarClasses = await tx.registration.findMany({
+    where: {
+      raceId,
+      teamId: {
+        in: Array.from(teamsWithRegistrations).filter((id): id is string => id !== undefined),
+      },
+    },
+    select: {
+      teamId: true,
+      carClassId: true,
+    },
+  })
+
+  const teamCarClassMap = new Map(teamCarClasses.map((reg) => [reg.teamId, reg.carClassId]))
+
+  // Prepare registration creation data
+  const registrationCreations: Prisma.RegistrationCreateManyInput[] = []
+
+  // First, collect all driver IDs that need to be checked
+  const driverIdsToCheck = newManualDrivers
+    .map((a) => {
+      const existingDriver = existingManualMap.get(a.manualName!)
+      const createdDriver = createdDriverMap.get(a.manualName!)
+      return existingDriver?.id || createdDriver?.id
+    })
+    .filter((id): id is string => id !== undefined)
+
+  // Batch check for existing registrations
+  if (driverIdsToCheck.length > 0) {
+    // Use existing registration map if provided, otherwise create empty map
+    // since new manual drivers won't have existing registrations
+    const existingRegMap = new Map(
+      Array.from(currentRegMap.entries())
+        .filter(([id]) => driverIdsToCheck.includes(id))
+        .map((entry) => [entry[0], true])
+    )
+
+    // Prepare registrations for new manual drivers
+    for (const a of newManualDrivers) {
+      const existingDriver = existingManualMap.get(a.manualName!)
+      const createdDriver = createdDriverMap.get(a.manualName!)
+
+      const driverId = existingDriver?.id || createdDriver?.id
+
+      if (driverId && !existingRegMap.has(driverId)) {
+        // Determine car class from team's existing registrations
+        let targetCarClassId = carClassId
+        if (a.teamId && teamCarClassMap.has(a.teamId!)) {
+          targetCarClassId = teamCarClassMap.get(a.teamId!)!
+        }
+
+        registrationCreations.push({
+          manualDriverId: driverId,
+          teamId: a.teamId,
+          raceId,
+          carClassId: targetCarClassId,
+        })
+      }
+    }
+  }
+
+  // Create registrations for new manual drivers
+  if (registrationCreations.length > 0) {
+    await tx.registration.createMany({
+      data: registrationCreations,
+    })
+  }
+}
+
 export async function batchAssignTeams(
   assignments: {
     registrationId?: string
@@ -431,93 +691,40 @@ export async function batchAssignTeams(
 
   // Use a transaction for reliability
   await prisma.$transaction(async (tx) => {
-    for (const a of assignments) {
-      if (a.registrationId && !a.registrationId.startsWith('M-')) {
-        // Check if current team has a Discord thread before updating
-        const currentReg = await tx.registration.findUnique({
-          where: { id: a.registrationId },
-          select: { teamId: true },
-        })
+    // Separate assignments into existing registrations and new manual drivers
+    const existingRegistrations = assignments.filter(
+      (a) => a.registrationId && !a.registrationId.startsWith('M-')
+    )
+    const newManualDrivers = assignments.filter((a) => a.manualName)
 
-        if (
-          currentReg?.teamId &&
-          currentReg.teamId !== a.teamId &&
-          threadMap &&
-          threadMap[currentReg.teamId]
-        ) {
-          throw new Error(
-            'Cannot change team assignment: Discord thread already exists for this team'
-          )
-        }
+    // Check for Discord thread conflicts and get current registration map
+    const currentRegMap = await checkDiscordThreadConflicts(
+      tx as Prisma.TransactionClient,
+      existingRegistrations,
+      threadMap
+    )
 
-        // Update existing registration (User or existing manual)
-        // Only update the team assignment, don't change raceId or carClassId
-        await tx.registration.update({
-          where: { id: a.registrationId },
-          data: {
-            teamId: a.teamId,
-          },
-        })
-      } else if (a.manualName) {
-        // Find or create manual driver
-        let manualDriver = await tx.manualDriver.findFirst({
-          where: { name: a.manualName },
-        })
+    // Update existing registrations
+    await updateExistingRegistrations(tx as Prisma.TransactionClient, existingRegistrations)
 
-        if (!manualDriver) {
-          manualDriver = await tx.manualDriver.create({
-            data: {
-              name: a.manualName,
-              irating: a.manualIR || 1350,
-              image: `https://api.dicebear.com/9.x/avataaars/png?seed=${a.manualName}`,
-            },
-          })
-        } else if (a.manualIR !== undefined && manualDriver.irating !== a.manualIR) {
-          // Update iR if it changed
-          await tx.manualDriver.update({
-            where: { id: manualDriver.id },
-            data: { irating: a.manualIR },
-          })
-        }
+    // Process new manual drivers
+    await processManualDrivers(
+      tx as Prisma.TransactionClient,
+      newManualDrivers,
+      raceId,
+      carClassId,
+      currentRegMap
+    )
 
-        // Determine car class from team's existing registrations
-        // If team has existing members, use their car class
-        // Otherwise fall back to the provided carClassId
-        let targetCarClassId = carClassId
-        if (a.teamId) {
-          const teamRegistration = await tx.registration.findFirst({
-            where: {
-              raceId,
-              teamId: a.teamId,
-            },
-            select: { carClassId: true },
-          })
-          if (teamRegistration) {
-            targetCarClassId = teamRegistration.carClassId
-          }
-        }
-
-        // Create new manual registration
-        await tx.registration.create({
-          data: {
-            manualDriverId: manualDriver.id,
-            teamId: a.teamId,
-            raceId,
-            carClassId: targetCarClassId,
-          },
-        })
-      }
-    }
+    // Mark teams as assigned so roster change notifications are sent
+    await prisma.race.update({
+      where: { id: raceId },
+      data: { teamsAssigned: true },
+    })
   })
 
   revalidatePath('/events')
   revalidatePath('/events/[id]', 'layout')
-
-  // Mark teams as assigned so roster change notifications are sent
-  await prisma.race.update({
-    where: { id: raceId },
-    data: { teamsAssigned: true },
-  })
 
   // Send Discord notification
   try {
