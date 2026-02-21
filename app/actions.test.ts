@@ -591,7 +591,7 @@ describe('deleteRegistration notifications', () => {
       user: { name: 'User One' },
       manualDriver: null,
       race: {
-        id: 'race-4',
+        id: 'race-1',
         endTime: new Date('2099-01-01T00:00:00Z'),
         eventId: 'event-1',
         discordTeamsThreadId: 'event-thread-1',
