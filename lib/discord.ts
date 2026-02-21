@@ -774,7 +774,7 @@ export async function postRosterChangeNotifications(
 
   // Post all changes to the event thread as a fancy embed
   const embed = buildRosterChangesEmbed(rosterChanges, appTitle, adminName)
-  await postEmbedToThread(eventThreadId, embed, 'event thread')
+  const discordWork = [postEmbedToThread(eventThreadId, embed, 'event thread')]
 
   // Post relevant changes to team threads
   if (teamThreads && teamNameById) {
@@ -822,24 +822,27 @@ export async function postRosterChangeNotifications(
       }
     }
 
-    // Post to each affected team thread
-    for (const [teamId, changes] of changesByTeam.entries()) {
-      const teamName = teamNameById.get(teamId) || 'Team'
-      const threadId = teamThreads[teamId]
-      if (threadId && suppressedTeamThreadIdSet.has(threadId)) {
-        continue
-      }
-      if (changes.length > 0 && threadId) {
-        const teamEmbed = buildRosterChangesEmbed(changes, appTitle, adminName)
-        await postEmbedToThread(
-          threadId,
-          teamEmbed,
-          `${teamName} thread`,
-          teamMentionDiscordIdsByTeamId?.[teamId]
-        )
-      }
-    }
+    discordWork.push(
+      ...Array.from(changesByTeam.entries()).map(async ([teamId, changes]) => {
+        const teamName = teamNameById.get(teamId) || 'Team'
+        const threadId = teamThreads[teamId]
+        if (threadId && suppressedTeamThreadIdSet.has(threadId)) {
+          return
+        }
+        if (changes.length > 0 && threadId) {
+          const teamEmbed = buildRosterChangesEmbed(changes, appTitle, adminName)
+          await postEmbedToThread(
+            threadId,
+            teamEmbed,
+            `${teamName} thread`,
+            teamMentionDiscordIdsByTeamId?.[teamId]
+          )
+        }
+      })
+    )
   }
+
+  await Promise.all(discordWork)
 }
 
 /**
@@ -1016,17 +1019,20 @@ export async function createOrUpdateEventThread(data: {
   const threadParentId = forumId || channelId
 
   try {
-    // Use the first timeslot's start time for date label / thread name
-    const firstStartTime = data.timeslots[0]?.raceStartTime ?? new Date()
-    const threadName = buildEventThreadName(data.eventName, firstStartTime, {
-      locale: appLocale,
-      timeZone: appTimeZone,
-    })
-
-    const allDiscordIds = collectDiscordIds(data.timeslots)
-
-    const buildEmbeds = () =>
-      buildTeamsAssignedEmbeds(data, appTitle, { locale: appLocale, timeZone: appTimeZone })
+    // Parallelize independent operations
+    const [, threadName, allDiscordIds, embeds] = await Promise.all([
+      Promise.resolve(data.timeslots[0]?.raceStartTime ?? new Date()),
+      Promise.resolve(
+        buildEventThreadName(data.eventName, data.timeslots[0]?.raceStartTime ?? new Date(), {
+          locale: appLocale,
+          timeZone: appTimeZone,
+        })
+      ),
+      Promise.resolve(collectDiscordIds(data.timeslots)),
+      Promise.resolve(
+        buildTeamsAssignedEmbeds(data, appTitle, { locale: appLocale, timeZone: appTimeZone })
+      ),
+    ])
 
     let threadId = data.threadId ?? null
     if (threadId) {
@@ -1044,7 +1050,7 @@ export async function createOrUpdateEventThread(data: {
 
     const upsertThreadMessageWithMentions = async (
       id: string,
-      embeds: ReturnType<typeof buildEmbeds>,
+      embeds: ReturnType<typeof buildTeamsAssignedEmbeds>,
       mentionSet: Set<string>
     ) => {
       const mentionList = Array.from(mentionSet)
@@ -1079,8 +1085,6 @@ export async function createOrUpdateEventThread(data: {
 
     /** Creates a new thread and returns its ID, or null on failure. */
     const createNewThread = async (): Promise<string | null> => {
-      const embeds = buildEmbeds()
-
       const threadResponse = await fetch(`${DISCORD_API_BASE}/channels/${threadParentId}/threads`, {
         method: 'POST',
         headers: {
@@ -1148,14 +1152,18 @@ export async function createOrUpdateEventThread(data: {
       return { ok: true, threadId }
     }
 
-    // Update existing thread
+    // Update existing thread - parallelize independent operations
     const mentionSet = new Set(data.mentionRegistrationIds ?? [])
-    const postResponse = await upsertThreadMessageWithMentions(threadId, buildEmbeds(), mentionSet)
+    const [postResponse, allMemberDiscordIds] = await Promise.all([
+      upsertThreadMessageWithMentions(threadId, embeds, mentionSet),
+      Promise.resolve(Array.from(allDiscordIds.values())),
+    ])
+
     if (!postResponse.ok && postResponse.status === 404) {
       // Thread deleted or inaccessible; create a new one.
-      threadId = await createNewThread()
-      if (!threadId) return { ok: false }
-      return { ok: true, threadId }
+      const newThreadId = await createNewThread()
+      if (!newThreadId) return { ok: false }
+      return { ok: true, threadId: newThreadId }
     } else if (!postResponse.ok) {
       const errorText = await postResponse.text()
       logger.error(
@@ -1168,7 +1176,6 @@ export async function createOrUpdateEventThread(data: {
     }
 
     // Add all current members to the thread (ensures new drivers are added)
-    const allMemberDiscordIds = Array.from(allDiscordIds.values())
     if (allMemberDiscordIds.length > 0) {
       await addUsersToThread(threadId, allMemberDiscordIds)
     }
@@ -1647,10 +1654,10 @@ export async function refreshAllTeamThreads(
     }
   }
 
-  // Update each team thread
-  for (const [teamId, threadId] of Object.entries(teamThreads)) {
+  // Update each team thread in parallel
+  const teamThreadUpdates = Object.entries(teamThreads).map(async ([teamId, threadId]) => {
     const team = teamsById.get(teamId)
-    if (!team || !races[0]?.event) continue
+    if (!team || !races[0]?.event) return
 
     const event = races[0].event
     const memberNames = team.registrations.map(
@@ -1660,19 +1667,27 @@ export async function refreshAllTeamThreads(
       .map((reg) => reg.user?.accounts.find((acc) => acc.provider === 'discord')?.providerAccountId)
       .filter((id): id is string => Boolean(id))
 
-    await createOrUpdateTeamThread({
-      teamName: team.alias || team.name,
-      eventName: event.name,
-      raceStartTime: team.raceStartTime,
-      existingThreadId: threadId,
-      raceUrl: `${baseUrl}/events?eventId=${event.id}`,
-      track: event.track ?? undefined,
-      trackConfig: event.trackConfig ?? undefined,
-      tempValue: event.tempValue,
-      precipChance: event.precipChance,
-      carClassName: team.carClass?.name,
-      members: memberNames,
-      memberDiscordIds,
-    })
-  }
+    try {
+      await createOrUpdateTeamThread({
+        teamName: team.alias || team.name,
+        eventName: event.name,
+        raceStartTime: team.raceStartTime,
+        existingThreadId: threadId,
+        raceUrl: `${baseUrl}/events?eventId=${event.id}`,
+        track: event.track ?? undefined,
+        trackConfig: event.trackConfig ?? undefined,
+        tempValue: event.tempValue,
+        precipChance: event.precipChance,
+        carClassName: team.carClass?.name,
+        members: memberNames,
+        memberDiscordIds,
+      })
+    } catch (error) {
+      logger.error({ err: error, teamId, threadId }, 'Failed to refresh team thread')
+      // Continue with other threads even if one fails
+    }
+  })
+
+  // Execute all updates in parallel with error handling
+  await Promise.all(teamThreadUpdates)
 }

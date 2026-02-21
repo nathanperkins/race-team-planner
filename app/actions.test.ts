@@ -529,14 +529,11 @@ describe('deleteRegistration notifications', () => {
         id: 'race-1',
         endTime: new Date('2099-01-01T00:00:00Z'),
         eventId: 'event-1',
-        discordTeamsThreadId: null,
+        discordTeamsThreadId: 'event-thread-1',
+        discordTeamThreads: { 'team-1': 'team-thread-1' },
       },
     } as any)
     vi.mocked(prisma.registration.delete).mockResolvedValue({} as any)
-    vi.mocked(prisma.race.findFirst).mockResolvedValue({
-      discordTeamsThreadId: 'event-thread-1',
-      discordTeamThreads: { 'team-1': 'team-thread-1' },
-    } as any)
     vi.mocked(postRosterChangeNotifications).mockResolvedValue(undefined as any)
 
     await deleteRegistration('reg-1')
@@ -594,17 +591,14 @@ describe('deleteRegistration notifications', () => {
       user: { name: 'User One' },
       manualDriver: null,
       race: {
-        id: 'race-1',
+        id: 'race-4',
         endTime: new Date('2099-01-01T00:00:00Z'),
         eventId: 'event-1',
         discordTeamsThreadId: 'event-thread-1',
+        discordTeamThreads: { 'team-1': 'team-thread-1' },
       },
     } as any)
     vi.mocked(prisma.registration.delete).mockResolvedValue({} as any)
-    vi.mocked(prisma.race.findFirst).mockResolvedValue({
-      discordTeamsThreadId: 'event-thread-1',
-      discordTeamThreads: { 'team-1': 'team-thread-1' },
-    } as any)
     vi.mocked(postRosterChangeNotifications).mockResolvedValue(undefined as any)
     vi.mocked(prisma.race.findMany).mockResolvedValue([
       {
@@ -654,13 +648,10 @@ describe('deleteRegistration notifications', () => {
         endTime: new Date('2099-01-01T00:00:00Z'),
         eventId: 'event-1',
         discordTeamsThreadId: 'event-thread-1',
+        discordTeamThreads: { 'team-1': 'team-thread-1', 'team-2': 'team-thread-2' },
       },
     } as any)
     vi.mocked(prisma.registration.delete).mockResolvedValue({} as any)
-    vi.mocked(prisma.race.findFirst).mockResolvedValue({
-      discordTeamsThreadId: 'event-thread-1',
-      discordTeamThreads: { 'team-1': 'team-thread-1', 'team-2': 'team-thread-2' },
-    } as any)
     vi.mocked(postRosterChangeNotifications).mockResolvedValue(undefined as any)
     vi.mocked(prisma.race.findMany).mockResolvedValue([
       {
