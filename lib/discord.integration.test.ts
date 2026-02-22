@@ -7,7 +7,7 @@
  *
  * Run with: npm run test:integration
  */
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PrismaClient } from '@prisma/client'
 import { createTestPrisma, truncateAll } from './test-db'
 import { loadRaceAssignmentData, sendTeamsAssignmentNotificationWithData } from '@/app/actions'
@@ -42,6 +42,14 @@ vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 
 beforeAll(async () => {
   testPrisma = createTestPrisma()
+})
+
+beforeEach(({ task }) => {
+  process.stdout.write(`\n--- ${task.suite?.name ?? ''}: ${task.name} ---\n`)
+})
+
+afterEach(({ task }) => {
+  process.stdout.write(`--- end: ${task.name} ---\n`)
 })
 
 beforeEach(async () => {
@@ -135,7 +143,35 @@ async function seedRegistration(
 // ---------------------------------------------------------------------------
 
 function mockFetchSuccess(json: unknown = {}) {
-  return { ok: true, status: 200, json: async () => json } as Response
+  return {
+    ok: true,
+    status: 200,
+    json: async () => json,
+    text: async () => JSON.stringify(json),
+  } as Response
+}
+
+/**
+ * Install a fetch mock that routes responses based on URL/method/body so tests
+ * are not sensitive to the order in which Discord API calls are made.
+ *
+ * Team threads:  POST .../threads  with body.name containing "•"  → { id: teamThreadId }
+ * Event threads: POST .../threads  with body.name NOT containing "•" → { id: eventThreadId }
+ * Everything else (addUsersToThread PUTs, notification POSTs, etc.)  → {}
+ */
+function mockDiscordFetch({
+  teamThreadId = 'team-thread-id',
+  eventThreadId = 'event-thread-id',
+}: { teamThreadId?: string; eventThreadId?: string } = {}) {
+  vi.mocked(fetch).mockImplementation(async (url, opts) => {
+    const urlStr = typeof url === 'string' ? url : url.toString()
+    if (urlStr.endsWith('/threads') && opts?.method === 'POST') {
+      const body = typeof opts.body === 'string' ? (JSON.parse(opts.body) as { name?: string }) : {}
+      const isTeamThread = typeof body.name === 'string' && body.name.includes('•')
+      return mockFetchSuccess({ id: isTeamThread ? teamThreadId : eventThreadId })
+    }
+    return mockFetchSuccess()
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -219,7 +255,7 @@ describe('loadRaceAssignmentData', () => {
 // ---------------------------------------------------------------------------
 
 describe('sendTeamsAssignmentNotificationWithData', () => {
-  it('calls createOrUpdateEventThread with team members drawn from real DB registrations', async () => {
+  it('creates a team thread and event thread with member names from real DB registrations', async () => {
     const event = await seedEvent()
     const race = await seedRace(event.id, { teamsAssigned: true })
     const carClass = await seedCarClass()
@@ -232,19 +268,9 @@ describe('sendTeamsAssignmentNotificationWithData', () => {
 
     const data = await loadRaceAssignmentData(race.id)
 
-    // Mock fetch: team thread creation → event thread creation
-    vi.mocked(fetch)
-      // createOrUpdateTeamThread: check existing thread (none)
-      .mockResolvedValueOnce({ ok: false, status: 404 } as Response)
-      // createOrUpdateTeamThread: create new thread → returns new thread id
-      .mockResolvedValueOnce(mockFetchSuccess({ id: 'new-team-thread-id' }))
-      // addUsersToThread: add members
-      .mockResolvedValueOnce({ ok: true, status: 204 } as Response)
-      // createOrUpdateEventThread: check existing thread (none → creates new)
-      .mockResolvedValueOnce({ ok: false, status: 404 } as Response)
-      .mockResolvedValueOnce(mockFetchSuccess({ id: 'new-event-thread-id' }))
-      // sendTeamsAssignedNotification: post notification message
-      .mockResolvedValueOnce({ ok: true, status: 200 } as Response)
+    // Route-based mock: team thread POSTs (name contains "•") → team-thread-id,
+    // event thread POSTs (name without "•") → event-thread-id, everything else → {}
+    mockDiscordFetch({ teamThreadId: 'team-thread-id', eventThreadId: 'event-thread-id' })
 
     await sendTeamsAssignmentNotificationWithData(data, {
       id: 'admin-user-id',
@@ -252,26 +278,36 @@ describe('sendTeamsAssignmentNotificationWithData', () => {
       role: 'ADMIN',
     })
 
-    // Verify the event thread creation call contains both driver names
-    const eventThreadCall = vi
-      .mocked(fetch)
-      .mock.calls.find(
-        ([url, opts]) =>
-          typeof url === 'string' &&
-          url.includes('/threads') &&
-          opts?.method === 'POST' &&
-          typeof opts?.body === 'string' &&
-          (opts.body.includes('Alice') || opts.body.includes('Bob'))
-      )
-    expect(eventThreadCall).toBeDefined()
-    const body = JSON.parse(eventThreadCall![1]!.body as string)
-    const allText = JSON.stringify(body)
-    expect(allText).toContain('Alice')
-    expect(allText).toContain('Bob')
-    expect(allText).toContain('Racing Squad')
+    const calls = vi.mocked(fetch).mock.calls
+
+    // Team thread POST: POST .../threads, body.name contains "•", body has team/member names
+    const teamThreadPost = calls.find(([url, opts]) => {
+      if (typeof url !== 'string' || !url.endsWith('/threads') || opts?.method !== 'POST')
+        return false
+      const body = typeof opts.body === 'string' ? (JSON.parse(opts.body) as { name?: string }) : {}
+      return typeof body.name === 'string' && body.name.includes('•')
+    })
+    expect(teamThreadPost).toBeDefined()
+    const teamBody = JSON.stringify(JSON.parse(teamThreadPost![1]!.body as string))
+    expect(teamBody).toContain('Racing Squad')
+    expect(teamBody).toContain('Alice')
+    expect(teamBody).toContain('Bob')
+
+    // Event thread POST: POST .../threads, body.name does NOT contain "•"
+    const eventThreadPost = calls.find(([url, opts]) => {
+      if (typeof url !== 'string' || !url.endsWith('/threads') || opts?.method !== 'POST')
+        return false
+      const body = typeof opts.body === 'string' ? (JSON.parse(opts.body) as { name?: string }) : {}
+      return typeof body.name === 'string' && !body.name.includes('•')
+    })
+    expect(eventThreadPost).toBeDefined()
+    // Event thread references drivers by Discord mention (<@discordId>)
+    const eventBody = JSON.stringify(JSON.parse(eventThreadPost![1]!.body as string))
+    expect(eventBody).toContain('alice-discord-123')
+    expect(eventBody).toContain('bob-discord-456')
   })
 
-  it('shows unassigned drivers separately in the event thread', async () => {
+  it('shows unassigned drivers in the event thread but not in any team thread', async () => {
     const event = await seedEvent()
     const race = await seedRace(event.id, { teamsAssigned: true })
     const carClass = await seedCarClass()
@@ -284,15 +320,7 @@ describe('sendTeamsAssignmentNotificationWithData', () => {
 
     const data = await loadRaceAssignmentData(race.id)
 
-    // Carol is unassigned — verify she appears in the event thread payload
-    // Mock fetch to capture the event thread creation call
-    vi.mocked(fetch)
-      .mockResolvedValueOnce({ ok: false, status: 404 } as Response) // team thread: no existing
-      .mockResolvedValueOnce(mockFetchSuccess({ id: 'team-thread-id' })) // team thread: created
-      .mockResolvedValueOnce({ ok: true, status: 204 } as Response) // addUsersToThread
-      .mockResolvedValueOnce({ ok: false, status: 404 } as Response) // event thread: no existing
-      .mockResolvedValueOnce(mockFetchSuccess({ id: 'event-thread-id' })) // event thread: created
-      .mockResolvedValue({ ok: true, status: 200 } as Response) // notification
+    mockDiscordFetch()
 
     await sendTeamsAssignmentNotificationWithData(data, {
       id: 'admin-user-id',
@@ -300,21 +328,30 @@ describe('sendTeamsAssignmentNotificationWithData', () => {
       role: 'ADMIN',
     })
 
-    // Find the event thread POST — it should contain Carol (unassigned) in the payload
-    const eventThreadCall = vi
-      .mocked(fetch)
-      .mock.calls.find(
-        ([url, opts]) =>
-          typeof url === 'string' &&
-          url.includes('/threads') &&
-          opts?.method === 'POST' &&
-          typeof opts?.body === 'string' &&
-          opts.body.includes('Carol')
-      )
-    expect(eventThreadCall).toBeDefined()
+    const calls = vi.mocked(fetch).mock.calls
+
+    // Event thread POST (name without "•") should contain Carol (unassigned driver)
+    const eventThreadPost = calls.find(([url, opts]) => {
+      if (typeof url !== 'string' || !url.endsWith('/threads') || opts?.method !== 'POST')
+        return false
+      const body = typeof opts.body === 'string' ? (JSON.parse(opts.body) as { name?: string }) : {}
+      return typeof body.name === 'string' && !body.name.includes('•')
+    })
+    expect(eventThreadPost).toBeDefined()
+    expect(eventThreadPost![1]!.body as string).toContain('Carol')
+
+    // Team thread POST (name with "•") should NOT contain Carol (she has no team)
+    const teamThreadPost = calls.find(([url, opts]) => {
+      if (typeof url !== 'string' || !url.endsWith('/threads') || opts?.method !== 'POST')
+        return false
+      const body = typeof opts.body === 'string' ? (JSON.parse(opts.body) as { name?: string }) : {}
+      return typeof body.name === 'string' && body.name.includes('•')
+    })
+    expect(teamThreadPost).toBeDefined()
+    expect(teamThreadPost![1]!.body as string).not.toContain('Carol')
   })
 
-  it('emits a thread for each distinct team in the race', async () => {
+  it('emits one team thread per distinct team in the race', async () => {
     const event = await seedEvent()
     const race = await seedRace(event.id, { teamsAssigned: true })
     const carClass = await seedCarClass()
@@ -327,12 +364,8 @@ describe('sendTeamsAssignmentNotificationWithData', () => {
     await seedRegistration(race.id, carClass.id, bob.id, teamB.id)
 
     const data = await loadRaceAssignmentData(race.id)
-    expect(data.registrations).toHaveLength(2)
-    const teamIds = new Set(data.registrations.map((r) => r.teamId))
-    expect(teamIds.size).toBe(2)
 
-    // Two team thread creates + one event thread create + notifications
-    vi.mocked(fetch).mockResolvedValue(mockFetchSuccess({ id: 'some-thread-id' }))
+    mockDiscordFetch()
 
     await sendTeamsAssignmentNotificationWithData(data, {
       id: 'admin-user-id',
@@ -340,14 +373,21 @@ describe('sendTeamsAssignmentNotificationWithData', () => {
       role: 'ADMIN',
     })
 
-    // Count POST calls to /threads (team and event thread creations)
-    const threadPosts = vi
-      .mocked(fetch)
-      .mock.calls.filter(
-        ([url, opts]) =>
-          typeof url === 'string' && url.includes('/threads') && opts?.method === 'POST'
-      )
-    // Should have created a thread for Team A, Team B, and the event — at minimum 2 team threads
-    expect(threadPosts.length).toBeGreaterThanOrEqual(2)
+    // Team thread POSTs: POST .../threads with body.name containing "•"
+    const teamThreadPosts = vi.mocked(fetch).mock.calls.filter(([url, opts]) => {
+      if (typeof url !== 'string' || !url.endsWith('/threads') || opts?.method !== 'POST')
+        return false
+      const body = typeof opts.body === 'string' ? (JSON.parse(opts.body) as { name?: string }) : {}
+      return typeof body.name === 'string' && body.name.includes('•')
+    })
+    expect(teamThreadPosts).toHaveLength(2)
+
+    // One thread per team — each body should reference its respective team name
+    const teamNames = teamThreadPosts.map(([, opts]) => {
+      const body = JSON.parse(opts!.body as string) as { name: string }
+      return body.name
+    })
+    expect(teamNames.some((n) => n.includes('Team A'))).toBe(true)
+    expect(teamNames.some((n) => n.includes('Team B'))).toBe(true)
   })
 })
