@@ -1271,13 +1271,8 @@ async function loadManualDriverRegistrationExistenceBatch(
 }
 
 /**
- * Helper function to handle team name overrides and new team creation
- * Runs in parallel for maximum performance
- */
-
-/**
- * Handles team name overrides and new team creation
- * Runs operations in parallel for maximum performance
+ * Handles team name overrides and new team creation.
+ * Renames run after new teams are created so they can reference the new IDs.
  */
 async function processTeamEdits(
   isAdmin: boolean,
