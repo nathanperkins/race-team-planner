@@ -1881,27 +1881,71 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
     const data = await loadRaceAssignmentData(raceId)
 
     // Execute the notification logic with preloaded data
-    return await sendTeamsAssignmentNotificationWithData(
-      data.raceWithEvent,
-      data.raceWithEvent.event,
-      data.registrations,
-      data.allTeams,
-      data.existingEventThreadRecord,
-      data.siblingRaces,
-      data.siblingRaceRegistrations,
-      { id: session.user.id, name: session.user.name || undefined, role: session.user.role },
-      raceId
-    )
+    return await sendTeamsAssignmentNotificationWithData(data, {
+      id: session.user.id,
+      name: session.user.name || undefined,
+      role: session.user.role,
+    })
   } catch (error) {
     logger.error({ err: error }, 'Failed to send teams assigned notification')
     return { message: 'Failed to send notification' }
   }
 }
 
+type RaceAssignmentRegistration = {
+  id: string
+  teamId: string | null
+  carClassId: string
+  userId: string | null
+  manualDriverId: string | null
+  team: { id: string; name: string; alias: string | null } | null
+  carClass: { id: string; name: string; shortName: string | null }
+  user: {
+    name: string | null
+    accounts: Array<{ providerAccountId: string }>
+    racerStats: Array<{ categoryId: number; category: string; irating: number }>
+  } | null
+  manualDriver: { name: string; irating: number | null } | null
+}
+
+type RaceAssignmentData = {
+  raceWithEvent: {
+    id: string
+    startTime: Date
+    teamsAssigned: boolean
+    discordTeamsThreadId: string | null
+    discordTeamsSnapshot: Prisma.JsonValue | null
+    discordTeamThreads: Prisma.JsonValue | null
+    event: {
+      id: string
+      name: string
+      track: string | null
+      trackConfig: string | null
+      tempValue: number | null
+      precipChance: number | null
+      carClasses: Array<{ name: string }>
+      customCarClasses: string[]
+    }
+  }
+  registrations: RaceAssignmentRegistration[]
+  allTeams: Array<{ id: string; name: string; alias: string | null }>
+  existingEventThreadRecord: { discordTeamsThreadId: string | null } | null
+  siblingRaces: Array<{
+    id: string
+    startTime: Date
+    discordTeamThreads: Prisma.JsonValue | null
+    teamsAssigned: boolean
+  }>
+  siblingRaceRegistrations: Array<{
+    raceId: string
+    registrations: RaceAssignmentRegistration[]
+  }>
+}
+
 /**
  * Loads all necessary data from the database for team assignment notifications
  */
-export async function loadRaceAssignmentData(raceId: string) {
+export async function loadRaceAssignmentData(raceId: string): Promise<RaceAssignmentData> {
   const registrationInclude = {
     team: { select: { name: true, alias: true, id: true } },
     carClass: { select: { id: true, name: true, shortName: true } },
@@ -1991,25 +2035,12 @@ export async function loadRaceAssignmentData(raceId: string) {
     include: registrationInclude,
   })
 
-  // Transform results into the expected format
-  const formattedsiblingRegistrations = siblingRegistrations.reduce(
-    (acc, registration) => {
-      const raceId = registration.raceId
-      if (!acc[raceId]) {
-        acc[raceId] = []
-      }
-      acc[raceId].push(registration)
-      return acc
-    },
-    {} as Record<string, typeof siblingRegistrations>
-  )
-
-  const siblingRaceRegistrations = Object.entries(formattedsiblingRegistrations).map(
-    ([raceId, registrations]) => ({
-      raceId,
-      registrations,
-    })
-  )
+  const siblingRaceRegistrations = siblingRaces
+    .filter((sibling) => sibling.teamsAssigned)
+    .map((sibling) => ({
+      raceId: sibling.id,
+      registrations: siblingRegistrations.filter((r) => r.raceId === sibling.id),
+    }))
 
   return {
     raceWithEvent,
@@ -2021,321 +2052,23 @@ export async function loadRaceAssignmentData(raceId: string) {
   }
 }
 
-export async function agreeToExpectations() {
-  const session = await auth()
-  if (!session || !session.user?.id) {
-    throw new Error('Unauthorized')
-  }
-
-  await prisma.user.update({
-    where: { id: session.user.id },
-    data: { expectationsVersion: CURRENT_EXPECTATIONS_VERSION },
-  })
-
-  revalidatePath('/expectations')
-  revalidatePath('/profile')
-  revalidatePath('/roster')
-  revalidatePath('/events/[id]', 'page')
-
-  return {
-    success: true,
-    data: { expectationsVersion: CURRENT_EXPECTATIONS_VERSION },
-  }
-}
-export async function adminRegisterDriver(prevState: State, formData: FormData) {
-  const session = await auth()
-  if (!session || !session.user?.id) {
-    return { message: 'Unauthorized', timestamp: Date.now() }
-  }
-
-  // Admin only
-  if (session.user.role !== 'ADMIN') {
-    return { message: 'Only admins can use this function', timestamp: Date.now() }
-  }
-
-  const raceId = formData.get('raceId') as string
-  const userId = formData.get('userId') as string
-  const carClassId = formData.get('carClassId') as string
-
-  if (!raceId || !userId || !carClassId) {
-    return { message: 'Missing required fields', timestamp: Date.now() }
-  }
-
-  try {
-    // Check race exists and is not completed
-    const race = await prisma.race.findUnique({
-      where: { id: raceId },
-      select: {
-        startTime: true,
-        endTime: true,
-        eventId: true,
-        maxDriversPerTeam: true,
-        teamsAssigned: true,
-        teamAssignmentStrategy: true,
-      },
-    })
-
-    if (!race) return { message: 'Race not found', timestamp: Date.now() }
-    if (new Date() > race.endTime) {
-      return { message: 'Cannot register for a completed race', timestamp: Date.now() }
-    }
-
-    const teamId = null
-
-    // Check if it's a regular user or a manual driver
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true },
-    })
-
-    if (user) {
-      // Check if already registered
-      const existing = await prisma.registration.findUnique({
-        where: { userId_raceId: { userId, raceId } },
-      })
-
-      if (existing) {
-        return { message: 'User already registered for this race', timestamp: Date.now() }
-      }
-
-      // Create registration
-      const created = await prisma.registration.create({
-        data: {
-          userId,
-          raceId,
-          carClassId,
-          teamId,
-        },
-      })
-      await prisma.registration.update({
-        where: { id: created.id },
-        data: { teamId: null },
-      })
-    } else {
-      // Check if it's a manual driver
-      const manualDriver = await prisma.manualDriver.findUnique({
-        where: { id: userId },
-        select: { id: true },
-      })
-
-      if (!manualDriver) return { message: 'Driver not found', timestamp: Date.now() }
-
-      // Check if already registered
-      const existing = await prisma.registration.findUnique({
-        where: { manualDriverId_raceId: { manualDriverId: userId, raceId } },
-      })
-
-      if (existing) {
-        return { message: 'Driver already registered for this race', timestamp: Date.now() }
-      }
-
-      // Create registration
-      const created = await prisma.registration.create({
-        data: {
-          manualDriverId: userId,
-          raceId,
-          carClassId,
-          teamId,
-        },
-      })
-      await prisma.registration.update({
-        where: { id: created.id },
-        data: { teamId: null },
-      })
-    }
-
-    // Admin-registered drivers stay unassigned until teams are set.
-    revalidatePath(`/events`)
-
-    const registration = await prisma.registration.findFirst({
-      where: {
-        ...(user ? { userId } : { manualDriverId: userId }),
-        raceId,
-      },
-      include: {
-        carClass: true,
-        manualDriver: true,
-        team: true,
-        user: {
-          select: {
-            name: true,
-            image: true,
-            accounts: {
-              where: { provider: 'discord' },
-              select: { providerAccountId: true },
-            },
-            racerStats: {
-              select: {
-                category: true,
-                categoryId: true,
-                irating: true,
-                safetyRating: true,
-                groupName: true,
-              },
-            },
-          },
-        },
-        race: {
-          select: {
-            startTime: true,
-            discordTeamsThreadId: true,
-            event: {
-              select: {
-                id: true,
-                name: true,
-                track: true,
-                trackConfig: true,
-                tempValue: true,
-                precipChance: true,
-              },
-            },
-          },
-        },
-      },
-    })
-
-    // Send Discord notifications (non-blocking)
-    try {
-      const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
-      // Ensure event-level discussion thread exists
-      const discussionThread = await upsertEventDiscussionThread({
-        eventId: race.eventId,
-        eventName: registration?.race.event.name || '',
-        track: registration?.race.event.track ?? null,
-        trackConfig: registration?.race.event.trackConfig ?? null,
-        tempValue: registration?.race.event.tempValue ?? null,
-        precipChance: registration?.race.event.precipChance ?? null,
-      })
-      const discussionThreadId = discussionThread.threadId
-
-      // Send registration notification for regular users (not manual drivers)
-      // Only send if we have both thread ID and guild ID
-      const guildId = process.env.DISCORD_GUILD_ID
-      if (registration?.user && discussionThreadId && guildId) {
-        const { sendRegistrationNotification } = await import('@/lib/discord')
-
-        const discordAccount = registration.user.accounts[0]
-        const otherRegisteredDrivers = await getOtherRegisteredDriversForRace(
-          raceId,
-          registration.id
-        )
-
-        await sendRegistrationNotification({
-          userName: registration.user.name || 'Unknown User',
-          userAvatarUrl: registration.user.image || undefined,
-          eventName: registration.race.event.name,
-          raceStartTime: registration.race.startTime,
-          carClassName: registration.carClass.name,
-          eventUrl: `${baseUrl}/events?eventId=${registration.race.event.id}`,
-          discordUser: discordAccount?.providerAccountId
-            ? {
-                id: discordAccount.providerAccountId,
-                name: registration.user.name || 'Unknown',
-              }
-            : undefined,
-          otherRegisteredDrivers,
-          threadId: discussionThreadId,
-          guildId,
-          track: registration.race.event.track ?? undefined,
-          trackConfig: registration.race.event.trackConfig ?? undefined,
-        })
-      }
-    } catch (notificationError) {
-      // Log but don't fail the registration if notification fails
-      logger.error({ err: notificationError }, 'Failed to send Discord notification')
-    }
-
-    if (race.teamsAssigned) {
-      try {
-        await sendTeamsAssignmentNotification(raceId)
-      } catch (notificationError) {
-        logger.error(
-          { err: notificationError },
-          'Failed to refresh teams assigned notification after adding driver'
-        )
-      }
-    }
-
-    return { message: 'Success', timestamp: Date.now(), registration }
-  } catch (e) {
-    logger.error({ err: e }, 'Admin register driver error')
-    if (isRegistrationUserForeignKeyError(e)) {
-      return {
-        message:
-          'Selected user no longer exists in the database. Please refresh driver search and try again.',
-        timestamp: Date.now(),
-      }
-    }
-    return { message: 'Failed to register driver', timestamp: Date.now() }
-  }
-}
-
 /**
  * Sends team assignment notifications with preloaded database data
  */
 export async function sendTeamsAssignmentNotificationWithData(
-  race: {
-    id: string
-    startTime: Date
-    teamsAssigned: boolean
-    discordTeamsThreadId: string | null
-    discordTeamsSnapshot: Prisma.JsonValue | null
-    discordTeamThreads: Prisma.JsonValue | null
-  },
-  event: {
-    id: string
-    name: string
-    track: string | null
-    trackConfig: string | null
-    tempValue: number | null
-    precipChance: number | null
-    carClasses: Array<{ name: string }>
-    customCarClasses: string[]
-  },
-  registrations: Array<{
-    id: string
-    teamId: string | null
-    carClassId: string
-    userId: string | null
-    manualDriverId: string | null
-    team: { id: string; name: string; alias: string | null } | null
-    carClass: { id: string; name: string; shortName: string | null }
-    user: {
-      name: string | null
-      accounts: Array<{ providerAccountId: string }>
-      racerStats: Array<{ categoryId: number; category: string; irating: number }>
-    } | null
-    manualDriver: { name: string; irating: number | null } | null
-  }>,
-  allTeams: Array<{ id: string; name: string; alias: string | null }>,
-  existingEventThreadRecord: { discordTeamsThreadId: string | null } | null,
-  siblingRaces: Array<{
-    id: string
-    startTime: Date
-    discordTeamThreads: Prisma.JsonValue | null
-    teamsAssigned: boolean
-  }>,
-  siblingRaceRegistrations: Array<{
-    raceId: string
-    registrations: Array<{
-      id: string
-      teamId: string | null
-      carClassId: string
-      userId: string | null
-      manualDriverId: string | null
-      team: { id: string; name: string; alias: string | null } | null
-      carClass: { id: string; name: string; shortName: string | null }
-      user: {
-        name: string | null
-        accounts: Array<{ providerAccountId: string }>
-        racerStats: Array<{ categoryId: number; category: string; irating: number }>
-      } | null
-      manualDriver: { name: string; irating: number | null } | null
-    }>
-  }>,
-  user: { id: string; name?: string; role: string },
-  raceId: string
+  data: RaceAssignmentData,
+  user: { id: string; name?: string; role: string }
 ): Promise<{ message: string }> {
+  const {
+    raceWithEvent: race,
+    registrations,
+    allTeams,
+    existingEventThreadRecord,
+    siblingRaces,
+    siblingRaceRegistrations,
+  } = data
+  const { event } = race
+  const raceId = race.id
   try {
     // Build current snapshot from registrations
     const currentSnapshot: Record<
@@ -2657,5 +2390,254 @@ export async function sendTeamsAssignmentNotificationWithData(
   } catch (error) {
     logger.error({ err: error }, 'Failed to send teams assigned notification')
     return { message: 'Failed to send notification' }
+  }
+}
+
+export async function agreeToExpectations() {
+  const session = await auth()
+  if (!session || !session.user?.id) {
+    throw new Error('Unauthorized')
+  }
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { expectationsVersion: CURRENT_EXPECTATIONS_VERSION },
+  })
+
+  revalidatePath('/expectations')
+  revalidatePath('/profile')
+  revalidatePath('/roster')
+  revalidatePath('/events/[id]', 'page')
+
+  return {
+    success: true,
+    data: { expectationsVersion: CURRENT_EXPECTATIONS_VERSION },
+  }
+}
+export async function adminRegisterDriver(prevState: State, formData: FormData) {
+  const session = await auth()
+  if (!session || !session.user?.id) {
+    return { message: 'Unauthorized', timestamp: Date.now() }
+  }
+
+  // Admin only
+  if (session.user.role !== 'ADMIN') {
+    return { message: 'Only admins can use this function', timestamp: Date.now() }
+  }
+
+  const raceId = formData.get('raceId') as string
+  const userId = formData.get('userId') as string
+  const carClassId = formData.get('carClassId') as string
+
+  if (!raceId || !userId || !carClassId) {
+    return { message: 'Missing required fields', timestamp: Date.now() }
+  }
+
+  try {
+    // Check race exists and is not completed
+    const race = await prisma.race.findUnique({
+      where: { id: raceId },
+      select: {
+        startTime: true,
+        endTime: true,
+        eventId: true,
+        maxDriversPerTeam: true,
+        teamsAssigned: true,
+        teamAssignmentStrategy: true,
+      },
+    })
+
+    if (!race) return { message: 'Race not found', timestamp: Date.now() }
+    if (new Date() > race.endTime) {
+      return { message: 'Cannot register for a completed race', timestamp: Date.now() }
+    }
+
+    const teamId = null
+
+    // Check if it's a regular user or a manual driver
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    })
+
+    if (user) {
+      // Check if already registered
+      const existing = await prisma.registration.findUnique({
+        where: { userId_raceId: { userId, raceId } },
+      })
+
+      if (existing) {
+        return { message: 'User already registered for this race', timestamp: Date.now() }
+      }
+
+      // Create registration
+      const created = await prisma.registration.create({
+        data: {
+          userId,
+          raceId,
+          carClassId,
+          teamId,
+        },
+      })
+      await prisma.registration.update({
+        where: { id: created.id },
+        data: { teamId: null },
+      })
+    } else {
+      // Check if it's a manual driver
+      const manualDriver = await prisma.manualDriver.findUnique({
+        where: { id: userId },
+        select: { id: true },
+      })
+
+      if (!manualDriver) return { message: 'Driver not found', timestamp: Date.now() }
+
+      // Check if already registered
+      const existing = await prisma.registration.findUnique({
+        where: { manualDriverId_raceId: { manualDriverId: userId, raceId } },
+      })
+
+      if (existing) {
+        return { message: 'Driver already registered for this race', timestamp: Date.now() }
+      }
+
+      // Create registration
+      const created = await prisma.registration.create({
+        data: {
+          manualDriverId: userId,
+          raceId,
+          carClassId,
+          teamId,
+        },
+      })
+      await prisma.registration.update({
+        where: { id: created.id },
+        data: { teamId: null },
+      })
+    }
+
+    // Admin-registered drivers stay unassigned until teams are set.
+    revalidatePath(`/events`)
+
+    const registration = await prisma.registration.findFirst({
+      where: {
+        ...(user ? { userId } : { manualDriverId: userId }),
+        raceId,
+      },
+      include: {
+        carClass: true,
+        manualDriver: true,
+        team: true,
+        user: {
+          select: {
+            name: true,
+            image: true,
+            accounts: {
+              where: { provider: 'discord' },
+              select: { providerAccountId: true },
+            },
+            racerStats: {
+              select: {
+                category: true,
+                categoryId: true,
+                irating: true,
+                safetyRating: true,
+                groupName: true,
+              },
+            },
+          },
+        },
+        race: {
+          select: {
+            startTime: true,
+            discordTeamsThreadId: true,
+            event: {
+              select: {
+                id: true,
+                name: true,
+                track: true,
+                trackConfig: true,
+                tempValue: true,
+                precipChance: true,
+              },
+            },
+          },
+        },
+      },
+    })
+
+    // Send Discord notifications (non-blocking)
+    try {
+      const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+      // Ensure event-level discussion thread exists
+      const discussionThread = await upsertEventDiscussionThread({
+        eventId: race.eventId,
+        eventName: registration?.race.event.name || '',
+        track: registration?.race.event.track ?? null,
+        trackConfig: registration?.race.event.trackConfig ?? null,
+        tempValue: registration?.race.event.tempValue ?? null,
+        precipChance: registration?.race.event.precipChance ?? null,
+      })
+      const discussionThreadId = discussionThread.threadId
+
+      // Send registration notification for regular users (not manual drivers)
+      // Only send if we have both thread ID and guild ID
+      const guildId = process.env.DISCORD_GUILD_ID
+      if (registration?.user && discussionThreadId && guildId) {
+        const { sendRegistrationNotification } = await import('@/lib/discord')
+
+        const discordAccount = registration.user.accounts[0]
+        const otherRegisteredDrivers = await getOtherRegisteredDriversForRace(
+          raceId,
+          registration.id
+        )
+
+        await sendRegistrationNotification({
+          userName: registration.user.name || 'Unknown User',
+          userAvatarUrl: registration.user.image || undefined,
+          eventName: registration.race.event.name,
+          raceStartTime: registration.race.startTime,
+          carClassName: registration.carClass.name,
+          eventUrl: `${baseUrl}/events?eventId=${registration.race.event.id}`,
+          discordUser: discordAccount?.providerAccountId
+            ? {
+                id: discordAccount.providerAccountId,
+                name: registration.user.name || 'Unknown',
+              }
+            : undefined,
+          otherRegisteredDrivers,
+          threadId: discussionThreadId,
+          guildId,
+          track: registration.race.event.track ?? undefined,
+          trackConfig: registration.race.event.trackConfig ?? undefined,
+        })
+      }
+    } catch (notificationError) {
+      // Log but don't fail the registration if notification fails
+      logger.error({ err: notificationError }, 'Failed to send Discord notification')
+    }
+
+    if (race.teamsAssigned) {
+      try {
+        await sendTeamsAssignmentNotification(raceId)
+      } catch (notificationError) {
+        logger.error(
+          { err: notificationError },
+          'Failed to refresh teams assigned notification after adding driver'
+        )
+      }
+    }
+
+    return { message: 'Success', timestamp: Date.now(), registration }
+  } catch (e) {
+    logger.error({ err: e }, 'Admin register driver error')
+    if (isRegistrationUserForeignKeyError(e)) {
+      return {
+        message:
+          'Selected user no longer exists in the database. Please refresh driver search and try again.',
+        timestamp: Date.now(),
+      }
+    }
+    return { message: 'Failed to register driver', timestamp: Date.now() }
   }
 }
