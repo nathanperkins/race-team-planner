@@ -2313,12 +2313,11 @@ export async function loadRaceAssignmentData(raceId: string): Promise<RaceAssign
         select: { discordTeamsThreadId: true },
       }),
 
-      // Load only sibling races that have teams assigned
+      // Load all sibling races so unassigned ones show as empty timeslots in the event thread
       prisma.race.findMany({
         where: {
           eventId: raceWithEvent.event.id,
           id: { not: raceId },
-          teamsAssigned: true,
         },
         select: { id: true, startTime: true, discordTeamThreads: true, teamsAssigned: true },
         orderBy: { startTime: 'asc' },
@@ -2326,15 +2325,13 @@ export async function loadRaceAssignmentData(raceId: string): Promise<RaceAssign
     ])
 
   // Load registrations for sibling races that have teams assigned
+  const assignedSiblingIds = siblingRaces
+    .filter((race) => race.teamsAssigned)
+    .map((race) => race.id)
   let siblingRegistrations: RegistrationRow[] = []
-  if (siblingRaces.length > 0) {
+  if (assignedSiblingIds.length > 0) {
     siblingRegistrations = await prisma.registration.findMany({
-      where: {
-        raceId: {
-          in: siblingRaces.map((race) => race.id),
-        },
-        teamId: { not: null },
-      },
+      where: { raceId: { in: assignedSiblingIds } },
       include: registrationInclude,
     })
   }
