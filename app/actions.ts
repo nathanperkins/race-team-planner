@@ -539,7 +539,15 @@ export async function registerForRace(prevState: State, formData: FormData) {
 
   const userPromise = prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { expectationsVersion: true, accounts: true, name: true, image: true },
+    select: {
+      expectationsVersion: true,
+      name: true,
+      image: true,
+      accounts: {
+        where: { provider: 'discord' },
+        select: { providerAccountId: true },
+      },
+    },
   })
 
   const [user, race] = await Promise.all([userPromise, racePromise])
@@ -602,28 +610,29 @@ export async function registerForRace(prevState: State, formData: FormData) {
           select: { name: true },
         })
 
-        await Promise.all([otherRegisteredDrivers, carClass]).then(
-          ([otherRegisteredDrivers, carClass]) =>
-            sendRegistrationNotification({
-              userName: user.name || 'Unknown User',
-              userAvatarUrl: user.image || undefined,
-              eventName: race.event.name,
-              raceStartTime: race.startTime,
-              carClassName: carClass.name,
-              eventUrl: `${baseUrl}/events?eventId=${race.event.id}`,
-              discordUser: discordAccount?.providerAccountId
-                ? {
-                    id: discordAccount.providerAccountId,
-                    name: user.name || 'Unknown',
-                  }
-                : undefined,
-              otherRegisteredDrivers,
-              threadId: discussionThreadId,
-              guildId,
-              track: race.event.track ?? undefined,
-              trackConfig: race.event.trackConfig ?? undefined,
-            })
-        )
+        const [resolvedDrivers, resolvedCarClass] = await Promise.all([
+          otherRegisteredDrivers,
+          carClass,
+        ])
+        await sendRegistrationNotification({
+          userName: user.name || 'Unknown User',
+          userAvatarUrl: user.image || undefined,
+          eventName: race.event.name,
+          raceStartTime: race.startTime,
+          carClassName: resolvedCarClass.name,
+          eventUrl: `${baseUrl}/events?eventId=${race.event.id}`,
+          discordUser: discordAccount?.providerAccountId
+            ? {
+                id: discordAccount.providerAccountId,
+                name: user.name || 'Unknown',
+              }
+            : undefined,
+          otherRegisteredDrivers: resolvedDrivers,
+          threadId: discussionThreadId,
+          guildId,
+          track: race.event.track ?? undefined,
+          trackConfig: race.event.trackConfig ?? undefined,
+        })
       }
     } catch (notificationError) {
       // Log but don't fail the registration if notification fails

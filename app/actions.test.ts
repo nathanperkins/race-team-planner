@@ -1011,9 +1011,8 @@ describe('registerForRace', () => {
       expectationsVersion: 1,
       name: 'User 1',
       image: null,
-      accounts: [{ providerAccountId: 'discord-1' }],
+      accounts: [{ provider: 'discord', providerAccountId: 'discord-1' }],
     } as any)
-    vi.mocked(prisma.carClass.findUnique).mockResolvedValue({ name: 'GT3' } as any)
     vi.mocked(prisma.carClass.findUniqueOrThrow).mockResolvedValue({ name: 'GT3' } as any)
     vi.mocked(prisma.race.findFirst).mockResolvedValue(null)
     vi.mocked(prisma.race.findMany).mockResolvedValue([
