@@ -17,6 +17,9 @@ import {
   formatRaceTimesValue,
   detectRosterChanges,
   buildRosterChangesEmbed,
+  buildJoinEventButton,
+  buildMainEventThreadButton,
+  parseDiscordErrorBody,
 } from './discord-utils'
 
 describe('Discord Utils', () => {
@@ -1213,6 +1216,48 @@ describe('Discord Utils', () => {
       expect(embed.fields[0].name).toBe('✅ Added')
       expect(embed.fields[1].name).toBe('🏎️ Car Class Changed')
       expect(embed.fields[2].name).toBe('❌ Dropped')
+    })
+  })
+
+  describe('buildJoinEventButton', () => {
+    it('returns a link button with Join Event label', () => {
+      const btn = buildJoinEventButton('https://example.com/events/1')
+      expect(btn).toEqual({
+        type: 2,
+        style: 5,
+        label: 'Join Event',
+        url: 'https://example.com/events/1',
+      })
+    })
+  })
+
+  describe('buildMainEventThreadButton', () => {
+    it('returns a link button with View Main Event Thread label', () => {
+      const btn = buildMainEventThreadButton('https://discord.com/channels/123/456')
+      expect(btn).toEqual({
+        type: 2,
+        style: 5,
+        label: 'View Main Event Thread',
+        url: 'https://discord.com/channels/123/456',
+      })
+    })
+  })
+
+  describe('parseDiscordErrorBody', () => {
+    it('parses valid JSON response body', async () => {
+      const response = {
+        text: async () => '{"code": 50035, "message": "Invalid Form Body"}',
+      } as Response
+      const result = await parseDiscordErrorBody(response)
+      expect(result).toEqual({ code: 50035, message: 'Invalid Form Body' })
+    })
+
+    it('returns raw text when response body is not valid JSON', async () => {
+      const response = {
+        text: async () => 'Internal Server Error',
+      } as Response
+      const result = await parseDiscordErrorBody(response)
+      expect(result).toEqual({ raw: 'Internal Server Error' })
     })
   })
 })

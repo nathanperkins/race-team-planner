@@ -16,6 +16,7 @@ import {
   createOrUpdateEventThread,
   createOrUpdateTeamThread,
   addUsersToThread,
+  createEventDiscussionThread,
 } from './discord'
 import type { WeeklyScheduleEvent } from './discord-utils'
 
@@ -2434,3 +2435,182 @@ describe('createOrUpdateEventThread', () => {
 // NOTE: sendTeamsAssignedNotification has complex internal helpers that are difficult
 // to test in isolation. The error logging for chat channel notifications was added
 // at line 843-848 in lib/discord.ts and can be verified by code inspection.
+
+describe('createEventDiscussionThread', () => {
+  const botToken = 'test-bot-token'
+  const channelId = 'test-channel-id'
+  const forumId = 'test-forum-id'
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn())
+    vi.stubEnv('DISCORD_BOT_TOKEN', botToken)
+    vi.stubEnv('DISCORD_NOTIFICATIONS_CHANNEL_ID', channelId)
+    vi.stubEnv('DISCORD_EVENTS_FORUM_ID', forumId)
+    vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('returns null when DISCORD_BOT_TOKEN is not configured', async () => {
+    vi.stubEnv('DISCORD_BOT_TOKEN', '')
+    const result = await createEventDiscussionThread({
+      eventName: 'GT3 Challenge',
+      eventStartTime: new Date('2026-02-15T18:00:00Z'),
+    })
+    expect(result).toBeNull()
+  })
+
+  it('returns null when neither channel nor forum is configured', async () => {
+    vi.stubEnv('DISCORD_NOTIFICATIONS_CHANNEL_ID', '')
+    vi.stubEnv('DISCORD_EVENTS_FORUM_ID', '')
+    const result = await createEventDiscussionThread({
+      eventName: 'GT3 Challenge',
+      eventStartTime: new Date('2026-02-15T18:00:00Z'),
+    })
+    expect(result).toBeNull()
+  })
+
+  it('returns existingThreadId if the thread already exists', async () => {
+    const existingThreadId = 'existing-thread-123'
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ parent_id: forumId }),
+      text: async () => '',
+    } as Response)
+
+    const result = await createEventDiscussionThread({
+      eventName: 'GT3 Challenge',
+      eventStartTime: new Date('2026-02-15T18:00:00Z'),
+      existingThreadId,
+    })
+    expect(result).toBe(existingThreadId)
+    expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(fetch).mock.calls[0][0]).toContain(`/channels/${existingThreadId}`)
+  })
+
+  it('creates a new thread when existingThreadId is not found (404)', async () => {
+    const existingThreadId = 'dead-thread-123'
+    const newThreadId = 'new-thread-456'
+
+    vi.mocked(fetch)
+      // Check thread existence: 404
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        json: async () => ({}),
+        text: async () => 'Not Found',
+      } as Response)
+      // Create thread
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: newThreadId }),
+        text: async () => '',
+      } as Response)
+
+    const result = await createEventDiscussionThread({
+      eventName: 'GT3 Challenge',
+      eventStartTime: new Date('2026-02-15T18:00:00Z'),
+      existingThreadId,
+    })
+    expect(result).toBe(newThreadId)
+  })
+
+  it('creates a new thread when no existingThreadId is given', async () => {
+    const newThreadId = 'new-thread-789'
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ id: newThreadId }),
+      text: async () => '',
+    } as Response)
+
+    const result = await createEventDiscussionThread({
+      eventName: 'GT3 Challenge',
+      eventStartTime: new Date('2026-02-15T18:00:00Z'),
+    })
+    expect(result).toBe(newThreadId)
+  })
+
+  it('returns null when thread creation fails', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+      json: async () => ({}),
+      text: async () => 'Server Error',
+    } as Response)
+
+    const result = await createEventDiscussionThread({
+      eventName: 'GT3 Challenge',
+      eventStartTime: new Date('2026-02-15T18:00:00Z'),
+    })
+    expect(result).toBeNull()
+  })
+
+  it('uses forum ID as thread parent when DISCORD_EVENTS_FORUM_ID is configured', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ id: 'forum-thread-123' }),
+      text: async () => '',
+    } as Response)
+
+    await createEventDiscussionThread({
+      eventName: 'GT3 Challenge',
+      eventStartTime: new Date('2026-02-15T18:00:00Z'),
+    })
+
+    const createCall = vi.mocked(fetch).mock.calls[0]
+    expect(createCall[0]).toContain(`/channels/${forumId}/threads`)
+  })
+
+  it('uses notifications channel as thread parent when forum is not configured', async () => {
+    vi.stubEnv('DISCORD_EVENTS_FORUM_ID', '')
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ id: 'channel-thread-456' }),
+      text: async () => '',
+    } as Response)
+
+    await createEventDiscussionThread({
+      eventName: 'GT3 Challenge',
+      eventStartTime: new Date('2026-02-15T18:00:00Z'),
+    })
+
+    const createCall = vi.mocked(fetch).mock.calls[0]
+    expect(createCall[0]).toContain(`/channels/${channelId}/threads`)
+  })
+
+  it('includes track and weather in the embed when provided', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ id: 'new-thread-999' }),
+      text: async () => '',
+    } as Response)
+
+    await createEventDiscussionThread({
+      eventName: 'GT3 Challenge',
+      eventStartTime: new Date('2026-02-15T18:00:00Z'),
+      track: 'Spa-Francorchamps',
+      trackConfig: 'Grand Prix',
+      tempValue: 72,
+      precipChance: 15,
+    })
+
+    const createCall = vi.mocked(fetch).mock.calls[0]
+    const body = JSON.parse(createCall[1]?.body as string)
+    const embed = body.message.embeds[0]
+    const trackField = embed.fields.find((f: { name: string }) => f.name === '🏟️ Track')
+    expect(trackField.value).toBe('Spa-Francorchamps (Grand Prix)')
+    const weatherField = embed.fields.find((f: { name: string }) => f.name === '🌤️ Weather')
+    expect(weatherField.value).toBe('72°F, 15% Rain')
+  })
+})

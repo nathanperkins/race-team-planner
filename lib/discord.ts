@@ -6,6 +6,8 @@ import {
   WeeklyScheduleEvent,
   buildDiscordWebLink,
   buildEventThreadName,
+  buildJoinEventButton,
+  buildMainEventThreadButton,
   buildOnboardingEmbed,
   buildRegistrationEmbed,
   buildTeamsAssignedChatNotification,
@@ -13,6 +15,7 @@ import {
   collectDiscordIds,
   formatISODate,
   normalizeSeriesName,
+  parseDiscordErrorBody,
 } from './discord-utils'
 import { createLogger } from './logger'
 
@@ -20,67 +23,30 @@ const logger = createLogger('discord')
 
 const DISCORD_API_BASE = 'https://discord.com/api/v10'
 
-async function doesDiscordThreadExist(options: { threadId: string; botToken: string }) {
-  return pRetry(
-    async () => {
-      const response = await fetch(`${DISCORD_API_BASE}/channels/${options.threadId}`, {
-        headers: {
-          Authorization: `Bot ${options.botToken}`,
-        },
-      })
-
-      if (response.status === 404) {
-        return false
-      }
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(
-          `Unable to verify thread ${options.threadId}: ${response.status} ${response.statusText} - ${errorText}`
-        )
-      }
-
-      return true
-    },
-    {
-      retries: 3,
-      minTimeout: 100,
-      maxTimeout: 2000,
-      factor: 2,
-    }
-  )
-}
+const DISCORD_RETRY_CONFIG = { retries: 3, minTimeout: 100, maxTimeout: 2000, factor: 2 }
 
 async function getDiscordThreadParentInfo(options: { threadId: string; botToken: string }) {
-  return pRetry(
-    async () => {
-      const response = await fetch(`${DISCORD_API_BASE}/channels/${options.threadId}`, {
-        headers: {
-          Authorization: `Bot ${options.botToken}`,
-        },
-      })
+  return pRetry(async () => {
+    const response = await fetch(`${DISCORD_API_BASE}/channels/${options.threadId}`, {
+      headers: {
+        Authorization: `Bot ${options.botToken}`,
+      },
+    })
 
-      if (response.status === 404) {
-        return { exists: false as const, parentId: null as string | null }
-      }
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(
-          `Unable to verify thread parent ${options.threadId}: ${response.status} ${response.statusText} - ${errorText}`
-        )
-      }
-
-      const body = (await response.json()) as { parent_id?: string | null }
-      return { exists: true as const, parentId: body.parent_id ?? null }
-    },
-    {
-      retries: 3,
-      minTimeout: 100,
-      maxTimeout: 2000,
-      factor: 2,
+    if (response.status === 404) {
+      return { exists: false as const, parentId: null as string | null }
     }
-  )
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(
+        `Unable to verify thread parent ${options.threadId}: ${response.status} ${response.statusText} - ${errorText}`
+      )
+    }
+
+    const body = (await response.json()) as { parent_id?: string | null }
+    return { exists: true as const, parentId: body.parent_id ?? null }
+  }, DISCORD_RETRY_CONFIG)
 }
 
 export enum GuildMembershipStatus {
@@ -219,66 +185,58 @@ export async function findBotMessageInThread(
   threadId: string,
   botToken: string
 ): Promise<string | null> {
-  return pRetry(
-    async () => {
-      // Get bot's own user ID
-      const botInfo = await fetch(`${DISCORD_API_BASE}/users/@me`, {
+  return pRetry(async () => {
+    // Get bot's own user ID
+    const botInfo = await fetch(`${DISCORD_API_BASE}/users/@me`, {
+      headers: {
+        Authorization: `Bot ${botToken}`,
+      },
+    })
+
+    if (!botInfo.ok) {
+      const errorText = await botInfo.text()
+      throw new Error(
+        `Failed to get bot user ID: ${botInfo.status} ${botInfo.statusText} - ${errorText}`
+      )
+    }
+
+    const botUserId = (await botInfo.json()).id
+    if (!botUserId) {
+      throw new Error('Bot user ID is missing from API response')
+    }
+
+    // Fetch recent messages from the thread
+    const messagesResponse = await fetch(
+      `${DISCORD_API_BASE}/channels/${threadId}/messages?limit=25`,
+      {
         headers: {
           Authorization: `Bot ${botToken}`,
+          'Content-Type': 'application/json',
         },
-      })
-
-      if (!botInfo.ok) {
-        const errorText = await botInfo.text()
-        throw new Error(
-          `Failed to get bot user ID: ${botInfo.status} ${botInfo.statusText} - ${errorText}`
-        )
       }
+    )
 
-      const botUserId = (await botInfo.json()).id
-      if (!botUserId) {
-        throw new Error('Bot user ID is missing from API response')
-      }
-
-      // Fetch recent messages from the thread
-      const messagesResponse = await fetch(
-        `${DISCORD_API_BASE}/channels/${threadId}/messages?limit=25`,
-        {
-          headers: {
-            Authorization: `Bot ${botToken}`,
-            'Content-Type': 'application/json',
-          },
-        }
+    if (!messagesResponse.ok) {
+      const errorText = await messagesResponse.text()
+      throw new Error(
+        `Failed to fetch messages from thread ${threadId}: ${messagesResponse.status} ${messagesResponse.statusText} - ${errorText}`
       )
-
-      if (!messagesResponse.ok) {
-        const errorText = await messagesResponse.text()
-        throw new Error(
-          `Failed to fetch messages from thread ${threadId}: ${messagesResponse.status} ${messagesResponse.statusText} - ${errorText}`
-        )
-      }
-
-      const messages = await messagesResponse.json()
-
-      // Find the first message authored by this bot (usually the thread starter)
-      const existingMessage = Array.isArray(messages)
-        ? messages
-            .reverse() // Reverse to get oldest first
-            .find(
-              (message: { author?: { id?: string } }) =>
-                botUserId && message?.author?.id === botUserId
-            )
-        : null
-
-      return existingMessage?.id ?? null
-    },
-    {
-      retries: 3,
-      minTimeout: 100,
-      maxTimeout: 2000,
-      factor: 2,
     }
-  )
+
+    const messages = await messagesResponse.json()
+
+    // Find the first message authored by this bot (usually the thread starter)
+    const existingMessage = Array.isArray(messages)
+      ? messages
+          .reverse() // Reverse to get oldest first
+          .find(
+            (message: { author?: { id?: string } }) =>
+              botUserId && message?.author?.id === botUserId
+          )
+      : null
+
+    return existingMessage?.id ?? null
+  }, DISCORD_RETRY_CONFIG)
 }
 
 /**
@@ -307,39 +265,31 @@ export async function upsertThreadMessage(
   if (existingMessageId) {
     // Try to edit existing message, with retry for network errors and transient HTTP errors
     try {
-      const editResponse = await pRetry(
-        async () => {
-          const response = await fetch(
-            `${DISCORD_API_BASE}/channels/${threadId}/messages/${existingMessageId}`,
-            {
-              method: 'PATCH',
-              headers: {
-                Authorization: `Bot ${botToken}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(payload),
-            }
-          )
-          // Don't retry 404 - message was deleted, fall through to create new one
-          if (response.status === 404) {
-            return response
+      const editResponse = await pRetry(async () => {
+        const response = await fetch(
+          `${DISCORD_API_BASE}/channels/${threadId}/messages/${existingMessageId}`,
+          {
+            method: 'PATCH',
+            headers: {
+              Authorization: `Bot ${botToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
           }
-          // Retry other HTTP errors (500, 503, etc.)
-          if (!response.ok) {
-            const errorText = await response.text()
-            throw new Error(
-              `Failed to edit message ${existingMessageId}: ${response.status} ${response.statusText} - ${errorText}`
-            )
-          }
+        )
+        // Don't retry 404 - message was deleted, fall through to create new one
+        if (response.status === 404) {
           return response
-        },
-        {
-          retries: 3,
-          minTimeout: 100,
-          maxTimeout: 2000,
-          factor: 2,
         }
-      )
+        // Retry other HTTP errors (500, 503, etc.)
+        if (!response.ok) {
+          const errorText = await response.text()
+          throw new Error(
+            `Failed to edit message ${existingMessageId}: ${response.status} ${response.statusText} - ${errorText}`
+          )
+        }
+        return response
+      }, DISCORD_RETRY_CONFIG)
 
       if (editResponse.ok) {
         logger.info(`✏️ Updated existing message in thread ${threadId}`)
@@ -361,24 +311,16 @@ export async function upsertThreadMessage(
 
   // Post new message if no existing message or edit failed
   // pRetry will only retry network errors (fetch throws) not HTTP errors (response.ok = false)
-  const resp = await pRetry(
-    async () => {
-      return await fetch(`${DISCORD_API_BASE}/channels/${threadId}/messages`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bot ${botToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      })
-    },
-    {
-      retries: 3,
-      minTimeout: 100,
-      maxTimeout: 2000,
-      factor: 2,
-    }
-  )
+  const resp = await pRetry(async () => {
+    return await fetch(`${DISCORD_API_BASE}/channels/${threadId}/messages`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bot ${botToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    })
+  }, DISCORD_RETRY_CONFIG)
 
   if (resp.ok) {
     logger.info(`✅ Created new message in thread ${threadId}`)
@@ -984,7 +926,13 @@ export async function addUsersToThread(threadId: string, discordUserIds: string[
   )
 }
 
-export { buildDiscordAppLink, buildDiscordWebLink } from './discord-utils'
+export {
+  buildDiscordAppLink,
+  buildDiscordWebLink,
+  buildJoinEventButton,
+  buildMainEventThreadButton,
+  parseDiscordErrorBody,
+} from './discord-utils'
 
 /**
  * Creates or updates an event thread with team composition data.
@@ -1061,19 +1009,7 @@ export async function createOrUpdateEventThread(data: {
         content,
         embeds,
         allowed_mentions: { users: allowedIds, parse: [] as string[] },
-        components: [
-          {
-            type: 1,
-            components: [
-              {
-                type: 2,
-                style: 5,
-                label: 'Join Event',
-                url: data.raceUrl,
-              },
-            ],
-          },
-        ],
+        components: [{ type: 1, components: [buildJoinEventButton(data.raceUrl)] }],
       }
 
       return upsertThreadMessage(id, payload, botToken)
@@ -1094,31 +1030,13 @@ export async function createOrUpdateEventThread(data: {
             content: undefined,
             embeds,
             allowed_mentions: { users: [], parse: [] },
-            components: [
-              {
-                type: 1,
-                components: [
-                  {
-                    type: 2,
-                    style: 5,
-                    label: 'Join Event',
-                    url: data.raceUrl,
-                  },
-                ],
-              },
-            ],
+            components: [{ type: 1, components: [buildJoinEventButton(data.raceUrl)] }],
           },
         }),
       })
 
       if (!threadResponse.ok) {
-        const errorText = await threadResponse.text()
-        let errorBody = {}
-        try {
-          errorBody = JSON.parse(errorText)
-        } catch {
-          errorBody = { raw: errorText }
-        }
+        const errorBody = await parseDiscordErrorBody(threadResponse)
         logger.error(
           '❌ Failed to create event thread in %s: %d %s: %o',
           threadParentId,
@@ -1203,7 +1121,7 @@ export async function createEventDiscussionThread(options: {
   }
 
   if (options.existingThreadId) {
-    const exists = await doesDiscordThreadExist({
+    const { exists } = await getDiscordThreadParentInfo({
       threadId: options.existingThreadId,
       botToken,
     })
@@ -1276,13 +1194,7 @@ export async function createEventDiscussionThread(options: {
   })
 
   if (!threadResponse.ok) {
-    const errorText = await threadResponse.text()
-    let errorBody = {}
-    try {
-      errorBody = JSON.parse(errorText)
-    } catch {
-      errorBody = { raw: errorText }
-    }
+    const errorBody = await parseDiscordErrorBody(threadResponse)
     logger.error(
       '❌ Failed to create event discussion thread: %d %s: %o',
       threadResponse.status,
@@ -1479,14 +1391,7 @@ export async function createOrUpdateTeamThread(options: {
                   components: [
                     {
                       type: 1,
-                      components: [
-                        {
-                          type: 2,
-                          style: 5,
-                          label: 'View Main Event Thread',
-                          url: options.mainEventThreadUrl,
-                        },
-                      ],
+                      components: [buildMainEventThreadButton(options.mainEventThreadUrl)],
                     },
                   ],
                 }
@@ -1560,14 +1465,7 @@ export async function createOrUpdateTeamThread(options: {
               components: [
                 {
                   type: 1,
-                  components: [
-                    {
-                      type: 2,
-                      style: 5,
-                      label: 'View Main Event Thread',
-                      url: options.mainEventThreadUrl,
-                    },
-                  ],
+                  components: [buildMainEventThreadButton(options.mainEventThreadUrl)],
                 },
               ],
             }
@@ -1577,13 +1475,7 @@ export async function createOrUpdateTeamThread(options: {
   })
 
   if (!threadResponse.ok) {
-    const errorText = await threadResponse.text()
-    let errorBody = {}
-    try {
-      errorBody = JSON.parse(errorText)
-    } catch {
-      errorBody = { raw: errorText }
-    }
+    const errorBody = await parseDiscordErrorBody(threadResponse)
     logger.error(
       '❌ Failed to create team thread: %d %s: %o',
       threadResponse.status,

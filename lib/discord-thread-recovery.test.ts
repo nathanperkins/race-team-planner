@@ -141,6 +141,7 @@ describe('discord thread recovery', () => {
       ok: true,
       status: 200,
       statusText: 'OK',
+      json: async () => ({ parent_id: 'fake-channel-id' }),
     } as Response)
 
     const threadId = await createEventDiscussionThread({

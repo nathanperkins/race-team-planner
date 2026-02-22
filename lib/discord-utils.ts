@@ -1007,6 +1007,29 @@ export function buildRosterChangesEmbed(
   }
 }
 
+/** Build a "Join Event" link button component for Discord action rows. */
+export function buildJoinEventButton(url: string) {
+  return { type: 2, style: 5, label: 'Join Event', url }
+}
+
+/** Build a "View Main Event Thread" link button component for Discord action rows. */
+export function buildMainEventThreadButton(url: string) {
+  return { type: 2, style: 5, label: 'View Main Event Thread', url }
+}
+
+/**
+ * Parse a failed Discord API response body.
+ * Returns parsed JSON if the body is valid JSON, otherwise returns `{ raw: text }`.
+ */
+export async function parseDiscordErrorBody(response: Response): Promise<Record<string, unknown>> {
+  const errorText = await response.text()
+  try {
+    return JSON.parse(errorText) as Record<string, unknown>
+  } catch {
+    return { raw: errorText }
+  }
+}
+
 export function buildOnboardingEmbed(data: OnboardingNotificationData, appTitle: string) {
   const embed: {
     title: string
