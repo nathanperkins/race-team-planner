@@ -1758,6 +1758,32 @@ describe('createOrUpdateTeamThread', () => {
     vi.restoreAllMocks()
   })
 
+  it('sets auto_archive_duration to 2880 minutes (2 days) when creating a team thread', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 'thread-id' }),
+      } as Response)
+      .mockResolvedValue({ ok: true, status: 204 } as Response)
+
+    await createOrUpdateTeamThread({
+      teamName: 'Team Alpha',
+      eventName: 'GT3 Challenge',
+      raceStartTime: new Date('2026-02-15T18:00:00Z'),
+      members: [],
+    })
+
+    const threadCreateCall = vi
+      .mocked(fetch)
+      .mock.calls.find(
+        ([url, opts]) => url?.toString().endsWith('/threads') && opts?.method === 'POST'
+      )
+    expect(threadCreateCall).toBeDefined()
+    const body = JSON.parse(threadCreateCall![1]!.body as string)
+    expect(body.auto_archive_duration).toBe(2880)
+  })
+
   it('should add all users to a newly created team thread', async () => {
     const mockThreadId = 'new-team-thread-123'
 
@@ -2127,6 +2153,32 @@ describe('createOrUpdateEventThread', () => {
     vi.restoreAllMocks()
   })
 
+  it('sets auto_archive_duration to 2880 minutes (2 days) when creating an event thread', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 'thread-id' }),
+      } as Response)
+      .mockResolvedValue({ ok: true, status: 204 } as Response)
+
+    await createOrUpdateEventThread({
+      eventName: 'GT3 Challenge',
+      raceUrl: 'https://example.com/race',
+      carClasses: ['GT3'],
+      timeslots: [{ raceStartTime: new Date('2026-02-15T18:00:00Z'), teams: [], unassigned: [] }],
+    })
+
+    const threadCreateCall = vi
+      .mocked(fetch)
+      .mock.calls.find(
+        ([url, opts]) => url?.toString().endsWith('/threads') && opts?.method === 'POST'
+      )
+    expect(threadCreateCall).toBeDefined()
+    const body = JSON.parse(threadCreateCall![1]!.body as string)
+    expect(body.auto_archive_duration).toBe(2880)
+  })
+
   it('should add all users to a newly created event thread', async () => {
     const mockThreadId = 'new-thread-123'
 
@@ -2453,6 +2505,35 @@ describe('createEventDiscussionThread', () => {
     vi.unstubAllEnvs()
     vi.unstubAllGlobals()
     vi.restoreAllMocks()
+  })
+
+  it('sets auto_archive_duration to 2880 minutes (2 days) when creating a discussion thread', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ parent_id: null }),
+        text: async () => '',
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 'thread-id' }),
+      } as Response)
+
+    await createEventDiscussionThread({
+      eventName: 'GT3 Challenge',
+      eventStartTime: new Date('2026-02-15T18:00:00Z'),
+    })
+
+    const threadCreateCall = vi
+      .mocked(fetch)
+      .mock.calls.find(
+        ([url, opts]) => url?.toString().endsWith('/threads') && opts?.method === 'POST'
+      )
+    expect(threadCreateCall).toBeDefined()
+    const body = JSON.parse(threadCreateCall![1]!.body as string)
+    expect(body.auto_archive_duration).toBe(2880)
   })
 
   it('returns null when DISCORD_BOT_TOKEN is not configured', async () => {

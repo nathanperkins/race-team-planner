@@ -25,6 +25,9 @@ const DISCORD_API_BASE = 'https://discord.com/api/v10'
 
 const DISCORD_RETRY_CONFIG = { retries: 3, minTimeout: 100, maxTimeout: 2000, factor: 2 }
 
+/** Auto-archive duration for Discord threads in minutes (2 days = 2880). */
+const THREAD_AUTO_ARCHIVE_DURATION = 2880
+
 async function getDiscordThreadParentInfo(options: { threadId: string; botToken: string }) {
   return pRetry(async () => {
     const response = await fetch(`${DISCORD_API_BASE}/channels/${options.threadId}`, {
@@ -1025,7 +1028,7 @@ export async function createOrUpdateEventThread(data: {
         },
         body: JSON.stringify({
           name: threadName,
-          auto_archive_duration: 10080,
+          auto_archive_duration: THREAD_AUTO_ARCHIVE_DURATION,
           message: {
             content: undefined,
             embeds,
@@ -1145,7 +1148,7 @@ export async function createEventDiscussionThread(options: {
     },
     body: JSON.stringify({
       name: threadName,
-      auto_archive_duration: 10080,
+      auto_archive_duration: THREAD_AUTO_ARCHIVE_DURATION,
       message: {
         embeds: [
           {
@@ -1457,7 +1460,7 @@ export async function createOrUpdateTeamThread(options: {
     },
     body: JSON.stringify({
       name: threadName,
-      auto_archive_duration: 10080,
+      auto_archive_duration: THREAD_AUTO_ARCHIVE_DURATION,
       message: {
         embeds: [buildTeamEmbed()],
         ...(options.mainEventThreadUrl
