@@ -45,6 +45,7 @@ jobs:
         run: npm test -- --run
 
   integration-tests:
+    needs: build-and-lint
     runs-on: ubuntu-latest
     services:
       postgres:
