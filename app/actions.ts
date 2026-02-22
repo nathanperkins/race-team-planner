@@ -1594,18 +1594,20 @@ async function updateRaceSettings(
   raceId: string,
   maxDriversPerTeam: number | null,
   teamAssignmentStrategy: TeamAssignmentStrategy | null,
-  teamsWereAssigned: boolean
+  teamsWereAssigned: boolean,
+  alreadyAssigned: boolean
 ): Promise<void> {
+  const teamsAssigned = alreadyAssigned || teamsWereAssigned
   await prisma.race.update({
     where: { id: raceId },
     data: {
       maxDriversPerTeam,
       teamAssignmentStrategy: teamAssignmentStrategy || undefined,
-      teamsAssigned: teamsWereAssigned,
+      teamsAssigned,
     },
   })
 
-  if (teamsWereAssigned) {
+  if (teamsAssigned) {
     try {
       await sendTeamsAssignmentNotification(raceId)
     } catch (notificationError) {
@@ -1791,7 +1793,13 @@ export async function saveRaceEdits(formData: FormData) {
           race.endTime
         )
       }
-      await updateRaceSettings(raceId, maxDriversPerTeam, teamAssignmentStrategy, teamsWereAssigned)
+      await updateRaceSettings(
+        raceId,
+        maxDriversPerTeam,
+        teamAssignmentStrategy,
+        teamsWereAssigned,
+        race.teamsAssigned
+      )
     }
 
     revalidatePath('/events')
