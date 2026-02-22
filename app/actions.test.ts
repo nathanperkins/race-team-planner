@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   adminRegisterDriver,
   deleteRegistration,
+  loadRaceAssignmentData,
   registerForRace,
   saveRaceEdits,
   sendTeamsAssignmentNotification,
@@ -503,6 +504,148 @@ describe('sendTeamsAssignmentNotification', () => {
 
     // Verify no chat notification was sent
     expect(sendTeamsAssignedNotification).not.toHaveBeenCalled()
+  })
+})
+
+describe('loadRaceAssignmentData', () => {
+  const raceId = 'race-123'
+
+  const mockRace = {
+    id: raceId,
+    startTime: new Date('2024-05-01T20:00:00Z'),
+    teamsAssigned: false,
+    discordTeamsThreadId: null,
+    discordTeamsSnapshot: null,
+    discordTeamThreads: null,
+    event: {
+      id: 'event-123',
+      name: 'GT3 Challenge',
+      track: 'Spa',
+      trackConfig: 'Endurance',
+      tempValue: 75,
+      precipChance: 10,
+      carClasses: [{ name: 'GT3' }],
+      customCarClasses: [],
+    },
+  }
+
+  const makeSibling = (id: string, teamsAssigned: boolean, startTime = new Date()) => ({
+    id,
+    startTime,
+    discordTeamThreads: null,
+    teamsAssigned,
+  })
+
+  const makeReg = (id: string, siblingRaceId: string) => ({
+    id: `reg-${id}`,
+    raceId: siblingRaceId,
+    teamId: null,
+    carClassId: 'class-1',
+    userId: `user-${id}`,
+    manualDriverId: null,
+    team: null,
+    carClass: { id: 'class-1', name: 'GT3', shortName: 'GT3' },
+    user: { name: `User ${id}`, accounts: [], racerStats: [] },
+    manualDriver: null,
+  })
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(prisma.race.findUnique).mockResolvedValue(mockRace as any)
+    vi.mocked(prisma.registration.findMany).mockResolvedValue([])
+    vi.mocked(prisma.team.findMany).mockResolvedValue([])
+    vi.mocked(prisma.race.findFirst).mockResolvedValue(null)
+    vi.mocked(prisma.race.findMany).mockResolvedValue([])
+  })
+
+  it('throws when race is not found', async () => {
+    vi.mocked(prisma.race.findUnique).mockResolvedValue(null)
+    await expect(loadRaceAssignmentData(raceId)).rejects.toThrow('Race not found')
+  })
+
+  it('throws when race has no event', async () => {
+    vi.mocked(prisma.race.findUnique).mockResolvedValue({ ...mockRace, event: null } as any)
+    await expect(loadRaceAssignmentData(raceId)).rejects.toThrow('Race not found')
+  })
+
+  it('returns correctly structured data when no siblings exist', async () => {
+    const result = await loadRaceAssignmentData(raceId)
+    expect(result.raceWithEvent.id).toBe(raceId)
+    expect(result.raceWithEvent.event.id).toBe('event-123')
+    expect(result.registrations).toEqual([])
+    expect(result.allTeams).toEqual([])
+    expect(result.existingEventThreadRecord).toBeNull()
+    expect(result.siblingRaces).toEqual([])
+    expect(result.siblingRaceRegistrations).toEqual([])
+  })
+
+  it('only queries registrations for sibling races that have teams assigned', async () => {
+    const assigned = makeSibling('sibling-assigned', true)
+    const unassigned = makeSibling('sibling-unassigned', false)
+    vi.mocked(prisma.race.findMany).mockResolvedValue([assigned, unassigned] as any)
+
+    await loadRaceAssignmentData(raceId)
+
+    // First findMany is for current race registrations (inside Promise.all),
+    // second is for sibling registrations
+    expect(prisma.registration.findMany).toHaveBeenCalledTimes(2)
+    expect(prisma.registration.findMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        where: { raceId: { in: ['sibling-assigned'] } },
+      })
+    )
+  })
+
+  it('groups sibling registrations by raceId matching siblingRaces order', async () => {
+    const sibling1 = makeSibling('sibling-1', true, new Date('2024-05-01'))
+    const sibling2 = makeSibling('sibling-2', true, new Date('2024-06-01'))
+    vi.mocked(prisma.race.findMany).mockResolvedValue([sibling1, sibling2] as any)
+
+    const siblingRegs = [
+      makeReg('a', 'sibling-1'),
+      makeReg('b', 'sibling-2'),
+      makeReg('c', 'sibling-1'),
+    ]
+    vi.mocked(prisma.registration.findMany)
+      .mockResolvedValueOnce([]) // current race registrations
+      .mockResolvedValueOnce(siblingRegs as any) // sibling registrations
+
+    const result = await loadRaceAssignmentData(raceId)
+
+    expect(result.siblingRaceRegistrations).toHaveLength(2)
+    expect(result.siblingRaceRegistrations[0].raceId).toBe('sibling-1')
+    expect(result.siblingRaceRegistrations[0].registrations).toHaveLength(2)
+    expect(result.siblingRaceRegistrations[1].raceId).toBe('sibling-2')
+    expect(result.siblingRaceRegistrations[1].registrations).toHaveLength(1)
+  })
+
+  it('excludes unassigned sibling races from siblingRaceRegistrations', async () => {
+    const assigned = makeSibling('sibling-assigned', true)
+    const unassigned = makeSibling('sibling-unassigned', false)
+    vi.mocked(prisma.race.findMany).mockResolvedValue([assigned, unassigned] as any)
+
+    vi.mocked(prisma.registration.findMany)
+      .mockResolvedValueOnce([]) // current race
+      .mockResolvedValueOnce([makeReg('a', 'sibling-assigned')] as any) // siblings
+
+    const result = await loadRaceAssignmentData(raceId)
+
+    // Only the assigned sibling appears in siblingRaceRegistrations
+    expect(result.siblingRaceRegistrations).toHaveLength(1)
+    expect(result.siblingRaceRegistrations[0].raceId).toBe('sibling-assigned')
+    // The unassigned sibling is still present in siblingRaces (for empty timeslot rendering)
+    expect(result.siblingRaces).toHaveLength(2)
+  })
+
+  it('returns existingEventThreadRecord when another race in the event has a thread', async () => {
+    vi.mocked(prisma.race.findFirst).mockResolvedValue({
+      discordTeamsThreadId: 'existing-thread-999',
+    } as any)
+
+    const result = await loadRaceAssignmentData(raceId)
+
+    expect(result.existingEventThreadRecord?.discordTeamsThreadId).toBe('existing-thread-999')
   })
 })
 
