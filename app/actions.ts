@@ -2286,12 +2286,9 @@ export async function loadRaceAssignmentData(raceId: string): Promise<RaceAssign
   // Load data in parallel after getting the base race information
   const [currentRegistrations, allTeams, existingEventThreadRecord, siblingRaces] =
     await Promise.all([
-      // Load registrations for the current race with teams assigned
+      // Load all registrations for the current race, including unassigned drivers
       prisma.registration.findMany({
-        where: {
-          raceId,
-          teamId: { not: null },
-        },
+        where: { raceId },
         include: registrationInclude,
       }),
 

@@ -493,6 +493,39 @@ describe('sendTeamsAssignmentNotification', () => {
     )
   })
 
+  it('includes unassigned drivers in the event thread notification', async () => {
+    const mockRace = setupMockRace({ teamsAssigned: true })
+    const unassignedDriver = setupMockRegistration('unassigned', null)
+    const assignedDriver = setupMockRegistration('assigned', 'team-1', 'Team One')
+
+    vi.mocked(prisma.race.findUnique).mockResolvedValue(mockRace as any)
+    // Simulate DB filter: return nothing when teamId filter is applied, full list otherwise.
+    // This makes the test fail when the bug is present and pass when it is fixed.
+    vi.mocked(prisma.registration.findMany).mockImplementation(async (query: any) => {
+      if (query?.where?.teamId) return []
+      return [assignedDriver, unassignedDriver] as any
+    })
+    vi.mocked(createOrUpdateTeamThread).mockResolvedValue('team-thread-1')
+    vi.mocked(createOrUpdateEventThread).mockResolvedValue({
+      ok: true,
+      threadId: 'event-thread-id',
+    })
+
+    await sendTeamsAssignmentNotification(raceId)
+
+    expect(createOrUpdateEventThread).toHaveBeenCalledWith(
+      expect.objectContaining({
+        timeslots: expect.arrayContaining([
+          expect.objectContaining({
+            unassigned: expect.arrayContaining([
+              expect.objectContaining({ name: 'User unassigned' }),
+            ]),
+          }),
+        ]),
+      })
+    )
+  })
+
   it('does not send notification when no teams are assigned', async () => {
     // No teams assigned - all registrations are unassigned
     const mockRace = setupMockRace()
@@ -1505,10 +1538,7 @@ describe('adminRegisterDriver', () => {
     expect(result.message).toBe('Success')
     expect(prisma.registration.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: {
-          raceId: 'race-123',
-          teamId: { not: null },
-        },
+        where: { raceId: 'race-123' },
       })
     )
     expect(createOrUpdateEventThread).toHaveBeenCalled()
