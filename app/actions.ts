@@ -1392,6 +1392,9 @@ async function processTeamEdits(
       data: teamsData,
     })
 
+    // TODO: Avoid this follow-up findMany by pre-generating UUIDs client-side
+    // and passing them as `id` fields in the createMany data, which would reduce
+    // new team creation from 2 round-trips to 1.
     // Fetch all teams created in this batch to get their IDs
     const createdTeams = await prisma.team.findMany({
       where: {
