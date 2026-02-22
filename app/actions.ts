@@ -744,7 +744,7 @@ export async function deleteRegistration(registrationId: string): Promise<void> 
 
     // If the dropped race has no Discord thread, look for one from a sibling race in the
     // event. Run in parallel with the delete so there's no extra latency in that case.
-    const eventThreadFallback = registration.race.discordTeamsThreadId
+    const eventThreadFallbackPromise = registration.race.discordTeamsThreadId
       ? Promise.resolve(null)
       : prisma.race.findFirst({
           where: {
@@ -758,13 +758,12 @@ export async function deleteRegistration(registrationId: string): Promise<void> 
 
     // Emit roster-change notifications for user/admin drops without blocking the drop flow.
     try {
+      const eventThreadFallback = await eventThreadFallbackPromise
       const eventThreadId =
-        registration.race.discordTeamsThreadId ??
-        (await eventThreadFallback)?.discordTeamsThreadId ??
-        null
+        registration.race.discordTeamsThreadId ?? eventThreadFallback?.discordTeamsThreadId ?? null
       const teamThreads =
         (registration.race.discordTeamThreads as Record<string, string> | null) ??
-        ((await eventThreadFallback)?.discordTeamThreads as Record<string, string> | null) ??
+        (eventThreadFallback?.discordTeamThreads as Record<string, string> | null) ??
         {}
       if (eventThreadId) {
         const rosterUpdate = prisma.team
