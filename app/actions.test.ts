@@ -2113,6 +2113,24 @@ describe('saveRaceEdits - registration operations', () => {
     expect(prisma.race.update).not.toHaveBeenCalled()
   })
 
+  it('preserves teamsAssigned=true in DB when admin saves with no team assignments in this request', async () => {
+    vi.mocked(prisma.race.findUnique).mockResolvedValue({
+      ...mockRace,
+      teamsAssigned: true,
+    } as any)
+
+    const fd = baseFormData()
+    fd.set('maxDriversPerTeam', '3')
+
+    await saveRaceEdits(fd)
+
+    expect(prisma.race.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ teamsAssigned: true }),
+      })
+    )
+  })
+
   it('runs rebalancing before updating race settings when applyRebalance is true', async () => {
     const calls: string[] = []
 
