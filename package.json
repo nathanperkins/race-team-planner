@@ -20,7 +20,9 @@
     "postinstall": "husky && npm run setup-env",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "db:test": "docker compose up -d db-test"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
