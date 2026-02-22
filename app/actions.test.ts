@@ -526,6 +526,46 @@ describe('sendTeamsAssignmentNotification', () => {
     )
   })
 
+  it('includes an empty timeslot for sibling races that have not yet had teams assigned', async () => {
+    const siblingStartTime = new Date('2026-02-12T20:00:00Z') // a second timeslot
+    const mockRace = setupMockRace({ teamsAssigned: true })
+    vi.mocked(prisma.race.findUnique).mockResolvedValue(mockRace as any)
+    vi.mocked(prisma.registration.findMany).mockResolvedValue([
+      setupMockRegistration('1', 'team-1', 'Team One'),
+    ] as any)
+    // Simulate DB filter: when teamsAssigned:true is applied, the unassigned sibling is
+    // excluded. Without the filter it is returned, enabling the empty-timeslot branch.
+    vi.mocked(prisma.race.findMany).mockImplementation(async (query: any) => {
+      if (query?.where?.teamsAssigned === true) return []
+      return [
+        {
+          id: 'sibling-race-1',
+          startTime: siblingStartTime,
+          teamsAssigned: false,
+          discordTeamThreads: null,
+        },
+      ] as any
+    })
+    vi.mocked(createOrUpdateTeamThread).mockResolvedValue('team-thread-1')
+    vi.mocked(createOrUpdateEventThread).mockResolvedValue({
+      ok: true,
+      threadId: 'event-thread-id',
+    })
+
+    await sendTeamsAssignmentNotification(raceId)
+
+    expect(createOrUpdateEventThread).toHaveBeenCalledWith(
+      expect.objectContaining({
+        timeslots: expect.arrayContaining([
+          expect.objectContaining({
+            raceStartTime: siblingStartTime,
+            teams: [],
+          }),
+        ]),
+      })
+    )
+  })
+
   it('does not send notification when no teams are assigned', async () => {
     // No teams assigned - all registrations are unassigned
     const mockRace = setupMockRace()
