@@ -50,6 +50,7 @@ async function getOtherRegisteredDriversForRace(
         user: {
           select: {
             name: true,
+            image: true,
             accounts: {
               where: { provider: 'discord' },
               select: { providerAccountId: true },
@@ -59,6 +60,7 @@ async function getOtherRegisteredDriversForRace(
         manualDriver: {
           select: {
             name: true,
+            irating: true,
           },
         },
       },
@@ -68,7 +70,7 @@ async function getOtherRegisteredDriversForRace(
     .map((reg) => {
       const name = reg.user?.name || reg.manualDriver?.name || ''
       if (!name) return null
-      const carClassName = reg.carClass.shortName || reg.carClass.name
+      const carClassName = reg.carClass?.shortName || reg.carClass?.name || ''
       if (!carClassName) return null
       const discordId = reg.user?.accounts?.[0]?.providerAccountId
       return {
@@ -1139,6 +1141,582 @@ export async function updateRaceTeamSettings(formData: FormData) {
   return { message: 'Success' }
 }
 
+/**
+ * Dedicated data loading functions to avoid duplication across helper functions
+ * Each function loads only the specific fields needed by the calling functions
+ */
+
+/**
+ * Loads team data for use in team operations
+ * If raceId is provided, only loads teams that are used in that race
+ */
+async function loadTeamsData(
+  raceId?: string
+): Promise<Array<{ id: string; name: string; iracingTeamId: number | null }>> {
+  const whereClause = raceId
+    ? {
+        registrations: {
+          some: {
+            raceId: raceId,
+          },
+        },
+      }
+    : {}
+
+  return await prisma.team.findMany({
+    where: whereClause,
+    select: {
+      id: true,
+      name: true,
+      iracingTeamId: true,
+    },
+  })
+}
+
+/**
+ * Loads users by their IDs
+ */
+async function loadUsersByIds(userIds: string[]): Promise<Array<{ id: string }>> {
+  if (userIds.length === 0) return []
+  return await prisma.user.findMany({
+    where: { id: { in: userIds } },
+    select: { id: true },
+  })
+}
+
+/**
+ * Loads manual drivers by their IDs
+ */
+async function loadManualDriversByIds(manualDriverIds: string[]): Promise<Array<{ id: string }>> {
+  if (manualDriverIds.length === 0) return []
+  return await prisma.manualDriver.findMany({
+    where: { id: { in: manualDriverIds } },
+    select: { id: true },
+  })
+}
+
+/**
+ * Loads race data with team information
+ */
+async function loadRaceWithTeams(raceId: string) {
+  return await prisma.race.findUnique({
+    where: { id: raceId },
+    select: {
+      teamsAssigned: true,
+      registrations: {
+        where: { teamId: { not: null } },
+        take: 1,
+        select: { id: true },
+      },
+    },
+  })
+}
+
+/**
+ * Loads registrations by their IDs
+ */
+async function loadRegistrationsByIds(registrationIds: string[]) {
+  if (registrationIds.length === 0) return []
+  return await prisma.registration.findMany({
+    where: { id: { in: registrationIds } },
+    select: {
+      id: true,
+      userId: true,
+      raceId: true,
+      teamId: true,
+    },
+  })
+}
+
+/**
+ * Loads car class IDs for a race
+ */
+async function loadCarClassIdsForRace(raceId: string) {
+  return await prisma.registration.findMany({
+    where: { raceId },
+    select: { carClassId: true },
+    distinct: ['carClassId'],
+  })
+}
+
+/**
+ * Loads registration existence for multiple user-race pairs in batch
+ */
+async function loadUserRegistrationExistenceBatch(
+  raceId: string,
+  userIds: string[]
+): Promise<Array<string>> {
+  if (userIds.length === 0) return []
+  const registrations = await prisma.registration.findMany({
+    where: {
+      raceId,
+      userId: { in: userIds },
+    },
+    select: { id: true, userId: true },
+  })
+  const resultMap = new Map<string, string>()
+  userIds.forEach((userId) => resultMap.set(userId, ''))
+  registrations.forEach((reg) => resultMap.set(reg.userId!, reg.id))
+  return userIds.map((userId) => {
+    const result = resultMap.get(userId)
+    return result !== undefined ? result : ''
+  })
+}
+
+/**
+ * Loads registration existence for multiple manual driver-race pairs in batch
+ */
+async function loadManualDriverRegistrationExistenceBatch(
+  raceId: string,
+  manualDriverIds: string[]
+): Promise<Array<string>> {
+  if (manualDriverIds.length === 0) return []
+  const registrations = await prisma.registration.findMany({
+    where: {
+      raceId,
+      manualDriverId: { in: manualDriverIds },
+    },
+    select: { id: true, manualDriverId: true },
+  })
+  const resultMap = new Map<string, string>()
+  manualDriverIds.forEach((manualDriverId) => resultMap.set(manualDriverId, ''))
+  registrations.forEach((reg) => resultMap.set(reg.manualDriverId!, reg.id))
+  return manualDriverIds.map((manualDriverId) => {
+    const result = resultMap.get(manualDriverId)
+    return result !== undefined ? result : ''
+  })
+}
+
+/**
+ * Helper function to handle team name overrides and new team creation
+ * Runs in parallel for maximum performance
+ */
+
+/**
+ * Handles team name overrides and new team creation
+ * Runs operations in parallel for maximum performance
+ */
+async function processTeamEdits(
+  isAdmin: boolean,
+  newTeams: Array<{ id: string; name: string }>,
+  teamNameOverrides: Record<string, string>,
+  race: {
+    id: string
+    discordTeamThreads: Prisma.JsonValue | null
+  }
+): Promise<Map<string, string>> {
+  if (!isAdmin) return new Map()
+
+  const teamOperations: Promise<unknown>[] = []
+  const tempTeamMap = new Map<string, string>()
+
+  // Fetch existing teams data once for both rename and new team operations
+  let existingTeamsData: Array<{ id: string; name: string; iracingTeamId: number | null }> = []
+  if (Object.keys(teamNameOverrides).length > 0 || newTeams.length > 0) {
+    existingTeamsData = await loadTeamsData(race.id)
+  }
+
+  // Handle team name overrides
+  if (Object.keys(teamNameOverrides).length > 0) {
+    const existingTeamNames = new Set(existingTeamsData.map((team) => team.name))
+    const teamById = new Map(existingTeamsData.map((team) => [team.id, team]))
+
+    const renameUpdates: Array<{ id: string; name: string }> = []
+
+    for (const [teamId, rawName] of Object.entries(teamNameOverrides)) {
+      const current = teamById.get(teamId)
+      if (!current) continue
+      let name = rawName.trim() || 'Team'
+      if (name === current.name) continue
+      existingTeamNames.delete(current.name)
+      if (existingTeamNames.has(name)) {
+        let suffix = 2
+        while (existingTeamNames.has(`${name} ${suffix}`)) {
+          suffix += 1
+        }
+        name = `${name} ${suffix}`
+      }
+      existingTeamNames.add(name)
+      renameUpdates.push({ id: teamId, name })
+    }
+
+    // Check if any teams being renamed have Discord threads
+    const threadMap = race.discordTeamThreads as Record<string, string> | null
+    if (threadMap) {
+      for (const update of renameUpdates) {
+        if (threadMap[update.id]) {
+          throw new Error(
+            'Cannot rename team: Discord thread already exists for this team. Team names are immutable after thread creation to prevent confusion.'
+          )
+        }
+      }
+    }
+
+    // Batch team rename updates
+    if (renameUpdates.length > 0) {
+      teamOperations.push(
+        prisma.$transaction(
+          renameUpdates.map((update) =>
+            prisma.team.update({
+              where: { id: update.id },
+              data: { name: update.name },
+            })
+          )
+        )
+      )
+    }
+  }
+
+  // Handle new teams
+  if (newTeams.length > 0) {
+    const existingTeamNames = new Set(existingTeamsData.map((team) => team.name))
+    const existingTeamIds = new Set(
+      existingTeamsData
+        .map((team) => team.iracingTeamId)
+        .filter((value): value is number => typeof value === 'number')
+    )
+    let baseId = -Math.floor(Date.now() / 1000)
+
+    const teamsToCreate = newTeams.map((team) => {
+      let name = team.name.trim() || 'Team'
+      if (existingTeamNames.has(name)) {
+        let suffix = 2
+        while (existingTeamNames.has(`${name} ${suffix}`)) {
+          suffix += 1
+        }
+        name = `${name} ${suffix}`
+      }
+      existingTeamNames.add(name)
+
+      while (existingTeamIds.has(baseId)) {
+        baseId -= 1
+      }
+      const iracingTeamId = baseId
+      baseId -= 1
+      existingTeamIds.add(iracingTeamId)
+
+      return {
+        name,
+        iracingTeamId,
+        tempId: team.id,
+      }
+    })
+
+    // Create all teams in a single batch (remove tempId from data)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const teamsData = teamsToCreate.map(({ tempId: _, ...rest }) => rest)
+    await prisma.team.createMany({
+      data: teamsData,
+    })
+
+    // Fetch all teams created in this batch to get their IDs
+    const createdTeams = await prisma.team.findMany({
+      where: {
+        iracingTeamId: {
+          in: teamsToCreate.map((t) => t.iracingTeamId),
+        },
+      },
+      select: { id: true, iracingTeamId: true },
+    })
+
+    // Map tempIds to actual team IDs
+    const createdTeamMap = new Map<number, string>(
+      createdTeams.map((team) => [team.iracingTeamId, team.id])
+    )
+
+    teamsToCreate.forEach((teamData, index) => {
+      if (teamData.tempId) {
+        const teamId = createdTeamMap.get(teamsData[index].iracingTeamId)
+        if (teamId) {
+          tempTeamMap.set(teamData.tempId, teamId)
+        }
+      }
+    })
+  }
+
+  // Execute team operations in parallel
+  if (teamOperations.length > 0) {
+    await Promise.all(teamOperations)
+  }
+
+  return tempTeamMap
+}
+
+/**
+ * Processes pending drops, additions, and updates
+ * Combines all registration operations into a single transaction for atomicity
+ */
+async function processRegistrationEdits(
+  isAdmin: boolean,
+  session: { user: { id: string } },
+  raceId: string,
+  pendingDrops: string[],
+  pendingAdditions: Array<{
+    tempId?: string
+    userId?: string | null
+    manualDriverId?: string | null
+    carClassId: string
+    teamId: string | null
+  }>,
+  updates: Array<{ id: string; carClassId: string; teamId: string | null }>,
+  tempTeamMap: Map<string, string> = new Map()
+): Promise<{ teamsWereAssigned: boolean }> {
+  const allRegistrationOperations: Prisma.PrismaPromise<unknown>[] = []
+  let teamsWereAssigned = false
+
+  // BATCHED PENDING DROPS
+  if (isAdmin && pendingDrops.length > 0) {
+    // Single query to fetch all registrations to drop
+    const regsToDrop = await prisma.registration.findMany({
+      where: { id: { in: pendingDrops } },
+      select: { id: true, userId: true, raceId: true },
+    })
+
+    const validRegsToDrop = regsToDrop.filter((reg) => reg.raceId === raceId)
+    if (validRegsToDrop.length > 0) {
+      validRegsToDrop.forEach((reg) => {
+        allRegistrationOperations.push(prisma.registration.delete({ where: { id: reg.id } }))
+      })
+    }
+  }
+
+  // BATCHED PENDING ADDITIONS
+  if (isAdmin && pendingAdditions.length > 0) {
+    // Extract IDs once
+    const userIds = pendingAdditions.filter((a) => a.userId).map((a) => a.userId!)
+    const manualDriverIds = pendingAdditions
+      .filter((a) => a.manualDriverId)
+      .map((a) => a.manualDriverId!)
+
+    // Fetch all required data in parallel using dedicated loaders
+    const [existingUsers, existingManualDrivers] = await Promise.all([
+      loadUsersByIds(userIds),
+      loadManualDriversByIds(manualDriverIds),
+    ])
+
+    const existingUserIds = new Set(existingUsers.map((u) => u.id))
+    const existingManualDriverIds = new Set(existingManualDrivers.map((d) => d.id))
+
+    // Check for non-existent users/drivers
+    for (const addition of pendingAdditions) {
+      if (addition.userId && !existingUserIds.has(addition.userId)) {
+        throw new Error(
+          'One of the selected drivers no longer exists. Please refresh and try again.'
+        )
+      }
+      if (addition.manualDriverId && !existingManualDriverIds.has(addition.manualDriverId)) {
+        throw new Error(
+          'One of the selected manual drivers no longer exists. Please refresh and try again.'
+        )
+      }
+    }
+
+    const userAdditions = pendingAdditions.filter((a) => a.userId)
+    const manualDriverAdditions = pendingAdditions.filter((a) => a.manualDriverId)
+
+    const userIdsForChecks = userAdditions.map((a) => a.userId!)
+    const manualDriverIdsForChecks = manualDriverAdditions.map((a) => a.manualDriverId!)
+
+    const [userExistingRegistrations, manualDriverExistingRegistrations] = await Promise.all([
+      loadUserRegistrationExistenceBatch(raceId, userIdsForChecks),
+      loadManualDriverRegistrationExistenceBatch(raceId, manualDriverIdsForChecks),
+    ])
+
+    const operations: Prisma.PrismaPromise<unknown>[] = []
+
+    // Handle user additions
+    userAdditions.forEach((addition, index) => {
+      const existingId = userExistingRegistrations[index]
+      const resolvedTeamId =
+        addition.teamId && tempTeamMap.has(addition.teamId)
+          ? tempTeamMap.get(addition.teamId)
+          : addition.teamId
+
+      // Track if any teams were assigned
+      if (resolvedTeamId) {
+        teamsWereAssigned = true
+      }
+
+      if (existingId) {
+        operations.push(
+          prisma.registration.update({
+            where: { id: existingId },
+            data: { carClassId: addition.carClassId, teamId: resolvedTeamId },
+          })
+        )
+      } else {
+        operations.push(
+          prisma.registration.create({
+            data: {
+              userId: addition.userId,
+              raceId,
+              carClassId: addition.carClassId,
+              teamId: resolvedTeamId,
+            },
+          })
+        )
+      }
+    })
+
+    // Handle manual driver additions
+    manualDriverAdditions.forEach((addition, index) => {
+      const existingId = manualDriverExistingRegistrations[index]
+      const resolvedTeamId =
+        addition.teamId && tempTeamMap.has(addition.teamId)
+          ? tempTeamMap.get(addition.teamId)
+          : addition.teamId
+
+      // Track if any teams were assigned
+      if (resolvedTeamId) {
+        teamsWereAssigned = true
+      }
+
+      if (existingId) {
+        operations.push(
+          prisma.registration.update({
+            where: { id: existingId },
+            data: { carClassId: addition.carClassId, teamId: resolvedTeamId },
+          })
+        )
+      } else {
+        operations.push(
+          prisma.registration.create({
+            data: {
+              manualDriverId: addition.manualDriverId,
+              raceId,
+              carClassId: addition.carClassId,
+              teamId: resolvedTeamId,
+            },
+          })
+        )
+      }
+    })
+
+    operations.forEach((op) => allRegistrationOperations.push(op))
+  }
+
+  // BATCHED REGISTRATION UPDATES
+  if (updates.length > 0) {
+    // Create lookup sets once
+    const droppedIdSet = new Set(pendingDrops)
+    const updateIds = updates.map((u) => u.id)
+
+    // Single query to fetch all registrations that need updating
+    const regs = await loadRegistrationsByIds(updateIds)
+
+    const regMap = new Map(regs.map((reg) => [reg.id, reg]))
+    const operations: Prisma.PrismaPromise<unknown>[] = []
+
+    for (const update of updates) {
+      if (droppedIdSet.has(update.id)) continue
+      const reg = regMap.get(update.id)
+      if (!reg) continue
+      if (reg.raceId !== raceId) continue
+      if (!isAdmin && reg.userId !== session.user.id) continue
+
+      const resolvedTeamId =
+        update.teamId && tempTeamMap.has(update.teamId)
+          ? tempTeamMap.get(update.teamId)
+          : update.teamId
+
+      // Track if any teams were assigned
+      if (resolvedTeamId) {
+        teamsWereAssigned = true
+      }
+
+      operations.push(
+        prisma.registration.update({
+          where: { id: update.id },
+          data: {
+            carClassId: update.carClassId,
+            teamId: resolvedTeamId,
+          },
+        })
+      )
+    }
+
+    operations.forEach((op) => allRegistrationOperations.push(op))
+  }
+
+  // Execute all registration operations in a single transaction
+  if (allRegistrationOperations.length > 0) {
+    await prisma.$transaction(allRegistrationOperations)
+  }
+
+  return { teamsWereAssigned }
+}
+
+/**
+ * Updates race settings and sends notifications if teams are assigned
+ */
+async function updateRaceSettings(
+  isAdmin: boolean,
+  raceId: string,
+  maxDriversPerTeam: number | null,
+  teamAssignmentStrategy: TeamAssignmentStrategy | null,
+  raceData?: {
+    teamsAssigned: boolean | null
+    registrations?: Array<{ id: string }>
+  }
+): Promise<void> {
+  if (!isAdmin) return
+
+  // Use provided race data if available, otherwise load it
+  const raceDataToUse = raceData ?? (await loadRaceWithTeams(raceId))
+
+  // Check if teams are actually assigned by looking at registrations
+  const hasRegistrationsWithTeams = (raceDataToUse?.registrations?.length ?? 0) > 0
+  const shouldSendNotification = hasRegistrationsWithTeams
+
+  await prisma.race.update({
+    where: { id: raceId },
+    data: {
+      maxDriversPerTeam,
+      teamAssignmentStrategy: teamAssignmentStrategy || undefined,
+      teamsAssigned: shouldSendNotification,
+    },
+  })
+
+  if (shouldSendNotification) {
+    try {
+      await sendTeamsAssignmentNotification(raceId)
+    } catch (notificationError) {
+      logger.error({ err: notificationError }, 'Failed to send teams assigned notification')
+    }
+  }
+}
+
+/**
+ * Applies team rebalancing across all car classes in parallel
+ */
+async function applyTeamRebalancing(
+  isAdmin: boolean,
+  raceId: string,
+  rawApplyRebalance: string,
+  maxDriversPerTeam: number | null,
+  teamAssignmentStrategy: TeamAssignmentStrategy | null,
+  raceStartTime: Date,
+  raceEndTime: Date
+): Promise<void> {
+  if (!isAdmin || rawApplyRebalance !== 'true') return
+
+  const resolvedMaxDrivers =
+    maxDriversPerTeam ??
+    getAutoMaxDriversPerTeam(getRaceDurationMinutes(raceStartTime, raceEndTime))
+
+  if (!resolvedMaxDrivers || resolvedMaxDrivers <= 0) return
+
+  // Single query to get all car class IDs for rebalancing
+  const classIds = await loadCarClassIdsForRace(raceId)
+
+  // Execute rebalancing for each class in parallel
+  await Promise.all(
+    classIds.map(({ carClassId }) =>
+      rebalanceTeamsForClass(raceId, carClassId, resolvedMaxDrivers, teamAssignmentStrategy)
+    )
+  )
+}
+
 export async function saveRaceEdits(formData: FormData) {
   try {
     const session = await auth()
@@ -1162,6 +1740,7 @@ export async function saveRaceEdits(formData: FormData) {
     const race = await prisma.race.findUnique({
       where: { id: raceId },
       select: {
+        id: true,
         startTime: true,
         endTime: true,
         eventId: true,
@@ -1246,241 +1825,60 @@ export async function saveRaceEdits(formData: FormData) {
 
     const isAdmin = session.user.role === 'ADMIN'
 
-    const tempTeamMap = new Map<string, string>()
-    const renameUpdates: Array<{ id: string; name: string }> = []
-    if (isAdmin && (newTeams.length > 0 || Object.keys(teamNameOverrides).length > 0)) {
-      const existingTeams = await prisma.team.findMany({
-        select: { id: true, name: true, iracingTeamId: true },
-      })
-      const existingTeamNames = new Set(existingTeams.map((team) => team.name))
-      const teamById = new Map(existingTeams.map((team) => [team.id, team]))
-
-      for (const [teamId, rawName] of Object.entries(teamNameOverrides)) {
-        const current = teamById.get(teamId)
-        if (!current) continue
-        let name = rawName.trim() || 'Team'
-        if (name === current.name) continue
-        existingTeamNames.delete(current.name)
-        if (existingTeamNames.has(name)) {
-          let suffix = 2
-          while (existingTeamNames.has(`${name} ${suffix}`)) {
-            suffix += 1
-          }
-          name = `${name} ${suffix}`
-        }
-        existingTeamNames.add(name)
-        renameUpdates.push({ id: teamId, name })
+    // Process team edits (name overrides and new teams)
+    let tempTeamMap: Map<string, string> = new Map()
+    try {
+      tempTeamMap = await processTeamEdits(isAdmin, newTeams, teamNameOverrides, race)
+    } catch (error) {
+      if (error instanceof Error) {
+        return { message: error.message }
       }
-      const existingTeamIds = new Set(
-        existingTeams
-          .map((team) => team.iracingTeamId)
-          .filter((value): value is number => typeof value === 'number')
+      return { message: 'Failed to process team edits' }
+    }
+
+    // Process registration edits (drops, additions, updates)
+    let teamsWereAssigned = false
+    try {
+      const result = await processRegistrationEdits(
+        isAdmin,
+        session,
+        raceId,
+        pendingDrops,
+        pendingAdditions,
+        updates,
+        tempTeamMap
       )
-      let baseId = -Math.floor(Date.now() / 1000)
-
-      for (const team of newTeams) {
-        let name = team.name.trim() || 'Team'
-        if (existingTeamNames.has(name)) {
-          let suffix = 2
-          while (existingTeamNames.has(`${name} ${suffix}`)) {
-            suffix += 1
-          }
-          name = `${name} ${suffix}`
-        }
-        existingTeamNames.add(name)
-
-        while (existingTeamIds.has(baseId)) {
-          baseId -= 1
-        }
-        const iracingTeamId = baseId
-        baseId -= 1
-        existingTeamIds.add(iracingTeamId)
-
-        const created = await prisma.team.create({
-          data: {
-            name,
-            iracingTeamId,
-          },
-          select: { id: true },
-        })
-        tempTeamMap.set(team.id, created.id)
+      teamsWereAssigned = result.teamsWereAssigned
+    } catch (error) {
+      if (error instanceof Error) {
+        return { message: error.message }
       }
+      return { message: 'Failed to process registration edits' }
     }
 
-    if (isAdmin && renameUpdates.length > 0) {
-      // Check if any teams being renamed have Discord threads
-      const threadMap = race.discordTeamThreads as Record<string, string> | null
-      if (threadMap) {
-        for (const update of renameUpdates) {
-          if (threadMap[update.id]) {
-            return {
-              message:
-                'Cannot rename team: Discord thread already exists for this team. Team names are immutable after thread creation to prevent confusion.',
-            }
-          }
-        }
-      }
-
-      await prisma.$transaction(
-        renameUpdates.map((update) =>
-          prisma.team.update({
-            where: { id: update.id },
-            data: { name: update.name },
-          })
-        )
-      )
+    // Update race settings - use the information we already have from registration edits
+    const raceDataForUpdate = {
+      teamsAssigned: teamsWereAssigned,
+      registrations: teamsWereAssigned ? [{ id: 'dummy' }] : [],
     }
+    await updateRaceSettings(
+      isAdmin,
+      raceId,
+      maxDriversPerTeam,
+      teamAssignmentStrategy,
+      raceDataForUpdate
+    )
 
-    if (isAdmin && pendingDrops.length > 0) {
-      const regsToDrop = await prisma.registration.findMany({
-        where: { id: { in: pendingDrops } },
-        select: { id: true, userId: true, raceId: true },
-      })
-      const tx: Prisma.PrismaPromise<unknown>[] = []
-      for (const reg of regsToDrop) {
-        if (reg.raceId !== raceId) continue
-        tx.push(prisma.registration.delete({ where: { id: reg.id } }))
-      }
-      if (tx.length > 0) {
-        await prisma.$transaction(tx)
-      }
-    }
-
-    if (isAdmin && pendingAdditions.length > 0) {
-      for (const addition of pendingAdditions) {
-        if (!addition.carClassId) continue
-        const resolvedTeamId = addition.teamId
-          ? (tempTeamMap.get(addition.teamId) ?? addition.teamId)
-          : null
-
-        if (addition.userId) {
-          const userExists = await prisma.user.findUnique({
-            where: { id: addition.userId },
-            select: { id: true },
-          })
-          if (!userExists) {
-            return {
-              message:
-                'One of the selected drivers no longer exists. Please refresh and try again.',
-            }
-          }
-
-          const existing = await prisma.registration.findUnique({
-            where: { userId_raceId: { userId: addition.userId, raceId } },
-            select: { id: true },
-          })
-          if (existing) {
-            await prisma.registration.update({
-              where: { id: existing.id },
-              data: { carClassId: addition.carClassId, teamId: resolvedTeamId },
-            })
-          } else {
-            await prisma.registration.create({
-              data: {
-                userId: addition.userId,
-                raceId,
-                carClassId: addition.carClassId,
-                teamId: resolvedTeamId,
-              },
-            })
-          }
-        } else if (addition.manualDriverId) {
-          const existing = await prisma.registration.findUnique({
-            where: { manualDriverId_raceId: { manualDriverId: addition.manualDriverId, raceId } },
-            select: { id: true },
-          })
-          if (existing) {
-            await prisma.registration.update({
-              where: { id: existing.id },
-              data: { carClassId: addition.carClassId, teamId: resolvedTeamId },
-            })
-          } else {
-            await prisma.registration.create({
-              data: {
-                manualDriverId: addition.manualDriverId,
-                raceId,
-                carClassId: addition.carClassId,
-                teamId: resolvedTeamId,
-              },
-            })
-          }
-        }
-      }
-    }
-
-    if (updates.length > 0) {
-      const droppedIdSet = new Set(pendingDrops)
-      const regs = await prisma.registration.findMany({
-        where: { id: { in: updates.map((u) => u.id) } },
-        select: { id: true, userId: true, raceId: true, teamId: true },
-      })
-      const regMap = new Map(regs.map((reg) => [reg.id, reg]))
-
-      const tx: Prisma.PrismaPromise<unknown>[] = []
-      for (const update of updates) {
-        if (droppedIdSet.has(update.id)) continue
-        const reg = regMap.get(update.id)
-        if (!reg) continue
-        if (reg.raceId !== raceId) continue
-        if (!isAdmin && reg.userId !== session.user.id) continue
-
-        const resolvedTeamId = update.teamId
-          ? (tempTeamMap.get(update.teamId) ?? update.teamId)
-          : null
-
-        tx.push(
-          prisma.registration.update({
-            where: { id: update.id },
-            data: {
-              carClassId: update.carClassId,
-              teamId: resolvedTeamId,
-            },
-          })
-        )
-      }
-
-      if (tx.length > 0) {
-        await prisma.$transaction(tx)
-      }
-    }
-
-    let teamsAssignedValue = race.teamsAssigned ?? false
-    if (isAdmin) {
-      const hasTeams = await prisma.registration.findFirst({
-        where: { raceId, teamId: { not: null } },
-        select: { id: true },
-      })
-      teamsAssignedValue = !!hasTeams
-
-      await prisma.race.update({
-        where: { id: raceId },
-        data: { maxDriversPerTeam, teamAssignmentStrategy, teamsAssigned: teamsAssignedValue },
-      })
-
-      if (teamsAssignedValue) {
-        try {
-          await sendTeamsAssignmentNotification(raceId)
-        } catch (notificationError) {
-          logger.error({ err: notificationError }, 'Failed to send teams assigned notification')
-        }
-      }
-    }
-
-    const resolvedMaxDrivers =
-      maxDriversPerTeam ??
-      getAutoMaxDriversPerTeam(getRaceDurationMinutes(race.startTime, race.endTime))
-
-    if (isAdmin && rawApplyRebalance === 'true' && resolvedMaxDrivers && resolvedMaxDrivers > 0) {
-      const classIds = await prisma.registration.findMany({
-        where: { raceId },
-        select: { carClassId: true },
-        distinct: ['carClassId'],
-      })
-
-      for (const { carClassId } of classIds) {
-        await rebalanceTeamsForClass(raceId, carClassId, resolvedMaxDrivers, teamAssignmentStrategy)
-      }
-    }
+    // Apply team rebalancing
+    await applyTeamRebalancing(
+      isAdmin,
+      raceId,
+      rawApplyRebalance,
+      maxDriversPerTeam,
+      teamAssignmentStrategy,
+      race.startTime,
+      race.endTime
+    )
 
     revalidatePath('/events')
     revalidatePath(`/events/${race.eventId}`)
@@ -1513,8 +1911,12 @@ export async function saveRaceEdits(formData: FormData) {
 type RegistrationRow = {
   id: string
   teamId: string | null
-  team: { id: string; name: string; alias?: string | null } | null
-  carClass: { name: string; shortName: string | null }
+  carClassId: string
+  userId: string | null
+  manualDriverId: string | null
+  raceId: string
+  team: { id: string; name: string; alias: string | null } | null
+  carClass: { id: string; name: string; shortName: string | null }
   user: {
     name: string | null
     accounts: Array<{ providerAccountId: string }>
@@ -1565,7 +1967,7 @@ function buildTeamsFromRegistrations(
 
   registrations.forEach((reg) => {
     const driverName = reg.user?.name || reg.manualDriver?.name || 'Driver'
-    const carClassName = reg.carClass.shortName || reg.carClass.name
+    const carClassName = reg.carClass?.shortName || reg.carClass?.name || ''
     const discordId = reg.user?.accounts?.[0]?.providerAccountId
     const rating =
       getPreferredRating(
@@ -1962,14 +2364,24 @@ export async function loadRaceAssignmentData(raceId: string): Promise<RaceAssign
   // Load data in parallel after getting the base race information
   const [currentRegistrations, allTeams, existingEventThreadRecord, siblingRaces] =
     await Promise.all([
-      // Load registrations for the current race
+      // Load registrations for the current race with teams assigned
       prisma.registration.findMany({
-        where: { raceId },
+        where: {
+          raceId,
+          teamId: { not: null },
+        },
         include: registrationInclude,
       }),
 
-      // Load all teams for team name mapping
+      // Load only teams that are used in this race for team name mapping
       prisma.team.findMany({
+        where: {
+          registrations: {
+            some: {
+              raceId: raceId,
+            },
+          },
+        },
         select: { id: true, name: true, alias: true },
       }),
 
@@ -1982,11 +2394,12 @@ export async function loadRaceAssignmentData(raceId: string): Promise<RaceAssign
         select: { discordTeamsThreadId: true },
       }),
 
-      // Load sibling races
+      // Load only sibling races that have teams assigned
       prisma.race.findMany({
         where: {
           eventId: raceWithEvent.event.id,
           id: { not: raceId },
+          teamsAssigned: true,
         },
         select: { id: true, startTime: true, discordTeamThreads: true, teamsAssigned: true },
         orderBy: { startTime: 'asc' },
@@ -1994,14 +2407,18 @@ export async function loadRaceAssignmentData(raceId: string): Promise<RaceAssign
     ])
 
   // Load registrations for sibling races that have teams assigned
-  const siblingRegistrations = await prisma.registration.findMany({
-    where: {
-      raceId: {
-        in: siblingRaces.filter((sibling) => sibling.teamsAssigned).map((sibling) => sibling.id),
+  let siblingRegistrations: RegistrationRow[] = []
+  if (siblingRaces.length > 0) {
+    siblingRegistrations = await prisma.registration.findMany({
+      where: {
+        raceId: {
+          in: siblingRaces.map((race) => race.id),
+        },
+        teamId: { not: null },
       },
-    },
-    include: registrationInclude,
-  })
+      include: registrationInclude,
+    })
+  }
 
   const siblingRaceRegistrations = siblingRaces
     .filter((sibling) => sibling.teamsAssigned)
