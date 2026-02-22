@@ -1500,7 +1500,10 @@ describe('adminRegisterDriver', () => {
     expect(result.message).toBe('Success')
     expect(prisma.registration.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { raceId: 'race-123' },
+        where: {
+          raceId: 'race-123',
+          teamId: { not: null },
+        },
       })
     )
     expect(createOrUpdateEventThread).toHaveBeenCalled()
