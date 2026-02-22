@@ -7,7 +7,7 @@ import { MetricExporter } from '@google-cloud/opentelemetry-cloud-monitoring-exp
 import { gcpDetector } from '@opentelemetry/resource-detector-gcp'
 import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics'
 import { PrismaInstrumentation } from '@prisma/instrumentation'
-import { BatchSpanProcessor, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-node'
+import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-node'
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http'
 import { UndiciInstrumentation } from '@opentelemetry/instrumentation-undici'
 import { createLogger } from '@/lib/logger'
@@ -41,10 +41,7 @@ if (!isCloudRun && !process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
   const traceExporter = isCloudRun ? new TraceExporter() : new OTLPTraceExporter({})
   const metricExporter = isCloudRun ? new MetricExporter() : new OTLPMetricExporter({})
 
-  const spanProcessor =
-    isCloudRun || process.env.NODE_ENV === 'production'
-      ? new BatchSpanProcessor(traceExporter)
-      : new SimpleSpanProcessor(traceExporter)
+  const spanProcessor = new BatchSpanProcessor(traceExporter)
 
   const sdk = new NodeSDK({
     serviceName,

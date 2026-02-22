@@ -1758,7 +1758,7 @@ describe('createOrUpdateTeamThread', () => {
     vi.restoreAllMocks()
   })
 
-  it('sets auto_archive_duration to 2880 minutes (2 days) when creating a team thread', async () => {
+  it('sets auto_archive_duration to 1440 minutes (1 day) when creating a team thread', async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce({
         ok: true,
@@ -1781,7 +1781,7 @@ describe('createOrUpdateTeamThread', () => {
       )
     expect(threadCreateCall).toBeDefined()
     const body = JSON.parse(threadCreateCall![1]!.body as string)
-    expect(body.auto_archive_duration).toBe(2880)
+    expect(body.auto_archive_duration).toBe(1440)
   })
 
   it('should add all users to a newly created team thread', async () => {
@@ -2153,7 +2153,7 @@ describe('createOrUpdateEventThread', () => {
     vi.restoreAllMocks()
   })
 
-  it('sets auto_archive_duration to 2880 minutes (2 days) when creating an event thread', async () => {
+  it('sets auto_archive_duration to 1440 minutes (1 day) when creating an event thread', async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce({
         ok: true,
@@ -2176,7 +2176,7 @@ describe('createOrUpdateEventThread', () => {
       )
     expect(threadCreateCall).toBeDefined()
     const body = JSON.parse(threadCreateCall![1]!.body as string)
-    expect(body.auto_archive_duration).toBe(2880)
+    expect(body.auto_archive_duration).toBe(1440)
   })
 
   it('should add all users to a newly created event thread', async () => {
@@ -2507,7 +2507,7 @@ describe('createEventDiscussionThread', () => {
     vi.restoreAllMocks()
   })
 
-  it('sets auto_archive_duration to 2880 minutes (2 days) when creating a discussion thread', async () => {
+  it('sets auto_archive_duration to 1440 minutes (1 day) when creating a discussion thread', async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce({
         ok: true,
@@ -2533,7 +2533,7 @@ describe('createEventDiscussionThread', () => {
       )
     expect(threadCreateCall).toBeDefined()
     const body = JSON.parse(threadCreateCall![1]!.body as string)
-    expect(body.auto_archive_duration).toBe(2880)
+    expect(body.auto_archive_duration).toBe(1440)
   })
 
   it('returns null when DISCORD_BOT_TOKEN is not configured', async () => {

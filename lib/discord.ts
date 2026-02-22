@@ -25,8 +25,8 @@ const DISCORD_API_BASE = 'https://discord.com/api/v10'
 
 const DISCORD_RETRY_CONFIG = { retries: 3, minTimeout: 100, maxTimeout: 2000, factor: 2 }
 
-/** Auto-archive duration for Discord threads in minutes (2 days = 2880). */
-const THREAD_AUTO_ARCHIVE_DURATION = 2880
+/** Auto-archive duration for Discord threads in minutes (1 day = 1440). */
+const THREAD_AUTO_ARCHIVE_DURATION = 1440
 
 async function getDiscordThreadParentInfo(options: { threadId: string; botToken: string }) {
   return pRetry(async () => {
