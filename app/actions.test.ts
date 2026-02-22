@@ -32,7 +32,9 @@ vi.mock('@/lib/prisma', () => ({
     },
     registration: {
       create: vi.fn(),
+      createMany: vi.fn(),
       delete: vi.fn(),
+      deleteMany: vi.fn(),
       update: vi.fn(),
       findUnique: vi.fn(),
       findFirst: vi.fn(),
@@ -40,14 +42,17 @@ vi.mock('@/lib/prisma', () => ({
     },
     user: {
       findUnique: vi.fn(),
+      findMany: vi.fn(),
     },
     manualDriver: {
       findUnique: vi.fn(),
+      findMany: vi.fn(),
     },
     team: {
       findMany: vi.fn(),
       update: vi.fn(),
       create: vi.fn(),
+      createMany: vi.fn(),
     },
     event: {
       findUnique: vi.fn(),
@@ -1960,5 +1965,176 @@ describe('saveRaceEdits - Discord thread validation', () => {
         teamId: null,
       },
     })
+  })
+})
+
+describe('saveRaceEdits - registration operations', () => {
+  const adminSession = {
+    user: { id: 'admin-1', role: 'ADMIN' },
+    expires: '2099-12-31T23:59:59.999Z',
+  }
+
+  const mockRace = {
+    id: 'race-1',
+    startTime: new Date('2099-03-01T20:00:00Z'),
+    endTime: new Date('2099-03-01T22:00:00Z'),
+    eventId: 'event-1',
+    maxDriversPerTeam: null,
+    teamsAssigned: false,
+    discordTeamsThreadId: null,
+    discordTeamsSnapshot: null,
+    discordTeamThreads: null,
+  }
+
+  const baseFormData = () => {
+    const fd = new FormData()
+    fd.set('raceId', 'race-1')
+    fd.set('maxDriversPerTeam', '')
+    fd.set('teamAssignmentStrategy', 'BALANCED_IRATING')
+    fd.set('applyRebalance', 'false')
+    fd.set('registrationUpdates', '[]')
+    fd.set('newTeams', '[]')
+    fd.set('pendingAdditions', '[]')
+    fd.set('pendingDrops', '[]')
+    fd.set('teamNameOverrides', '{}')
+    return fd
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(auth).mockResolvedValue(adminSession as any)
+    vi.mocked(prisma.race.findUnique).mockResolvedValue(mockRace as any)
+    vi.mocked(prisma.race.update).mockResolvedValue({} as any)
+    vi.mocked(prisma.registration.findMany).mockResolvedValue([])
+    vi.mocked(prisma.registration.deleteMany).mockResolvedValue({ count: 0 } as any)
+    vi.mocked(prisma.registration.createMany).mockResolvedValue({ count: 0 } as any)
+    vi.mocked(prisma.registration.update).mockResolvedValue({} as any)
+    vi.mocked(prisma.user.findMany).mockResolvedValue([])
+    vi.mocked(prisma.manualDriver.findMany).mockResolvedValue([])
+  })
+
+  it('uses deleteMany with raceId filter for pending drops instead of individual deletes', async () => {
+    const fd = baseFormData()
+    fd.set('pendingDrops', JSON.stringify(['reg-1', 'reg-2']))
+
+    const result = await saveRaceEdits(fd)
+
+    expect(result.message).toBe('Success')
+    expect(prisma.registration.deleteMany).toHaveBeenCalledWith({
+      where: { id: { in: ['reg-1', 'reg-2'] }, raceId: 'race-1' },
+    })
+    expect(prisma.registration.delete).not.toHaveBeenCalled()
+  })
+
+  it('uses createMany for new user additions instead of individual creates', async () => {
+    vi.mocked(prisma.user.findMany).mockResolvedValue([{ id: 'user-1' }] as any)
+
+    const fd = baseFormData()
+    fd.set(
+      'pendingAdditions',
+      JSON.stringify([{ userId: 'user-1', carClassId: 'class-1', teamId: 'team-1' }])
+    )
+
+    const result = await saveRaceEdits(fd)
+
+    expect(result.message).toBe('Success')
+    expect(prisma.registration.createMany).toHaveBeenCalledWith({
+      data: [{ userId: 'user-1', raceId: 'race-1', carClassId: 'class-1', teamId: 'team-1' }],
+    })
+    expect(prisma.registration.create).not.toHaveBeenCalled()
+  })
+
+  it('batches multiple new additions into a single createMany call', async () => {
+    vi.mocked(prisma.user.findMany).mockResolvedValue([{ id: 'user-1' }, { id: 'user-2' }] as any)
+
+    const fd = baseFormData()
+    fd.set(
+      'pendingAdditions',
+      JSON.stringify([
+        { userId: 'user-1', carClassId: 'class-1', teamId: 'team-1' },
+        { userId: 'user-2', carClassId: 'class-1', teamId: 'team-1' },
+      ])
+    )
+
+    await saveRaceEdits(fd)
+
+    expect(prisma.registration.createMany).toHaveBeenCalledTimes(1)
+    expect(prisma.registration.createMany).toHaveBeenCalledWith({
+      data: [
+        { userId: 'user-1', raceId: 'race-1', carClassId: 'class-1', teamId: 'team-1' },
+        { userId: 'user-2', raceId: 'race-1', carClassId: 'class-1', teamId: 'team-1' },
+      ],
+    })
+  })
+
+  it('updates existing registration when adding a driver already registered for the race', async () => {
+    vi.mocked(prisma.user.findMany).mockResolvedValue([{ id: 'user-1' }] as any)
+    // user-1 already has 'reg-existing' in this race
+    vi.mocked(prisma.registration.findMany).mockResolvedValue([
+      { id: 'reg-existing', userId: 'user-1', raceId: 'race-1' },
+    ] as any)
+
+    const fd = baseFormData()
+    fd.set(
+      'pendingAdditions',
+      JSON.stringify([{ userId: 'user-1', carClassId: 'class-2', teamId: 'team-1' }])
+    )
+
+    const result = await saveRaceEdits(fd)
+
+    expect(result.message).toBe('Success')
+    expect(prisma.registration.update).toHaveBeenCalledWith({
+      where: { id: 'reg-existing' },
+      data: { carClassId: 'class-2', teamId: 'team-1' },
+    })
+    expect(prisma.registration.createMany).not.toHaveBeenCalled()
+  })
+
+  it('skips race settings update and rebalancing for non-admin users', async () => {
+    vi.mocked(auth).mockResolvedValue({
+      user: { id: 'user-1', role: 'USER' },
+      expires: '2099-12-31T23:59:59.999Z',
+    } as any)
+    vi.mocked(prisma.registration.findMany).mockResolvedValue([
+      { id: 'reg-1', userId: 'user-1', raceId: 'race-1', teamId: null },
+    ] as any)
+
+    const fd = baseFormData()
+    fd.set('maxDriversPerTeam', '3')
+    fd.set('applyRebalance', 'true')
+    fd.set(
+      'registrationUpdates',
+      JSON.stringify([{ id: 'reg-1', carClassId: 'class-1', teamId: null }])
+    )
+
+    const result = await saveRaceEdits(fd)
+
+    expect(result.message).toBe('Success')
+    expect(prisma.race.update).not.toHaveBeenCalled()
+  })
+
+  it('runs rebalancing before updating race settings when applyRebalance is true', async () => {
+    const calls: string[] = []
+
+    vi.mocked(prisma.registration.findMany).mockImplementation(async (query: any) => {
+      if (query?.distinct) {
+        calls.push('loadCarClassIds')
+      }
+      return []
+    })
+    vi.mocked(prisma.race.update).mockImplementation(async () => {
+      calls.push('race.update')
+      return {} as any
+    })
+
+    const fd = baseFormData()
+    fd.set('maxDriversPerTeam', '3')
+    fd.set('applyRebalance', 'true')
+
+    await saveRaceEdits(fd)
+
+    expect(calls).toContain('loadCarClassIds')
+    expect(calls).toContain('race.update')
+    expect(calls.indexOf('loadCarClassIds')).toBeLessThan(calls.indexOf('race.update'))
   })
 })
