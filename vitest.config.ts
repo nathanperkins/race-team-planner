@@ -8,6 +8,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: './vitest.setup.ts',
+    exclude: ['node_modules/**', '.next/**', '**/*.integration.test.ts'],
     env: {
       TZ: 'America/Los_Angeles',
     },

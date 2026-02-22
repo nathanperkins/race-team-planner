@@ -51,5 +51,18 @@ services:
     volumes:
       - './otel-collector-config.yaml:/etc/otelcol/config.yaml:Z'
 
+  db-test:
+    image: postgres:16-alpine
+    container_name: race-team-planner-db-test
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: race-team-planner-test
+    ports:
+      - '5433:5432'
+    volumes:
+      - db-test-data:/var/lib/postgresql/data
+
 volumes:
   db-data:
+  db-test-data:
