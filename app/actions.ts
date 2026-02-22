@@ -1196,23 +1196,6 @@ async function loadManualDriversByIds(manualDriverIds: string[]): Promise<Array<
 }
 
 /**
- * Loads race data with team information
- */
-async function loadRaceWithTeams(raceId: string) {
-  return await prisma.race.findUnique({
-    where: { id: raceId },
-    select: {
-      teamsAssigned: true,
-      registrations: {
-        where: { teamId: { not: null } },
-        take: 1,
-        select: { id: true },
-      },
-    },
-  })
-}
-
-/**
  * Loads registrations by their IDs
  */
 async function loadRegistrationsByIds(registrationIds: string[]) {
@@ -1464,35 +1447,34 @@ async function processRegistrationEdits(
   const allRegistrationOperations: Prisma.PrismaPromise<unknown>[] = []
   let teamsWereAssigned = false
 
-  // BATCHED PENDING DROPS
-  if (isAdmin && pendingDrops.length > 0) {
-    // Single query to fetch all registrations to drop
-    const regsToDrop = await prisma.registration.findMany({
-      where: { id: { in: pendingDrops } },
-      select: { id: true, userId: true, raceId: true },
-    })
+  const resolveTeamId = (teamId: string | null | undefined): string | null => {
+    if (!teamId) return null
+    return tempTeamMap.get(teamId) ?? teamId
+  }
 
-    const validRegsToDrop = regsToDrop.filter((reg) => reg.raceId === raceId)
-    if (validRegsToDrop.length > 0) {
-      validRegsToDrop.forEach((reg) => {
-        allRegistrationOperations.push(prisma.registration.delete({ where: { id: reg.id } }))
-      })
-    }
+  // BATCHED PENDING DROPS - filter by raceId in the query to avoid a findMany round trip
+  if (isAdmin && pendingDrops.length > 0) {
+    allRegistrationOperations.push(
+      prisma.registration.deleteMany({ where: { id: { in: pendingDrops }, raceId } })
+    )
   }
 
   // BATCHED PENDING ADDITIONS
   if (isAdmin && pendingAdditions.length > 0) {
-    // Extract IDs once
-    const userIds = pendingAdditions.filter((a) => a.userId).map((a) => a.userId!)
-    const manualDriverIds = pendingAdditions
-      .filter((a) => a.manualDriverId)
-      .map((a) => a.manualDriverId!)
+    const userAdditions = pendingAdditions.filter((a) => a.userId)
+    const manualDriverAdditions = pendingAdditions.filter((a) => a.manualDriverId)
 
-    // Fetch all required data in parallel using dedicated loaders
-    const [existingUsers, existingManualDrivers] = await Promise.all([
-      loadUsersByIds(userIds),
-      loadManualDriversByIds(manualDriverIds),
-    ])
+    const userIds = userAdditions.map((a) => a.userId!)
+    const manualDriverIds = manualDriverAdditions.map((a) => a.manualDriverId!)
+
+    // Fetch all required data in a single parallel call
+    const [existingUsers, existingManualDrivers, userExistingRegs, manualDriverExistingRegs] =
+      await Promise.all([
+        loadUsersByIds(userIds),
+        loadManualDriversByIds(manualDriverIds),
+        loadUserRegistrationExistenceBatch(raceId, userIds),
+        loadManualDriverRegistrationExistenceBatch(raceId, manualDriverIds),
+      ])
 
     const existingUserIds = new Set(existingUsers.map((u) => u.id))
     const existingManualDriverIds = new Set(existingManualDrivers.map((d) => d.id))
@@ -1511,131 +1493,86 @@ async function processRegistrationEdits(
       }
     }
 
-    const userAdditions = pendingAdditions.filter((a) => a.userId)
-    const manualDriverAdditions = pendingAdditions.filter((a) => a.manualDriverId)
+    // Build maps for O(1) lookup by driver ID
+    const userExistingMap = new Map(userIds.map((id, i) => [id, userExistingRegs[i]]))
+    const manualDriverExistingMap = new Map(
+      manualDriverIds.map((id, i) => [id, manualDriverExistingRegs[i]])
+    )
 
-    const userIdsForChecks = userAdditions.map((a) => a.userId!)
-    const manualDriverIdsForChecks = manualDriverAdditions.map((a) => a.manualDriverId!)
+    // Collect all new registrations for a single createMany call
+    const newRegistrations: Prisma.RegistrationCreateManyInput[] = []
 
-    const [userExistingRegistrations, manualDriverExistingRegistrations] = await Promise.all([
-      loadUserRegistrationExistenceBatch(raceId, userIdsForChecks),
-      loadManualDriverRegistrationExistenceBatch(raceId, manualDriverIdsForChecks),
-    ])
+    for (const addition of userAdditions) {
+      const resolvedTeamId = resolveTeamId(addition.teamId)
+      if (resolvedTeamId) teamsWereAssigned = true
 
-    const operations: Prisma.PrismaPromise<unknown>[] = []
-
-    // Handle user additions
-    userAdditions.forEach((addition, index) => {
-      const existingId = userExistingRegistrations[index]
-      const resolvedTeamId =
-        addition.teamId && tempTeamMap.has(addition.teamId)
-          ? tempTeamMap.get(addition.teamId)
-          : addition.teamId
-
-      // Track if any teams were assigned
-      if (resolvedTeamId) {
-        teamsWereAssigned = true
-      }
-
+      const existingId = userExistingMap.get(addition.userId!)
       if (existingId) {
-        operations.push(
+        allRegistrationOperations.push(
           prisma.registration.update({
             where: { id: existingId },
             data: { carClassId: addition.carClassId, teamId: resolvedTeamId },
           })
         )
       } else {
-        operations.push(
-          prisma.registration.create({
-            data: {
-              userId: addition.userId,
-              raceId,
-              carClassId: addition.carClassId,
-              teamId: resolvedTeamId,
-            },
-          })
-        )
+        newRegistrations.push({
+          userId: addition.userId,
+          raceId,
+          carClassId: addition.carClassId,
+          teamId: resolvedTeamId,
+        })
       }
-    })
+    }
 
-    // Handle manual driver additions
-    manualDriverAdditions.forEach((addition, index) => {
-      const existingId = manualDriverExistingRegistrations[index]
-      const resolvedTeamId =
-        addition.teamId && tempTeamMap.has(addition.teamId)
-          ? tempTeamMap.get(addition.teamId)
-          : addition.teamId
+    for (const addition of manualDriverAdditions) {
+      const resolvedTeamId = resolveTeamId(addition.teamId)
+      if (resolvedTeamId) teamsWereAssigned = true
 
-      // Track if any teams were assigned
-      if (resolvedTeamId) {
-        teamsWereAssigned = true
-      }
-
+      const existingId = manualDriverExistingMap.get(addition.manualDriverId!)
       if (existingId) {
-        operations.push(
+        allRegistrationOperations.push(
           prisma.registration.update({
             where: { id: existingId },
             data: { carClassId: addition.carClassId, teamId: resolvedTeamId },
           })
         )
       } else {
-        operations.push(
-          prisma.registration.create({
-            data: {
-              manualDriverId: addition.manualDriverId,
-              raceId,
-              carClassId: addition.carClassId,
-              teamId: resolvedTeamId,
-            },
-          })
-        )
+        newRegistrations.push({
+          manualDriverId: addition.manualDriverId,
+          raceId,
+          carClassId: addition.carClassId,
+          teamId: resolvedTeamId,
+        })
       }
-    })
+    }
 
-    operations.forEach((op) => allRegistrationOperations.push(op))
+    if (newRegistrations.length > 0) {
+      allRegistrationOperations.push(prisma.registration.createMany({ data: newRegistrations }))
+    }
   }
 
   // BATCHED REGISTRATION UPDATES
   if (updates.length > 0) {
-    // Create lookup sets once
     const droppedIdSet = new Set(pendingDrops)
-    const updateIds = updates.map((u) => u.id)
-
-    // Single query to fetch all registrations that need updating
-    const regs = await loadRegistrationsByIds(updateIds)
-
+    const regs = await loadRegistrationsByIds(updates.map((u) => u.id))
     const regMap = new Map(regs.map((reg) => [reg.id, reg]))
-    const operations: Prisma.PrismaPromise<unknown>[] = []
 
     for (const update of updates) {
       if (droppedIdSet.has(update.id)) continue
       const reg = regMap.get(update.id)
-      if (!reg) continue
-      if (reg.raceId !== raceId) continue
+      if (!reg || reg.raceId !== raceId) continue
       if (!isAdmin && reg.userId !== session.user.id) continue
 
-      const resolvedTeamId =
-        update.teamId && tempTeamMap.has(update.teamId)
-          ? tempTeamMap.get(update.teamId)
-          : update.teamId
+      const resolvedTeamId = resolveTeamId(update.teamId)
+      if (resolvedTeamId) teamsWereAssigned = true
 
-      // Track if any teams were assigned
-      if (resolvedTeamId) {
-        teamsWereAssigned = true
-      }
-
-      operations.push(
+      allRegistrationOperations.push(
         prisma.registration.update({
           where: { id: update.id },
-          data: {
-            carClassId: update.carClassId,
-            teamId: resolvedTeamId,
-          },
+          data: { carClassId: update.carClassId, teamId: resolvedTeamId },
         })
       )
     }
-
-    operations.forEach((op) => allRegistrationOperations.push(op))
   }
 
   // Execute all registration operations in a single transaction
@@ -1647,37 +1584,25 @@ async function processRegistrationEdits(
 }
 
 /**
- * Updates race settings and sends notifications if teams are assigned
+ * Persists race settings and sends a notification when teams have been assigned.
+ * Must run after applyTeamRebalancing so the notification reflects the final state.
  */
 async function updateRaceSettings(
-  isAdmin: boolean,
   raceId: string,
   maxDriversPerTeam: number | null,
   teamAssignmentStrategy: TeamAssignmentStrategy | null,
-  raceData?: {
-    teamsAssigned: boolean | null
-    registrations?: Array<{ id: string }>
-  }
+  teamsWereAssigned: boolean
 ): Promise<void> {
-  if (!isAdmin) return
-
-  // Use provided race data if available, otherwise load it
-  const raceDataToUse = raceData ?? (await loadRaceWithTeams(raceId))
-
-  // Check if teams are actually assigned by looking at registrations
-  const hasRegistrationsWithTeams = (raceDataToUse?.registrations?.length ?? 0) > 0
-  const shouldSendNotification = hasRegistrationsWithTeams
-
   await prisma.race.update({
     where: { id: raceId },
     data: {
       maxDriversPerTeam,
       teamAssignmentStrategy: teamAssignmentStrategy || undefined,
-      teamsAssigned: shouldSendNotification,
+      teamsAssigned: teamsWereAssigned,
     },
   })
 
-  if (shouldSendNotification) {
+  if (teamsWereAssigned) {
     try {
       await sendTeamsAssignmentNotification(raceId)
     } catch (notificationError) {
@@ -1690,16 +1615,12 @@ async function updateRaceSettings(
  * Applies team rebalancing across all car classes in parallel
  */
 async function applyTeamRebalancing(
-  isAdmin: boolean,
   raceId: string,
-  rawApplyRebalance: string,
   maxDriversPerTeam: number | null,
   teamAssignmentStrategy: TeamAssignmentStrategy | null,
   raceStartTime: Date,
   raceEndTime: Date
 ): Promise<void> {
-  if (!isAdmin || rawApplyRebalance !== 'true') return
-
   const resolvedMaxDrivers =
     maxDriversPerTeam ??
     getAutoMaxDriversPerTeam(getRaceDurationMinutes(raceStartTime, raceEndTime))
@@ -1856,29 +1777,19 @@ export async function saveRaceEdits(formData: FormData) {
       return { message: 'Failed to process registration edits' }
     }
 
-    // Update race settings - use the information we already have from registration edits
-    const raceDataForUpdate = {
-      teamsAssigned: teamsWereAssigned,
-      registrations: teamsWereAssigned ? [{ id: 'dummy' }] : [],
+    if (isAdmin) {
+      // Rebalance first so the notification in updateRaceSettings reflects final team state
+      if (rawApplyRebalance === 'true') {
+        await applyTeamRebalancing(
+          raceId,
+          maxDriversPerTeam,
+          teamAssignmentStrategy,
+          race.startTime,
+          race.endTime
+        )
+      }
+      await updateRaceSettings(raceId, maxDriversPerTeam, teamAssignmentStrategy, teamsWereAssigned)
     }
-    await updateRaceSettings(
-      isAdmin,
-      raceId,
-      maxDriversPerTeam,
-      teamAssignmentStrategy,
-      raceDataForUpdate
-    )
-
-    // Apply team rebalancing
-    await applyTeamRebalancing(
-      isAdmin,
-      raceId,
-      rawApplyRebalance,
-      maxDriversPerTeam,
-      teamAssignmentStrategy,
-      race.startTime,
-      race.endTime
-    )
 
     revalidatePath('/events')
     revalidatePath(`/events/${race.eventId}`)
