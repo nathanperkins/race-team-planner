@@ -2,6 +2,57 @@
 
 The most notable changes to this project are documented here.
 
+## Version 1.2 {#version-1.2}
+
+**Released on <time datetime="2026-02-23">February 23, 2026</time>**
+
+[15 issues completed][Milestone 2] by **[Nathan]**, **[Steven]**, and **[Kaelan]**.
+
+### Highlights
+
+Version 1.2 focuses on performance, observability, and quality-of-life improvements. The biggest user-facing changes are a new calendar export feature, improved Discord event posts with per-class unassigned driver groups, and significantly faster UI response times throughout the app. Under the hood, this release introduces structured logging, OpenTelemetry tracing, and a real-database integration test suite.
+
+### Feedback Results
+
+Thanks to our community members for [these suggestions][Feedback 2]!
+
+- **Zarah** - Add a calendar export button to timeslots and the registration page ([#116](https://github.com/nathanperkins/race-team-planner/issues/116) by [Nathan])
+
+### Events
+
+- **Calendar export** - Added "Add to Calendar" button on each race timeslot and the My Registrations page, supporting Google Calendar, Outlook, and Apple Calendar / .ics download. Button is hidden for past races. Includes a link back to the app event page and the Discord thread when available ([#116](https://github.com/nathanperkins/race-team-planner/issues/116) by [Nathan])
+- **Optimistic event modal** - Event details modal now opens instantly using cached event data, eliminating the visible delay before the modal appeared ([#107](https://github.com/nathanperkins/race-team-planner/issues/107) by [Kaelan])
+- **Old event link fix** - Opening a link to an older event (e.g. from My Registrations) now correctly shows the event modal instead of landing on a blank events page ([#103](https://github.com/nathanperkins/race-team-planner/issues/103) by [Kaelan])
+- **Filter performance** - Events page filter controls now respond immediately without waiting for a database round-trip, and async data fetching runs in parallel ([#98](https://github.com/nathanperkins/race-team-planner/issues/98) by [Kaelan])
+- **Mobile header overlap fix** - Fixed registered event pills overlapping the mobile top bar on small screens ([#122](https://github.com/nathanperkins/race-team-planner/issues/122) by [Nathan])
+
+### Discord Notifications
+
+- **Car class groups for unassigned drivers** - Unassigned drivers in event discussion posts are now grouped by car class with a separate header per class (e.g. **Unassigned - GT3**, **Unassigned - GTP**), sorted alphabetically by class then by name within each group. Discord mentions are used instead of real names when available ([#114](https://github.com/nathanperkins/race-team-planner/issues/114) by [Nathan])
+- **Class change notifications** - Changing your own car class on a registration now sends a Discord notification to the event thread ([#91](https://github.com/nathanperkins/race-team-planner/issues/91) by [Kaelan])
+- **Reduced thread inactivity** - Discord event and team threads now auto-archive after 2 days of inactivity instead of 1 week, keeping the sidebar cleaner ([#125](https://github.com/nathanperkins/race-team-planner/issues/125) by [Nathan])
+
+### Performance
+
+- **Faster registration actions** - Parallelized database and Discord calls across registration, team assignment, and drop flows, significantly reducing action latency ([Kaelan])
+- **Refactored save flow** - Admin save team edits completely refactored to minimize sequential database round-trips ([Kaelan])
+
+### Observability
+
+- **Structured logging** - Replaced all `console.log` calls with a leveled structured logger (`debug`, `info`, `warn`, `error`). Log output is now JSON in production for easier querying ([#101](https://github.com/nathanperkins/race-team-planner/issues/101) by [Nathan])
+- **Log level override** - Added `LOG_LEVEL` environment variable to control logging verbosity without redeploying ([#102](https://github.com/nathanperkins/race-team-planner/issues/102) by [Nathan])
+- **OpenTelemetry tracing** - Added distributed tracing with OTLP export, enabling visibility into API latency across services ([#105](https://github.com/nathanperkins/race-team-planner/issues/105) by [Kaelan])
+
+### Infrastructure
+
+- **Integration test suite** - Added a real-database integration test runner using a separate PostgreSQL instance, enabling tests that verify actual database behavior ([#124](https://github.com/nathanperkins/race-team-planner/issues/124) by [Kaelan])
+- **Cloud Run labels** - Added resource labels to Cloud Run jobs and services for easier per-service cost tracking in billing ([#99](https://github.com/nathanperkins/race-team-planner/issues/99) by [Nathan])
+- **Aggressive image pruning** - Docker image cleanup policy tightened to remove unused images sooner, reducing Artifact Registry storage costs ([#100](https://github.com/nathanperkins/race-team-planner/issues/100) by [Nathan])
+
+### Documentation
+
+- **Onboarding video** - Published a User Guide video walkthrough explaining the app features and Discord notification settings. A link to the video appears in the sidebar when `USER_GUIDE_URL` is configured ([#17](https://github.com/nathanperkins/race-team-planner/issues/17) by [Steven], sidebar link by [Nathan])
+
 ## Version 1.1 {#version-1.1}
 
 **Released on <time datetime="2026-02-16">February 16, 2026</time>**
@@ -145,4 +196,6 @@ Thanks to our testers for these suggestions and bug reports!
 [Nathan]: https://github.com/nathanperkins
 [Steven]: https://github.com/stevencase243
 [Milestone 1]: https://github.com/nathanperkins/race-team-planner/issues?q=milestone%3A1.1+is%3Aclosed+reason%3Acompleted
+[Milestone 2]: https://github.com/nathanperkins/race-team-planner/issues?q=milestone%3A1.2+is%3Aclosed+reason%3Acompleted
 [Feedback 1]: https://github.com/nathanperkins/race-team-planner/issues?q=milestone%3A1.1%20is%3Aclosed%20reason%3Acompleted%20label%3Afeedback
+[Feedback 2]: https://github.com/nathanperkins/race-team-planner/issues?q=milestone%3A1.2%20is%3Aclosed%20reason%3Acompleted%20label%3Afeedback
