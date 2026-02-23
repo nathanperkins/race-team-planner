@@ -37,15 +37,18 @@ function setup() {
   vi.mocked(useSession).mockReturnValue({ data: null, status: 'unauthenticated', update: vi.fn() })
 }
 
+const mobileUA =
+  'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 Chrome/120.0.0.0 Mobile Safari/537.36'
+const desktopUA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36'
+
 describe('Sidebar discord:// external links', () => {
   afterEach(() => {
     vi.restoreAllMocks()
   })
 
-  it('keeps discord:// href on desktop', () => {
-    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(
-      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36'
-    )
+  it('keeps discord://-/ href on desktop', () => {
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(desktopUA)
     setup()
     render(
       <Sidebar
@@ -59,15 +62,28 @@ describe('Sidebar discord:// external links', () => {
     )
   })
 
-  it('rewrites discord:// href to https://discord.com on mobile', () => {
-    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(
-      'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 Chrome/120.0.0.0 Mobile Safari/537.36'
-    )
+  it('rewrites discord://-/ to https://discord.com on mobile', () => {
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(mobileUA)
     setup()
     render(
       <Sidebar
         session={completeSession as any}
         feedbackUrl="discord://-/channels/guild-1/channel-1"
+      />
+    )
+    expect(screen.getByRole('link', { name: 'Report Feedback / Bugs' })).toHaveAttribute(
+      'href',
+      'https://discord.com/channels/guild-1/channel-1'
+    )
+  })
+
+  it('rewrites discord://discord.com/ to https://discord.com on mobile', () => {
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(mobileUA)
+    setup()
+    render(
+      <Sidebar
+        session={completeSession as any}
+        feedbackUrl="discord://discord.com/channels/guild-1/channel-1"
       />
     )
     expect(screen.getByRole('link', { name: 'Report Feedback / Bugs' })).toHaveAttribute(

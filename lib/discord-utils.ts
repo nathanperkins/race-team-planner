@@ -167,12 +167,13 @@ export function buildDiscordLink(options: {
 }
 
 /** Convert a `discord://` deep link to an `https://discord.com` URL on mobile,
- * leaving it unchanged on desktop. Non-discord URLs are returned as-is.
+ * leaving it unchanged on desktop. Handles both `discord://-/...` and
+ * `discord://discord.com/...` formats. Non-discord URLs are returned as-is.
  * Use this for arbitrary discord:// hrefs where guildId/threadId are not
  * known separately (e.g. environment variable URLs). */
 export function resolveDiscordHref(href: string, userAgent: string): string {
   if (href.startsWith('discord://') && isMobileUserAgent(userAgent)) {
-    return href.replace('discord://-/', 'https://discord.com/')
+    return href.replace(/^discord:\/\/(?:-\/|discord\.com\/)/, 'https://discord.com/')
   }
   return href
 }

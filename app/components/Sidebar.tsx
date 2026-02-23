@@ -65,13 +65,9 @@ function ExternalNavLink({
   label: string
   onClick?: () => void
 }) {
-  const resolvedHref = resolveDiscordHref(
-    href,
-    typeof navigator !== 'undefined' ? navigator.userAgent : ''
-  )
   return (
     <a
-      href={resolvedHref}
+      href={resolveDiscordHref(href, typeof navigator !== 'undefined' ? navigator.userAgent : '')}
       suppressHydrationWarning
       target="_blank"
       rel="noopener noreferrer"
