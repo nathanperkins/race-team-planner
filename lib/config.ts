@@ -7,9 +7,11 @@ export const features = {
   iracingSync: !!process.env.IRACING_CLIENT_ID,
   discordMembership: !!process.env.DISCORD_GUILD_ID && !!process.env.DISCORD_BOT_TOKEN,
   feedback: !!process.env.FEEDBACK_URL,
+  userGuide: !!process.env.USER_GUIDE_URL,
 } as const
 
 export const appTitle = process.env.APP_TITLE || 'Race Team Planner (dev)'
 export const appLocale = process.env.APP_LOCALE || 'en-US'
 export const appTimeZone = process.env.APP_TIMEZONE || 'America/Los_Angeles'
 export const feedbackUrl = process.env.FEEDBACK_URL
+export const userGuideUrl = process.env.USER_GUIDE_URL

@@ -12,6 +12,7 @@ interface LayoutWrapperProps {
   session: Session | null
   appTitle: string
   feedbackUrl?: string
+  userGuideUrl?: string
 }
 
 export default function LayoutWrapper({
@@ -19,6 +20,7 @@ export default function LayoutWrapper({
   session,
   appTitle,
   feedbackUrl,
+  userGuideUrl,
 }: LayoutWrapperProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
@@ -56,6 +58,7 @@ export default function LayoutWrapper({
                 onLinkClick={() => setIsSidebarOpen(false)}
                 session={session}
                 feedbackUrl={feedbackUrl}
+                userGuideUrl={userGuideUrl}
               />
             </aside>
 

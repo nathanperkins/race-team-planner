@@ -159,6 +159,12 @@ variable "feedback_url" {
   default     = ""
 }
 
+variable "user_guide_url" {
+  description = "The URL for the User Guide (e.g., a YouTube video)"
+  type        = string
+  default     = ""
+}
+
 variable "app_locale" {
   description = "The locale to use for server-side formatting"
   type        = string

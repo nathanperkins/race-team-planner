@@ -92,6 +92,10 @@ will use a mock data set suitable for local development.
   - Set `FEEDBACK_URL` to a full URL (e.g., Discord forum post or GitHub issues) to add a link in the sidebar for community feedback.
   - If unset, the link will not be shown.
 
+- **User Guide**:
+  - Set `USER_GUIDE_URL` to a full URL (e.g., a YouTube video) to add a "User Guide" link in the sidebar below Team Expectations.
+  - If unset, the link will not be shown.
+
 ### Logging
 
 - **Log Level**:

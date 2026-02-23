@@ -81,9 +81,15 @@ interface SidebarProps {
   onLinkClick?: () => void
   session?: Session | null
   feedbackUrl?: string
+  userGuideUrl?: string
 }
 
-export default function Sidebar({ onLinkClick, session: propSession, feedbackUrl }: SidebarProps) {
+export default function Sidebar({
+  onLinkClick,
+  session: propSession,
+  feedbackUrl,
+  userGuideUrl,
+}: SidebarProps) {
   const pathname = usePathname()
   const { data: hookSession } = useSession()
   const session = propSession || hookSession
@@ -109,6 +115,7 @@ export default function Sidebar({ onLinkClick, session: propSession, feedbackUrl
             checkActive={checkActive}
             onLinkClick={onLinkClick}
             feedbackUrl={feedbackUrl}
+            userGuideUrl={userGuideUrl}
           />
         ) : (
           <OnboardingSection
@@ -139,11 +146,13 @@ function MainSection({
   checkActive,
   onLinkClick,
   feedbackUrl,
+  userGuideUrl,
 }: {
   userId: string
   checkActive: (p: string) => boolean
   onLinkClick?: () => void
   feedbackUrl?: string
+  userGuideUrl?: string
 }) {
   return (
     <>
@@ -174,6 +183,9 @@ function MainSection({
         isActive={checkActive('/expectations')}
         onClick={onLinkClick}
       />
+      {userGuideUrl && (
+        <ExternalNavLink href={userGuideUrl} label="User Guide" onClick={onLinkClick} />
+      )}
       <NavLink
         href="/changelog"
         label="Changelog"
