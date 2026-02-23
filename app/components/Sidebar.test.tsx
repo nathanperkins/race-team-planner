@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi, afterEach } from 'vitest'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Sidebar from './Sidebar'
@@ -36,6 +36,55 @@ function setup() {
   vi.mocked(usePathname).mockReturnValue('/events')
   vi.mocked(useSession).mockReturnValue({ data: null, status: 'unauthenticated', update: vi.fn() })
 }
+
+describe('Sidebar discord:// external links', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('keeps discord:// href on desktop', () => {
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36'
+    )
+    setup()
+    render(
+      <Sidebar
+        session={completeSession as any}
+        feedbackUrl="discord://-/channels/guild-1/channel-1"
+      />
+    )
+    expect(screen.getByRole('link', { name: 'Report Feedback / Bugs' })).toHaveAttribute(
+      'href',
+      'discord://-/channels/guild-1/channel-1'
+    )
+  })
+
+  it('rewrites discord:// href to https://discord.com on mobile', () => {
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(
+      'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 Chrome/120.0.0.0 Mobile Safari/537.36'
+    )
+    setup()
+    render(
+      <Sidebar
+        session={completeSession as any}
+        feedbackUrl="discord://-/channels/guild-1/channel-1"
+      />
+    )
+    expect(screen.getByRole('link', { name: 'Report Feedback / Bugs' })).toHaveAttribute(
+      'href',
+      'https://discord.com/channels/guild-1/channel-1'
+    )
+  })
+
+  it('leaves non-discord URLs unchanged', () => {
+    setup()
+    render(<Sidebar session={completeSession as any} feedbackUrl="https://example.com/feedback" />)
+    expect(screen.getByRole('link', { name: 'Report Feedback / Bugs' })).toHaveAttribute(
+      'href',
+      'https://example.com/feedback'
+    )
+  })
+})
 
 describe('Sidebar User Guide link', () => {
   it('shows User Guide link when userGuideUrl is provided', () => {

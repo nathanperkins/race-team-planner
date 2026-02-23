@@ -3,6 +3,7 @@ import {
   buildDiscordAppLink,
   buildDiscordWebLink,
   buildDiscordLink,
+  resolveDiscordHref,
   isMobileUserAgent,
   normalizeSeriesName,
   chunkLines,
@@ -103,6 +104,30 @@ describe('Discord Utils', () => {
     it('returns https://discord.com link for mobile user agent', () => {
       expect(buildDiscordLink({ ...opts, userAgent: androidUA })).toBe(
         'https://discord.com/channels/guild-1/thread-1'
+      )
+    })
+  })
+
+  describe('resolveDiscordHref', () => {
+    const discordHref = 'discord://-/channels/guild-1/channel-1'
+    const androidUA =
+      'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'
+    const desktopUA =
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+
+    it('keeps discord:// href on desktop', () => {
+      expect(resolveDiscordHref(discordHref, desktopUA)).toBe(discordHref)
+    })
+
+    it('rewrites discord:// to https://discord.com on mobile', () => {
+      expect(resolveDiscordHref(discordHref, androidUA)).toBe(
+        'https://discord.com/channels/guild-1/channel-1'
+      )
+    })
+
+    it('leaves non-discord URLs unchanged on mobile', () => {
+      expect(resolveDiscordHref('https://example.com/feedback', androidUA)).toBe(
+        'https://example.com/feedback'
       )
     })
   })

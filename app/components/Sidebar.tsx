@@ -7,6 +7,7 @@ import { signOut, useSession } from 'next-auth/react'
 import { Session } from 'next-auth'
 import Image from 'next/image'
 import { getOnboardingStatus, OnboardingStatus } from '@/lib/onboarding'
+import { resolveDiscordHref } from '@/lib/discord-utils'
 
 interface NavLinkProps {
   href: string
@@ -64,9 +65,14 @@ function ExternalNavLink({
   label: string
   onClick?: () => void
 }) {
+  const resolvedHref = resolveDiscordHref(
+    href,
+    typeof navigator !== 'undefined' ? navigator.userAgent : ''
+  )
   return (
     <a
-      href={href}
+      href={resolvedHref}
+      suppressHydrationWarning
       target="_blank"
       rel="noopener noreferrer"
       className={styles.link}
