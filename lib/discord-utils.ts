@@ -213,12 +213,27 @@ export function formatTeamLines(
   })
 
   if (unassigned && unassigned.length > 0) {
-    lines.push('**Unassigned**')
-    unassigned.forEach((member) => {
-      const label = member.discordId ? `<@${member.discordId}>` : member.name
-      lines.push(`• ${label}`)
-    })
-    lines.push('')
+    const byClass = new Map<string, typeof unassigned>()
+    for (const member of unassigned) {
+      const group = byClass.get(member.carClass) ?? []
+      group.push(member)
+      byClass.set(member.carClass, group)
+    }
+    const sortedClasses = [...byClass.keys()].sort()
+    for (const carClass of sortedClasses) {
+      lines.push(`**Unassigned - ${carClass}**`)
+      const members = byClass.get(carClass)!
+      members.sort((a, b) => {
+        const labelA = a.discordId ? `<@${a.discordId}>` : a.name
+        const labelB = b.discordId ? `<@${b.discordId}>` : b.name
+        return labelA.localeCompare(labelB)
+      })
+      for (const member of members) {
+        const label = member.discordId ? `<@${member.discordId}>` : member.name
+        lines.push(`• ${label}`)
+      }
+      lines.push('')
+    }
   }
 
   return lines

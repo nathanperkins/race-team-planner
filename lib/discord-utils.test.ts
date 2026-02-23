@@ -86,11 +86,81 @@ describe('Discord Utils', () => {
       expect(lines).toContain('• Bob')
     })
 
-    it('formats unassigned members correctly', () => {
+    it('formats unassigned members with class group header', () => {
       const unassigned = [{ name: 'Charlie', carClass: 'GT3' }]
       const lines = formatTeamLines([], unassigned)
-      expect(lines).toContain('**Unassigned**')
+      expect(lines).toContain('**Unassigned - GT3**')
       expect(lines).toContain('• Charlie')
+      expect(lines).not.toContain('**Unassigned**')
+    })
+
+    it('groups unassigned members by car class sorted by class then name', () => {
+      const unassigned = [
+        { name: 'Victor', carClass: 'LMP2' },
+        { name: 'Adam', carClass: 'GTP' },
+        { name: 'Steven', carClass: 'GT3' },
+        { name: 'Nathan', carClass: 'LMP2' },
+        { name: 'John', carClass: 'GTP' },
+        { name: 'Kaelan', carClass: 'GT3' },
+      ]
+      const lines = formatTeamLines([], unassigned)
+
+      // All three group headers present
+      expect(lines).toContain('**Unassigned - GT3**')
+      expect(lines).toContain('**Unassigned - GTP**')
+      expect(lines).toContain('**Unassigned - LMP2**')
+      // No generic Unassigned header
+      expect(lines).not.toContain('**Unassigned**')
+
+      // Classes appear in alphabetical order
+      const gt3Idx = lines.indexOf('**Unassigned - GT3**')
+      const gtpIdx = lines.indexOf('**Unassigned - GTP**')
+      const lmp2Idx = lines.indexOf('**Unassigned - LMP2**')
+      expect(gt3Idx).toBeLessThan(gtpIdx)
+      expect(gtpIdx).toBeLessThan(lmp2Idx)
+
+      // Within GT3: Kaelan before Steven
+      const kaelanIdx = lines.indexOf('• Kaelan')
+      const stevenIdx = lines.indexOf('• Steven')
+      expect(kaelanIdx).toBeGreaterThan(gt3Idx)
+      expect(kaelanIdx).toBeLessThan(stevenIdx)
+
+      // Within GTP: Adam before John
+      const adamIdx = lines.indexOf('• Adam')
+      const johnIdx = lines.indexOf('• John')
+      expect(adamIdx).toBeGreaterThan(gtpIdx)
+      expect(adamIdx).toBeLessThan(johnIdx)
+
+      // Within LMP2: Nathan before Victor
+      const nathanIdx = lines.indexOf('• Nathan')
+      const victorIdx = lines.indexOf('• Victor')
+      expect(nathanIdx).toBeGreaterThan(lmp2Idx)
+      expect(nathanIdx).toBeLessThan(victorIdx)
+    })
+
+    it('uses discord mention instead of name for unassigned members with discordId', () => {
+      const unassigned = [
+        { name: 'Alice', carClass: 'GT3', discordId: '111' },
+        { name: 'Bob', carClass: 'GT3' },
+      ]
+      const lines = formatTeamLines([], unassigned)
+      expect(lines).toContain('• <@111>')
+      expect(lines).toContain('• Bob')
+      expect(lines).not.toContain('• Alice')
+    })
+
+    it('sorts unassigned by display label (discord mention sorts by ID string, name sorts alphabetically)', () => {
+      const unassigned = [
+        { name: 'Zara', carClass: 'GT3', discordId: '999' },
+        { name: 'Aaron', carClass: 'GT3' },
+        { name: 'Mike', carClass: 'GT3' },
+      ]
+      const lines = formatTeamLines([], unassigned)
+      // Aaron (no discord) sorts before Mike (no discord), Zara with discord mention comes after by label
+      const aaronIdx = lines.indexOf('• Aaron')
+      const mikeIdx = lines.indexOf('• Mike')
+      expect(aaronIdx).toBeGreaterThan(0)
+      expect(mikeIdx).toBeGreaterThan(aaronIdx)
     })
   })
 
@@ -167,7 +237,7 @@ describe('Discord Utils', () => {
       })
       expect(lines).toContain('• Charlie')
       expect(lines).toContain('• Dave')
-      expect(lines.filter((l) => l === '**Unassigned**')).toHaveLength(2)
+      expect(lines.filter((l) => l === '**Unassigned - GT3**')).toHaveLength(2)
     })
   })
 
@@ -579,7 +649,7 @@ describe('Discord Utils', () => {
       }
 
       const embeds = buildTeamsAssignedEmbeds(data, 'Test App')
-      expect(embeds[0].description).toContain('**Unassigned**')
+      expect(embeds[0].description).toContain('**Unassigned - GT3**')
       expect(embeds[0].description).toContain('• Charlie')
     })
 
@@ -685,7 +755,7 @@ describe('Discord Utils', () => {
 
       // Third timeslot has unassigned drivers
       expect(desc).toContain('⏰ **12:00 AM UTC**')
-      expect(desc).toContain('**Unassigned**')
+      expect(desc).toContain('**Unassigned - GT3**')
       expect(desc).toContain('• Bob')
     })
 
