@@ -716,6 +716,85 @@ describe('sendTeamsAssignmentNotification', () => {
     // Verify no chat notification was sent
     expect(sendTeamsAssignedNotification).not.toHaveBeenCalled()
   })
+
+  it('does not send notification when re-saving with no roster changes (scenario 3)', async () => {
+    // Previous state: User 1 on Team One — same as current state (no changes)
+    const mockRace = setupMockRace({
+      teamsAssigned: true,
+      discordTeamsThreadId: 'event-thread-id',
+      discordTeamThreads: { 'team-1': 'team-thread-1' },
+      discordTeamsSnapshot: {
+        'reg-1': { teamId: 'team-1', driverName: 'User 1', carClassName: 'GT3' },
+      },
+    })
+
+    // Current state: identical to snapshot — no changes
+    const mockRegistrations = [setupMockRegistration('1', 'team-1', 'Team One')]
+
+    vi.mocked(prisma.race.findUnique).mockResolvedValue(mockRace as any)
+    vi.mocked(prisma.registration.findMany).mockResolvedValue(mockRegistrations as any)
+    vi.mocked(prisma.race.findFirst).mockResolvedValue({
+      discordTeamsThreadId: 'event-thread-id',
+    } as any)
+    vi.mocked(prisma.race.findMany).mockResolvedValue([])
+    vi.mocked(createOrUpdateTeamThread).mockResolvedValue('team-thread-1')
+    vi.mocked(createOrUpdateEventThread).mockResolvedValue({
+      ok: true,
+      threadId: 'event-thread-id',
+    })
+
+    await sendTeamsAssignmentNotification(raceId)
+
+    expect(sendTeamsAssignedNotification).not.toHaveBeenCalled()
+  })
+
+  // Regression test for GitHub issue #132:
+  // Drop notifications were not sent when all members were removed from teams,
+  // because the notification was gated on hasTeamsAssigned (teamsList.length > 0).
+  it('sends drop notifications when all members are removed from teams (issue #132)', async () => {
+    // Previous state: User 1 was on Team One
+    const mockRace = setupMockRace({
+      teamsAssigned: true,
+      discordTeamsThreadId: 'event-thread-id',
+      discordTeamThreads: { 'team-1': 'team-thread-1' },
+      discordTeamsSnapshot: {
+        'reg-1': { teamId: 'team-1', driverName: 'User 1', carClassName: 'GT3' },
+      },
+    })
+
+    // Current state: User 1 is now unassigned (no teams have any members)
+    const mockRegistrations = [setupMockRegistration('1', null)]
+
+    vi.mocked(prisma.race.findUnique).mockResolvedValue(mockRace as any)
+    vi.mocked(prisma.registration.findMany).mockResolvedValue(mockRegistrations as any)
+    vi.mocked(prisma.race.findFirst).mockResolvedValue({
+      discordTeamsThreadId: 'event-thread-id',
+    } as any)
+    vi.mocked(prisma.race.findMany).mockResolvedValue([])
+    vi.mocked(createOrUpdateEventThread).mockResolvedValue({
+      ok: true,
+      threadId: 'event-thread-id',
+    })
+
+    await sendTeamsAssignmentNotification(raceId)
+
+    // Drop notifications must be sent even when teamsList is empty after the update
+    expect(sendTeamsAssignedNotification).toHaveBeenCalledWith(
+      'event-thread-id',
+      expect.objectContaining({
+        rosterChanges: expect.arrayContaining([
+          expect.objectContaining({
+            type: 'dropped',
+            driverName: 'User 1',
+            fromTeam: 'Team One',
+          }),
+        ]),
+      }),
+      expect.objectContaining({
+        title: '🏁 Teams Updated',
+      })
+    )
+  })
 })
 
 describe('loadRaceAssignmentData', () => {
