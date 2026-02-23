@@ -699,9 +699,9 @@ describe('sendTeamsAssignmentNotification', () => {
     )
   })
 
-  it('does not send notification when no teams are assigned', async () => {
-    // No teams assigned - all registrations are unassigned
-    const mockRace = setupMockRace()
+  it('sends Teams Assigned notification on first save even when all drivers are unassigned', async () => {
+    // No teams assigned - all registrations are unassigned, but it IS the first save
+    const mockRace = setupMockRace() // discordTeamsSnapshot: null → isFirstAssignment=true
     const mockRegistrations = [setupMockRegistration('1', null)] // Unassigned
 
     vi.mocked(prisma.race.findUnique).mockResolvedValue(mockRace as any)
@@ -713,8 +713,12 @@ describe('sendTeamsAssignmentNotification', () => {
 
     await sendTeamsAssignmentNotification(raceId)
 
-    // Verify no chat notification was sent
-    expect(sendTeamsAssignedNotification).not.toHaveBeenCalled()
+    // Notification fires for first-save-with-registrations (issue #133 fix)
+    expect(sendTeamsAssignedNotification).toHaveBeenCalledWith(
+      'event-thread-id',
+      expect.anything(),
+      expect.objectContaining({ title: '🏁 Teams Assigned' })
+    )
   })
 
   it('does not send notification when re-saving with no roster changes (scenario 3)', async () => {
@@ -746,6 +750,38 @@ describe('sendTeamsAssignmentNotification', () => {
     await sendTeamsAssignmentNotification(raceId)
 
     expect(sendTeamsAssignedNotification).not.toHaveBeenCalled()
+  })
+
+  // Regression test for GitHub issue #133:
+  // No notification was sent when a new driver was added as unassigned on the first save,
+  // because the condition required hasTeamsAssigned=true on first assignment.
+  it('sends notification on first save when driver is added as unassigned (issue #133)', async () => {
+    // No previous snapshot — this is the first save for this race
+    const mockRace = setupMockRace({
+      discordTeamsSnapshot: null,
+      discordTeamsThreadId: null,
+    })
+
+    // Driver is registered but unassigned (teamId: null)
+    const mockRegistrations = [setupMockRegistration('1', null)]
+
+    vi.mocked(prisma.race.findUnique).mockResolvedValue(mockRace as any)
+    vi.mocked(prisma.registration.findMany).mockResolvedValue(mockRegistrations as any)
+    vi.mocked(prisma.race.findFirst).mockResolvedValue(null)
+    vi.mocked(prisma.race.findMany).mockResolvedValue([])
+    vi.mocked(createOrUpdateEventThread).mockResolvedValue({
+      ok: true,
+      threadId: 'event-thread-id',
+    })
+
+    await sendTeamsAssignmentNotification(raceId)
+
+    // Notification must fire even when no teams are assigned — first save with registrations
+    expect(sendTeamsAssignedNotification).toHaveBeenCalledWith(
+      'event-thread-id',
+      expect.anything(),
+      expect.objectContaining({ title: '🏁 Teams Assigned' })
+    )
   })
 
   // Regression test for GitHub issue #132:
@@ -2339,8 +2375,12 @@ describe('saveRaceEdits - event thread for unassigned-only races', () => {
     expect(result.message).toBe('Success')
     // Event thread must be created even when no teams are assigned
     expect(createOrUpdateEventThread).toHaveBeenCalled()
-    // No chat notification since this is not a team assignment (no teams yet)
-    expect(sendTeamsAssignedNotification).not.toHaveBeenCalled()
+    // Chat notification fires for first-save-with-registrations (issue #133 fix)
+    expect(sendTeamsAssignedNotification).toHaveBeenCalledWith(
+      'event-thread-1',
+      expect.anything(),
+      expect.objectContaining({ title: '🏁 Teams Assigned' })
+    )
   })
 })
 

@@ -2641,15 +2641,15 @@ export async function sendTeamsAssignmentNotificationWithData(
     const threadId = threadResult.threadId!
 
     // 2. Send chat notification
-    // Scenario 1: First assignment with teams → post "Teams Assigned"
+    // Scenario 1: First save with any registrations → post "Teams Assigned"
+    //   (includes the case where all drivers are unassigned — no teams yet)
     // Scenario 2: Update with actual changes → post "Teams Updated" + roster changes
     // Scenario 3: No change → skip entirely
-    const hasTeamsAssigned = teamsList.length > 0
     const isFirstAssignment = previousSnapshot === null
     const rosterChangesForNotification =
       !isFirstAssignment && rosterChanges.length > 0 ? rosterChanges : undefined
 
-    if ((hasTeamsAssigned && isFirstAssignment) || rosterChangesForNotification) {
+    if ((isFirstAssignment && registrations.length > 0) || rosterChangesForNotification) {
       await sendTeamsAssignedNotification(
         threadId,
         {

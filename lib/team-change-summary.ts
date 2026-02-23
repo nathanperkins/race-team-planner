@@ -102,9 +102,15 @@ export function buildTeamChangeSummary(params: {
   const details = buildTeamChangeDetails({ originalRecords, pendingRecords, teamNameById })
   const teamAdded = new Map<string, Set<string>>()
   const destructiveLines = new Set<string>()
+  const newUnassignedLines: string[] = []
 
   details.forEach((detail) => {
     if (detail.type === 'added') {
+      if (!detail.toTeamId) {
+        // New registration added directly as unassigned — show as a standalone line
+        newUnassignedLines.push(detail.line)
+        return
+      }
       const existing = teamAdded.get(detail.toTeamName) ?? new Set<string>()
       existing.add(detail.driverName)
       teamAdded.set(detail.toTeamName, existing)
@@ -121,7 +127,7 @@ export function buildTeamChangeSummary(params: {
     return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`
   }
 
-  const teamChanges: string[] = []
+  const teamChanges: string[] = [...newUnassignedLines.sort((a, b) => a.localeCompare(b))]
   const addedTeams = Array.from(teamAdded.keys()).sort((a, b) => a.localeCompare(b))
   addedTeams.forEach((teamName) => {
     const drivers = Array.from(teamAdded.get(teamName) ?? []).sort((a, b) => a.localeCompare(b))
@@ -346,7 +352,6 @@ export function buildTeamChangeDetails(params: {
     }
 
     if (!original && pending) {
-      if (!pending.teamId) return
       const toTeamName = getTeamName(pending.teamId, pending.teamName)
       details.push({
         registrationId: id,
@@ -356,7 +361,9 @@ export function buildTeamChangeDetails(params: {
         toTeamId: pending.teamId,
         fromTeamName: 'Unassigned',
         toTeamName,
-        line: `Added ${pending.driverName} to ${toTeamName}.`,
+        line: pending.teamId
+          ? `Added ${pending.driverName} to ${toTeamName}.`
+          : `Registered ${pending.driverName} (Unassigned).`,
         destructive: false,
       })
     }
