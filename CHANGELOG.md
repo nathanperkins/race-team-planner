@@ -6,7 +6,7 @@ The most notable changes to this project are documented here.
 
 **Released on <time datetime="2026-02-23">February 23, 2026</time>**
 
-[15 issues completed][Milestone 2] by **[Nathan]**, **[Steven]**, and **[Kaelan]**.
+[25 issues completed][Milestone 2] by **[Nathan]**, **[Steven]**, and **[Kaelan]**.
 
 ### Highlights
 
