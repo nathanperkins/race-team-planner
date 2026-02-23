@@ -1,4 +1,4 @@
-import { features, appTitle, feedbackUrl, appLocale, appTimeZone } from '@/lib/config'
+import { features, appTitle, feedbackUrl, userGuideUrl, appLocale, appTimeZone } from '@/lib/config'
 import { createLogger } from '@/lib/logger'
 
 const logger = createLogger('instrumentation')
@@ -19,6 +19,11 @@ export async function register() {
     logger.info(`[Notice] Feedback URL is CONFIGURED: ${feedbackUrl} 📢`)
   } else {
     logger.info('[Notice] Feedback URL is NOT configured (Optional) ⚠️')
+  }
+  if (features.userGuide) {
+    logger.info(`[Notice] User Guide URL is CONFIGURED: ${userGuideUrl} 📢`)
+  } else {
+    logger.info('[Notice] User Guide URL is NOT configured (Optional) ⚠️')
   }
 
   if (features.discordMembership) {
