@@ -28,6 +28,7 @@ import {
 } from '@/lib/utils'
 import { Prisma } from '@prisma/client'
 import { getIracingSeasonInfo } from '@/lib/season-utils'
+import AddToCalendarButton from '@/components/AddToCalendarButton'
 import styles from './EventDetailModal.module.css'
 
 type EventWithRaces = Prisma.EventGetPayload<{
@@ -202,21 +203,49 @@ export default function EventDetailModal({
             </div>
 
             <div className={styles.carClassList}>
-              {displayRaces.map((race, idx) => (
-                <span key={race.id} className={styles.carClassTag}>
-                  <Calendar size={14} />{' '}
-                  {new Date(race.startTime).toLocaleDateString('en-US', {
-                    month: 'numeric',
-                    day: 'numeric',
-                  })}{' '}
-                  •{' '}
-                  {new Date(race.startTime).toLocaleTimeString('en-US', {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    timeZoneName: idx === displayRaces.length - 1 ? 'short' : undefined,
-                  })}
-                </span>
-              ))}
+              {displayRaces.map((race, idx) => {
+                const raceCompleted = new Date() > new Date(race.endTime)
+                const pillContent = (
+                  <>
+                    <Calendar size={14} />{' '}
+                    {new Date(race.startTime).toLocaleDateString('en-US', {
+                      month: 'numeric',
+                      day: 'numeric',
+                    })}{' '}
+                    •{' '}
+                    {new Date(race.startTime).toLocaleTimeString('en-US', {
+                      hour: 'numeric',
+                      minute: '2-digit',
+                      timeZoneName: idx === displayRaces.length - 1 ? 'short' : undefined,
+                    })}
+                  </>
+                )
+                return raceCompleted ? (
+                  <span key={race.id} className={styles.carClassTag}>
+                    {pillContent}
+                  </span>
+                ) : (
+                  <AddToCalendarButton
+                    key={race.id}
+                    raceId={race.id}
+                    startTime={race.startTime}
+                    endTime={race.endTime}
+                    eventId={event.id}
+                    eventName={event.name}
+                    track={event.track}
+                    trackConfig={event.trackConfig}
+                    discordTeamsThreadId={race.discordTeamsThreadId}
+                    discordGuildId={discordGuildId}
+                    durationMins={event.durationMins}
+                    tempValue={event.tempValue}
+                    tempUnits={event.tempUnits}
+                    relHumidity={event.relHumidity}
+                    carClasses={event.carClasses}
+                  >
+                    {pillContent}
+                  </AddToCalendarButton>
+                )
+              })}
             </div>
 
             {event.carClasses.length > 0 && (
@@ -284,6 +313,13 @@ export default function EventDetailModal({
                   onDropdownToggle={(open) => handleDropdownToggle(race.id, open)}
                   discordGuildId={discordGuildId}
                   eventId={event.id}
+                  eventName={event.name}
+                  eventTrack={event.track}
+                  eventTrackConfig={event.trackConfig}
+                  eventDurationMins={event.durationMins}
+                  eventTempValue={event.tempValue}
+                  eventTempUnits={event.tempUnits}
+                  eventRelHumidity={event.relHumidity}
                   eventLicenseGroup={event.licenseGroup}
                   userLicenseLevel={userLicenseLevel}
                 />

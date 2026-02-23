@@ -1,4 +1,6 @@
+import React from 'react'
 import { describe, expect, it, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
 
 // Mock Next.js modules
 vi.mock('next/navigation', () => ({
@@ -19,6 +21,22 @@ vi.mock('@/lib/prisma', () => ({
       findMany: vi.fn(),
     },
   },
+}))
+
+vi.mock('next/link', () => ({
+  default: (props: any) => <a href={props.href}>{props.children}</a>,
+}))
+vi.mock('@/components/DropRegistrationButton', () => ({
+  default: () => <button data-testid="drop-registration-button">Drop</button>,
+}))
+vi.mock('@/components/EditableCarClass', () => ({
+  default: () => <div data-testid="editable-car-class" />,
+}))
+vi.mock('@/components/EditableRaceTime', () => ({
+  default: () => <div data-testid="editable-race-time" />,
+}))
+vi.mock('@/components/AddToCalendarButton', () => ({
+  default: () => <button data-testid="add-to-calendar-button">Add to calendar</button>,
 }))
 
 describe('UserRegistrationsPage sorting and filtering', () => {
@@ -125,5 +143,78 @@ describe('UserRegistrationsPage sorting and filtering', () => {
         },
       })
     )
+  })
+})
+
+describe('AddToCalendar button visibility on registrations page', () => {
+  const mockSession = {
+    user: { id: 'user-1', name: 'Test User', role: 'USER' },
+    expires: '2026-12-31T23:59:59.999Z',
+  }
+  const mockUser = { id: 'user-1', name: 'Test User' }
+  const now = new Date('2026-02-22T00:00:00Z')
+
+  const makeRegistration = (endTime: Date) => ({
+    id: 'reg-1',
+    raceId: 'race-1',
+    carClassId: 'class-1',
+    carClass: { id: 'class-1', name: 'GT3 Class', shortName: 'GT3' },
+    race: {
+      id: 'race-1',
+      eventId: 'evt-1',
+      startTime: new Date('2027-01-01T10:00:00Z'),
+      endTime,
+      teamsAssigned: false,
+      discordTeamsThreadId: null,
+      event: {
+        id: 'evt-1',
+        name: 'Test Series',
+        track: 'Sebring',
+        trackConfig: null,
+        carClasses: [],
+        races: [{ id: 'race-1', startTime: new Date('2027-01-01T10:00:00Z') }],
+        durationMins: null,
+        tempValue: null,
+        tempUnits: null,
+        relHumidity: null,
+      },
+    },
+    team: null,
+  })
+
+  it('shows add-to-calendar button for upcoming races', async () => {
+    const { auth } = await import('@/lib/auth')
+    const prisma = (await import('@/lib/prisma')).default
+
+    vi.setSystemTime(now)
+    vi.mocked(auth).mockResolvedValue(mockSession)
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(mockUser)
+    vi.mocked(prisma.registration.findMany).mockResolvedValue([
+      makeRegistration(new Date('2027-06-01T12:00:00Z')), // future
+    ] as any)
+
+    const UserRegistrationsPage = (await import('./page')).default
+    const jsx = await UserRegistrationsPage({ params: Promise.resolve({ userId: 'user-1' }) })
+    render(jsx)
+
+    expect(screen.getByTestId('add-to-calendar-button')).toBeInTheDocument()
+  })
+
+  it('hides add-to-calendar button for past races', async () => {
+    const { auth } = await import('@/lib/auth')
+    const prisma = (await import('@/lib/prisma')).default
+
+    vi.setSystemTime(now)
+    vi.mocked(auth).mockResolvedValue(mockSession)
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(mockUser)
+    vi.mocked(prisma.registration.findMany).mockResolvedValue([
+      makeRegistration(new Date('2025-01-01T12:00:00Z')), // past
+    ] as any)
+
+    const UserRegistrationsPage = (await import('./page')).default
+    const jsx = await UserRegistrationsPage({ params: Promise.resolve({ userId: 'user-1' }) })
+    render(jsx)
+
+    expect(screen.queryByTestId('add-to-calendar-button')).not.toBeInTheDocument()
   })
 })

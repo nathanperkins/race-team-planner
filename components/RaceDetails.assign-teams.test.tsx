@@ -104,6 +104,15 @@ vi.mock('./TeamPickerTrigger', () => ({
 vi.mock('next/image', () => ({
   default: (props: { src: string; alt: string }) => <img {...props} alt={props.alt} />,
 }))
+vi.mock('./AddToCalendarButton', () => ({
+  default: () => <button data-testid="add-to-calendar-button">Add to calendar</button>,
+}))
+
+const raceEventProps = {
+  eventId: 'evt-1',
+  eventName: 'Test Series',
+  eventTrack: 'Sebring',
+}
 
 describe('RaceDetails Assign Teams', () => {
   beforeEach(() => {
@@ -128,6 +137,7 @@ describe('RaceDetails Assign Teams', () => {
     render(
       <RaceDetails
         race={mockRace}
+        {...raceEventProps}
         userId="admin-user"
         isAdmin
         carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
@@ -251,6 +261,7 @@ describe('RaceDetails Assign Teams', () => {
     render(
       <RaceDetails
         race={mockRace}
+        {...raceEventProps}
         userId="admin-user"
         isAdmin
         carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
@@ -332,6 +343,7 @@ describe('RaceDetails Assign Teams', () => {
     render(
       <RaceDetails
         race={mockRace}
+        {...raceEventProps}
         userId="admin-user"
         isAdmin
         carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
@@ -486,6 +498,7 @@ describe('RaceDetails Assign Teams', () => {
     render(
       <RaceDetails
         race={mockRace}
+        {...raceEventProps}
         userId="admin-user"
         isAdmin
         carClasses={[
@@ -602,6 +615,7 @@ describe('RaceDetails Assign Teams', () => {
     render(
       <RaceDetails
         race={mockRace}
+        {...raceEventProps}
         userId="admin-user"
         isAdmin
         carClasses={[{ id: 'class-gr86', name: 'Toyota GR86', shortName: 'Toyota GR86' }]}
@@ -710,6 +724,7 @@ describe('RaceDetails Assign Teams', () => {
     render(
       <RaceDetails
         race={mockRace}
+        {...raceEventProps}
         userId="admin-user"
         isAdmin
         carClasses={[
@@ -810,6 +825,7 @@ describe('RaceDetails Assign Teams', () => {
     render(
       <RaceDetails
         race={mockRace}
+        {...raceEventProps}
         userId="admin-user"
         isAdmin
         carClasses={[

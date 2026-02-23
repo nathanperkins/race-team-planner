@@ -5,6 +5,7 @@ import Link from 'next/link'
 import DropRegistrationButton from '@/components/DropRegistrationButton'
 import EditableCarClass from '@/components/EditableCarClass'
 import EditableRaceTime from '@/components/EditableRaceTime'
+import AddToCalendarButton from '@/components/AddToCalendarButton'
 
 import styles from './registrations.module.css'
 
@@ -19,6 +20,8 @@ export default async function UserRegistrationsPage({ params, searchParams }: Pr
 
   const { userId } = await params
   const { showCompleted } = (await searchParams) || {}
+  const appBaseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+  const discordGuildId = process.env.DISCORD_GUILD_ID
   const isAdmin = session.user?.role === 'ADMIN'
 
   const user = await prisma.user.findUnique({
@@ -177,14 +180,35 @@ export default async function UserRegistrationsPage({ params, searchParams }: Pr
                       </td>
                       {(userId === session.user?.id || session.user?.role === 'ADMIN') && (
                         <td className={styles.td} data-label="Actions">
-                          {new Date() > reg.race.endTime ? (
-                            <span className={styles.completedText}>Completed</span>
-                          ) : (
-                            <DropRegistrationButton
-                              registrationId={reg.id}
-                              isAssignedToTeam={!!reg.team}
-                            />
-                          )}
+                          <div className={styles.actionsGroup}>
+                            {new Date() > reg.race.endTime ? (
+                              <span className={styles.completedText}>Completed</span>
+                            ) : (
+                              <DropRegistrationButton
+                                registrationId={reg.id}
+                                isAssignedToTeam={!!reg.team}
+                              />
+                            )}
+                            {!raceCompleted && (
+                              <AddToCalendarButton
+                                raceId={reg.raceId}
+                                startTime={reg.race.startTime}
+                                endTime={reg.race.endTime}
+                                eventId={reg.race.eventId}
+                                eventName={reg.race.event.name}
+                                track={reg.race.event.track}
+                                trackConfig={reg.race.event.trackConfig}
+                                discordTeamsThreadId={reg.race.discordTeamsThreadId}
+                                discordGuildId={discordGuildId}
+                                appBaseUrl={appBaseUrl}
+                                durationMins={reg.race.event.durationMins}
+                                tempValue={reg.race.event.tempValue}
+                                tempUnits={reg.race.event.tempUnits}
+                                relHumidity={reg.race.event.relHumidity}
+                                carClasses={reg.race.event.carClasses}
+                              />
+                            )}
+                          </div>
                         </td>
                       )}
                     </tr>

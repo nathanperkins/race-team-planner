@@ -31,6 +31,7 @@ import QuickRegistration from './QuickRegistration'
 import EditableCarClass from './EditableCarClass'
 import AdminDriverSearch from './AdminDriverSearch'
 import TeamPickerTrigger from './TeamPickerTrigger'
+import AddToCalendarButton from './AddToCalendarButton'
 import { saveRaceEdits } from '@/app/actions'
 import {
   getAutoMaxDriversPerTeam,
@@ -131,7 +132,14 @@ interface Props {
   allDrivers?: Driver[]
   onDropdownToggle?: (open: boolean) => void
   discordGuildId?: string
-  eventId?: string
+  eventId: string
+  eventName: string
+  eventTrack: string
+  eventTrackConfig?: string | null
+  eventDurationMins?: number | null
+  eventTempValue?: number | null
+  eventTempUnits?: number | null
+  eventRelHumidity?: number | null
   eventLicenseGroup?: number | null
   userLicenseLevel?: number | null
 }
@@ -251,6 +259,13 @@ export default function RaceDetails({
   onDropdownToggle,
   discordGuildId,
   eventId,
+  eventName,
+  eventTrack,
+  eventTrackConfig,
+  eventDurationMins,
+  eventTempValue,
+  eventTempUnits,
+  eventRelHumidity,
   eventLicenseGroup,
   userLicenseLevel,
 }: Props) {
@@ -2322,6 +2337,24 @@ export default function RaceDetails({
                 <span className={styles.liveDot} />
                 LIVE
               </span>
+            )}
+            {!isRaceCompleted && (
+              <AddToCalendarButton
+                raceId={race.id}
+                startTime={race.startTime}
+                endTime={race.endTime}
+                eventId={eventId}
+                eventName={eventName}
+                track={eventTrack}
+                trackConfig={eventTrackConfig}
+                discordTeamsThreadId={race.discordTeamsThreadId}
+                discordGuildId={discordGuildId}
+                durationMins={eventDurationMins}
+                tempValue={eventTempValue}
+                tempUnits={eventTempUnits}
+                relHumidity={eventRelHumidity}
+                carClasses={carClasses}
+              />
             )}
           </div>
           {(() => {

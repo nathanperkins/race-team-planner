@@ -36,6 +36,15 @@ vi.mock('./TeamPickerTrigger', () => ({
 vi.mock('next/image', () => ({
   default: (props: { src: string; alt: string }) => <img {...props} alt={props.alt} />,
 }))
+vi.mock('./AddToCalendarButton', () => ({
+  default: () => <button data-testid="add-to-calendar-button">Add to calendar</button>,
+}))
+
+const raceEventProps = {
+  eventId: 'evt-1',
+  eventName: 'Test Series',
+  eventTrack: 'Sebring',
+}
 
 describe('RaceDetails', () => {
   it('should not show a separator line when there are unassigned drivers but no teams', () => {
@@ -72,6 +81,7 @@ describe('RaceDetails', () => {
     const { container } = render(
       <RaceDetails
         race={mockRace}
+        {...raceEventProps}
         userId="user-1"
         carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
         teams={[]}
@@ -126,6 +136,7 @@ describe('RaceDetails', () => {
     const { container } = render(
       <RaceDetails
         race={mockRace}
+        {...raceEventProps}
         userId="user-1"
         carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
         teams={[{ id: 'team-1', name: 'Team 1', iracingTeamId: null, memberCount: 1 }]}
@@ -167,6 +178,7 @@ describe('RaceDetails', () => {
     render(
       <RaceDetails
         race={mockRace}
+        {...raceEventProps}
         userId="admin-user"
         isAdmin
         carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
@@ -208,6 +220,7 @@ describe('RaceDetails', () => {
     render(
       <RaceDetails
         race={mockRace}
+        {...raceEventProps}
         userId="admin-user"
         isAdmin
         carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
@@ -250,6 +263,7 @@ describe('RaceDetails', () => {
     render(
       <RaceDetails
         race={mockRace}
+        {...raceEventProps}
         userId="user-1"
         carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
         teams={[]}
@@ -291,6 +305,7 @@ describe('RaceDetails', () => {
     render(
       <RaceDetails
         race={mockRace}
+        {...raceEventProps}
         userId="user-1"
         carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
         teams={[]}
@@ -331,6 +346,7 @@ describe('RaceDetails', () => {
     render(
       <RaceDetails
         race={mockRace}
+        {...raceEventProps}
         userId="user-1"
         carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
         teams={[{ id: 'team-1', name: 'Team 1', iracingTeamId: null, memberCount: 1 }]}
@@ -372,6 +388,7 @@ describe('RaceDetails', () => {
     render(
       <RaceDetails
         race={mockRace}
+        {...raceEventProps}
         userId="admin-user"
         isAdmin
         carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
@@ -413,6 +430,7 @@ describe('RaceDetails', () => {
     const { container } = render(
       <RaceDetails
         race={mockRace}
+        {...raceEventProps}
         userId="admin-user"
         isAdmin
         carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
@@ -474,6 +492,7 @@ describe('RaceDetails', () => {
     const { container } = render(
       <RaceDetails
         race={mockRace}
+        {...raceEventProps}
         userId="admin-user"
         isAdmin
         carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
@@ -554,6 +573,7 @@ describe('RaceDetails', () => {
     const { container } = render(
       <RaceDetails
         race={mockRace}
+        {...raceEventProps}
         userId="admin-user"
         isAdmin
         carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
@@ -611,6 +631,7 @@ describe('RaceDetails', () => {
     const { container } = render(
       <RaceDetails
         race={mockRace}
+        {...raceEventProps}
         userId="admin-user"
         isAdmin
         carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
@@ -671,6 +692,7 @@ describe('RaceDetails', () => {
     const { container } = render(
       <RaceDetails
         race={mockRace}
+        {...raceEventProps}
         userId="admin-user"
         isAdmin
         carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
@@ -746,6 +768,7 @@ describe('RaceDetails', () => {
     const { container } = render(
       <RaceDetails
         race={mockRace}
+        {...raceEventProps}
         userId="admin-user"
         isAdmin
         carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
@@ -772,5 +795,63 @@ describe('RaceDetails', () => {
       t.textContent?.includes('Cannot change team - Discord thread exists')
     )
     expect(discordTooltip).toBeDefined()
+  })
+
+  it('shows the add-to-calendar button for upcoming races', () => {
+    vi.setSystemTime(new Date('2026-01-01T00:00:00Z'))
+    const mockRace = {
+      id: 'race-calendar-upcoming',
+      startTime: new Date('2027-06-01T18:00:00Z'),
+      endTime: new Date('2027-06-01T22:00:00Z'),
+      teamsAssigned: false,
+      maxDriversPerTeam: 2,
+      teamAssignmentStrategy: 'BALANCED_IRATING' as const,
+      registrations: [],
+      discordTeamsThreadId: null,
+      discordTeamThreads: null,
+    }
+
+    render(
+      <RaceDetails
+        race={mockRace}
+        {...raceEventProps}
+        userId="user-1"
+        carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
+        teams={[]}
+        allDrivers={[]}
+      />
+    )
+
+    expect(screen.getByTestId('add-to-calendar-button')).toBeInTheDocument()
+    vi.useRealTimers()
+  })
+
+  it('hides the add-to-calendar button for past races', () => {
+    vi.setSystemTime(new Date('2027-12-01T00:00:00Z'))
+    const mockRace = {
+      id: 'race-calendar-past',
+      startTime: new Date('2027-06-01T18:00:00Z'),
+      endTime: new Date('2027-06-01T22:00:00Z'),
+      teamsAssigned: false,
+      maxDriversPerTeam: 2,
+      teamAssignmentStrategy: 'BALANCED_IRATING' as const,
+      registrations: [],
+      discordTeamsThreadId: null,
+      discordTeamThreads: null,
+    }
+
+    render(
+      <RaceDetails
+        race={mockRace}
+        {...raceEventProps}
+        userId="user-1"
+        carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
+        teams={[]}
+        allDrivers={[]}
+      />
+    )
+
+    expect(screen.queryByTestId('add-to-calendar-button')).not.toBeInTheDocument()
+    vi.useRealTimers()
   })
 })

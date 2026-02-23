@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import EventDetailModal from './EventDetailModal'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 
 // Mock icons to avoid lucide-react render issues in tests if any
 vi.mock('lucide-react', () => ({
@@ -13,7 +13,15 @@ vi.mock('lucide-react', () => ({
   Timer: () => <div data-testid="icon-timer" />,
   MapPin: () => <div data-testid="icon-map-pin" />,
   Calendar: () => <div data-testid="icon-calendar" />,
+  CalendarPlus: () => <div data-testid="icon-calendar-plus" />,
+  Chrome: () => <div data-testid="icon-chrome" />,
+  Mail: () => <div data-testid="icon-mail" />,
+  Download: () => <div data-testid="icon-download" />,
   Car: () => <div data-testid="icon-car" />,
+}))
+
+vi.mock('@/components/AddToCalendarButton', () => ({
+  default: (props: any) => <button data-testid="add-to-calendar-button">{props.children}</button>,
 }))
 
 // Mock RaceDetails to render children so we can test driver/team lists
@@ -57,6 +65,7 @@ describe('EventDetailModal', () => {
       {
         id: 'race-1',
         startTime: new Date('2026-03-06T19:00:00Z'),
+        endTime: new Date('2026-03-07T00:00:00Z'),
         registrations: [
           {
             id: 'reg-1',
@@ -133,5 +142,23 @@ describe('EventDetailModal', () => {
   it('renders the teams correctly', () => {
     render(<EventDetailModal {...defaultProps} />)
     expect(screen.getByText(/Team Alpha/)).toBeInTheDocument()
+  })
+
+  describe('add-to-calendar button on timeslot pills', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('shows the calendar button for upcoming timeslots', () => {
+      vi.setSystemTime(new Date('2026-01-01T00:00:00Z')) // before the race
+      render(<EventDetailModal {...defaultProps} />)
+      expect(screen.getByTestId('add-to-calendar-button')).toBeInTheDocument()
+    })
+
+    it('hides the calendar button for past timeslots', () => {
+      vi.setSystemTime(new Date('2027-01-01T00:00:00Z')) // after the race ended
+      render(<EventDetailModal {...defaultProps} />)
+      expect(screen.queryByTestId('add-to-calendar-button')).not.toBeInTheDocument()
+    })
   })
 })
