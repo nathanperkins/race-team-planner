@@ -526,6 +526,139 @@ describe('sendTeamsAssignmentNotification', () => {
     )
   })
 
+  it('includes sibling race timeslots with assigned teams and unassigned drivers (regression for #129)', async () => {
+    // Regression test for GitHub issue #129:
+    // "When event thread is updated with teams in one timeslot, all other timeslots get cleared"
+    //
+    // The bugs were:
+    // 1. Sibling registrations were loaded with a `teamId: { not: null }` filter, which excluded
+    //    unassigned drivers from appearing in sibling timeslots.
+    // 2. Sibling races were loaded with a `teamsAssigned: true` filter, which excluded races not
+    //    yet assigned as timeslots (covered separately by the 'includes an empty timeslot' test).
+    const race10AMId = 'race-10am'
+    const race6AMId = 'race-6am'
+    const race11PMStartTime = new Date('2026-02-12T23:00:00Z')
+    const race10AMStartTime = new Date('2026-02-12T10:00:00Z')
+    const race6AMStartTime = new Date('2026-02-12T06:00:00Z')
+
+    // Current race (11PM) - first time assigning teams
+    const mockRace = setupMockRace({
+      startTime: race11PMStartTime,
+      teamsAssigned: false,
+      discordTeamsSnapshot: null,
+    })
+
+    // Sibling races (10AM and 6AM) already have teams assigned with actual drivers
+    const sibling10AM = {
+      id: race10AMId,
+      startTime: race10AMStartTime,
+      teamsAssigned: true,
+      discordTeamThreads: { 'team-alpha': 'thread-alpha' },
+    }
+    const sibling6AM = {
+      id: race6AMId,
+      startTime: race6AMStartTime,
+      teamsAssigned: true,
+      discordTeamThreads: { 'team-beta': 'thread-beta' },
+    }
+
+    // 11PM: Cobalt team with Alice
+    const reg11PM = {
+      id: 'reg-11pm-1',
+      raceId: raceId,
+      teamId: 'team-cobalt',
+      team: { id: 'team-cobalt', name: 'Cobalt', alias: null },
+      carClassId: 'class-gt3',
+      carClass: { id: 'class-gt3', name: 'GT3', shortName: 'GT3' },
+      userId: 'user-alice',
+      manualDriverId: null,
+      user: { name: 'Alice', accounts: [], racerStats: [] },
+      manualDriver: null,
+    }
+
+    // 10AM: Alpha team with Bob (GT3, assigned) + Carol (LMP2, UNASSIGNED)
+    // Carol tests bug fix #1: unassigned drivers must not be filtered from sibling registrations
+    const reg10AMAssigned = {
+      id: 'reg-10am-1',
+      raceId: race10AMId,
+      teamId: 'team-alpha',
+      team: { id: 'team-alpha', name: 'Alpha', alias: null },
+      carClassId: 'class-gt3',
+      carClass: { id: 'class-gt3', name: 'GT3', shortName: 'GT3' },
+      userId: 'user-bob',
+      manualDriverId: null,
+      user: { name: 'Bob', accounts: [], racerStats: [] },
+      manualDriver: null,
+    }
+    const reg10AMUnassigned = {
+      id: 'reg-10am-2',
+      raceId: race10AMId,
+      teamId: null, // unassigned driver
+      team: null,
+      carClassId: 'class-lmp2',
+      carClass: { id: 'class-lmp2', name: 'LMP2', shortName: 'LMP2' },
+      userId: 'user-carol',
+      manualDriverId: null,
+      user: { name: 'Carol', accounts: [], racerStats: [] },
+      manualDriver: null,
+    }
+
+    // 6AM: Beta team with Dave
+    const reg6AM = {
+      id: 'reg-6am-1',
+      raceId: race6AMId,
+      teamId: 'team-beta',
+      team: { id: 'team-beta', name: 'Beta', alias: null },
+      carClassId: 'class-gt3',
+      carClass: { id: 'class-gt3', name: 'GT3', shortName: 'GT3' },
+      userId: 'user-dave',
+      manualDriverId: null,
+      user: { name: 'Dave', accounts: [], racerStats: [] },
+      manualDriver: null,
+    }
+
+    vi.mocked(prisma.race.findUnique).mockResolvedValue(mockRace as any)
+    vi.mocked(prisma.race.findMany).mockResolvedValue([sibling10AM, sibling6AM] as any)
+    // First findMany call: current race (11PM) registrations
+    // Second findMany call: sibling registrations — includes Carol (unassigned) to test bug fix
+    vi.mocked(prisma.registration.findMany)
+      .mockResolvedValueOnce([reg11PM] as any)
+      .mockResolvedValueOnce([reg10AMAssigned, reg10AMUnassigned, reg6AM] as any)
+
+    vi.mocked(createOrUpdateTeamThread).mockResolvedValue('cobalt-thread')
+    vi.mocked(createOrUpdateEventThread).mockResolvedValue({
+      ok: true,
+      threadId: 'event-thread-id',
+    })
+
+    await sendTeamsAssignmentNotification(raceId)
+
+    const call = vi.mocked(createOrUpdateEventThread).mock.calls[0]![0]!
+
+    // All 3 timeslots must be present
+    expect(call.timeslots).toHaveLength(3)
+
+    const timeslot10AM = call.timeslots.find(
+      (t) => t.raceStartTime.getTime() === race10AMStartTime.getTime()
+    )
+    const timeslot6AM = call.timeslots.find(
+      (t) => t.raceStartTime.getTime() === race6AMStartTime.getTime()
+    )
+
+    // 10AM: assigned team must be present
+    expect(timeslot10AM).toBeDefined()
+    expect(timeslot10AM?.teams).toHaveLength(1)
+    expect(timeslot10AM?.teams[0]).toMatchObject({ name: 'Alpha' })
+    // 10AM: unassigned driver Carol must also appear (was missing before bug fix)
+    expect(timeslot10AM?.unassigned).toHaveLength(1)
+    expect(timeslot10AM?.unassigned?.[0]).toMatchObject({ name: 'Carol' })
+
+    // 6AM: assigned team must be present
+    expect(timeslot6AM).toBeDefined()
+    expect(timeslot6AM?.teams).toHaveLength(1)
+    expect(timeslot6AM?.teams[0]).toMatchObject({ name: 'Beta' })
+  })
+
   it('includes an empty timeslot for sibling races that have not yet had teams assigned', async () => {
     const siblingStartTime = new Date('2026-02-12T20:00:00Z') // a second timeslot
     const mockRace = setupMockRace({ teamsAssigned: true })
