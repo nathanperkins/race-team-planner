@@ -14,7 +14,7 @@ import {
   X,
 } from 'lucide-react'
 import Image from 'next/image'
-import { buildDiscordAppLink } from '@/lib/discord-utils'
+import { buildDiscordLink } from '@/lib/discord-utils'
 import { Prisma } from '@prisma/client'
 import {
   type DragEvent,
@@ -270,6 +270,7 @@ export default function RaceDetails({
   userLicenseLevel,
 }: Props) {
   const [isSaving, startSaveTransition] = useTransition()
+
   const now = new Date()
   const isRaceCompleted = now > new Date(race.endTime)
   const isRaceLive = now >= new Date(race.startTime) && now <= new Date(race.endTime)
@@ -2078,7 +2079,12 @@ export default function RaceDetails({
                   if (guildId && threadId) {
                     return (
                       <a
-                        href={buildDiscordAppLink({ guildId, threadId })}
+                        href={buildDiscordLink({
+                          guildId,
+                          threadId,
+                          userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+                        })}
+                        suppressHydrationWarning
                         className={`${styles.discordLink} ${styles.teamThreadLink}`}
                         title="Join the team discussion on Discord"
                         onClick={(e) => e.stopPropagation()}
@@ -2363,7 +2369,12 @@ export default function RaceDetails({
             if (guildId && threadId) {
               return (
                 <a
-                  href={buildDiscordAppLink({ guildId, threadId })}
+                  href={buildDiscordLink({
+                    guildId,
+                    threadId,
+                    userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+                  })}
+                  suppressHydrationWarning
                   className={styles.discordLink}
                   title="Join the event discussion in Discord"
                 >

@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   buildDiscordAppLink,
   buildDiscordWebLink,
+  buildDiscordLink,
+  isMobileUserAgent,
   normalizeSeriesName,
   chunkLines,
   formatTeamLines,
@@ -35,6 +37,72 @@ describe('Discord Utils', () => {
     it('returns an https://discord.com link', () => {
       expect(buildDiscordWebLink({ guildId: 'g1', threadId: 't1' })).toBe(
         'https://discord.com/channels/g1/t1'
+      )
+    })
+  })
+
+  describe('isMobileUserAgent', () => {
+    it('returns true for Android', () => {
+      expect(
+        isMobileUserAgent(
+          'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'
+        )
+      ).toBe(true)
+    })
+
+    it('returns true for iPhone', () => {
+      expect(
+        isMobileUserAgent(
+          'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
+        )
+      ).toBe(true)
+    })
+
+    it('returns true for iPad', () => {
+      expect(
+        isMobileUserAgent(
+          'Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
+        )
+      ).toBe(true)
+    })
+
+    it('returns false for macOS Chrome', () => {
+      expect(
+        isMobileUserAgent(
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        )
+      ).toBe(false)
+    })
+
+    it('returns false for Windows Chrome', () => {
+      expect(
+        isMobileUserAgent(
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        )
+      ).toBe(false)
+    })
+
+    it('returns false for empty string', () => {
+      expect(isMobileUserAgent('')).toBe(false)
+    })
+  })
+
+  describe('buildDiscordLink', () => {
+    const opts = { guildId: 'guild-1', threadId: 'thread-1' }
+    const androidUA =
+      'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'
+    const desktopUA =
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+
+    it('returns discord:// deep link for desktop user agent', () => {
+      expect(buildDiscordLink({ ...opts, userAgent: desktopUA })).toBe(
+        'discord://-/channels/guild-1/thread-1'
+      )
+    })
+
+    it('returns https://discord.com link for mobile user agent', () => {
+      expect(buildDiscordLink({ ...opts, userAgent: androidUA })).toBe(
+        'https://discord.com/channels/guild-1/thread-1'
       )
     })
   })

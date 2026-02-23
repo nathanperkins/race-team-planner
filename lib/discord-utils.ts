@@ -143,6 +143,29 @@ export function buildDiscordWebLink(options: { guildId: string; threadId: string
   return `https://discord.com/channels/${options.guildId}/${options.threadId}`
 }
 
+/** Returns true when the given user-agent string belongs to a mobile browser
+ * (iOS or Android) that is unlikely to have the discord:// URI scheme
+ * registered at the OS level. On these platforms, web links should be used
+ * instead of app deep links. */
+export function isMobileUserAgent(userAgent: string): boolean {
+  return /Android|iPhone|iPad|iPod/i.test(userAgent)
+}
+
+/** Build the appropriate Discord channel link for the given user agent.
+ * Returns a `discord://` deep link on desktop (opens the native app) and an
+ * `https://discord.com` link on mobile (where the deep link scheme is not
+ * reliably registered). */
+export function buildDiscordLink(options: {
+  guildId: string
+  threadId: string
+  userAgent: string
+}) {
+  if (isMobileUserAgent(options.userAgent)) {
+    return buildDiscordWebLink({ guildId: options.guildId, threadId: options.threadId })
+  }
+  return buildDiscordAppLink({ guildId: options.guildId, threadId: options.threadId })
+}
+
 export function normalizeSeriesName(name: string) {
   return name
     .replace(/\s[-–—]\s\d{4}.*$/i, '')

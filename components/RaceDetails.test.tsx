@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import RaceDetails from './RaceDetails'
 import React from 'react'
 import styles from './RaceDetails.module.css'
@@ -853,5 +853,69 @@ describe('RaceDetails', () => {
 
     expect(screen.queryByTestId('add-to-calendar-button')).not.toBeInTheDocument()
     vi.useRealTimers()
+  })
+})
+
+describe('RaceDetails Discord thread links', () => {
+  const mockRaceWithThread = {
+    id: 'race-discord',
+    startTime: new Date('2027-01-01T10:00:00Z'),
+    endTime: new Date('2027-01-01T12:00:00Z'),
+    teamsAssigned: true,
+    maxDriversPerTeam: 2,
+    teamAssignmentStrategy: 'BALANCED_IRATING' as const,
+    registrations: [],
+    discordTeamsThreadId: 'thread-999',
+    discordTeamThreads: { 'team-1': 'team-thread-111' },
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('event thread link uses discord:// deep link on desktop', () => {
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36'
+    )
+
+    render(
+      <RaceDetails
+        race={mockRaceWithThread}
+        {...raceEventProps}
+        userId="user-1"
+        discordGuildId="guild-1"
+        carClasses={[]}
+        teams={[{ id: 'team-1', name: 'Team 1', iracingTeamId: null, memberCount: 0 }]}
+        allDrivers={[]}
+      />
+    )
+
+    const link = screen
+      .getAllByRole('link')
+      .find((l) => l.getAttribute('title')?.includes('event discussion'))!
+    expect(link).toHaveAttribute('href', 'discord://-/channels/guild-1/thread-999')
+  })
+
+  it('event thread link uses https://discord.com on mobile', () => {
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(
+      'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 Chrome/120.0.0.0 Mobile Safari/537.36'
+    )
+
+    render(
+      <RaceDetails
+        race={mockRaceWithThread}
+        {...raceEventProps}
+        userId="user-1"
+        discordGuildId="guild-1"
+        carClasses={[]}
+        teams={[{ id: 'team-1', name: 'Team 1', iracingTeamId: null, memberCount: 0 }]}
+        allDrivers={[]}
+      />
+    )
+
+    const link = screen
+      .getAllByRole('link')
+      .find((l) => l.getAttribute('title')?.includes('event discussion'))!
+    expect(link).toHaveAttribute('href', 'https://discord.com/channels/guild-1/thread-999')
   })
 })
