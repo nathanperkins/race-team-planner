@@ -829,6 +829,8 @@ export async function sendTeamsAssignedNotification(
   }
 
   try {
+    let success = true
+
     // Send chat channel notification (only for forum-based setups)
     if (forumId && guildId) {
       const threadUrl = buildDiscordWebLink({ guildId, threadId })
@@ -862,7 +864,8 @@ export async function sendTeamsAssignedNotification(
           chatResp.statusText,
           errorText
         )
-        return false
+        success = false
+        // Don't return early — roster change notifications to threads must still be sent
       }
     }
 
@@ -880,7 +883,7 @@ export async function sendTeamsAssignedNotification(
       )
     }
 
-    return true
+    return success
   } catch (error) {
     logger.error({ err: error }, 'Error sending teams assigned notification')
     return false

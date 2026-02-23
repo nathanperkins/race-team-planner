@@ -12,6 +12,7 @@ import {
   findBotMessageInThread,
   upsertThreadMessage,
   postRosterChangeNotifications,
+  sendTeamsAssignedNotification,
   sendWeeklyScheduleNotification,
   createOrUpdateEventThread,
   createOrUpdateTeamThread,
@@ -2484,9 +2485,61 @@ describe('createOrUpdateEventThread', () => {
   })
 })
 
-// NOTE: sendTeamsAssignedNotification has complex internal helpers that are difficult
-// to test in isolation. The error logging for chat channel notifications was added
-// at line 843-848 in lib/discord.ts and can be verified by code inspection.
+describe('sendTeamsAssignedNotification', () => {
+  const threadId = 'event-thread-id'
+  const channelId = 'notifications-channel-id'
+  const forumId = 'forum-id'
+  const guildId = 'guild-id'
+
+  const baseData = {
+    eventName: 'GT3 Challenge',
+    timeslots: [],
+    eventUrl: 'http://localhost:3000/events/event-123',
+    adminName: 'Admin',
+    rosterChanges: [{ type: 'dropped' as const, driverName: 'User 1', fromTeam: 'Team One' }],
+  }
+
+  beforeEach(() => {
+    vi.stubEnv('DISCORD_BOT_TOKEN', 'test-bot-token')
+    vi.stubEnv('DISCORD_NOTIFICATIONS_CHANNEL_ID', channelId)
+    vi.stubEnv('DISCORD_EVENTS_FORUM_ID', forumId)
+    vi.stubEnv('DISCORD_GUILD_ID', guildId)
+    vi.stubGlobal('fetch', vi.fn())
+    vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+  })
+
+  // Regression test for iracing-team-planner-r04:
+  // A failed chat channel POST was returning false early, skipping
+  // postRosterChangeNotifications and leaving event/team threads unupdated.
+  it('still posts roster changes to event thread when chat notification fails', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+        text: async () => 'error',
+      } as Response) // chat channel POST fails
+      .mockResolvedValue({ ok: true, status: 200 } as Response) // event thread POST succeeds
+
+    const result = await sendTeamsAssignedNotification(threadId, baseData)
+
+    // Returns false to signal the chat notification failed
+    expect(result).toBe(false)
+
+    // But the event thread still receives the roster change embed
+    const eventThreadCall = vi
+      .mocked(fetch)
+      .mock.calls.find(
+        ([url]) => typeof url === 'string' && url.includes(`/channels/${threadId}/messages`)
+      )
+    expect(eventThreadCall).toBeDefined()
+  })
+})
 
 describe('createEventDiscussionThread', () => {
   const botToken = 'test-bot-token'
