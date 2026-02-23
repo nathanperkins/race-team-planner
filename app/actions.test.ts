@@ -2250,6 +2250,100 @@ describe('saveRaceEdits - Discord thread validation', () => {
   })
 })
 
+// Regression test for df3 investigation:
+// The teamsAssigned gate in updateRaceSettings blocked createOrUpdateEventThread
+// from being called when a race had only unassigned drivers (teamsAssigned=false).
+// The gate was removed so the event thread is always created/updated on team picker save.
+describe('saveRaceEdits - event thread for unassigned-only races', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.env.NEXTAUTH_URL = 'http://localhost:3000'
+    process.env.DISCORD_GUILD_ID = 'guild-123'
+  })
+
+  afterEach(() => {
+    delete process.env.NEXTAUTH_URL
+    delete process.env.DISCORD_GUILD_ID
+  })
+
+  it('creates event thread even when all drivers are unassigned (teamsAssigned=false)', async () => {
+    const adminSession = {
+      user: { id: 'admin-1', role: 'ADMIN' },
+      expires: '2099-12-31T23:59:59.999Z',
+    }
+    vi.mocked(auth).mockResolvedValue(adminSession as any)
+
+    const raceWithEvent = {
+      id: 'race-1',
+      startTime: new Date('2099-03-01T20:00:00Z'),
+      endTime: new Date('2099-03-01T22:00:00Z'),
+      eventId: 'event-1',
+      maxDriversPerTeam: null,
+      teamsAssigned: false,
+      discordTeamsThreadId: null,
+      discordTeamsSnapshot: null,
+      discordTeamThreads: null,
+      event: {
+        id: 'event-1',
+        name: 'GT3 Challenge',
+        track: 'Spa',
+        trackConfig: null,
+        tempValue: null,
+        precipChance: null,
+        carClasses: [{ name: 'GT3' }],
+        customCarClasses: [],
+      },
+    }
+
+    // Both saveRaceEdits and loadRaceAssignmentData call race.findUnique
+    vi.mocked(prisma.race.findUnique).mockResolvedValue(raceWithEvent as any)
+    vi.mocked(prisma.registration.findMany).mockResolvedValue([
+      {
+        id: 'reg-1',
+        userId: 'user-1',
+        teamId: null,
+        team: null,
+        carClass: { id: 'class-1', name: 'GT3', shortName: 'GT3' },
+        user: {
+          name: 'User 1',
+          accounts: [{ providerAccountId: 'discord-1' }],
+          racerStats: [],
+        },
+        manualDriver: null,
+        manualDriverId: null,
+      },
+    ] as any)
+    vi.mocked(prisma.team.findMany).mockResolvedValue([])
+    vi.mocked(prisma.race.findFirst).mockResolvedValue(null)
+    vi.mocked(prisma.race.findMany).mockResolvedValue([])
+    vi.mocked(prisma.race.update).mockResolvedValue({} as any)
+    vi.mocked(prisma.race.updateMany).mockResolvedValue({ count: 1 } as any)
+    vi.mocked(createOrUpdateEventThread).mockResolvedValue({
+      ok: true,
+      threadId: 'event-thread-1',
+    })
+
+    const fd = new FormData()
+    fd.set('raceId', 'race-1')
+    fd.set('maxDriversPerTeam', '')
+    fd.set('teamAssignmentStrategy', 'BALANCED_IRATING')
+    fd.set('applyRebalance', 'false')
+    fd.set('registrationUpdates', '[]')
+    fd.set('newTeams', '[]')
+    fd.set('pendingAdditions', '[]')
+    fd.set('pendingDrops', '[]')
+    fd.set('teamNameOverrides', '{}')
+
+    const result = await saveRaceEdits(fd)
+
+    expect(result.message).toBe('Success')
+    // Event thread must be created even when no teams are assigned
+    expect(createOrUpdateEventThread).toHaveBeenCalled()
+    // No chat notification since this is not a team assignment (no teams yet)
+    expect(sendTeamsAssignedNotification).not.toHaveBeenCalled()
+  })
+})
+
 describe('saveRaceEdits - registration operations', () => {
   const adminSession = {
     user: { id: 'admin-1', role: 'ADMIN' },

@@ -1602,12 +1602,13 @@ async function updateRaceSettings(
     },
   })
 
-  if (teamsAssigned) {
-    try {
-      await sendTeamsAssignmentNotification(raceId)
-    } catch (notificationError) {
-      logger.error({ err: notificationError }, 'Failed to send teams assigned notification')
-    }
+  // Always update the event thread on team picker save so it reflects current registrations,
+  // even when there are only unassigned drivers. The notification logic inside will skip
+  // sending a chat message when no teams are assigned and there are no roster changes.
+  try {
+    await sendTeamsAssignmentNotification(raceId)
+  } catch (notificationError) {
+    logger.error({ err: notificationError }, 'Failed to send teams assigned notification')
   }
 }
 
