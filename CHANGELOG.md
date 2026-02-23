@@ -31,6 +31,7 @@ Thanks to our community members for [these suggestions][Feedback 2]!
 - **Car class groups for unassigned drivers** - Unassigned drivers in event discussion posts are now grouped by car class with a separate header per class (e.g. **Unassigned - GT3**, **Unassigned - GTP**), sorted alphabetically by class then by name within each group. Discord mentions are used instead of real names when available ([#114](https://github.com/nathanperkins/race-team-planner/issues/114) by [Nathan])
 - **Class change notifications** - Changing your own car class on a registration now sends a Discord notification to the event thread ([#91](https://github.com/nathanperkins/race-team-planner/issues/91) by [Kaelan])
 - **Reduced thread inactivity** - Discord event and team threads now auto-archive after 2 days of inactivity instead of 1 week, keeping the sidebar cleaner ([#125](https://github.com/nathanperkins/race-team-planner/issues/125) by [Nathan])
+- **Mobile Discord link fix** - Discord thread links in event and team details now open correctly on Android and iOS, falling back to the web URL instead of the `discord://` deep link which is not reliably registered on mobile browsers ([#128](https://github.com/nathanperkins/race-team-planner/issues/128) by [Nathan])
 
 ### Performance
 
