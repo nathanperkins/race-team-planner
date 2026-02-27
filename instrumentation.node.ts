@@ -41,7 +41,12 @@ if (!isCloudRun && !process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
   const traceExporter = isCloudRun ? new TraceExporter() : new OTLPTraceExporter({})
   const metricExporter = isCloudRun ? new MetricExporter() : new OTLPMetricExporter({})
 
-  const spanProcessor = new BatchSpanProcessor(traceExporter)
+  const spanProcessor = new BatchSpanProcessor(traceExporter, {
+    // Keep well under Cloud Run's 10 s SIGTERM→SIGKILL grace period so the
+    // forceFlush inside sdk.shutdown() completes before the process is killed.
+    // The default is 30 s, which would always be killed mid-flush.
+    exportTimeoutMillis: 8_000,
+  })
 
   const sdk = new NodeSDK({
     serviceName,
@@ -60,12 +65,13 @@ if (!isCloudRun && !process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
     // Cassandra, gRPC, Kafka, MongoDB, etc.) that increase cold start time.
     instrumentations: [
       new HttpInstrumentation({
-        // Suppress incoming-request spans to avoid a time-source mismatch
-        // (performance timer vs wall clock) that logs startTime > endTime
-        // warnings on every request in dev/Turbopack restarts.
-        // Outgoing HTTP calls (iRacing API, Discord, etc.) still get traced.
+        // In dev/Turbopack, the Node.js performance timer and wall clock can
+        // disagree, producing startTime > endTime warnings on every request.
+        // Suppress incoming-request spans only in dev; production needs them
+        // so that Prisma/outgoing spans have a parent and appear correctly in
+        // Cloud Trace Explorer instead of as orphaned single-span traces.
         // See: https://github.com/open-telemetry/opentelemetry-js-contrib/issues/1209
-        ignoreIncomingRequestHook: () => true,
+        ignoreIncomingRequestHook: () => process.env.NODE_ENV !== 'production',
       }),
       new UndiciInstrumentation(),
       new PrismaInstrumentation(),
@@ -85,7 +91,10 @@ if (!isCloudRun && !process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
 
   const shutdown = async (signal: string) => {
     logger.info(`${signal} received, flushing telemetry...`)
-    await sdk.shutdown()
+    // Race against a hard deadline so we always exit before Cloud Run sends
+    // SIGKILL (default grace period is 10 s). The BatchSpanProcessor
+    // exportTimeoutMillis is set to 8 s, so a normal flush should win.
+    await Promise.race([sdk.shutdown(), new Promise<void>((resolve) => setTimeout(resolve, 9_000))])
     logger.info('Telemetry flushed, exiting.')
     process.exit(0)
   }
