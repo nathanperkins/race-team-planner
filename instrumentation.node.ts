@@ -94,7 +94,14 @@ if (!isCloudRun && !process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
     // Race against a hard deadline so we always exit before Cloud Run sends
     // SIGKILL (default grace period is 10 s). The BatchSpanProcessor
     // exportTimeoutMillis is set to 8 s, so a normal flush should win.
-    await Promise.race([sdk.shutdown(), new Promise<void>((resolve) => setTimeout(resolve, 9_000))])
+    let flushed = false
+    await Promise.race([
+      sdk.shutdown().then(() => {
+        flushed = true
+      }),
+      new Promise<void>((resolve) => setTimeout(resolve, 9_000)),
+    ])
+    if (!flushed) logger.error('Telemetry flush timed out; some spans may be lost.')
     logger.info('Telemetry flushed, exiting.')
     process.exit(0)
   }
