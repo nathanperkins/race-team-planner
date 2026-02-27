@@ -4,6 +4,12 @@ import { createLogger } from '@/lib/logger'
 const logger = createLogger('instrumentation')
 
 export async function register() {
+  // Start OTel FIRST so that PrismaInstrumentation can patch @prisma/client
+  // before it is loaded by any other module (e.g. Discord verification below).
+  if (process.env.NEXT_RUNTIME === 'nodejs') {
+    await import('./instrumentation.node')
+  }
+
   logger.info(`🚧 ${appTitle} Startup 🚧`)
   logger.info(`[Config] Log Level: ${logger.level}`)
   logger.info(`[Config] Locale: ${appLocale}`)
@@ -95,9 +101,5 @@ export async function register() {
     if (process.env.NEXT_RUNTIME === 'nodejs') {
       process.exit(1)
     }
-  }
-
-  if (process.env.NEXT_RUNTIME === 'nodejs') {
-    await import('./instrumentation.node')
   }
 }
