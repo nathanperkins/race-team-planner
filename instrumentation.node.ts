@@ -65,15 +65,16 @@ if (!isCloudRun && !process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
     // Cassandra, gRPC, Kafka, MongoDB, etc.) that increase cold start time.
     instrumentations: [
       new HttpInstrumentation({
-        // In dev/Turbopack, suppress incoming HTTP spans to avoid a
-        // performance-timer vs wall-clock mismatch that logs startTime >
-        // endTime on every request.  In production this must return false:
-        // returning true calls suppressTracing() which propagates through the
-        // async context and prevents the Next.js framework span (the trace
-        // root) from being recorded, causing Cloud Trace to show traces with
-        // no root span even though child spans (Prisma, undici) are visible.
+        // Disable incoming HTTP request spans entirely. ignoreIncomingRequestHook
+        // is not suitable here: returning true calls suppressTracing() which
+        // propagates through the async context and prevents Next.js framework
+        // spans from being recorded; returning false creates an HTTP span with
+        // a performance-timer vs wall-clock mismatch (startTime > endTime) that
+        // Cloud Trace drops. Disabling incoming instrumentation avoids both
+        // problems — Next.js framework spans become the trace roots naturally,
+        // and outgoing HTTP spans are unaffected.
         // See: https://github.com/open-telemetry/opentelemetry-js-contrib/issues/1209
-        ignoreIncomingRequestHook: () => process.env.NODE_ENV !== 'production',
+        disableIncomingRequestInstrumentation: true,
       }),
       new UndiciInstrumentation(),
       new PrismaInstrumentation(),
