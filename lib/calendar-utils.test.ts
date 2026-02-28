@@ -7,6 +7,7 @@ import {
   buildGoogleCalendarUrl,
   buildOutlookCalendarUrl,
   buildCalendarDescription,
+  ceilTo15Minutes,
   CalendarEventInput,
   CalendarDescriptionInput,
 } from './calendar-utils'
@@ -86,6 +87,12 @@ describe('buildIcsString', () => {
     expect(ics).toContain('DTEND:20260614T120000Z')
   })
 
+  it('rounds end time up to the next 15-minute boundary in DTEND', () => {
+    const event = { ...sampleEvent, endTime: new Date('2026-06-14T11:54:00Z') }
+    const ics = buildIcsString(event)
+    expect(ics).toContain('DTEND:20260614T120000Z') // 11:54 -> 12:00
+  })
+
   it('includes description with app URL', () => {
     const ics = buildIcsString(sampleEvent)
     expect(ics).toContain('https://example.com/events?eventId=ev1')
@@ -150,15 +157,27 @@ describe('buildCalendarDescription', () => {
     expect(desc).not.toContain('Grand Prix')
   })
 
-  it('includes the start time', () => {
+  it('includes the start time with Starts: label', () => {
     const desc = buildCalendarDescription(baseDescriptionInput)
-    // Should contain some date representation of 2026-06-13
-    expect(desc).toMatch(/6\/13/)
+    expect(desc).toMatch(/Starts:.*6\/13/)
+  })
+
+  it('includes the end time when provided', () => {
+    const desc = buildCalendarDescription({
+      ...baseDescriptionInput,
+      endTime: new Date('2026-06-13T18:14:00Z'),
+    })
+    expect(desc).toMatch(/Ends:.*6\/13/)
+  })
+
+  it('omits end time when not provided', () => {
+    const desc = buildCalendarDescription(baseDescriptionInput)
+    expect(desc).not.toContain('Ends:')
   })
 
   it('includes duration', () => {
     const desc = buildCalendarDescription(baseDescriptionInput)
-    expect(desc).toContain('Duration: 6h')
+    expect(desc).toContain('Race Duration: 6h')
   })
 
   it('includes temperature with units', () => {
@@ -198,7 +217,7 @@ describe('buildCalendarDescription', () => {
       tempValue: null,
       relHumidity: null,
     })
-    expect(desc).not.toContain('Duration:')
+    expect(desc).not.toContain('Race Duration:')
     expect(desc).not.toContain('Temp:')
     expect(desc).not.toContain('Humidity:')
   })
@@ -253,6 +272,13 @@ describe('buildGoogleCalendarUrl', () => {
     expect(end).toBe('20260614T120000Z')
   })
 
+  it('rounds end time up to the next 15-minute boundary', () => {
+    const event = { ...sampleEvent, endTime: new Date('2026-06-14T11:54:00Z') }
+    const url = new URL(buildGoogleCalendarUrl(event))
+    const [, end] = (url.searchParams.get('dates') ?? '').split('/')
+    expect(end).toBe('20260614T120000Z') // 11:54 -> 12:00
+  })
+
   it('includes the location', () => {
     const url = new URL(buildGoogleCalendarUrl(eventWithoutDiscord))
     expect(url.searchParams.get('location')).toBe(sampleEvent.location)
@@ -293,6 +319,12 @@ describe('buildOutlookCalendarUrl', () => {
     const url = new URL(buildOutlookCalendarUrl(eventWithoutDiscord))
     expect(url.searchParams.get('startdt')).toBe(sampleEvent.startTime.toISOString())
     expect(url.searchParams.get('enddt')).toBe(sampleEvent.endTime.toISOString())
+  })
+
+  it('rounds end time up to the next 15-minute boundary', () => {
+    const event = { ...sampleEvent, endTime: new Date('2026-06-14T11:54:00Z') }
+    const url = new URL(buildOutlookCalendarUrl(event))
+    expect(url.searchParams.get('enddt')).toBe('2026-06-14T12:00:00.000Z') // 11:54 -> 12:00
   })
 
   it('includes the location', () => {
@@ -364,5 +396,54 @@ describe('downloadIcs', () => {
     downloadIcs(sampleEvent, 'race.ics')
     expect(appendChildSpy).toHaveBeenCalled()
     expect(removeChildSpy).toHaveBeenCalled()
+  })
+})
+
+describe('ceilTo15Minutes', () => {
+  it('rounds up a time that is not on a 15-minute boundary', () => {
+    // 1:54am -> 2:00am
+    expect(ceilTo15Minutes(new Date('2026-06-13T01:54:00Z'))).toEqual(
+      new Date('2026-06-13T02:00:00Z')
+    )
+  })
+
+  it('rounds up by a few minutes', () => {
+    // 1:46am -> 2:00am
+    expect(ceilTo15Minutes(new Date('2026-06-13T01:46:00Z'))).toEqual(
+      new Date('2026-06-13T02:00:00Z')
+    )
+  })
+
+  it('rounds up 1 minute past a boundary', () => {
+    // 1:31am -> 1:45am
+    expect(ceilTo15Minutes(new Date('2026-06-13T01:31:00Z'))).toEqual(
+      new Date('2026-06-13T01:45:00Z')
+    )
+  })
+
+  it('does not advance a time already on a 15-minute boundary', () => {
+    // 2:00am stays 2:00am (already on boundary — no advance)
+    expect(ceilTo15Minutes(new Date('2026-06-13T02:00:00Z'))).toEqual(
+      new Date('2026-06-13T02:00:00Z')
+    )
+  })
+
+  it('does not advance :15, :30, :45 boundaries', () => {
+    expect(ceilTo15Minutes(new Date('2026-06-13T01:15:00Z'))).toEqual(
+      new Date('2026-06-13T01:15:00Z')
+    )
+    expect(ceilTo15Minutes(new Date('2026-06-13T01:30:00Z'))).toEqual(
+      new Date('2026-06-13T01:30:00Z')
+    )
+    expect(ceilTo15Minutes(new Date('2026-06-13T01:45:00Z'))).toEqual(
+      new Date('2026-06-13T01:45:00Z')
+    )
+  })
+
+  it('handles midnight boundary correctly', () => {
+    // 23:54 -> 00:00 next day
+    expect(ceilTo15Minutes(new Date('2026-06-13T23:54:00Z'))).toEqual(
+      new Date('2026-06-14T00:00:00Z')
+    )
   })
 })

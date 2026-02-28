@@ -78,11 +78,13 @@ export default function AddToCalendarButton({
         : null
 
     const start = new Date(startTime)
+    const end = new Date(endTime)
     const description = buildCalendarDescription({
       eventName,
       track,
       trackConfig,
       startTime: start,
+      endTime: end,
       durationMins,
       tempValue,
       tempUnits,
@@ -97,7 +99,7 @@ export default function AddToCalendarButton({
       title: `${eventName} @ ${track}`,
       location: trackConfig ? `${track} - ${trackConfig}` : track,
       startTime: start,
-      endTime: new Date(endTime),
+      endTime: end,
       description,
     }
   }

@@ -2,7 +2,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import React from 'react'
 import AddToCalendarButton from './AddToCalendarButton'
-import { downloadIcs } from '@/lib/calendar-utils'
+import { buildCalendarDescription, downloadIcs } from '@/lib/calendar-utils'
 
 vi.mock('@/lib/calendar-utils', () => ({
   buildCalendarDescription: vi.fn().mockReturnValue('Event description'),
@@ -98,6 +98,14 @@ describe('AddToCalendarButton', () => {
     fireEvent.click(screen.getByText(/apple/i))
     expect(downloadIcs).toHaveBeenCalled()
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+
+  it('passes endTime to buildCalendarDescription', () => {
+    const endTime = new Date('2027-01-01T12:14:00Z')
+    render(<AddToCalendarButton {...defaultProps} endTime={endTime} />)
+    fireEvent.click(screen.getByRole('button', { name: /add to calendar/i }))
+    fireEvent.click(screen.getByText(/google calendar/i))
+    expect(buildCalendarDescription).toHaveBeenCalledWith(expect.objectContaining({ endTime }))
   })
 
   it('renders children inside the trigger button', () => {

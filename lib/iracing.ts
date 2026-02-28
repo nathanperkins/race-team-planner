@@ -495,36 +495,32 @@ async function fetchMockEvents(): Promise<IRacingEvent[]> {
   return [...MOCK_EVENTS]
 }
 
-async function fetchRealEvents(token: string): Promise<IRacingEvent[]> {
-  const seasons = await fetchFromIRacing('/data/series/seasons', token)
-  if (!seasons || !Array.isArray(seasons)) return []
-  if (process.env.IRACING_DEBUG_SEASONS === 'true') {
-    const dump = JSON.stringify(seasons, null, 2)
-    const outPath = path.join(process.cwd(), 'iracing-seasons.json')
-    await writeFile(outPath, dump, 'utf-8')
-    logger.info('iRacing seasons raw written to: %s', outPath)
-  }
+const SPECIAL_KEYWORDS = [
+  'special event',
+  'roar',
+  '24h',
+  '12h',
+  '10h',
+  '6h',
+  '1000',
+  'endurance',
+  'major',
+  'petit le mans',
+  'sebring 12',
+  'bathurst 12',
+  'daytona 24',
+  'spa 24',
+  'nürburgring 24',
+]
 
-  const specialKeywords = [
-    'special event',
-    'roar',
-    '24h',
-    '12h',
-    '10h',
-    '6h',
-    '1000',
-    'endurance',
-    'major',
-    'petit le mans',
-    'sebring 12',
-    'bathurst 12',
-    'daytona 24',
-    'spa 24',
-    'nürburgring 24',
-  ]
-
-  const now = new Date()
-  const thirtyDaysFromNow = new Date()
+/**
+ * Transforms raw iRacing season data into IRacingEvent objects.
+ *
+ * `now` is injectable for testing; defaults to the current time.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function transformSeasonsToEvents(seasons: any[], now: Date = new Date()): IRacingEvent[] {
+  const thirtyDaysFromNow = new Date(now)
   thirtyDaysFromNow.setDate(now.getDate() + 30)
 
   const events: IRacingEvent[] = []
@@ -535,7 +531,7 @@ async function fetchRealEvents(token: string): Promise<IRacingEvent[]> {
 
     const isTeam = season.driver_changes || (season.max_team_drivers ?? 1) > 1
 
-    if (!isMatch(lowerName, isTeam, specialKeywords)) continue
+    if (!isMatch(lowerName, isTeam, SPECIAL_KEYWORDS)) continue
     if (!season.schedules) continue
 
     for (const week of season.schedules) {
@@ -551,8 +547,12 @@ async function fetchRealEvents(token: string): Promise<IRacingEvent[]> {
               for (let i = 0; i < descriptor.session_times.length; i++) {
                 const sessionTime = descriptor.session_times[i]
                 const start = new Date(sessionTime)
-                const durationMinutes = week.race_time_limit || descriptor.session_minutes || 60
-                const end = new Date(start.getTime() + durationMinutes * 60000)
+                // Use session_minutes for end time — it covers the full session
+                // (practice + qualifying + warmup + race), unlike race_time_limit
+                // which is only the race portion.
+                const sessionDurationMinutes =
+                  descriptor.session_minutes || week.race_time_limit || 60
+                const end = new Date(start.getTime() + sessionDurationMinutes * 60000)
                 const externalId = `ir_${season.series_id}_${season.season_id}_w${week.race_week_num}_s${i}`
                 races.push({
                   externalId,
@@ -566,11 +566,12 @@ async function fetchRealEvents(token: string): Promise<IRacingEvent[]> {
 
         if (races.length === 0) {
           const start = new Date(week.start_date)
-          const durationMinutes =
-            week.race_time_limit ||
+          // Same priority as above: prefer session_minutes over race_time_limit
+          const sessionDurationMinutes =
             (week.race_time_descriptors && week.race_time_descriptors[0]?.session_minutes) ||
+            week.race_time_limit ||
             60
-          const end = new Date(start.getTime() + durationMinutes * 60000)
+          const end = new Date(start.getTime() + sessionDurationMinutes * 60000)
           races.push({
             startTime: start.toISOString(),
             endTime: end.toISOString(),
@@ -580,8 +581,9 @@ async function fetchRealEvents(token: string): Promise<IRacingEvent[]> {
         // Sort races by start time
         races.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
 
-        // Estimated duration
-        const estimatedDuration =
+        // durationMins is the race-only duration, shown in the calendar description
+        // (e.g., "Duration: 2h"). Use race_time_limit, falling back to session_minutes.
+        const durationMins =
           week.race_time_limit ||
           (week.race_time_descriptors && week.race_time_descriptors[0]?.session_minutes) ||
           60
@@ -605,13 +607,26 @@ async function fetchRealEvents(token: string): Promise<IRacingEvent[]> {
           relHumidity: week.weather?.rel_humidity,
           skies: week.weather?.skies,
           precipChance: week.weather?.weather_summary?.precip_chance,
-          durationMins: estimatedDuration,
+          durationMins,
         })
       }
     }
   }
 
   return events.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+}
+
+async function fetchRealEvents(token: string): Promise<IRacingEvent[]> {
+  const seasons = await fetchFromIRacing('/data/series/seasons', token)
+  if (!seasons || !Array.isArray(seasons)) return []
+  if (process.env.IRACING_DEBUG_SEASONS === 'true') {
+    const dump = JSON.stringify(seasons, null, 2)
+    const outPath = path.join(process.cwd(), 'iracing-seasons.json')
+    await writeFile(outPath, dump, 'utf-8')
+    logger.info('iRacing seasons raw written to: %s', outPath)
+  }
+
+  return transformSeasonsToEvents(seasons)
 }
 
 function isMatch(name: string, isTeam: boolean, keywords: string[]): boolean {

@@ -12,6 +12,7 @@ export interface CalendarDescriptionInput {
   track: string
   trackConfig?: string | null
   startTime: Date
+  endTime?: Date | null
   durationMins?: number | null
   tempValue?: number | null
   tempUnits?: number | null
@@ -35,20 +36,23 @@ export function buildCalendarDescription(input: CalendarDescriptionInput): strin
   const trackLine = input.trackConfig ? `${input.track} - ${input.trackConfig}` : input.track
   lines.push(input.eventName)
   lines.push(trackLine)
+  lines.push('')
 
-  lines.push(
-    input.startTime.toLocaleString('en-US', {
-      weekday: 'short',
-      month: 'numeric',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      timeZoneName: 'short',
-    })
-  )
+  const timeFormatOptions: Intl.DateTimeFormatOptions = {
+    weekday: 'short',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZoneName: 'short',
+  }
+  lines.push(`Starts: ${input.startTime.toLocaleString('en-US', timeFormatOptions)}`)
+  if (input.endTime) {
+    lines.push(`Ends: ${input.endTime.toLocaleString('en-US', timeFormatOptions)}`)
+  }
 
   const meta: string[] = []
-  if (input.durationMins) meta.push(`Duration: ${formatDuration(input.durationMins)}`)
+  if (input.durationMins) meta.push(`Race Duration: ${formatDuration(input.durationMins)}`)
   if (input.tempValue != null) meta.push(`Temp: ${input.tempValue}°${input.tempUnits || 'F'}`)
   if (input.relHumidity != null) meta.push(`Humidity: ${input.relHumidity}%`)
   if (meta.length > 0) lines.push(meta.join(' | '))
@@ -63,6 +67,16 @@ export function buildCalendarDescription(input: CalendarDescriptionInput): strin
   if (input.discordUrl) lines.push(`Discord: ${input.discordUrl}`)
 
   return lines.join('\n')
+}
+
+/**
+ * Rounds a date up to the next 15-minute boundary.
+ * e.g. 1:54am -> 2:00am, 1:31am -> 1:45am, 2:00am -> 2:00am (already on boundary)
+ */
+export function ceilTo15Minutes(date: Date): Date {
+  const ms = date.getTime()
+  const interval = 15 * 60 * 1000
+  return new Date(Math.ceil(ms / interval) * interval)
 }
 
 export function formatIcsDate(date: Date): string {
@@ -91,6 +105,7 @@ function escapeText(value: string): string {
 
 export function buildIcsString(event: CalendarEventInput): string {
   const now = formatIcsDate(new Date())
+  const endTime = ceilTo15Minutes(event.endTime)
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
@@ -101,7 +116,7 @@ export function buildIcsString(event: CalendarEventInput): string {
     foldLine(`UID:${event.uid}@race-team-planner`),
     foldLine(`DTSTAMP:${now}`),
     foldLine(`DTSTART:${formatIcsDate(event.startTime)}`),
-    foldLine(`DTEND:${formatIcsDate(event.endTime)}`),
+    foldLine(`DTEND:${formatIcsDate(endTime)}`),
     foldLine(`SUMMARY:${escapeText(event.title)}`),
     foldLine(`LOCATION:${escapeText(event.location)}`),
     foldLine(`DESCRIPTION:${escapeText(event.description)}`),
@@ -113,7 +128,7 @@ export function buildIcsString(event: CalendarEventInput): string {
 }
 
 export function buildGoogleCalendarUrl(event: CalendarEventInput): string {
-  const dates = `${formatIcsDate(event.startTime)}/${formatIcsDate(event.endTime)}`
+  const dates = `${formatIcsDate(event.startTime)}/${formatIcsDate(ceilTo15Minutes(event.endTime))}`
   const params = new URLSearchParams({
     action: 'TEMPLATE',
     text: event.title,
@@ -128,7 +143,7 @@ export function buildOutlookCalendarUrl(event: CalendarEventInput): string {
   const params = new URLSearchParams({
     subject: event.title,
     startdt: event.startTime.toISOString(),
-    enddt: event.endTime.toISOString(),
+    enddt: ceilTo15Minutes(event.endTime).toISOString(),
     body: event.description,
     location: event.location,
     path: '/calendar/action/compose',
