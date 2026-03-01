@@ -60,20 +60,28 @@ export async function syncDiscordProfile(
   profile: { id?: string | null; [key: string]: unknown }
 ) {
   try {
-    const { checkGuildMembership } = await import('@/lib/discord')
-    const { roles, nick } = await checkGuildMembership(profile.id as string)
+    const { checkGuildMembership, GuildMembershipStatus } = await import('@/lib/discord')
+    const { status, roles, nick } = await checkGuildMembership(profile.id as string)
 
     const adminRoleIdsStr = process.env.DISCORD_ADMIN_ROLE_IDS || ''
     const adminRoleIds = adminRoleIdsStr.split(',').map((id) => id.trim())
     const isAdmin = roles?.some((roleId) => adminRoleIds.includes(roleId))
     const targetRole = isAdmin ? UserRole.ADMIN : UserRole.USER
 
+    // Only update name when we have confirmed guild member data. On API_ERROR or
+    // CONFIG_ERROR, nick is undefined even if the user has a server nickname, so
+    // we skip the name field to preserve whatever is already stored in the DB.
+    const nameUpdate =
+      status === GuildMembershipStatus.MEMBER
+        ? { name: (nick || profile.name || profile.username) as string | undefined }
+        : {}
+
     // Update the user record with latest info from Discord
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: {
         role: targetRole,
-        name: (nick || profile.name || profile.username) as string | undefined,
+        ...nameUpdate,
         image: (profile.image_url || profile.avatar) as string | undefined,
       },
     })

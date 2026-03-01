@@ -23,6 +23,8 @@ vi.mock('@/lib/discord', () => ({
   GuildMembershipStatus: {
     MEMBER: 'member',
     NOT_MEMBER: 'access_denied_guild_membership',
+    API_ERROR: 'api_error',
+    CONFIG_ERROR: 'config_error',
   },
 }))
 
@@ -103,8 +105,9 @@ describe('auth-service', () => {
       const profile = { id: 'discord-123', name: 'DiscordName', avatar: 'avatar-url' }
       vi.stubEnv('DISCORD_ADMIN_ROLE_IDS', 'role-admin-1,role-admin-2')
 
-      const { checkGuildMembership } = await import('@/lib/discord')
+      const { checkGuildMembership, GuildMembershipStatus } = await import('@/lib/discord')
       vi.mocked(checkGuildMembership).mockResolvedValue({
+        status: GuildMembershipStatus.MEMBER,
         roles: ['role-admin-1'],
         nick: 'DiscordNick',
       } as any)
@@ -129,8 +132,9 @@ describe('auth-service', () => {
       const userId = 'user-123'
       const profile = { id: 'discord-123', name: 'DiscordName' }
 
-      const { checkGuildMembership } = await import('@/lib/discord')
+      const { checkGuildMembership, GuildMembershipStatus } = await import('@/lib/discord')
       vi.mocked(checkGuildMembership).mockResolvedValue({
+        status: GuildMembershipStatus.MEMBER,
         roles: ['some-other-role'],
         nick: null,
       } as any)
@@ -144,6 +148,40 @@ describe('auth-service', () => {
           }),
         })
       )
+    })
+
+    it('does not update name when checkGuildMembership returns API_ERROR', async () => {
+      const userId = 'user-123'
+      const profile = { id: 'discord-123', name: 'GlobalDisplayName' }
+
+      const { checkGuildMembership, GuildMembershipStatus } = await import('@/lib/discord')
+      vi.mocked(checkGuildMembership).mockResolvedValue({
+        status: GuildMembershipStatus.API_ERROR,
+      } as any)
+
+      vi.mocked(prisma.user.update).mockResolvedValue({ id: userId } as any)
+
+      await syncDiscordProfile(userId, profile)
+
+      const updateCall = vi.mocked(prisma.user.update).mock.calls[0]
+      expect(updateCall[0].data).not.toHaveProperty('name')
+    })
+
+    it('does not update name when checkGuildMembership returns CONFIG_ERROR', async () => {
+      const userId = 'user-123'
+      const profile = { id: 'discord-123', name: 'GlobalDisplayName' }
+
+      const { checkGuildMembership, GuildMembershipStatus } = await import('@/lib/discord')
+      vi.mocked(checkGuildMembership).mockResolvedValue({
+        status: GuildMembershipStatus.CONFIG_ERROR,
+      } as any)
+
+      vi.mocked(prisma.user.update).mockResolvedValue({ id: userId } as any)
+
+      await syncDiscordProfile(userId, profile)
+
+      const updateCall = vi.mocked(prisma.user.update).mock.calls[0]
+      expect(updateCall[0].data).not.toHaveProperty('name')
     })
   })
 
