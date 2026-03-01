@@ -470,3 +470,59 @@ export async function triggerWeeklyReportAction() {
     return { success: false, message: 'Internal server error' }
   }
 }
+
+export async function backfillDiscordNicknamesAction() {
+  try {
+    const session = await auth()
+    if (!session?.user || session.user.role !== 'ADMIN') {
+      return { success: false, message: 'Unauthorized' }
+    }
+
+    const accounts = await prisma.account.findMany({
+      where: { provider: 'discord' },
+      select: { providerAccountId: true, userId: true, user: { select: { name: true } } },
+    })
+
+    const { checkGuildMembership } = await import('@/lib/discord')
+
+    const validAccounts = accounts.filter((a) => a.providerAccountId)
+    let skipped = accounts.length - validAccounts.length
+    let failed = 0
+
+    // Fetch nicknames sequentially to avoid overwhelming the Discord API rate limits
+    const toUpdate: { userId: string; nick: string }[] = []
+    for (const account of validAccounts) {
+      try {
+        const res = await checkGuildMembership(account.providerAccountId!)
+        if (res.nick && res.nick !== account.user.name) {
+          toUpdate.push({ userId: account.userId, nick: res.nick })
+        } else {
+          skipped++
+        }
+      } catch (err) {
+        logger.error(
+          { err, discordId: account.providerAccountId },
+          'Failed to fetch Discord nickname'
+        )
+        failed++
+      }
+    }
+
+    // Batch all DB writes in a single transaction
+    if (toUpdate.length > 0) {
+      await prisma.$transaction(
+        toUpdate.map(({ userId, nick }) =>
+          prisma.user.update({ where: { id: userId }, data: { name: nick } })
+        )
+      )
+    }
+
+    return {
+      success: true,
+      message: `Done. Updated: ${toUpdate.length}, Skipped (no nick or already current): ${skipped}, Failed: ${failed}.`,
+    }
+  } catch (error) {
+    logger.error({ err: error }, 'Error running Discord nickname backfill')
+    return { success: false, message: 'Internal server error' }
+  }
+}

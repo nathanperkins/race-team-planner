@@ -5,6 +5,7 @@ import AddEventButton from './AddEventButton'
 import SyncButton from '@/app/components/SyncButton'
 import TriggerReportButton from './TriggerReportButton'
 import TeamManagement from './TeamManagement'
+import BackfillNicknamesButton from './BackfillNicknamesButton'
 
 export default async function AdminPage() {
   const session = await auth()
@@ -44,6 +45,7 @@ export default async function AdminPage() {
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
           <SyncButton />
           <TriggerReportButton />
+          <BackfillNicknamesButton />
         </div>
         <p className={styles.description}>Manually trigger system tasks.</p>
       </section>
