@@ -1,7 +1,6 @@
 export interface CalendarEventInput {
   uid: string
   title: string
-  location: string
   startTime: Date
   endTime: Date
   description: string
@@ -118,7 +117,6 @@ export function buildIcsString(event: CalendarEventInput): string {
     foldLine(`DTSTART:${formatIcsDate(event.startTime)}`),
     foldLine(`DTEND:${formatIcsDate(endTime)}`),
     foldLine(`SUMMARY:${escapeText(event.title)}`),
-    foldLine(`LOCATION:${escapeText(event.location)}`),
     foldLine(`DESCRIPTION:${escapeText(event.description)}`),
     'END:VEVENT',
     'END:VCALENDAR',
@@ -134,7 +132,6 @@ export function buildGoogleCalendarUrl(event: CalendarEventInput): string {
     text: event.title,
     dates,
     details: event.description,
-    location: event.location,
   })
   return `https://calendar.google.com/calendar/render?${params.toString()}`
 }
@@ -145,7 +142,6 @@ export function buildOutlookCalendarUrl(event: CalendarEventInput): string {
     startdt: event.startTime.toISOString(),
     enddt: ceilTo15Minutes(event.endTime).toISOString(),
     body: event.description,
-    location: event.location,
     path: '/calendar/action/compose',
     rru: 'addevent',
   })

@@ -108,6 +108,15 @@ describe('AddToCalendarButton', () => {
     expect(buildCalendarDescription).toHaveBeenCalledWith(expect.objectContaining({ endTime }))
   })
 
+  it('passes track and trackConfig to buildCalendarDescription so location appears in description', () => {
+    render(<AddToCalendarButton {...defaultProps} track="Sebring" trackConfig="12 Hour Circuit" />)
+    fireEvent.click(screen.getByRole('button', { name: /add to calendar/i }))
+    fireEvent.click(screen.getByText(/google calendar/i))
+    expect(buildCalendarDescription).toHaveBeenCalledWith(
+      expect.objectContaining({ track: 'Sebring', trackConfig: '12 Hour Circuit' })
+    )
+  })
+
   it('renders children inside the trigger button', () => {
     render(
       <AddToCalendarButton {...defaultProps}>

@@ -97,7 +97,6 @@ export default function AddToCalendarButton({
     return {
       uid: raceId,
       title: `${eventName} @ ${track}`,
-      location: trackConfig ? `${track} - ${trackConfig}` : track,
       startTime: start,
       endTime: end,
       description,

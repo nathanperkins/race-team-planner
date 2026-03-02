@@ -15,7 +15,6 @@ import {
 const sampleEvent: CalendarEventInput = {
   uid: 'race-abc123',
   title: 'iRacing 24h Le Mans @ Circuit de la Sarthe',
-  location: 'Circuit de la Sarthe - Full',
   startTime: new Date('2026-06-13T12:00:00Z'),
   endTime: new Date('2026-06-14T12:00:00Z'),
   description: 'https://example.com/events?eventId=ev1',
@@ -116,6 +115,18 @@ describe('buildIcsString', () => {
     for (const line of lines) {
       expect(line.length).toBeLessThanOrEqual(75)
     }
+  })
+
+  it('includes track name in the DESCRIPTION and has no LOCATION field', () => {
+    const desc = buildCalendarDescription({
+      ...baseDescriptionInput,
+      appUrl,
+    })
+    const event = { ...sampleEvent, description: desc }
+    const ics = buildIcsString(event)
+    const unfolded = ics.replace(/\r\n /g, '')
+    expect(unfolded).toContain('Circuit de la Sarthe')
+    expect(unfolded).not.toContain('LOCATION:')
   })
 })
 
@@ -279,9 +290,9 @@ describe('buildGoogleCalendarUrl', () => {
     expect(end).toBe('20260614T120000Z') // 11:54 -> 12:00
   })
 
-  it('includes the location', () => {
+  it('does not include a location parameter', () => {
     const url = new URL(buildGoogleCalendarUrl(eventWithoutDiscord))
-    expect(url.searchParams.get('location')).toBe(sampleEvent.location)
+    expect(url.searchParams.has('location')).toBe(false)
   })
 
   it('without Discord thread: description contains only the app URL', () => {
@@ -296,6 +307,12 @@ describe('buildGoogleCalendarUrl', () => {
     const details = url.searchParams.get('details') ?? ''
     expect(details).toContain(appUrl)
     expect(details).toContain(discordUrl)
+  })
+
+  it('includes track name in details since there is no separate location field', () => {
+    const desc = buildCalendarDescription({ ...baseDescriptionInput, appUrl })
+    const url = new URL(buildGoogleCalendarUrl({ ...sampleEvent, description: desc }))
+    expect(url.searchParams.get('details')).toContain('Circuit de la Sarthe')
   })
 })
 
@@ -327,9 +344,9 @@ describe('buildOutlookCalendarUrl', () => {
     expect(url.searchParams.get('enddt')).toBe('2026-06-14T12:00:00.000Z') // 11:54 -> 12:00
   })
 
-  it('includes the location', () => {
+  it('does not include a location parameter', () => {
     const url = new URL(buildOutlookCalendarUrl(eventWithoutDiscord))
-    expect(url.searchParams.get('location')).toBe(sampleEvent.location)
+    expect(url.searchParams.has('location')).toBe(false)
   })
 
   it('without Discord thread: body contains only the app URL', () => {
@@ -344,6 +361,12 @@ describe('buildOutlookCalendarUrl', () => {
     const body = url.searchParams.get('body') ?? ''
     expect(body).toContain(appUrl)
     expect(body).toContain(discordUrl)
+  })
+
+  it('includes track name in body since there is no separate location field', () => {
+    const desc = buildCalendarDescription({ ...baseDescriptionInput, appUrl })
+    const url = new URL(buildOutlookCalendarUrl({ ...sampleEvent, description: desc }))
+    expect(url.searchParams.get('body')).toContain('Circuit de la Sarthe')
   })
 })
 
