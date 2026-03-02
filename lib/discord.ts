@@ -210,7 +210,27 @@ export async function findBotMessageInThread(
       throw new Error('Bot user ID is missing from API response')
     }
 
-    // Fetch the oldest messages in the thread using after=0.
+    // In Discord forum threads, the starter message has ID === threadId.
+    // Discord's GET /messages endpoint does NOT include the thread starter message
+    // in its results (forum thread limitation), so we must check for it directly first.
+    const starterResponse = await fetch(
+      `${DISCORD_API_BASE}/channels/${threadId}/messages/${threadId}`,
+      {
+        headers: {
+          Authorization: `Bot ${botToken}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    )
+
+    if (starterResponse.ok) {
+      const starterMessage = await starterResponse.json()
+      if (starterMessage?.author?.id === botUserId) {
+        return threadId
+      }
+    }
+
+    // Fallback: fetch the oldest messages in the thread using after=0.
     // The Discord API returns messages in ascending (oldest-first) order when
     // the `after` parameter is used, unlike the default descending order.
     // Snowflake 0 predates all Discord messages, so after=0 returns the very
@@ -238,7 +258,7 @@ export async function findBotMessageInThread(
 
     const messages = await messagesResponse.json()
 
-    // Find the first message authored by this bot (usually the thread starter).
+    // Find the first message authored by this bot.
     // No reversal needed — after=0 already returns messages oldest-first.
     const existingMessage = Array.isArray(messages)
       ? messages.find(

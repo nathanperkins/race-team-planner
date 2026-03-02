@@ -49,7 +49,13 @@ describe('discord thread recovery', () => {
         status: 200,
         json: async () => ({ id: 'bot-user-123' }),
       } as Response)
-      // Get messages for upsertThreadMessage
+      // Starter message check for upsertThreadMessage (404 — falls through to after=0)
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+      } as Response)
+      // Get messages via after=0 for upsertThreadMessage (empty — no existing bot message)
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -69,7 +75,7 @@ describe('discord thread recovery', () => {
     })
 
     expect(threadId).toBe('thread-123')
-    expect(fetch).toHaveBeenCalledTimes(6)
+    expect(fetch).toHaveBeenCalledTimes(7)
   })
 
   it('creates a replacement team thread when linked thread is missing', async () => {
@@ -177,7 +183,13 @@ describe('discord thread recovery', () => {
         status: 200,
         json: async () => ({ id: 'bot-user-123' }),
       } as Response)
-      // list recent messages in thread
+      // starter message check (404 — not a forum thread, falls through to after=0)
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+      } as Response)
+      // list messages via after=0
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -239,7 +251,13 @@ describe('discord thread recovery', () => {
         status: 200,
         json: async () => ({ id: 'bot-user-123' }),
       } as Response)
-      // list recent messages
+      // starter message check (404 — not a forum thread, falls through to after=0)
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+      } as Response)
+      // list messages via after=0 (empty — no existing bot message)
       .mockResolvedValueOnce({
         ok: true,
         status: 200,

@@ -6,7 +6,7 @@ The most notable changes to this project are documented here.
 
 **Released on <time datetime="2026-03-02">March 2, 2026</time>**
 
-[8 issues completed][Milestone 3] by **[Nathan]** and **[Kaelan]**.
+[9 issues completed][Milestone 3] by **[Nathan]** and **[Kaelan]**.
 
 ### Highlights
 
@@ -17,6 +17,7 @@ Version 1.3 focuses on Discord notification accuracy and calendar export improve
 - **Timeslot in roster changes** - Roster change notifications now include a Discord timestamp showing which timeslot was affected, making it easier to understand updates at a glance when an event has multiple race times ([#135](https://github.com/nathanperkins/race-team-planner/issues/135) by [Nathan])
 - **Clearer dropped vs unassigned labels** - Roster change notifications now show distinct sections: "⬇️ Unassigned from Team" for drivers moved back to unassigned (still registered) and "🚫 Dropped from Race" for drivers removed from the event entirely ([#130](https://github.com/nathanperkins/race-team-planner/issues/130) by [Nathan])
 - **Fix: event thread duplicated on team save** - Saving team assignments was posting a new event thread message instead of editing the existing one, resulting in a stale pinned post and duplicate content. Fixed by fetching the oldest messages to reliably locate the bot's roster post ([#142](https://github.com/nathanperkins/race-team-planner/issues/142) by [Nathan])
+- **Fix: duplicate replies posted in event thread** - Every update to an event discussion thread (registration, drop, team save) was posting a new reply instead of editing the original post. Discord forum thread starter messages have the same ID as the thread itself and are not returned by the standard messages endpoint. Fixed by directly fetching the starter message first before falling back to the older message search ([#146](https://github.com/nathanperkins/race-team-planner/issues/146) by [Nathan])
 - **Fix: registration notification showed Discord username** - Race registration notifications were showing a user's global Discord username instead of their server nickname. Fixed by resolving the correct display name from the guild member data ([#138](https://github.com/nathanperkins/race-team-planner/issues/138) by [Nathan])
 - **Fix: incorrect team shown in move notifications** - Moving a driver from unassigned to a team was sometimes reported as a move from a previous team instead of from unassigned, due to a stale snapshot lookup. Now correctly detected as an assignment from unassigned ([#134](https://github.com/nathanperkins/race-team-planner/issues/134) by [Nathan])
 

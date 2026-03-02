@@ -836,7 +836,7 @@ describe('findBotMessageInThread', () => {
     vi.restoreAllMocks()
   })
 
-  it('returns message ID when bot message is found', async () => {
+  it('returns threadId when forum thread starter message is authored by bot', async () => {
     vi.mocked(fetch)
       // Get bot user ID
       .mockResolvedValueOnce({
@@ -844,7 +844,35 @@ describe('findBotMessageInThread', () => {
         status: 200,
         json: async () => ({ id: 'bot-user-123' }),
       } as Response)
-      // Get messages
+      // Starter message fetch (message ID === thread ID for forum threads)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: threadId, author: { id: 'bot-user-123' } }),
+      } as Response)
+
+    const result = await findBotMessageInThread(threadId, botToken)
+
+    expect(result).toBe(threadId)
+    // Only 2 calls needed — no fallback to after=0 search
+    expect(fetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('returns message ID when bot message is found via after=0 fallback (non-forum thread)', async () => {
+    vi.mocked(fetch)
+      // Get bot user ID
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 'bot-user-123' }),
+      } as Response)
+      // Starter message fetch returns 404 (not a forum thread or message deleted)
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+      } as Response)
+      // Get messages via after=0
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -858,7 +886,7 @@ describe('findBotMessageInThread', () => {
     const result = await findBotMessageInThread(threadId, botToken)
 
     expect(result).toBe('msg-1')
-    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(fetch).toHaveBeenCalledTimes(3)
     expect(fetch).toHaveBeenNthCalledWith(
       1,
       expect.stringContaining('/users/@me'),
@@ -877,6 +905,13 @@ describe('findBotMessageInThread', () => {
         status: 200,
         json: async () => ({ id: 'bot-user-123' }),
       } as Response)
+      // Starter message not authored by bot
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: threadId, author: { id: 'user-other' } }),
+      } as Response)
+      // after=0 fallback — no bot messages
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -913,6 +948,12 @@ describe('findBotMessageInThread', () => {
       status: 200,
       json: async () => ({ id: 'bot-user-123' }),
     } as Response
+    // Starter message returns a different author (not the bot), so it falls through
+    const starterNotBotResponse = {
+      ok: true,
+      status: 200,
+      json: async () => ({ id: threadId, author: { id: 'other-user' } }),
+    } as Response
     const messagesErrorResponse = {
       ok: false,
       status: 404,
@@ -923,23 +964,27 @@ describe('findBotMessageInThread', () => {
     vi.mocked(fetch)
       // Initial attempt
       .mockResolvedValueOnce(botIdResponse)
+      .mockResolvedValueOnce(starterNotBotResponse)
       .mockResolvedValueOnce(messagesErrorResponse)
       // Retry 1
       .mockResolvedValueOnce(botIdResponse)
+      .mockResolvedValueOnce(starterNotBotResponse)
       .mockResolvedValueOnce(messagesErrorResponse)
       // Retry 2
       .mockResolvedValueOnce(botIdResponse)
+      .mockResolvedValueOnce(starterNotBotResponse)
       .mockResolvedValueOnce(messagesErrorResponse)
       // Retry 3
       .mockResolvedValueOnce(botIdResponse)
+      .mockResolvedValueOnce(starterNotBotResponse)
       .mockResolvedValueOnce(messagesErrorResponse)
 
     await expect(findBotMessageInThread(threadId, botToken)).rejects.toThrow(
       'Failed to fetch messages from thread thread-123: 404 Not Found - Thread not found'
     )
 
-    // 4 attempts total (initial + 3 retries), each with 2 fetches (bot ID + messages)
-    expect(fetch).toHaveBeenCalledTimes(8)
+    // 4 attempts total (initial + 3 retries), each with 3 fetches (bot ID + starter + messages)
+    expect(fetch).toHaveBeenCalledTimes(12)
   })
 
   it('throws error when network fails after retries', async () => {
@@ -980,7 +1025,13 @@ describe('upsertThreadMessage', () => {
         status: 200,
         json: async () => ({ id: 'bot-user-123' }),
       } as Response)
-      // Get messages
+      // Starter message check — 404 (not a forum thread), falls through to after=0
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+      } as Response)
+      // Get messages via after=0
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -995,9 +1046,9 @@ describe('upsertThreadMessage', () => {
     const result = await upsertThreadMessage(threadId, payload, botToken)
 
     expect(result.ok).toBe(true)
-    expect(fetch).toHaveBeenCalledTimes(3)
+    expect(fetch).toHaveBeenCalledTimes(4)
     expect(fetch).toHaveBeenNthCalledWith(
-      3,
+      4,
       expect.stringContaining('/channels/thread-123/messages/msg-1'),
       expect.objectContaining({
         method: 'PATCH',
@@ -1014,7 +1065,13 @@ describe('upsertThreadMessage', () => {
         status: 200,
         json: async () => ({ id: 'bot-user-123' }),
       } as Response)
-      // Get messages (empty)
+      // Starter message check — 404 (not a forum thread), falls through to after=0
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+      } as Response)
+      // Get messages via after=0 (empty — no bot message)
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -1029,9 +1086,9 @@ describe('upsertThreadMessage', () => {
     const result = await upsertThreadMessage(threadId, payload, botToken)
 
     expect(result.ok).toBe(true)
-    expect(fetch).toHaveBeenCalledTimes(3)
+    expect(fetch).toHaveBeenCalledTimes(4)
     expect(fetch).toHaveBeenNthCalledWith(
-      3,
+      4,
       expect.stringContaining('/channels/thread-123/messages'),
       expect.objectContaining({
         method: 'POST',
@@ -1055,7 +1112,13 @@ describe('upsertThreadMessage', () => {
         status: 200,
         json: async () => ({ id: 'bot-user-123' }),
       } as Response)
-      // Get messages
+      // Starter message check — 404 (not a forum thread), falls through to after=0
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+      } as Response)
+      // Get messages via after=0
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -1075,8 +1138,8 @@ describe('upsertThreadMessage', () => {
     const result = await upsertThreadMessage(threadId, payload, botToken)
 
     expect(result.ok).toBe(true)
-    // Get bot ID + Get messages + 4 edit attempts + 1 post = 7 total
-    expect(fetch).toHaveBeenCalledTimes(7)
+    // Get bot ID + starter(404) + Get messages + 4 edit attempts + 1 post = 8 total
+    expect(fetch).toHaveBeenCalledTimes(8)
     expect(mockLogger.warn).toHaveBeenCalledWith(
       { err: expect.any(Error), existingMessageId: 'msg-1', threadId: 'thread-123' },
       'Failed to edit existing message after retries'
@@ -1091,7 +1154,13 @@ describe('upsertThreadMessage', () => {
         status: 200,
         json: async () => ({ id: 'bot-user-123' }),
       } as Response)
-      // Get messages
+      // Starter message check — 404 (not a forum thread), falls through to after=0
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+      } as Response)
+      // Get messages via after=0
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -1111,9 +1180,9 @@ describe('upsertThreadMessage', () => {
     const result = await upsertThreadMessage(threadId, payload, botToken)
 
     expect(result.ok).toBe(true)
-    expect(fetch).toHaveBeenCalledTimes(4)
+    expect(fetch).toHaveBeenCalledTimes(5)
     expect(fetch).toHaveBeenNthCalledWith(
-      4,
+      5,
       expect.stringContaining('/channels/thread-123/messages'),
       expect.objectContaining({
         method: 'POST',
@@ -1129,7 +1198,13 @@ describe('upsertThreadMessage', () => {
         status: 200,
         json: async () => ({ id: 'bot-user-123' }),
       } as Response)
-      // Get messages (no existing messages)
+      // Starter message check — 404 (not a forum thread or already deleted)
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+      } as Response)
+      // Get messages via after=0 (empty — no bot message)
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -1940,7 +2015,13 @@ describe('createOrUpdateTeamThread', () => {
         status: 200,
         json: async () => ({ id: mockBotUserId }),
       } as Response)
-      // upsertThreadMessage -> find bot message
+      // upsertThreadMessage -> findBotMessageInThread: starter message check (404 fallback)
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+      } as Response)
+      // upsertThreadMessage -> find bot message via after=0
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -2010,7 +2091,13 @@ describe('createOrUpdateTeamThread', () => {
         status: 200,
         json: async () => ({ id: mockBotUserId }),
       } as Response)
-      // upsertThreadMessage -> find bot message
+      // upsertThreadMessage -> findBotMessageInThread: starter message check (404 fallback)
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+      } as Response)
+      // upsertThreadMessage -> find bot message via after=0
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -2286,13 +2373,13 @@ describe('createOrUpdateEventThread', () => {
         status: 200,
         json: async () => ({ id: mockBotUserId }),
       } as Response)
-      // Mock messages fetch (find bot message)
+      // Mock forum starter message fetch (id === threadId for forum threads)
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: async () => [{ id: 'message-1', author: { id: mockBotUserId } }],
+        json: async () => ({ id: existingThreadId, author: { id: mockBotUserId } }),
       } as Response)
-      // Mock message edit (upsert)
+      // Mock message edit (upsert — edits the starter message)
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -2452,18 +2539,13 @@ describe('createOrUpdateEventThread', () => {
         status: 200,
         json: async () => ({ id: mockBotUserId }),
       } as Response)
-      // Mock thread messages lookup
+      // Mock forum starter message fetch (id === threadId for forum threads)
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: async () => [
-          {
-            id: 'msg-1',
-            author: { id: mockBotUserId },
-          },
-        ],
+        json: async () => ({ id: existingThreadId, author: { id: mockBotUserId } }),
       } as Response)
-      // Mock message edit
+      // Mock message edit (edits the starter message)
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
