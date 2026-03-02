@@ -814,13 +814,13 @@ describe('sendTeamsAssignmentNotification', () => {
 
     await sendTeamsAssignmentNotification(raceId)
 
-    // Drop notifications must be sent even when teamsList is empty after the update
+    // Unassigned notifications must be sent even when teamsList is empty after the update
     expect(sendTeamsAssignedNotification).toHaveBeenCalledWith(
       'event-thread-id',
       expect.objectContaining({
         rosterChanges: expect.arrayContaining([
           expect.objectContaining({
-            type: 'dropped',
+            type: 'unassigned',
             driverName: 'User 1',
             fromTeam: 'Team One',
           }),

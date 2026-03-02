@@ -26,6 +26,7 @@ export type TeamChangeType =
   | 'added'
   | 'moved'
   | 'dropped'
+  | 'unassigned'
   | 'class_changed'
   | 'team_renamed'
   | 'team_class_changed'
@@ -301,12 +302,12 @@ export function buildTeamChangeDetails(params: {
           details.push({
             registrationId: id,
             driverName,
-            type: 'dropped',
+            type: 'unassigned',
             fromTeamId,
             toTeamId,
             fromTeamName,
             toTeamName,
-            line: `Dropped ${driverName} from ${fromTeamName}.`,
+            line: `Unassigned ${driverName} from ${fromTeamName}.`,
             destructive: true,
           })
         }
@@ -399,6 +400,15 @@ export function buildRosterChangesFromTeamChangeDetails(
     if (detail.type === 'dropped') {
       rosterChanges.push({
         type: 'dropped',
+        driverName: detail.driverName,
+        fromTeam: detail.fromTeamName,
+      })
+      return
+    }
+
+    if (detail.type === 'unassigned') {
+      rosterChanges.push({
+        type: 'unassigned',
         driverName: detail.driverName,
         fromTeam: detail.fromTeamName,
       })

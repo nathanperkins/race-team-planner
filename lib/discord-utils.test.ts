@@ -1261,16 +1261,28 @@ describe('Discord Utils', () => {
       expect(embed.fields[0].value).toBe(`<t:${unix}:F>`)
     })
 
-    it('builds embed with dropped drivers', () => {
+    it('builds embed with dropped drivers (was on a team)', () => {
       const embed = buildRosterChangesEmbed(
         [{ type: 'dropped', driverName: 'Bob', fromTeam: 'Team Alpha' }],
         appTitle,
         adminName,
         raceStartTime
       )
-      expect(embed.fields).toHaveLength(2) // Timeslot + Dropped
-      expect(embed.fields[1].name).toBe('❌ Dropped')
-      expect(embed.fields[1].value).toBe('**Bob** (from Team Alpha)')
+      expect(embed.fields).toHaveLength(2) // Timeslot + Dropped from Race
+      expect(embed.fields[1].name).toBe('🚫 Dropped from Race')
+      expect(embed.fields[1].value).toBe('**Bob** (was on Team Alpha)')
+    })
+
+    it('builds embed with dropped drivers (was unassigned)', () => {
+      const embed = buildRosterChangesEmbed(
+        [{ type: 'dropped', driverName: 'Bob', fromTeam: 'Unassigned' }],
+        appTitle,
+        adminName,
+        raceStartTime
+      )
+      expect(embed.fields).toHaveLength(2) // Timeslot + Dropped from Race
+      expect(embed.fields[1].name).toBe('🚫 Dropped from Race')
+      expect(embed.fields[1].value).toBe('**Bob**')
     })
 
     it('builds embed with moved drivers', () => {
@@ -1292,8 +1304,8 @@ describe('Discord Utils', () => {
         adminName,
         raceStartTime
       )
-      expect(embed.fields).toHaveLength(2) // Timeslot + Unassigned
-      expect(embed.fields[1].name).toBe('⚠️ Unassigned')
+      expect(embed.fields).toHaveLength(2) // Timeslot + Unassigned from Team
+      expect(embed.fields[1].name).toBe('⬇️ Unassigned from Team')
       expect(embed.fields[1].value).toBe('**Dave** (from Team Alpha)')
     })
 
@@ -1311,14 +1323,14 @@ describe('Discord Utils', () => {
         raceStartTime
       )
       expect(embed.description).toBe('5 changes made by **John Admin**')
-      expect(embed.fields).toHaveLength(5) // Timeslot, Added, Moved, Unassigned, Dropped
+      expect(embed.fields).toHaveLength(5) // Timeslot, Added, Moved, Unassigned from Team, Dropped from Race
       expect(embed.fields[0].name).toBe('🕐 Timeslot')
       expect(embed.fields[1].name).toBe('✅ Added')
       expect(embed.fields[1].value).toContain('**Alice** → Team Alpha')
       expect(embed.fields[1].value).toContain('**Eve** → Team Beta')
       expect(embed.fields[2].name).toBe('🔄 Moved')
-      expect(embed.fields[3].name).toBe('⚠️ Unassigned')
-      expect(embed.fields[4].name).toBe('❌ Dropped')
+      expect(embed.fields[3].name).toBe('⬇️ Unassigned from Team')
+      expect(embed.fields[4].name).toBe('🚫 Dropped from Race')
     })
 
     it('uses plural form in description for multiple changes', () => {
@@ -1410,11 +1422,11 @@ describe('Discord Utils', () => {
         raceStartTime
       )
       expect(embed.description).toBe('3 changes made by **John Admin**')
-      expect(embed.fields).toHaveLength(4) // Timeslot, Added, Car Class Changed, Dropped
+      expect(embed.fields).toHaveLength(4) // Timeslot, Added, Car Class Changed, Dropped from Race
       expect(embed.fields[0].name).toBe('🕐 Timeslot')
       expect(embed.fields[1].name).toBe('✅ Added')
       expect(embed.fields[2].name).toBe('🏎️ Car Class Changed')
-      expect(embed.fields[3].name).toBe('❌ Dropped')
+      expect(embed.fields[3].name).toBe('🚫 Dropped from Race')
     })
   })
 

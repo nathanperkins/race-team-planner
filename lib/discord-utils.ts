@@ -1030,7 +1030,7 @@ export function buildRosterChangesEmbed(
 
   if (unassigned.length > 0) {
     fields.push({
-      name: '⚠️ Unassigned',
+      name: '⬇️ Unassigned from Team',
       value: unassigned.map((c) => `**${c.driverName}** (from ${c.fromTeam})`).join('\n'),
       inline: false,
     })
@@ -1038,11 +1038,12 @@ export function buildRosterChangesEmbed(
 
   if (dropped.length > 0) {
     fields.push({
-      name: '❌ Dropped',
+      name: '🚫 Dropped from Race',
       value: dropped
-        .map((c) =>
-          c.fromTeam ? `**${c.driverName}** (from ${c.fromTeam})` : `**${c.driverName}**`
-        )
+        .map((c) => {
+          if (!c.fromTeam || c.fromTeam === 'Unassigned') return `**${c.driverName}**`
+          return `**${c.driverName}** (was on ${c.fromTeam})`
+        })
         .join('\n'),
       inline: false,
     })

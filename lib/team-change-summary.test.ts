@@ -125,6 +125,64 @@ describe('buildTeamChangeSummary', () => {
     )
   })
 
+  it('unassigning a driver from a team produces unassigned detail and roster change', () => {
+    const teamNameById = new Map([['team-1', 'Carbon']])
+    const details = buildTeamChangeDetails({
+      teamNameById,
+      originalRecords: [
+        {
+          id: 'reg-1',
+          driverName: 'Alice',
+          teamId: 'team-1',
+          teamName: 'Carbon',
+          carClassName: 'GT3',
+        },
+      ],
+      pendingRecords: [
+        { id: 'reg-1', driverName: 'Alice', teamId: null, teamName: null, carClassName: 'GT3' },
+      ],
+    })
+
+    expect(details).toHaveLength(1)
+    expect(details[0]).toMatchObject({
+      type: 'unassigned',
+      driverName: 'Alice',
+      fromTeamName: 'Carbon',
+      destructive: true,
+    })
+
+    const rosterChanges = buildRosterChangesFromTeamChangeDetails(details)
+    expect(rosterChanges).toEqual([{ type: 'unassigned', driverName: 'Alice', fromTeam: 'Carbon' }])
+  })
+
+  it('removing a driver entirely from the race produces dropped detail and roster change', () => {
+    const teamNameById = new Map([['team-1', 'Carbon']])
+    const details = buildTeamChangeDetails({
+      teamNameById,
+      originalRecords: [
+        {
+          id: 'reg-1',
+          driverName: 'Bob',
+          teamId: 'team-1',
+          teamName: 'Carbon',
+          carClassName: 'GT3',
+        },
+      ],
+      pendingRecords: [],
+    })
+
+    expect(details).toHaveLength(1)
+    expect(details[0]).toMatchObject({
+      type: 'dropped',
+      driverName: 'Bob',
+      fromTeamName: 'Carbon',
+      destructive: true,
+    })
+
+    const rosterChanges = buildRosterChangesFromTeamChangeDetails(details)
+    expect(rosterChanges).toEqual([{ type: 'dropped', driverName: 'Bob', fromTeam: 'Carbon' }])
+  })
+
   it('groups team class changes with affected drivers', () => {
     const teamNameById = new Map([['team-1', 'Carbon']])
     const details = buildTeamChangeDetails({
