@@ -12,10 +12,10 @@ resource "google_storage_bucket" "db_backups" {
   # Lifecycle rules for backup retention
   # Files are organized by prefix: hourly/, daily/, weekly/, monthly/, yearly/
 
-  # Hourly backups: keep 3 days
+  # Hourly backups: keep 7 days
   lifecycle_rule {
     condition {
-      age            = 3
+      age            = 7
       matches_prefix = ["hourly/"]
       with_state     = "ANY"
     }
@@ -24,10 +24,10 @@ resource "google_storage_bucket" "db_backups" {
     }
   }
 
-  # Weekly backups: keep 8 weeks (56 days)
+  # Weekly backups: keep 16 weeks (112 days)
   lifecycle_rule {
     condition {
-      age                   = 56
+      age                   = 112
       matches_prefix        = ["weekly/"]
       with_state            = "ANY"
     }
