@@ -59,6 +59,13 @@ export enum GuildMembershipStatus {
   API_ERROR = 'api_error',
 }
 
+export interface GuildMembershipResult {
+  status: GuildMembershipStatus
+  roles?: string[]
+  nick?: string | null
+  user?: { id: string; username: string; discriminator?: string; avatar?: string } | null
+}
+
 /**
  * Checks if a user is a member of the configured Discord guild.
  * Requires DISCORD_BOT_TOKEN and DISCORD_GUILD_ID to be set.
@@ -66,12 +73,7 @@ export enum GuildMembershipStatus {
  * @param userId The Discord User ID to check
  * @returns Object with status and user roles
  */
-export async function checkGuildMembership(userId: string): Promise<{
-  status: GuildMembershipStatus
-  roles?: string[]
-  nick?: string | null
-  user?: { id: string; username: string; discriminator?: string; avatar?: string } | null
-}> {
+export async function checkGuildMembership(userId: string): Promise<GuildMembershipResult> {
   const botToken = process.env.DISCORD_BOT_TOKEN
   const guildId = process.env.DISCORD_GUILD_ID
 

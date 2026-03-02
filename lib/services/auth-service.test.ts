@@ -105,16 +105,16 @@ describe('auth-service', () => {
       const profile = { id: 'discord-123', name: 'DiscordName', avatar: 'avatar-url' }
       vi.stubEnv('DISCORD_ADMIN_ROLE_IDS', 'role-admin-1,role-admin-2')
 
-      const { checkGuildMembership, GuildMembershipStatus } = await import('@/lib/discord')
-      vi.mocked(checkGuildMembership).mockResolvedValue({
+      const { GuildMembershipStatus } = await import('@/lib/discord')
+      const membershipData = {
         status: GuildMembershipStatus.MEMBER,
         roles: ['role-admin-1'],
         nick: 'DiscordNick',
-      } as any)
+      } as any
 
       vi.mocked(prisma.user.update).mockResolvedValue({ id: userId } as any)
 
-      await syncDiscordProfile(userId, profile)
+      await syncDiscordProfile(userId, profile, membershipData)
 
       expect(prisma.user.update).toHaveBeenCalledWith({
         where: { id: userId },
@@ -132,14 +132,14 @@ describe('auth-service', () => {
       const userId = 'user-123'
       const profile = { id: 'discord-123', name: 'DiscordName' }
 
-      const { checkGuildMembership, GuildMembershipStatus } = await import('@/lib/discord')
-      vi.mocked(checkGuildMembership).mockResolvedValue({
+      const { GuildMembershipStatus } = await import('@/lib/discord')
+      const membershipData = {
         status: GuildMembershipStatus.MEMBER,
         roles: ['some-other-role'],
         nick: null,
-      } as any)
+      } as any
 
-      await syncDiscordProfile(userId, profile)
+      await syncDiscordProfile(userId, profile, membershipData)
 
       expect(prisma.user.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -150,60 +150,106 @@ describe('auth-service', () => {
       )
     })
 
-    it('does not update name when checkGuildMembership returns API_ERROR', async () => {
+    it('does not update name when membershipData has API_ERROR status', async () => {
       const userId = 'user-123'
       const profile = { id: 'discord-123', name: 'GlobalDisplayName' }
 
-      const { checkGuildMembership, GuildMembershipStatus } = await import('@/lib/discord')
-      vi.mocked(checkGuildMembership).mockResolvedValue({
-        status: GuildMembershipStatus.API_ERROR,
-      } as any)
+      const { GuildMembershipStatus } = await import('@/lib/discord')
+      const membershipData = { status: GuildMembershipStatus.API_ERROR } as any
 
       vi.mocked(prisma.user.update).mockResolvedValue({ id: userId } as any)
 
-      await syncDiscordProfile(userId, profile)
+      await syncDiscordProfile(userId, profile, membershipData)
 
       const updateCall = vi.mocked(prisma.user.update).mock.calls[0]
       expect(updateCall[0].data).not.toHaveProperty('name')
     })
 
-    it('does not update name when checkGuildMembership returns CONFIG_ERROR', async () => {
+    it('does not update name when membershipData has CONFIG_ERROR status', async () => {
       const userId = 'user-123'
       const profile = { id: 'discord-123', name: 'GlobalDisplayName' }
 
+      const { GuildMembershipStatus } = await import('@/lib/discord')
+      const membershipData = { status: GuildMembershipStatus.CONFIG_ERROR } as any
+
+      vi.mocked(prisma.user.update).mockResolvedValue({ id: userId } as any)
+
+      await syncDiscordProfile(userId, profile, membershipData)
+
+      const updateCall = vi.mocked(prisma.user.update).mock.calls[0]
+      expect(updateCall[0].data).not.toHaveProperty('name')
+    })
+
+    it('falls back to calling checkGuildMembership when no membershipData is provided', async () => {
+      const userId = 'user-123'
+      const profile = { id: 'discord-123', name: 'DiscordName' }
+
       const { checkGuildMembership, GuildMembershipStatus } = await import('@/lib/discord')
       vi.mocked(checkGuildMembership).mockResolvedValue({
-        status: GuildMembershipStatus.CONFIG_ERROR,
+        status: GuildMembershipStatus.MEMBER,
+        roles: [],
+        nick: 'FetchedNick',
       } as any)
-
       vi.mocked(prisma.user.update).mockResolvedValue({ id: userId } as any)
 
       await syncDiscordProfile(userId, profile)
 
-      const updateCall = vi.mocked(prisma.user.update).mock.calls[0]
-      expect(updateCall[0].data).not.toHaveProperty('name')
+      expect(checkGuildMembership).toHaveBeenCalledWith('discord-123')
+      expect(prisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ name: 'FetchedNick' }),
+        })
+      )
     })
   })
 
   describe('verifyGuildMembership', () => {
-    it('returns true if user is a member', async () => {
+    it('returns granted:true with membership data if user is a member', async () => {
       const { checkGuildMembership, GuildMembershipStatus } = await import('@/lib/discord')
-      vi.mocked(checkGuildMembership).mockResolvedValue({
-        status: GuildMembershipStatus.MEMBER,
-      } as any)
+      const mockResult = { status: GuildMembershipStatus.MEMBER, roles: [], nick: 'Nick' }
+      vi.mocked(checkGuildMembership).mockResolvedValue(mockResult as any)
 
       const result = await verifyGuildMembership('discord-123')
-      expect(result).toBe(true)
+      expect(result).toEqual({ granted: true, data: mockResult })
     })
 
-    it('returns redirect path if user is not a member', async () => {
+    it('returns granted:false with redirect path if user is not a member', async () => {
       const { checkGuildMembership, GuildMembershipStatus } = await import('@/lib/discord')
       vi.mocked(checkGuildMembership).mockResolvedValue({
         status: GuildMembershipStatus.NOT_MEMBER,
       } as any)
 
       const result = await verifyGuildMembership('discord-123')
-      expect(result).toBe(`/not-found?error=${GuildMembershipStatus.NOT_MEMBER}`)
+      expect(result).toEqual({
+        granted: false,
+        redirectUrl: `/not-found?error=${GuildMembershipStatus.NOT_MEMBER}`,
+      })
+    })
+
+    it('returns granted:false with redirect path on API_ERROR', async () => {
+      const { checkGuildMembership, GuildMembershipStatus } = await import('@/lib/discord')
+      vi.mocked(checkGuildMembership).mockResolvedValue({
+        status: GuildMembershipStatus.API_ERROR,
+      } as any)
+
+      const result = await verifyGuildMembership('discord-123')
+      expect(result).toEqual({
+        granted: false,
+        redirectUrl: `/not-found?error=${GuildMembershipStatus.API_ERROR}`,
+      })
+    })
+
+    it('returns granted:false with redirect path on CONFIG_ERROR', async () => {
+      const { checkGuildMembership, GuildMembershipStatus } = await import('@/lib/discord')
+      vi.mocked(checkGuildMembership).mockResolvedValue({
+        status: GuildMembershipStatus.CONFIG_ERROR,
+      } as any)
+
+      const result = await verifyGuildMembership('discord-123')
+      expect(result).toEqual({
+        granted: false,
+        redirectUrl: `/not-found?error=${GuildMembershipStatus.CONFIG_ERROR}`,
+      })
     })
   })
 })

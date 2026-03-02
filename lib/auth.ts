@@ -10,9 +10,28 @@ import {
   refreshUserData,
   syncDiscordProfile,
 } from './services/auth-service'
+import type { GuildMembershipResult } from '@/lib/discord'
 import { createLogger } from './logger'
 
 const logger = createLogger('auth')
+
+// Bridges membership data from the signIn callback (which fetches it to verify
+// guild access) to the signIn event (which needs it to update the user profile).
+// Avoids a second Discord API call and ensures that if an account is created,
+// the profile sync always has a confirmed MEMBER result to work with.
+const PENDING_MEMBERSHIP_TTL = 60_000
+const pendingMemberships = new Map<string, { data: GuildMembershipResult; ts: number }>()
+
+function setPendingMembership(discordId: string, data: GuildMembershipResult): void {
+  pendingMemberships.set(discordId, { data, ts: Date.now() })
+}
+
+function takePendingMembership(discordId: string): GuildMembershipResult | undefined {
+  const entry = pendingMemberships.get(discordId)
+  pendingMemberships.delete(discordId)
+  if (entry && Date.now() - entry.ts < PENDING_MEMBERSHIP_TTL) return entry.data
+  return undefined
+}
 
 const mockAuthProvider = Credentials({
   name: 'Mock User',
@@ -50,8 +69,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
 
       // 2. Perform Guild Membership Check for Discord
-      if (account?.provider === 'discord' && profile?.id) {
-        return await verifyGuildMembership(profile.id as string)
+      if (account?.provider === 'discord') {
+        if (!profile?.id) {
+          logger.error('Discord sign-in attempted without a profile ID')
+          return false
+        }
+        const check = await verifyGuildMembership(profile.id as string)
+        if (!check.granted) return check.redirectUrl
+        setPendingMembership(profile.id as string, check.data)
+        return true
       }
 
       return true
@@ -93,8 +119,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async signIn({ user, account, profile }) {
       if (account?.provider === 'discord' && profile && user.id) {
         logger.info(`Syncing profile for ${user.email}`)
+        const discordId = profile.id as string
+        const membership = takePendingMembership(discordId)
         try {
-          await syncDiscordProfile(user.id, profile)
+          await syncDiscordProfile(user.id, profile, membership)
         } catch (error) {
           logger.error({ err: error }, 'Failed to sync profile')
         }

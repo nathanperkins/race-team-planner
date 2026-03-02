@@ -2027,6 +2027,11 @@ describe('updateRegistrationCarClass', () => {
 describe('saveRaceEdits - Discord thread validation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.useFakeTimers({ now: new Date('2026-01-01T00:00:00Z') })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('prevents renaming team when Discord thread exists', async () => {

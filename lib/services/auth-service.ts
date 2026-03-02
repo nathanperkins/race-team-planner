@@ -3,8 +3,13 @@ import { UserRole } from '@prisma/client'
 import { CURRENT_EXPECTATIONS_VERSION, SESSION_VERSION } from '@/lib/config'
 import type { JWT } from 'next-auth/jwt'
 import { createLogger } from '@/lib/logger'
+import type { GuildMembershipResult } from '@/lib/discord'
 
 const logger = createLogger('auth-service')
+
+export type MembershipVerification =
+  | { granted: true; data: GuildMembershipResult }
+  | { granted: false; redirectUrl: string }
 
 export interface UserRefreshData {
   role: UserRole
@@ -54,14 +59,19 @@ export async function refreshUserData(userId: string): Promise<UserRefreshData |
 
 /**
  * Syncs a user's profile with their current Discord information.
+ *
+ * Pass `membershipData` (from a prior `verifyGuildMembership` call) to reuse
+ * the already-fetched result and avoid a second Discord API call.
  */
 export async function syncDiscordProfile(
   userId: string,
-  profile: { id?: string | null; [key: string]: unknown }
+  profile: { id?: string | null; [key: string]: unknown },
+  membershipData?: GuildMembershipResult
 ) {
   try {
-    const { checkGuildMembership, GuildMembershipStatus } = await import('@/lib/discord')
-    const { status, roles, nick } = await checkGuildMembership(profile.id as string)
+    const { GuildMembershipStatus, checkGuildMembership } = await import('@/lib/discord')
+    const { status, roles, nick } =
+      membershipData ?? (await checkGuildMembership(profile.id as string))
 
     const adminRoleIdsStr = process.env.DISCORD_ADMIN_ROLE_IDS || ''
     const adminRoleIds = adminRoleIdsStr.split(',').map((id) => id.trim())
@@ -95,15 +105,18 @@ export async function syncDiscordProfile(
 
 /**
  * Verifies if a Discord user is a member of the required guild.
+ * Returns the full membership data on success so the caller can pass it
+ * to syncDiscordProfile without a second Discord API call.
  */
-export async function verifyGuildMembership(discordId: string): Promise<string | boolean> {
+export async function verifyGuildMembership(discordId: string): Promise<MembershipVerification> {
   const { checkGuildMembership, GuildMembershipStatus } = await import('@/lib/discord')
-  const { status } = await checkGuildMembership(discordId)
+  const data = await checkGuildMembership(discordId)
 
-  if (status !== GuildMembershipStatus.MEMBER) {
-    logger.info(`[verifyGuildMembership] Denying access: ${status}`)
-    return `/not-found?error=${status}`
+  if (data.status !== GuildMembershipStatus.MEMBER) {
+    const level = data.status === GuildMembershipStatus.NOT_MEMBER ? 'info' : 'warn'
+    logger[level](`[verifyGuildMembership] Denying access: ${data.status}`)
+    return { granted: false, redirectUrl: `/not-found?error=${data.status}` }
   }
 
-  return true
+  return { granted: true, data }
 }
