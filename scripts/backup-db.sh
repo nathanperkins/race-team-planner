@@ -30,6 +30,7 @@ if [ -z "$BACKUP_ENCRYPTION_KEY" ]; then
 fi
 
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H-%M-%SZ")
+DATE=$(date -u +"%Y-%m-%d")
 HOUR=$(date -u +"%H")
 DAY_OF_WEEK=$(date -u +"%u")  # 1=Monday, 7=Sunday
 DAY_OF_MONTH=$(date -u +"%d")
@@ -38,7 +39,8 @@ MONTH=$(date -u +"%m")
 BACKUP_FILE="backup-${TIMESTAMP}.sql.gz.gpg"
 BACKUP_PATH="/tmp/${BACKUP_FILE}"
 HOURLY_BACKUP_PATH="gs://${BACKUP_BUCKET}/hourly/${BACKUP_FILE}"
-WEEKLY_BACKUP_PATH="gs://${BACKUP_BUCKET}/weekly/${BACKUP_FILE}"
+WEEKLY_FILE="backup-${DATE}.sql.gz.gpg"
+WEEKLY_PATH="gs://${BACKUP_BUCKET}/weekly/${WEEKLY_FILE}"
 
 echo "Starting encrypted database backup at ${TIMESTAMP}..."
 
@@ -57,11 +59,10 @@ gcloud storage cp "${BACKUP_PATH}" "${HOURLY_BACKUP_PATH}"
 
 # On Sundays, also save to weekly folder (robust to timing/skips)
 if [ "$DAY_OF_WEEK" = "7" ]; then
-  echo "Copying to ${WEEKLY_BACKUP_PATH}..."
   # Use a date-only filename for the weekly folder so multiple runs on Sunday
-  # simply overwrite/update the same file, ensuring we always have a backup for the week.
-  WEEKLY_DATE_FILE="backup-$(date -u +"%Y-%m-%d").sql.gz.gpg"
-  gcloud storage cp "${BACKUP_PATH}" "${WEEKLY_BACKUP_PATH}"
+  # simply overwrite/update the same file, ensuring we always have one backup per week.
+  echo "Copying to ${WEEKLY_PATH}..."
+  gcloud storage cp "${BACKUP_PATH}" "${WEEKLY_PATH}"
 fi
 
 # Clean up
