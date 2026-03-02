@@ -997,6 +997,7 @@ describe('deleteRegistration notifications', () => {
       manualDriver: null,
       race: {
         id: 'race-2',
+        startTime: new Date('2099-01-01T18:00:00Z'),
         endTime: new Date('2099-01-01T00:00:00Z'),
         eventId: 'event-1',
         discordTeamsThreadId: null, // this race has no thread
@@ -1017,6 +1018,7 @@ describe('deleteRegistration notifications', () => {
       [{ type: 'dropped', driverName: 'User One', fromTeam: 'Team One' }],
       expect.any(String),
       'User One',
+      expect.any(Date),
       { 'team-1': 'team-thread-1' },
       expect.any(Map)
     )
@@ -1032,6 +1034,7 @@ describe('deleteRegistration notifications', () => {
       manualDriver: null,
       race: {
         id: 'race-1',
+        startTime: new Date('2099-01-01T18:00:00Z'),
         endTime: new Date('2099-01-01T00:00:00Z'),
         eventId: 'event-1',
         discordTeamsThreadId: 'event-thread-1',
@@ -1048,6 +1051,7 @@ describe('deleteRegistration notifications', () => {
       [{ type: 'dropped', driverName: 'User One', fromTeam: 'Team One' }],
       expect.any(String),
       'User One',
+      expect.any(Date),
       { 'team-1': 'team-thread-1' },
       expect.any(Map)
     )
@@ -1063,6 +1067,7 @@ describe('deleteRegistration notifications', () => {
       manualDriver: null,
       race: {
         id: 'race-1',
+        startTime: new Date('2099-01-01T18:00:00Z'),
         endTime: new Date('2099-01-01T00:00:00Z'),
         eventId: 'event-1',
         discordTeamsThreadId: 'event-thread-1',
@@ -1082,6 +1087,7 @@ describe('deleteRegistration notifications', () => {
       [{ type: 'dropped', driverName: 'User One', fromTeam: 'Unassigned' }],
       expect.any(String),
       'User One',
+      expect.any(Date),
       {},
       expect.any(Map)
     )
@@ -1097,6 +1103,7 @@ describe('deleteRegistration notifications', () => {
       manualDriver: null,
       race: {
         id: 'race-1',
+        startTime: new Date('2099-01-01T18:00:00Z'),
         endTime: new Date('2099-01-01T00:00:00Z'),
         eventId: 'event-1',
         discordTeamsThreadId: 'event-thread-1',
@@ -1150,6 +1157,7 @@ describe('deleteRegistration notifications', () => {
       manualDriver: null,
       race: {
         id: 'race-1',
+        startTime: new Date('2099-01-01T18:00:00Z'),
         endTime: new Date('2099-01-01T00:00:00Z'),
         eventId: 'event-1',
         discordTeamsThreadId: 'event-thread-1',

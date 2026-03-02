@@ -676,6 +676,7 @@ export async function postRosterChangeNotifications(
   rosterChanges: import('./discord-utils').RosterChange[],
   botToken: string,
   adminName: string,
+  raceStartTime: Date,
   teamThreads?: Record<string, string>,
   teamNameById?: Map<string, string>,
   suppressTeamThreadIds?: string[],
@@ -726,7 +727,7 @@ export async function postRosterChangeNotifications(
   }
 
   // Post all changes to the event thread as a fancy embed
-  const embed = buildRosterChangesEmbed(rosterChanges, appTitle, adminName)
+  const embed = buildRosterChangesEmbed(rosterChanges, appTitle, adminName, raceStartTime)
   const discordWork = [postEmbedToThread(eventThreadId, embed, 'event thread')]
 
   // Post relevant changes to team threads
@@ -783,7 +784,7 @@ export async function postRosterChangeNotifications(
           return
         }
         if (changes.length > 0 && threadId) {
-          const teamEmbed = buildRosterChangesEmbed(changes, appTitle, adminName)
+          const teamEmbed = buildRosterChangesEmbed(changes, appTitle, adminName, raceStartTime)
           await postEmbedToThread(
             threadId,
             teamEmbed,
@@ -879,11 +880,13 @@ export async function sendTeamsAssignedNotification(
 
     // Post roster change notifications if provided
     if (data.rosterChanges && data.rosterChanges.length > 0 && data.adminName) {
+      const raceStartTime = data.timeslots[0].raceStartTime
       await postRosterChangeNotifications(
         threadId,
         data.rosterChanges,
         botToken,
         data.adminName,
+        raceStartTime,
         data.teamThreads,
         data.teamNameById,
         data.suppressTeamThreadIds,

@@ -1155,6 +1155,7 @@ describe('upsertThreadMessage', () => {
 describe('postRosterChangeNotifications', () => {
   const botToken = 'fake-bot-token'
   const eventThreadId = 'event-thread-123'
+  const raceStartTime = new Date('2027-06-14T18:00:00Z')
 
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn())
@@ -1167,7 +1168,7 @@ describe('postRosterChangeNotifications', () => {
   })
 
   it('does nothing when roster changes are empty', async () => {
-    await postRosterChangeNotifications(eventThreadId, [], botToken, 'Admin User')
+    await postRosterChangeNotifications(eventThreadId, [], botToken, 'Admin User', raceStartTime)
 
     expect(fetch).not.toHaveBeenCalled()
   })
@@ -1183,7 +1184,13 @@ describe('postRosterChangeNotifications', () => {
       { type: 'dropped' as const, driverName: 'Bob' },
     ]
 
-    await postRosterChangeNotifications(eventThreadId, rosterChanges, botToken, 'Admin User')
+    await postRosterChangeNotifications(
+      eventThreadId,
+      rosterChanges,
+      botToken,
+      'Admin User',
+      raceStartTime
+    )
 
     expect(fetch).toHaveBeenCalledTimes(1)
     expect(fetch).toHaveBeenCalledWith(
@@ -1223,6 +1230,7 @@ describe('postRosterChangeNotifications', () => {
       rosterChanges,
       botToken,
       'Admin User',
+      raceStartTime,
       teamThreads,
       teamNameById
     )
@@ -1248,6 +1256,7 @@ describe('postRosterChangeNotifications', () => {
       rosterChanges,
       botToken,
       'Admin User',
+      raceStartTime,
       teamThreads,
       teamNameById,
       undefined,
@@ -1288,6 +1297,7 @@ describe('postRosterChangeNotifications', () => {
       rosterChanges,
       botToken,
       'Admin User',
+      raceStartTime,
       teamThreads,
       teamNameById,
       ['team-thread-2']
@@ -1315,7 +1325,13 @@ describe('postRosterChangeNotifications', () => {
 
     const rosterChanges = [{ type: 'added' as const, driverName: 'Alice', teamName: 'Team One' }]
 
-    await postRosterChangeNotifications(eventThreadId, rosterChanges, botToken, 'Admin User')
+    await postRosterChangeNotifications(
+      eventThreadId,
+      rosterChanges,
+      botToken,
+      'Admin User',
+      raceStartTime
+    )
 
     expect(mockLogger.error).toHaveBeenCalledWith(
       'Failed to post roster changes to %s: %d %s: %s',
@@ -1352,6 +1368,7 @@ describe('postRosterChangeNotifications', () => {
       rosterChanges,
       botToken,
       'Admin User',
+      raceStartTime,
       teamThreads,
       teamNameById
     )
@@ -1392,6 +1409,7 @@ describe('postRosterChangeNotifications', () => {
       rosterChanges,
       botToken,
       'Admin User',
+      raceStartTime,
       teamThreads,
       teamNameById
     )
@@ -1431,6 +1449,7 @@ describe('postRosterChangeNotifications', () => {
       rosterChanges,
       botToken,
       'Admin User',
+      raceStartTime,
       teamThreads,
       teamNameById
     )
@@ -2493,7 +2512,7 @@ describe('sendTeamsAssignedNotification', () => {
 
   const baseData = {
     eventName: 'GT3 Challenge',
-    timeslots: [],
+    timeslots: [{ raceStartTime: new Date('2027-06-14T18:00:00Z'), teams: [], unassigned: [] }],
     eventUrl: 'http://localhost:3000/events/event-123',
     adminName: 'Admin',
     rosterChanges: [{ type: 'dropped' as const, driverName: 'User 1', fromTeam: 'Team One' }],

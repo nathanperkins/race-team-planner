@@ -680,6 +680,7 @@ export async function deleteRegistration(registrationId: string): Promise<void> 
         race: {
           select: {
             id: true,
+            startTime: true,
             endTime: true,
             eventId: true,
             discordTeamsThreadId: true,
@@ -755,6 +756,7 @@ export async function deleteRegistration(registrationId: string): Promise<void> 
               [{ type: 'dropped', driverName, fromTeam }],
               process.env.DISCORD_BOT_TOKEN || '',
               session.user.name || driverName,
+              registration.race!.startTime,
               teamThreads,
               teamNameById
             )
@@ -989,7 +991,8 @@ async function postCarClassChangeNotification(
         },
       ],
       process.env.DISCORD_BOT_TOKEN || '',
-      userName || driverName
+      userName || driverName,
+      registration.race.startTime
     )
   }
 }

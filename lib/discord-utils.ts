@@ -973,7 +973,8 @@ function isLegacySnapshot(
 export function buildRosterChangesEmbed(
   rosterChanges: RosterChange[],
   appTitle: string,
-  adminName?: string
+  adminName: string | undefined,
+  raceStartTime: Date
 ): {
   title: string
   description: string
@@ -990,6 +991,13 @@ export function buildRosterChangesEmbed(
   const teamClassChanged = rosterChanges.filter((c) => c.type === 'teamClassChanged')
 
   const fields: Array<{ name: string; value: string; inline: boolean }> = []
+
+  const unix = Math.floor(raceStartTime.getTime() / 1000)
+  fields.push({
+    name: '🕐 Timeslot',
+    value: `<t:${unix}:F>`,
+    inline: false,
+  })
 
   if (added.length > 0) {
     fields.push({
