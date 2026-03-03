@@ -63,7 +63,13 @@ export interface GuildMembershipResult {
   status: GuildMembershipStatus
   roles?: string[]
   nick?: string | null
-  user?: { id: string; username: string; discriminator?: string; avatar?: string } | null
+  user?: {
+    id: string
+    username: string
+    discriminator?: string
+    avatar?: string
+    global_name?: string
+  } | null
 }
 
 /**
@@ -96,7 +102,7 @@ export async function checkGuildMembership(userId: string): Promise<GuildMembers
       return {
         status: GuildMembershipStatus.MEMBER,
         roles: data.roles || [],
-        nick: data.nick || null,
+        nick: data.nick || data.user?.global_name || data.user?.username || null,
         user: data.user || null,
       }
     } else if (response.status === 404) {

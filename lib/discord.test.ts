@@ -70,11 +70,11 @@ describe('checkGuildMembership', () => {
     expect(result.status).toBe(GuildMembershipStatus.CONFIG_ERROR)
   })
 
-  it('returns MEMBER and user data when API returns 200 OK', async () => {
+  it('returns MEMBER and user data when API returns 200 OK using server nick', async () => {
     const mockUserData = {
       roles: ['role1', 'role2'],
-      nick: 'MyNick',
-      user: { id: userId, username: 'testuser' },
+      nick: 'ServerNick',
+      user: { id: userId, username: 'testuser', global_name: 'GlobalNick' },
     }
 
     vi.mocked(fetch).mockResolvedValueOnce({
@@ -96,9 +96,43 @@ describe('checkGuildMembership', () => {
     expect(result).toEqual({
       status: GuildMembershipStatus.MEMBER,
       roles: mockUserData.roles,
-      nick: mockUserData.nick,
+      nick: 'ServerNick',
       user: mockUserData.user,
     })
+  })
+
+  it('falls back to global_name if server nick is missing', async () => {
+    const mockUserData = {
+      roles: [],
+      user: { id: userId, username: 'testuser', global_name: 'GlobalNick' },
+    }
+
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => mockUserData,
+    } as Response)
+
+    const result = await checkGuildMembership(userId)
+
+    expect(result.nick).toBe('GlobalNick')
+  })
+
+  it('falls back to username if both server nick and global_name are missing', async () => {
+    const mockUserData = {
+      roles: [],
+      user: { id: userId, username: 'testuser' },
+    }
+
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => mockUserData,
+    } as Response)
+
+    const result = await checkGuildMembership(userId)
+
+    expect(result.nick).toBe('testuser')
   })
 
   it('returns NOT_MEMBER when API returns 404', async () => {
