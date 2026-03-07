@@ -1015,7 +1015,7 @@ describe('deleteRegistration notifications', () => {
 
     expect(postRosterChangeNotifications).toHaveBeenCalledWith(
       'event-thread-from-race-1',
-      [{ type: 'dropped', driverName: 'User One', fromTeam: 'Team One' }],
+      [{ type: 'dropped', driverName: 'User One', fromTeam: 'Team One', stillRegisteredCount: 0 }],
       expect.any(String),
       'User One',
       expect.any(Date),
@@ -1048,7 +1048,62 @@ describe('deleteRegistration notifications', () => {
 
     expect(postRosterChangeNotifications).toHaveBeenCalledWith(
       'event-thread-1',
-      [{ type: 'dropped', driverName: 'User One', fromTeam: 'Team One' }],
+      [{ type: 'dropped', driverName: 'User One', fromTeam: 'Team One', stillRegisteredCount: 0 }],
+      expect.any(String),
+      'User One',
+      expect.any(Date),
+      { 'team-1': 'team-thread-1' },
+      expect.any(Map)
+    )
+  })
+
+  it('includes stillRegisteredCount in drop notification when user has other registrations in the event', async () => {
+    vi.mocked(prisma.registration.findUnique).mockResolvedValue({
+      id: 'reg-1',
+      userId: 'user-1',
+      teamId: 'team-1',
+      team: { id: 'team-1', name: 'Team One' },
+      user: { name: 'User One' },
+      manualDriver: null,
+      race: {
+        id: 'race-1',
+        startTime: new Date('2099-01-01T18:00:00Z'),
+        endTime: new Date('2099-01-01T00:00:00Z'),
+        eventId: 'event-1',
+        discordTeamsThreadId: 'event-thread-1',
+        discordTeamThreads: { 'team-1': 'team-thread-1' },
+        event: {
+          races: [
+            {
+              // The race being dropped — this registration will be excluded by id
+              registrations: [
+                { id: 'reg-1', userId: 'user-1' },
+                { id: 'reg-other-user', userId: 'user-2' },
+              ],
+            },
+            {
+              // A second timeslot — user-1 is still registered here
+              registrations: [
+                { id: 'reg-3', userId: 'user-1' },
+                { id: 'reg-4', userId: 'user-2' },
+              ],
+            },
+            {
+              // A third timeslot — user-1 is also registered here
+              registrations: [{ id: 'reg-5', userId: 'user-1' }],
+            },
+          ],
+        },
+      },
+    } as any)
+    vi.mocked(prisma.registration.delete).mockResolvedValue({} as any)
+    vi.mocked(postRosterChangeNotifications).mockResolvedValue(undefined as any)
+
+    await deleteRegistration('reg-1')
+
+    expect(postRosterChangeNotifications).toHaveBeenCalledWith(
+      'event-thread-1',
+      [{ type: 'dropped', driverName: 'User One', fromTeam: 'Team One', stillRegisteredCount: 2 }],
       expect.any(String),
       'User One',
       expect.any(Date),
@@ -1084,7 +1139,14 @@ describe('deleteRegistration notifications', () => {
 
     expect(postRosterChangeNotifications).toHaveBeenCalledWith(
       'event-thread-1',
-      [{ type: 'dropped', driverName: 'User One', fromTeam: 'Unassigned' }],
+      [
+        {
+          type: 'dropped',
+          driverName: 'User One',
+          fromTeam: 'Unassigned',
+          stillRegisteredCount: 0,
+        },
+      ],
       expect.any(String),
       'User One',
       expect.any(Date),

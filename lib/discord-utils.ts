@@ -35,7 +35,7 @@ export interface RaceTimeslotData {
 
 export type RosterChange =
   | { type: 'added'; driverName: string; teamName: string }
-  | { type: 'dropped'; driverName: string; fromTeam?: string }
+  | { type: 'dropped'; driverName: string; fromTeam?: string; stillRegisteredCount: number }
   | { type: 'moved'; driverName: string; fromTeam: string; toTeam: string }
   | { type: 'unassigned'; driverName: string; fromTeam: string }
   | {
@@ -952,7 +952,12 @@ export function detectRosterChanges(
       }
       const fromTeam =
         previous.teamId === null ? 'Unassigned' : (teamNameById.get(previous.teamId) ?? 'Team')
-      rosterChanges.push({ type: 'dropped', driverName: previous.driverName, fromTeam })
+      rosterChanges.push({
+        type: 'dropped',
+        driverName: previous.driverName,
+        fromTeam,
+        stillRegisteredCount: 0,
+      })
     }
   })
 
@@ -1041,8 +1046,13 @@ export function buildRosterChangesEmbed(
       name: '🚫 Dropped from Race',
       value: dropped
         .map((c) => {
-          if (!c.fromTeam || c.fromTeam === 'Unassigned') return `**${c.driverName}**`
-          return `**${c.driverName}** (was on ${c.fromTeam})`
+          const teamNote =
+            !c.fromTeam || c.fromTeam === 'Unassigned' ? '' : ` (was on ${c.fromTeam})`
+          const stillNote =
+            c.stillRegisteredCount > 0
+              ? ` — *still registered in ${c.stillRegisteredCount} other timeslot${c.stillRegisteredCount === 1 ? '' : 's'}*`
+              : ''
+          return `**${c.driverName}**${teamNote}${stillNote}`
         })
         .join('\n'),
       inline: false,

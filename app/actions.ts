@@ -685,6 +685,17 @@ export async function deleteRegistration(registrationId: string): Promise<void> 
             eventId: true,
             discordTeamsThreadId: true,
             discordTeamThreads: true,
+            // Fetch sibling registrations to count how many this user still has in the event
+            // after dropping this one — avoids an extra round-trip.
+            event: {
+              select: {
+                races: {
+                  select: {
+                    registrations: { select: { id: true, userId: true } },
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -738,6 +749,14 @@ export async function deleteRegistration(registrationId: string): Promise<void> 
         (eventThreadFallback?.discordTeamThreads as Record<string, string> | null) ??
         {}
       if (eventThreadId) {
+        // Count how many OTHER registrations this user still has in the same event.
+        // Computed locally from data already fetched in findUnique — no extra round-trip.
+        const stillRegisteredCount = registration.userId
+          ? (registration.race.event?.races ?? [])
+              .flatMap((r) => r.registrations)
+              .filter((r) => r.userId === registration.userId && r.id !== registrationId).length
+          : 0
+
         const rosterUpdate = prisma.team
           .findMany({
             select: { id: true, name: true, alias: true },
@@ -750,10 +769,9 @@ export async function deleteRegistration(registrationId: string): Promise<void> 
             const driverName =
               registration.user?.name || registration.manualDriver?.name || 'Unknown Driver'
             const fromTeam = registration.team?.alias || registration.team?.name || 'Unassigned'
-
             return postRosterChangeNotifications(
               eventThreadId,
-              [{ type: 'dropped', driverName, fromTeam }],
+              [{ type: 'dropped', driverName, fromTeam, stillRegisteredCount }],
               process.env.DISCORD_BOT_TOKEN || '',
               session.user.name || driverName,
               registration.race!.startTime,

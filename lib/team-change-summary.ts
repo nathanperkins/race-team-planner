@@ -402,6 +402,7 @@ export function buildRosterChangesFromTeamChangeDetails(
         type: 'dropped',
         driverName: detail.driverName,
         fromTeam: detail.fromTeamName,
+        stillRegisteredCount: 0,
       })
       return
     }

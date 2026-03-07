@@ -180,7 +180,9 @@ describe('buildTeamChangeSummary', () => {
     })
 
     const rosterChanges = buildRosterChangesFromTeamChangeDetails(details)
-    expect(rosterChanges).toEqual([{ type: 'dropped', driverName: 'Bob', fromTeam: 'Carbon' }])
+    expect(rosterChanges).toEqual([
+      { type: 'dropped', driverName: 'Bob', fromTeam: 'Carbon', stillRegisteredCount: 0 },
+    ])
   })
 
   it('groups team class changes with affected drivers', () => {

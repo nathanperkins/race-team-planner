@@ -1053,6 +1053,7 @@ describe('Discord Utils', () => {
         type: 'dropped',
         driverName: 'Bob',
         fromTeam: 'Team Alpha',
+        stillRegisteredCount: 0,
       })
     })
 
@@ -1067,6 +1068,7 @@ describe('Discord Utils', () => {
         type: 'dropped',
         driverName: 'Alice',
         fromTeam: 'Unassigned',
+        stillRegisteredCount: 0,
       })
     })
 
@@ -1099,6 +1101,7 @@ describe('Discord Utils', () => {
         type: 'dropped',
         driverName: 'Bob',
         fromTeam: 'Team Alpha',
+        stillRegisteredCount: 0,
       })
     })
 
@@ -1263,7 +1266,7 @@ describe('Discord Utils', () => {
 
     it('builds embed with dropped drivers (was on a team)', () => {
       const embed = buildRosterChangesEmbed(
-        [{ type: 'dropped', driverName: 'Bob', fromTeam: 'Team Alpha' }],
+        [{ type: 'dropped', driverName: 'Bob', fromTeam: 'Team Alpha', stillRegisteredCount: 0 }],
         appTitle,
         adminName,
         raceStartTime
@@ -1275,7 +1278,7 @@ describe('Discord Utils', () => {
 
     it('builds embed with dropped drivers (was unassigned)', () => {
       const embed = buildRosterChangesEmbed(
-        [{ type: 'dropped', driverName: 'Bob', fromTeam: 'Unassigned' }],
+        [{ type: 'dropped', driverName: 'Bob', fromTeam: 'Unassigned', stillRegisteredCount: 0 }],
         appTitle,
         adminName,
         raceStartTime
@@ -1283,6 +1286,38 @@ describe('Discord Utils', () => {
       expect(embed.fields).toHaveLength(2) // Timeslot + Dropped from Race
       expect(embed.fields[1].name).toBe('🚫 Dropped from Race')
       expect(embed.fields[1].value).toBe('**Bob**')
+    })
+
+    it('appends still-registered note when stillRegisteredCount is 1', () => {
+      const embed = buildRosterChangesEmbed(
+        [{ type: 'dropped', driverName: 'Bob', fromTeam: 'Team Alpha', stillRegisteredCount: 1 }],
+        appTitle,
+        adminName,
+        raceStartTime
+      )
+      expect(embed.fields[1].value).toBe(
+        '**Bob** (was on Team Alpha) — *still registered in 1 other timeslot*'
+      )
+    })
+
+    it('appends still-registered note with plural when stillRegisteredCount > 1', () => {
+      const embed = buildRosterChangesEmbed(
+        [{ type: 'dropped', driverName: 'Bob', fromTeam: 'Unassigned', stillRegisteredCount: 2 }],
+        appTitle,
+        adminName,
+        raceStartTime
+      )
+      expect(embed.fields[1].value).toBe('**Bob** — *still registered in 2 other timeslots*')
+    })
+
+    it('does not append still-registered note when stillRegisteredCount is 0', () => {
+      const embed = buildRosterChangesEmbed(
+        [{ type: 'dropped', driverName: 'Bob', fromTeam: 'Team Alpha', stillRegisteredCount: 0 }],
+        appTitle,
+        adminName,
+        raceStartTime
+      )
+      expect(embed.fields[1].value).toBe('**Bob** (was on Team Alpha)')
     })
 
     it('builds embed with moved drivers', () => {
@@ -1314,7 +1349,7 @@ describe('Discord Utils', () => {
         [
           { type: 'added', driverName: 'Alice', teamName: 'Team Alpha' },
           { type: 'added', driverName: 'Eve', teamName: 'Team Beta' },
-          { type: 'dropped', driverName: 'Bob', fromTeam: 'Team Alpha' },
+          { type: 'dropped', driverName: 'Bob', fromTeam: 'Team Alpha', stillRegisteredCount: 0 },
           { type: 'moved', driverName: 'Charlie', fromTeam: 'Team Alpha', toTeam: 'Team Beta' },
           { type: 'unassigned', driverName: 'Dave', fromTeam: 'Team Gamma' },
         ],
@@ -1337,7 +1372,7 @@ describe('Discord Utils', () => {
       const embed = buildRosterChangesEmbed(
         [
           { type: 'added', driverName: 'Alice', teamName: 'Team Alpha' },
-          { type: 'dropped', driverName: 'Bob', fromTeam: 'Team Alpha' },
+          { type: 'dropped', driverName: 'Bob', fromTeam: 'Team Alpha', stillRegisteredCount: 0 },
         ],
         appTitle,
         adminName,
@@ -1360,7 +1395,7 @@ describe('Discord Utils', () => {
       const embed = buildRosterChangesEmbed(
         [
           { type: 'added', driverName: 'Alice', teamName: 'Team Alpha' },
-          { type: 'dropped', driverName: 'Bob', fromTeam: 'Team Alpha' },
+          { type: 'dropped', driverName: 'Bob', fromTeam: 'Team Alpha', stillRegisteredCount: 0 },
         ],
         appTitle,
         undefined,
@@ -1415,7 +1450,7 @@ describe('Discord Utils', () => {
             toClass: 'LMP2',
             drivers: ['Alice', 'Bob'],
           },
-          { type: 'dropped', driverName: 'Eve', fromTeam: 'Team Gamma' },
+          { type: 'dropped', driverName: 'Eve', fromTeam: 'Team Gamma', stillRegisteredCount: 0 },
         ],
         appTitle,
         adminName,
