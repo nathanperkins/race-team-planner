@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Search, Plus } from 'lucide-react'
 import { adminRegisterDriver } from '@/app/actions'
 import styles from './AdminDriverSearch.module.css'
+import LoadingOverlay from './LoadingOverlay'
 
 interface Driver {
   id: string
@@ -59,6 +60,7 @@ export default function AdminDriverSearch({
   const [dropdownStyle, setDropdownStyle] = useState<CSSProperties | undefined>(undefined)
   const [searchQuery, setSearchQuery] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
+  const [isPending, setIsPending] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Filter drivers not yet registered
@@ -130,6 +132,10 @@ export default function AdminDriverSearch({
         onSelectDriver(driver)
         return
       }
+      setIsOpen(false)
+      setSearchQuery('')
+      setIsPending(true)
+
       const formData = new FormData()
       formData.append('raceId', raceId)
       formData.append('userId', driver.id)
@@ -138,8 +144,6 @@ export default function AdminDriverSearch({
       const result = await adminRegisterDriver({ message: '', timestamp: 0 }, formData)
 
       if (result.message === 'Success') {
-        setIsOpen(false)
-        setSearchQuery('')
         onSuccess?.({
           message: `${driver.name || 'Driver'} Added!`,
           registration: result.registration ?? null,
@@ -151,6 +155,8 @@ export default function AdminDriverSearch({
     } catch {
       setErrorMessage('Failed to register driver')
       setTimeout(() => setErrorMessage(''), 3000)
+    } finally {
+      setIsPending(false)
     }
   }
 
@@ -163,71 +169,74 @@ export default function AdminDriverSearch({
   }
 
   return (
-    <div className={styles.container} ref={dropdownRef}>
-      <button
-        type="button"
-        className={styles.searchButton}
-        onClick={() => {
-          const next = !isOpen
-          if (next) {
-            computeOpenDirection()
-          }
-          setIsOpen(next)
-        }}
-      >
-        <Plus size={16} />
-        {buttonLabel}
-      </button>
-
-      {isOpen && (
-        <div
-          className={`${styles.dropdown} ${openDirection === 'up' ? styles.dropdownUp : ''}`}
-          style={dropdownStyle}
+    <>
+      {isPending && <LoadingOverlay message="Adding driver..." />}
+      <div className={styles.container} ref={dropdownRef}>
+        <button
+          type="button"
+          className={styles.searchButton}
+          onClick={() => {
+            const next = !isOpen
+            if (next) {
+              computeOpenDirection()
+            }
+            setIsOpen(next)
+          }}
         >
-          <div className={styles.searchInputWrapper}>
-            <Search size={16} className={styles.searchIcon} />
-            <input
-              type="text"
-              className={styles.searchInput}
-              placeholder="Search drivers..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              autoFocus
-            />
-          </div>
+          <Plus size={16} />
+          {buttonLabel}
+        </button>
 
-          <div className={styles.driverList}>
-            {filteredDrivers.length === 0 ? (
-              <div className={styles.noResults}>
-                {searchQuery ? 'No drivers match your search' : 'No available drivers'}
-              </div>
-            ) : (
-              filteredDrivers.map((driver) => (
-                <button
-                  key={driver.id}
-                  type="button"
-                  className={styles.driverItem}
-                  onClick={() => handleSelectDriver(driver)}
-                >
-                  <Image
-                    src={
-                      driver.image ||
-                      `https://api.dicebear.com/9.x/avataaars/png?seed=${driver.name}`
-                    }
-                    alt={driver.name || 'User'}
-                    className={styles.avatar}
-                    width={32}
-                    height={32}
-                  />
-                  <span className={styles.driverName}>{driver.name}</span>
-                </button>
-              ))
-            )}
-          </div>
-        </div>
-      )}
+        {isOpen && (
+          <div
+            className={`${styles.dropdown} ${openDirection === 'up' ? styles.dropdownUp : ''}`}
+            style={dropdownStyle}
+          >
+            <div className={styles.searchInputWrapper}>
+              <Search size={16} className={styles.searchIcon} />
+              <input
+                type="text"
+                className={styles.searchInput}
+                placeholder="Search drivers..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                autoFocus
+              />
+            </div>
 
-      {errorMessage && <div className={styles.errorMessage}>{errorMessage}</div>}
-    </div>
+            <div className={styles.driverList}>
+              {filteredDrivers.length === 0 ? (
+                <div className={styles.noResults}>
+                  {searchQuery ? 'No drivers match your search' : 'No available drivers'}
+                </div>
+              ) : (
+                filteredDrivers.map((driver) => (
+                  <button
+                    key={driver.id}
+                    type="button"
+                    className={styles.driverItem}
+                    onClick={() => handleSelectDriver(driver)}
+                  >
+                    <Image
+                      src={
+                        driver.image ||
+                        `https://api.dicebear.com/9.x/avataaars/png?seed=${driver.name}`
+                      }
+                      alt={driver.name || 'User'}
+                      className={styles.avatar}
+                      width={32}
+                      height={32}
+                    />
+                    <span className={styles.driverName}>{driver.name}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {errorMessage && <div className={styles.errorMessage}>{errorMessage}</div>}
+      </div>
+    </>
   )
 }

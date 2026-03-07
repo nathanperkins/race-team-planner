@@ -2,93 +2,63 @@
 
 import { useState } from 'react'
 import { backfillDiscordNicknamesAction } from './actions'
-import { UserCheck, X } from 'lucide-react'
+import { UserCheck } from 'lucide-react'
 import styles from './TriggerReportButton.module.css'
+import ActionModal from '@/components/ActionModal'
 import { createLogger } from '@/lib/logger'
 
 const logger = createLogger('backfill-nicknames-button')
 
 export default function BackfillNicknamesButton() {
-  const [isRunning, setIsRunning] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
-  const [showPopup, setShowPopup] = useState(false)
-  const [status, setStatus] = useState<'idle' | 'running' | 'success' | 'error'>('idle')
+  const [isActive, setIsActive] = useState(false)
+  const [modalStatus, setModalStatus] = useState<'loading' | 'success' | 'error'>('loading')
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState<string | undefined>()
 
   const handleRun = async () => {
-    setIsRunning(true)
-    setShowPopup(true)
-    setStatus('running')
-    setMessage('Fetching Discord nicknames for all users...')
+    setIsActive(true)
+    setModalStatus('loading')
+    setTitle('Backfill In Progress')
+    setDescription('Fetching Discord nicknames for all users...')
 
     try {
       const result = await backfillDiscordNicknamesAction()
 
       if (result.success) {
-        setStatus('success')
-        setMessage(result.message)
+        setModalStatus('success')
+        setTitle('Backfill Complete')
+        setDescription(result.message)
       } else {
-        setStatus('error')
-        setMessage(`Error: ${result.message}`)
+        setModalStatus('error')
+        setTitle('Backfill Failed')
+        setDescription(`Error: ${result.message}`)
       }
     } catch (error) {
-      setStatus('error')
-      setMessage('An unexpected error occurred.')
+      setModalStatus('error')
+      setTitle('Backfill Failed')
+      setDescription('An unexpected error occurred.')
       logger.error({ err: error }, 'Backfill nicknames failed')
-    } finally {
-      setIsRunning(false)
     }
   }
 
-  const closePopup = () => {
-    setShowPopup(false)
-    setStatus('idle')
-    setMessage(null)
+  const closeModal = () => {
+    setIsActive(false)
   }
 
   return (
     <>
-      <button onClick={handleRun} disabled={isRunning} className={styles.triggerButton}>
+      <button onClick={handleRun} disabled={isActive} className={styles.triggerButton}>
         <UserCheck size={16} />
         Backfill Discord Nicknames
       </button>
 
-      {showPopup && (
-        <div className={styles.overlay}>
-          <div className={styles.modal}>
-            {!isRunning && (
-              <button onClick={closePopup} className={styles.closeButton} aria-label="Close">
-                <X size={20} />
-              </button>
-            )}
-
-            <div className={styles.statusIcon}>
-              {status === 'running' && <div className={styles.spinner} />}
-              {status === 'success' && <div>✅</div>}
-              {status === 'error' && <div>❌</div>}
-            </div>
-
-            <h3 className={styles.title}>
-              {status === 'running'
-                ? 'Backfill In Progress'
-                : status === 'success'
-                  ? 'Backfill Complete'
-                  : 'Backfill Failed'}
-            </h3>
-
-            <p className={styles.message}>{message}</p>
-
-            {!isRunning && (
-              <button
-                onClick={closePopup}
-                className={`${styles.actionButton} ${
-                  status === 'success' ? styles.successButton : styles.errorButton
-                }`}
-              >
-                Close
-              </button>
-            )}
-          </div>
-        </div>
+      {isActive && (
+        <ActionModal
+          status={modalStatus}
+          title={title}
+          description={description}
+          onClose={closeModal}
+        />
       )}
     </>
   )

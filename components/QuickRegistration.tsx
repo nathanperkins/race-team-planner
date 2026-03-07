@@ -5,6 +5,7 @@ import { registerForRace } from '@/app/actions'
 import { ChevronDown, AlertTriangle } from 'lucide-react'
 import styles from './QuickRegistration.module.css'
 import { isLicenseEligible, getLicenseForGroup, LicenseLevel } from '@/lib/utils'
+import LoadingOverlay from './LoadingOverlay'
 
 interface Props {
   raceId: string
@@ -164,6 +165,8 @@ export default function QuickRegistration({
       {state?.message && state.message !== 'Success' && (
         <p className={styles.errorMessage}>{state.message}</p>
       )}
+
+      {isPending && <LoadingOverlay message="Registering..." />}
 
       {showWarning && (
         <div className={styles.warningOverlay} role="dialog" aria-modal="true">

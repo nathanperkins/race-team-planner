@@ -10,7 +10,6 @@ import {
   Trash2,
   Plus,
   Save,
-  Loader2,
   RefreshCw,
   Users,
   Check,
@@ -24,6 +23,7 @@ import FormattedDate from './FormattedDate'
 import styles from './TeamPickerModal.module.css'
 import { RaceWithRegistrations, ExtendedRegistration } from './RaceDetails'
 import { createLogger } from '@/lib/logger'
+import LoadingOverlay from './LoadingOverlay'
 
 const logger = createLogger('TeamPickerModal')
 
@@ -81,7 +81,6 @@ export default function TeamPickerModal({
   const [selectedDriverIds, setSelectedDriverIds] = useState<Set<string>>(new Set())
   const [results, setResults] = useState<TeamComposition[]>([])
   const [saving, setSaving] = useState(false)
-
   // Map registrations to Driver objects
   const rosterDrivers = useMemo(() => {
     // If we have event registrations (full list), use them. Otherwise fallback to just this race.
@@ -478,397 +477,401 @@ export default function TeamPickerModal({
   const hasErrors = validationErrors.length > 0
 
   return (
-    <div className={styles.overlay}>
-      <div className={styles.modal}>
-        <div className={styles.header}>
-          <div>
-            <h2 className={styles.title}>Team Balancer</h2>
-            <p className={styles.subtitle}>
-              <FormattedDate
-                date={raceStartTime}
-                format={{ month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' }}
-              />{' '}
-              • {carClassName} • {allAvailableDrivers.length} Drivers Loaded
-            </p>
-          </div>
-          <button onClick={onClose} className={styles.closeButton}>
-            <X size={20} />
-          </button>
-        </div>
-
-        <div className={styles.toolbar}>
-          <div className={styles.searchWrapper}>
-            <Search size={16} />
-            <input
-              type="text"
-              placeholder="Search drivers (name or ID)..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className={styles.input}
-            />
-          </div>
-
-          <div className={styles.teamCount}>
-            <button onClick={handleAddTeam} className={styles.secondaryButton}>
-              <Plus size={16} />
-              Add Team
+    <>
+      {saving && <LoadingOverlay message="Saving team assignments..." />}
+      <div className={styles.overlay}>
+        <div className={styles.modal}>
+          <div className={styles.header}>
+            <div>
+              <h2 className={styles.title}>Team Balancer</h2>
+              <p className={styles.subtitle}>
+                <FormattedDate
+                  date={raceStartTime}
+                  format={{ month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' }}
+                />{' '}
+                • {carClassName} • {allAvailableDrivers.length} Drivers Loaded
+              </p>
+            </div>
+            <button onClick={onClose} className={styles.closeButton}>
+              <X size={20} />
             </button>
           </div>
 
-          <div className={styles.buttonGroup}>
-            <button onClick={() => calculateBalances('balanced')} className={styles.actionButton}>
-              <TrendingUp size={16} />
-              Balance
-            </button>
-            <button
-              onClick={() => calculateBalances('random')}
-              className={styles.iconButton}
-              title="Randomize"
-            >
-              <Shuffle size={14} />
-              Randomize
-            </button>
-            <button
-              onClick={() => calculateBalances('seeded')}
-              className={styles.iconButton}
-              title="iR Seeded"
-            >
-              <RefreshCw size={14} />
-              iR Seeded
-            </button>
-            <button
-              onClick={handleClearResults}
-              className={styles.iconButton}
-              title="Clear Results"
-            >
-              <Trash2 size={14} />
-              Clear
-            </button>
+          <div className={styles.toolbar}>
+            <div className={styles.searchWrapper}>
+              <Search size={16} />
+              <input
+                type="text"
+                placeholder="Search drivers (name or ID)..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className={styles.input}
+              />
+            </div>
+
+            <div className={styles.teamCount}>
+              <button onClick={handleAddTeam} className={styles.secondaryButton}>
+                <Plus size={16} />
+                Add Team
+              </button>
+            </div>
+
+            <div className={styles.buttonGroup}>
+              <button onClick={() => calculateBalances('balanced')} className={styles.actionButton}>
+                <TrendingUp size={16} />
+                Balance
+              </button>
+              <button
+                onClick={() => calculateBalances('random')}
+                className={styles.iconButton}
+                title="Randomize"
+              >
+                <Shuffle size={14} />
+                Randomize
+              </button>
+              <button
+                onClick={() => calculateBalances('seeded')}
+                className={styles.iconButton}
+                title="iR Seeded"
+              >
+                <RefreshCw size={14} />
+                iR Seeded
+              </button>
+              <button
+                onClick={handleClearResults}
+                className={styles.iconButton}
+                title="Clear Results"
+              >
+                <Trash2 size={14} />
+                Clear
+              </button>
+            </div>
           </div>
-        </div>
 
-        <div className={styles.statusBar}>
-          Loaded {allAvailableDrivers.length} drivers (roster + manual).
-        </div>
+          <div className={styles.statusBar}>
+            Loaded {allAvailableDrivers.length} drivers (roster + manual).
+          </div>
 
-        <div className={styles.content}>
-          <div className={styles.sidebar}>
-            <div className={styles.section}>
-              <h3 className={styles.sectionTitle}>Add Manual Driver</h3>
-              <div className={styles.manualEntry}>
-                <input
-                  type="text"
-                  placeholder="Driver name (required)"
-                  value={newManualName}
-                  onChange={(e) => setNewManualName(e.target.value)}
-                  className={styles.input}
-                />
-                <div className={styles.row}>
+          <div className={styles.content}>
+            <div className={styles.sidebar}>
+              <div className={styles.section}>
+                <h3 className={styles.sectionTitle}>Add Manual Driver</h3>
+                <div className={styles.manualEntry}>
                   <input
-                    type="number"
-                    placeholder="iR (default 1350)"
-                    value={newManualIR}
-                    onChange={(e) => setNewManualIR(e.target.value)}
+                    type="text"
+                    placeholder="Driver name (required)"
+                    value={newManualName}
+                    onChange={(e) => setNewManualName(e.target.value)}
                     className={styles.input}
                   />
+                  <div className={styles.row}>
+                    <input
+                      type="number"
+                      placeholder="iR (default 1350)"
+                      value={newManualIR}
+                      onChange={(e) => setNewManualIR(e.target.value)}
+                      className={styles.input}
+                    />
+                  </div>
+                  <button onClick={handleAddManual} className={styles.addButton}>
+                    <Plus size={16} />
+                    Add
+                  </button>
                 </div>
-                <button onClick={handleAddManual} className={styles.addButton}>
-                  <Plus size={16} />
-                  Add
-                </button>
+              </div>
+
+              <div className={styles.driverListSection}>
+                <h3 className={styles.sectionTitle}>
+                  Driver Picker ({selectedDriverIds.size}/{allAvailableDrivers.length})
+                </h3>
+                <div className={styles.driverList}>
+                  {/* Grouped Rendering */}
+                  {[
+                    'Unassigned',
+                    'Assigned',
+                    'Different Class',
+                    'Different Time',
+                    'Different Time and Class',
+                  ].map((cat) => {
+                    const driversInGroup = filteredDrivers.filter((d) => {
+                      if (d.isManual) return cat === 'Unassigned' // Showing manual in unassigned? Or separate?
+                      // Let's treat manual as unassigned for now or separate group?
+                      // User didn't specify manual. Let's put manual in 'Unassigned' section for now.
+                      // Actually, manual drivers don't have 'category' set in `rosterDrivers` logic.
+                      // Let's check `d.category`.
+                      if (!d.category && d.isManual) return cat === 'Unassigned'
+                      return d.category === cat
+                    })
+
+                    if (driversInGroup.length === 0) return null
+
+                    // Sort: selected drivers first, then alphabetical by name
+                    const sortedDrivers = [...driversInGroup].sort((a, b) => {
+                      const aSelected = selectedDriverIds.has(a.id) ? 0 : 1
+                      const bSelected = selectedDriverIds.has(b.id) ? 0 : 1
+                      if (aSelected !== bSelected) return aSelected - bSelected
+                      return a.name.localeCompare(b.name)
+                    })
+
+                    // Mapping category specific titles
+                    const titleMap: Record<string, string> = {
+                      Unassigned: 'Unassigned (within class)',
+                      Assigned: 'Assigned (within class)',
+                      'Different Class': 'Different Class',
+                      'Different Time': 'Different Time',
+                      'Different Time and Class': 'Different Time & Class',
+                    }
+
+                    return (
+                      <div key={cat} className={styles.driverGroupSection}>
+                        <h4 className={styles.groupHeader}>{titleMap[cat]}</h4>
+                        {sortedDrivers.map((d) => (
+                          <div
+                            key={d.id}
+                            className={`${styles.driverCard} ${selectedDriverIds.has(d.id) ? styles.selected : ''}`}
+                            onClick={() => toggleSelection(d.id)}
+                          >
+                            <div className={styles.driverInfo}>
+                              <div className={styles.nameRow}>
+                                <div className={styles.avatarWrapper}>
+                                  <Image
+                                    src={d.image as string}
+                                    alt={d.name}
+                                    width={24}
+                                    height={24}
+                                    className={styles.avatar}
+                                  />
+                                </div>
+                                <div className={styles.nameAndManual}>
+                                  <div className={styles.nameWithCheck}>
+                                    {selectedDriverIds.has(d.id) && (
+                                      <Check size={14} className={styles.checkIcon} />
+                                    )}
+                                    <span className={styles.driverName}>{d.name}</span>
+                                  </div>
+                                  {d.isManual && (
+                                    <span className={styles.manualBadge}>
+                                      <UserCog size={10} style={{ marginRight: 3 }} />
+                                      Manual
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className={styles.driverStats}>
+                              <span className={styles.irBadge}>{d.irating}</span>
+                              {d.isManual && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    removeManual(d.id)
+                                  }}
+                                  className={styles.deleteDriver}
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             </div>
 
-            <div className={styles.driverListSection}>
-              <h3 className={styles.sectionTitle}>
-                Driver Picker ({selectedDriverIds.size}/{allAvailableDrivers.length})
-              </h3>
-              <div className={styles.driverList}>
-                {/* Grouped Rendering */}
-                {[
-                  'Unassigned',
-                  'Assigned',
-                  'Different Class',
-                  'Different Time',
-                  'Different Time and Class',
-                ].map((cat) => {
-                  const driversInGroup = filteredDrivers.filter((d) => {
-                    if (d.isManual) return cat === 'Unassigned' // Showing manual in unassigned? Or separate?
-                    // Let's treat manual as unassigned for now or separate group?
-                    // User didn't specify manual. Let's put manual in 'Unassigned' section for now.
-                    // Actually, manual drivers don't have 'category' set in `rosterDrivers` logic.
-                    // Let's check `d.category`.
-                    if (!d.category && d.isManual) return cat === 'Unassigned'
-                    return d.category === cat
-                  })
+            <div className={styles.main}>
+              {results.length > 0 ? (
+                <div className={styles.resultsGrid}>
+                  {results.map((comp) => (
+                    <div
+                      key={comp.teamId}
+                      className={`${styles.teamColumn} ${comp.locked ? styles.locked : ''}`}
+                    >
+                      <div className={styles.teamHeader}>
+                        <div className={styles.teamMainInfo}>
+                          {!comp.isGeneric && (
+                            <button
+                              onClick={() => toggleTeamLock(comp.teamId)}
+                              className={`${styles.lockButton} ${comp.locked ? styles.isLocked : ''}`}
+                              title={comp.locked ? 'Unlock Team' : 'Lock Team'}
+                            >
+                              {comp.locked ? <Lock size={14} /> : <Unlock size={14} />}
+                            </button>
+                          )}
+                          <select
+                            className={`${styles.teamNameSelect} ${comp.isGeneric ? styles.unassigned : ''}`}
+                            value={comp.isGeneric ? '' : comp.teamId}
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                assignRealTeam(comp.teamId, e.target.value)
+                              }
+                            }}
+                          >
+                            <option value="" disabled>
+                              Select Team...
+                            </option>
+                            {teams
+                              .filter(
+                                (t) =>
+                                  t.id === comp.teamId || !results.some((r) => r.teamId === t.id)
+                              )
+                              .map((t) => {
+                                const conflictReg = eventRegistrations?.find(
+                                  (r) =>
+                                    r.team?.id === t.id &&
+                                    r.raceId === raceId &&
+                                    r.carClass.id !== carClassId
+                                )
 
-                  if (driversInGroup.length === 0) return null
+                                if (conflictReg) {
+                                  return (
+                                    <option
+                                      key={t.id}
+                                      value={t.id}
+                                      disabled
+                                      className={styles.disabledOption}
+                                    >
+                                      {t.name} (running {conflictReg.carClass.shortName})
+                                    </option>
+                                  )
+                                }
 
-                  // Sort: selected drivers first, then alphabetical by name
-                  const sortedDrivers = [...driversInGroup].sort((a, b) => {
-                    const aSelected = selectedDriverIds.has(a.id) ? 0 : 1
-                    const bSelected = selectedDriverIds.has(b.id) ? 0 : 1
-                    if (aSelected !== bSelected) return aSelected - bSelected
-                    return a.name.localeCompare(b.name)
-                  })
-
-                  // Mapping category specific titles
-                  const titleMap: Record<string, string> = {
-                    Unassigned: 'Unassigned (within class)',
-                    Assigned: 'Assigned (within class)',
-                    'Different Class': 'Different Class',
-                    'Different Time': 'Different Time',
-                    'Different Time and Class': 'Different Time & Class',
-                  }
-
-                  return (
-                    <div key={cat} className={styles.driverGroupSection}>
-                      <h4 className={styles.groupHeader}>{titleMap[cat]}</h4>
-                      {sortedDrivers.map((d) => (
-                        <div
-                          key={d.id}
-                          className={`${styles.driverCard} ${selectedDriverIds.has(d.id) ? styles.selected : ''}`}
-                          onClick={() => toggleSelection(d.id)}
-                        >
-                          <div className={styles.driverInfo}>
-                            <div className={styles.nameRow}>
-                              <div className={styles.avatarWrapper}>
+                                return (
+                                  <option key={t.id} value={t.id}>
+                                    {t.name}
+                                  </option>
+                                )
+                              })}
+                          </select>
+                        </div>
+                        <div className={styles.teamActions}>
+                          <button
+                            onClick={() => handleDeleteTeam(comp.teamId)}
+                            className={styles.deleteTeamButton}
+                            title="Delete Team"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+                      <div className={styles.teamHeaderStats}>
+                        <span className={styles.avgIR}>Avg iR: {getTeamAvgIR(comp.drivers)}</span>
+                      </div>
+                      <div className={styles.teamDrivers}>
+                        {comp.drivers.map((d) => (
+                          <div key={d.id} className={styles.memberCard}>
+                            <div className={styles.memberName}>
+                              <div
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}
+                              >
                                 <Image
                                   src={d.image as string}
                                   alt={d.name}
-                                  width={24}
-                                  height={24}
+                                  width={20}
+                                  height={20}
                                   className={styles.avatar}
                                 />
-                              </div>
-                              <div className={styles.nameAndManual}>
-                                <div className={styles.nameWithCheck}>
-                                  {selectedDriverIds.has(d.id) && (
-                                    <Check size={14} className={styles.checkIcon} />
+                                <div
+                                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                >
+                                  <span>{d.name}</span>
+                                  {d.isManual && (
+                                    <div className={styles.manualIcon} title="Manual Entry">
+                                      <UserCog size={14} />
+                                    </div>
                                   )}
-                                  <span className={styles.driverName}>{d.name}</span>
+                                  {d.category && d.category.startsWith('Different') && (
+                                    <div
+                                      className={styles.warningIcon}
+                                      data-tooltip={`Driver will be changed from:\n${
+                                        d.category.includes('Class')
+                                          ? `Class: ${d.originalClass}\n`
+                                          : ''
+                                      }${
+                                        d.category.includes('Time') && d.originalTime
+                                          ? `Time: ${d.originalTime.toLocaleString(undefined, {
+                                              weekday: 'short',
+                                              hour: 'numeric',
+                                              minute: '2-digit',
+                                            })}\n`
+                                          : ''
+                                      }${
+                                        d.originalTeam
+                                          ? `⚠️ Will leave team: ${d.originalTeam}`
+                                          : ''
+                                      }`}
+                                    >
+                                      <AlertTriangle size={12} color="#f59e0b" />
+                                    </div>
+                                  )}
                                 </div>
-                                {d.isManual && (
-                                  <span className={styles.manualBadge}>
-                                    <UserCog size={10} style={{ marginRight: 3 }} />
-                                    Manual
-                                  </span>
-                                )}
                               </div>
+                              <span className={styles.memberIR}>{d.irating}</span>
                             </div>
-                          </div>
-                          <div className={styles.driverStats}>
-                            <span className={styles.irBadge}>{d.irating}</span>
-                            {d.isManual && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  removeManual(d.id)
-                                }}
-                                className={styles.deleteDriver}
+                            {!comp.locked && (
+                              <select
+                                className={styles.moveSelect}
+                                onChange={(e) => moveDriver(d.id, e.target.value)}
+                                value={comp.teamId}
                               >
-                                <Trash2 size={14} />
-                              </button>
+                                <option value={comp.teamId} disabled>
+                                  Move to...
+                                </option>
+                                <option value="pool">Remove</option>
+                                {results.map((target) => (
+                                  <option
+                                    key={target.teamId}
+                                    value={target.teamId}
+                                    disabled={target.teamId === comp.teamId}
+                                  >
+                                    {target.teamName}
+                                  </option>
+                                ))}
+                              </select>
                             )}
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                        {comp.drivers.length === 0 && (
+                          <div className={styles.emptyTeam}>No drivers</div>
+                        )}
+                      </div>
                     </div>
-                  )
-                })}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className={styles.emptyResults}>
+                  <Users size={48} />
+                  <h3>No results yet</h3>
+                  <p>
+                    Configure options and click <strong>Balance</strong> to generate teams.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
-          <div className={styles.main}>
-            {results.length > 0 ? (
-              <div className={styles.resultsGrid}>
-                {results.map((comp) => (
-                  <div
-                    key={comp.teamId}
-                    className={`${styles.teamColumn} ${comp.locked ? styles.locked : ''}`}
-                  >
-                    <div className={styles.teamHeader}>
-                      <div className={styles.teamMainInfo}>
-                        {!comp.isGeneric && (
-                          <button
-                            onClick={() => toggleTeamLock(comp.teamId)}
-                            className={`${styles.lockButton} ${comp.locked ? styles.isLocked : ''}`}
-                            title={comp.locked ? 'Unlock Team' : 'Lock Team'}
-                          >
-                            {comp.locked ? <Lock size={14} /> : <Unlock size={14} />}
-                          </button>
-                        )}
-                        <select
-                          className={`${styles.teamNameSelect} ${comp.isGeneric ? styles.unassigned : ''}`}
-                          value={comp.isGeneric ? '' : comp.teamId}
-                          onChange={(e) => {
-                            if (e.target.value) {
-                              assignRealTeam(comp.teamId, e.target.value)
-                            }
-                          }}
-                        >
-                          <option value="" disabled>
-                            Select Team...
-                          </option>
-                          {teams
-                            .filter(
-                              (t) => t.id === comp.teamId || !results.some((r) => r.teamId === t.id)
-                            )
-                            .map((t) => {
-                              const conflictReg = eventRegistrations?.find(
-                                (r) =>
-                                  r.team?.id === t.id &&
-                                  r.raceId === raceId &&
-                                  r.carClass.id !== carClassId
-                              )
-
-                              if (conflictReg) {
-                                return (
-                                  <option
-                                    key={t.id}
-                                    value={t.id}
-                                    disabled
-                                    className={styles.disabledOption}
-                                  >
-                                    {t.name} (running {conflictReg.carClass.shortName})
-                                  </option>
-                                )
-                              }
-
-                              return (
-                                <option key={t.id} value={t.id}>
-                                  {t.name}
-                                </option>
-                              )
-                            })}
-                        </select>
-                      </div>
-                      <div className={styles.teamActions}>
-                        <button
-                          onClick={() => handleDeleteTeam(comp.teamId)}
-                          className={styles.deleteTeamButton}
-                          title="Delete Team"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </div>
-                    <div className={styles.teamHeaderStats}>
-                      <span className={styles.avgIR}>Avg iR: {getTeamAvgIR(comp.drivers)}</span>
-                    </div>
-                    <div className={styles.teamDrivers}>
-                      {comp.drivers.map((d) => (
-                        <div key={d.id} className={styles.memberCard}>
-                          <div className={styles.memberName}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                              <Image
-                                src={d.image as string}
-                                alt={d.name}
-                                width={20}
-                                height={20}
-                                className={styles.avatar}
-                              />
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <span>{d.name}</span>
-                                {d.isManual && (
-                                  <div className={styles.manualIcon} title="Manual Entry">
-                                    <UserCog size={14} />
-                                  </div>
-                                )}
-                                {d.category && d.category.startsWith('Different') && (
-                                  <div
-                                    className={styles.warningIcon}
-                                    data-tooltip={`Driver will be changed from:\n${
-                                      d.category.includes('Class')
-                                        ? `Class: ${d.originalClass}\n`
-                                        : ''
-                                    }${
-                                      d.category.includes('Time') && d.originalTime
-                                        ? `Time: ${d.originalTime.toLocaleString(undefined, {
-                                            weekday: 'short',
-                                            hour: 'numeric',
-                                            minute: '2-digit',
-                                          })}\n`
-                                        : ''
-                                    }${
-                                      d.originalTeam ? `⚠️ Will leave team: ${d.originalTeam}` : ''
-                                    }`}
-                                  >
-                                    <AlertTriangle size={12} color="#f59e0b" />
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            <span className={styles.memberIR}>{d.irating}</span>
-                          </div>
-                          {!comp.locked && (
-                            <select
-                              className={styles.moveSelect}
-                              onChange={(e) => moveDriver(d.id, e.target.value)}
-                              value={comp.teamId}
-                            >
-                              <option value={comp.teamId} disabled>
-                                Move to...
-                              </option>
-                              <option value="pool">Remove</option>
-                              {results.map((target) => (
-                                <option
-                                  key={target.teamId}
-                                  value={target.teamId}
-                                  disabled={target.teamId === comp.teamId}
-                                >
-                                  {target.teamName}
-                                </option>
-                              ))}
-                            </select>
-                          )}
-                        </div>
-                      ))}
-                      {comp.drivers.length === 0 && (
-                        <div className={styles.emptyTeam}>No drivers</div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className={styles.emptyResults}>
-                <Users size={48} />
-                <h3>No results yet</h3>
-                <p>
-                  Configure options and click <strong>Balance</strong> to generate teams.
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className={styles.footer}>
-          <button onClick={onClose} className={styles.secondaryButton}>
-            Cancel
-          </button>
-          <div
-            className={styles.submitWrapper}
-            data-tooltip={hasErrors ? validationErrors.join('\n') : undefined}
-          >
-            <button
-              onClick={handleSave}
-              className={`${styles.primaryButton} ${hasErrors ? styles.warningButton : ''}`}
-              disabled={saving || hasErrors}
-            >
-              {saving ? (
-                <Loader2 className={styles.spin} size={18} />
-              ) : hasErrors ? (
-                <AlertTriangle size={18} />
-              ) : (
-                <Save size={18} />
-              )}
-              {hasErrors ? 'Cannot Submit' : 'Submit Teams'}
+          <div className={styles.footer}>
+            <button onClick={onClose} className={styles.secondaryButton}>
+              Cancel
             </button>
+            <div
+              className={styles.submitWrapper}
+              data-tooltip={hasErrors ? validationErrors.join('\n') : undefined}
+            >
+              <button
+                onClick={handleSave}
+                className={`${styles.primaryButton} ${hasErrors ? styles.warningButton : ''}`}
+                disabled={saving || hasErrors}
+              >
+                {hasErrors ? <AlertTriangle size={18} /> : <Save size={18} />}
+                {hasErrors ? 'Cannot Submit' : 'Submit Teams'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }

@@ -4,7 +4,8 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { updateProfile, validateCustomerId } from '@/app/actions/update-profile'
 import { useSession } from 'next-auth/react'
-import { Lock, Loader2 } from 'lucide-react'
+import { Lock } from 'lucide-react'
+import LoadingOverlay from '@/components/LoadingOverlay'
 import { getOnboardingStatus, OnboardingStatus } from '@/lib/onboarding'
 import styles from './profile.module.css'
 import { createLogger } from '@/lib/logger'
@@ -121,6 +122,7 @@ export default function ProfileForm({ initialCustomerId, initialIracingName }: P
 
   return (
     <>
+      {isPending && <LoadingOverlay message="Saving profile..." />}
       <form action={handleInitialSubmit}>
         <div className={styles.field}>
           <label htmlFor="customerId" className={styles.label}>
@@ -151,21 +153,7 @@ export default function ProfileForm({ initialCustomerId, initialIracingName }: P
         </div>
 
         <button type="submit" className={styles.button} disabled={isPending}>
-          {isPending ? (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.5rem',
-              }}
-            >
-              <Loader2 className={styles.spin} size={18} />
-              Validating & Saving...
-            </div>
-          ) : (
-            'Save Changes'
-          )}
+          Save Changes
         </button>
 
         {message && !isPending && (

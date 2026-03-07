@@ -26,6 +26,7 @@ import {
   useTransition,
 } from 'react'
 import styles from './RaceDetails.module.css'
+import LoadingOverlay from './LoadingOverlay'
 import DropRegistrationButton from './DropRegistrationButton'
 import QuickRegistration from './QuickRegistration'
 import EditableCarClass from './EditableCarClass'
@@ -270,7 +271,6 @@ export default function RaceDetails({
   userLicenseLevel,
 }: Props) {
   const [isSaving, startSaveTransition] = useTransition()
-
   const now = new Date()
   const isRaceCompleted = now > new Date(race.endTime)
   const isRaceLive = now >= new Date(race.startTime) && now <= new Date(race.endTime)
@@ -1026,34 +1026,33 @@ export default function RaceDetails({
     formData.set('teamNameOverrides', JSON.stringify(teamNameOverrides))
 
     setSaveError('')
-    startSaveTransition(() => {
-      void saveRaceEdits(formData)
-        .then((result) => {
-          if (!result || result.message !== 'Success') {
-            setSaveError(result?.message || 'Failed to save changes')
-            return
-          }
-          setIsTeamModalOpen(false)
-          setExtraTeams([])
-          setRevealedTeamIds([])
-          setLockedTeamIds(new Set())
-          teamOverridesRef.current = new Map()
-          setPendingAdditions([])
-          setPendingDrops(new Set())
-          setTeamPickerId(null)
-          setTeamPickerQuery('')
-          setTeamNameOverrides({})
-          setEmptyTeamCarClassOverrides({})
-          setTeamClassWarning(null)
-          if (isAdmin) {
-            setTeamsAssigned(pendingRegistrations.some((reg) => !!(reg.teamId || reg.team?.id)))
-          }
-        })
-        .catch((error) => {
-          const message =
-            error instanceof Error && error.message ? error.message : 'Failed to save changes'
-          setSaveError(message)
-        })
+    startSaveTransition(async () => {
+      try {
+        const result = await saveRaceEdits(formData)
+        if (!result || result.message !== 'Success') {
+          setSaveError(result?.message || 'Failed to save changes')
+          return
+        }
+        setIsTeamModalOpen(false)
+        setExtraTeams([])
+        setRevealedTeamIds([])
+        setLockedTeamIds(new Set())
+        teamOverridesRef.current = new Map()
+        setPendingAdditions([])
+        setPendingDrops(new Set())
+        setTeamPickerId(null)
+        setTeamPickerQuery('')
+        setTeamNameOverrides({})
+        setEmptyTeamCarClassOverrides({})
+        setTeamClassWarning(null)
+        if (isAdmin) {
+          setTeamsAssigned(pendingRegistrations.some((reg) => !!(reg.teamId || reg.team?.id)))
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error && error.message ? error.message : 'Failed to save changes'
+        setSaveError(message)
+      }
     })
   }
 
@@ -2318,93 +2317,176 @@ export default function RaceDetails({
   }
 
   return (
-    <div
-      className={`${styles.raceCard} ${isRaceCompleted ? styles.raceCardCompleted : ''}`}
-      data-timeslot-tile
-    >
-      <div className={styles.raceCardContent}>
-        <div className={styles.raceHeader}>
-          <div className={styles.raceHeaderLeft}>
-            <h4 className={styles.raceTitle}>
-              Timeslot:{' '}
-              {new Intl.DateTimeFormat('en-US', {
-                month: 'numeric',
-                day: 'numeric',
-              }).format(race.startTime)}{' '}
-              {' \u2022 '}
-              {new Intl.DateTimeFormat('en-US', {
-                hour: 'numeric',
-                minute: '2-digit',
-                timeZoneName: 'short',
-              }).format(race.startTime)}
-            </h4>
-            {isRaceLive && (
-              <span className={styles.liveBadge}>
-                <span className={styles.liveDot} />
-                LIVE
-              </span>
-            )}
-            {!isRaceCompleted && (
-              <AddToCalendarButton
-                raceId={race.id}
-                startTime={race.startTime}
-                endTime={race.endTime}
-                eventId={eventId}
-                eventName={eventName}
-                track={eventTrack}
-                trackConfig={eventTrackConfig}
-                discordTeamsThreadId={race.discordTeamsThreadId}
-                discordGuildId={discordGuildId}
-                durationMins={eventDurationMins}
-                tempValue={eventTempValue}
-                tempUnits={eventTempUnits}
-                relHumidity={eventRelHumidity}
-                carClasses={carClasses}
-              />
-            )}
-          </div>
-          {(() => {
-            const guildId = discordGuildId
-            const threadId = race.discordTeamsThreadId
-            if (guildId && threadId) {
+    <>
+      {isSaving && <LoadingOverlay message="Saving and notifying..." />}
+      <div
+        className={`${styles.raceCard} ${isRaceCompleted ? styles.raceCardCompleted : ''}`}
+        data-timeslot-tile
+      >
+        <div className={styles.raceCardContent}>
+          <div className={styles.raceHeader}>
+            <div className={styles.raceHeaderLeft}>
+              <h4 className={styles.raceTitle}>
+                Timeslot:{' '}
+                {new Intl.DateTimeFormat('en-US', {
+                  month: 'numeric',
+                  day: 'numeric',
+                }).format(race.startTime)}{' '}
+                {' \u2022 '}
+                {new Intl.DateTimeFormat('en-US', {
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  timeZoneName: 'short',
+                }).format(race.startTime)}
+              </h4>
+              {isRaceLive && (
+                <span className={styles.liveBadge}>
+                  <span className={styles.liveDot} />
+                  LIVE
+                </span>
+              )}
+              {!isRaceCompleted && (
+                <AddToCalendarButton
+                  raceId={race.id}
+                  startTime={race.startTime}
+                  endTime={race.endTime}
+                  eventId={eventId}
+                  eventName={eventName}
+                  track={eventTrack}
+                  trackConfig={eventTrackConfig}
+                  discordTeamsThreadId={race.discordTeamsThreadId}
+                  discordGuildId={discordGuildId}
+                  durationMins={eventDurationMins}
+                  tempValue={eventTempValue}
+                  tempUnits={eventTempUnits}
+                  relHumidity={eventRelHumidity}
+                  carClasses={carClasses}
+                />
+              )}
+            </div>
+            {(() => {
+              const guildId = discordGuildId
+              const threadId = race.discordTeamsThreadId
+              if (guildId && threadId) {
+                return (
+                  <a
+                    href={buildDiscordLink({
+                      guildId,
+                      threadId,
+                      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+                    })}
+                    suppressHydrationWarning
+                    className={styles.discordLink}
+                    title="Join the event discussion in Discord"
+                  >
+                    <DiscussionIcon size={20} />
+                  </a>
+                )
+              }
               return (
-                <a
-                  href={buildDiscordLink({
-                    guildId,
-                    threadId,
-                    userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
-                  })}
-                  suppressHydrationWarning
-                  className={styles.discordLink}
-                  title="Join the event discussion in Discord"
+                <span
+                  className={`${styles.discordLink} ${styles.discordLinkInactive}`}
+                  title="The event thread has not been generated yet"
                 >
                   <DiscussionIcon size={20} />
-                </a>
+                </span>
               )
-            }
-            return (
-              <span
-                className={`${styles.discordLink} ${styles.discordLinkInactive}`}
-                title="The event thread has not been generated yet"
-              >
-                <DiscussionIcon size={20} />
-              </span>
-            )
-          })()}
-        </div>
+            })()}
+          </div>
 
-        {pendingRegistrations.length === 0 ? (
-          <p className="text-sm text-gray-500 mt-2">No drivers registered for this race.</p>
-        ) : (
-          <div className={styles.driverList}>{renderTeamGrid()}</div>
-        )}
+          {pendingRegistrations.length === 0 ? (
+            <p className="text-sm text-gray-500 mt-2">No drivers registered for this race.</p>
+          ) : (
+            <div className={styles.driverList}>{renderTeamGrid()}</div>
+          )}
 
-        {isAdmin && !isRaceCompleted && (
-          <div className={styles.registrationControls}>
-            {isUserRegistered && currentUserRegistration ? (
-              <>
-                {canShowClassChangeAction && (
+          {isAdmin && !isRaceCompleted && (
+            <div className={styles.registrationControls}>
+              {isUserRegistered && currentUserRegistration ? (
+                <>
+                  {canShowClassChangeAction && (
+                    <div className={styles.quickRegWrapper}>
+                      <EditableCarClass
+                        registrationId={currentUserRegistration.id}
+                        currentCarClassId={currentUserRegistration.carClass.id}
+                        currentCarClassShortName={
+                          currentUserRegistration.carClass.shortName ||
+                          currentUserRegistration.carClass.name
+                        }
+                        carClasses={carClasses}
+                        variant="full"
+                        showLabel={false}
+                      />
+                    </div>
+                  )}
                   <div className={styles.quickRegWrapper}>
+                    <DropRegistrationButton
+                      registrationId={currentUserRegistration.id}
+                      onConfirmingChange={setIsDropConfirming}
+                      variant="full"
+                      isAssignedToTeam={isCurrentUserAssignedToTeam}
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className={styles.quickRegWrapper}>
+                  <QuickRegistration
+                    raceId={race.id}
+                    carClasses={carClasses}
+                    compact
+                    onDropdownToggle={setIsRegisterOpen}
+                    eventId={eventId}
+                    eventLicenseGroup={eventLicenseGroup}
+                    userLicenseLevel={userLicenseLevel}
+                  />
+                </div>
+              )}
+              <div className={styles.adminActionsCluster}>
+                <div className={styles.adminActionsLabel}>Admin Actions</div>
+                <div className={styles.adminActionsRow}>
+                  <div className={styles.adminActionSlot}>
+                    <AdminDriverSearch
+                      raceId={race.id}
+                      registeredUserIds={registeredUserIds}
+                      allDrivers={allDrivers}
+                      defaultCarClassId={lastDriverCarClass}
+                      onDropdownToggle={setIsAddDriverOpen}
+                      onSuccess={({ message, registration }) => {
+                        if (registration) {
+                          upsertRegistration(registration)
+                        }
+                        setAddDriverMessage(message.replace(/\s+Added!$/, ''))
+                        setTimeout(() => setAddDriverMessage(''), 3000)
+                      }}
+                    />
+                  </div>
+                  <div className={styles.adminActionSlot}>
+                    <TeamPickerTrigger
+                      onOpen={() => {
+                        teamOverridesRef.current = new Map()
+                        setPendingAdditions([])
+                        setPendingDrops(new Set())
+                        setIsTeamModalOpen(true)
+                        initializeLockedTeams()
+                      }}
+                      disabled={!canAssignTeams}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!isRaceCompleted &&
+            !isAdmin &&
+            (isUserRegistered && currentUserRegistration ? (
+              <div className={styles.registrationActionContainer}>
+                <div
+                  className={`${styles.userActionStack} ${
+                    !canShowClassChangeAction ? styles.userActionStackSingle : ''
+                  }`}
+                >
+                  {canShowClassChangeAction && (
                     <EditableCarClass
                       registrationId={currentUserRegistration.id}
                       currentCarClassId={currentUserRegistration.carClass.id}
@@ -2416,9 +2498,7 @@ export default function RaceDetails({
                       variant="full"
                       showLabel={false}
                     />
-                  </div>
-                )}
-                <div className={styles.quickRegWrapper}>
+                  )}
                   <DropRegistrationButton
                     registrationId={currentUserRegistration.id}
                     onConfirmingChange={setIsDropConfirming}
@@ -2426,182 +2506,199 @@ export default function RaceDetails({
                     isAssignedToTeam={isCurrentUserAssignedToTeam}
                   />
                 </div>
-              </>
+              </div>
             ) : (
-              <div className={styles.quickRegWrapper}>
-                <QuickRegistration
-                  raceId={race.id}
-                  carClasses={carClasses}
-                  compact
-                  onDropdownToggle={setIsRegisterOpen}
-                  eventId={eventId}
-                  eventLicenseGroup={eventLicenseGroup}
-                  userLicenseLevel={userLicenseLevel}
-                />
-              </div>
-            )}
-            <div className={styles.adminActionsCluster}>
-              <div className={styles.adminActionsLabel}>Admin Actions</div>
-              <div className={styles.adminActionsRow}>
-                <div className={styles.adminActionSlot}>
-                  <AdminDriverSearch
-                    raceId={race.id}
-                    registeredUserIds={registeredUserIds}
-                    allDrivers={allDrivers}
-                    defaultCarClassId={lastDriverCarClass}
-                    onDropdownToggle={setIsAddDriverOpen}
-                    onSuccess={({ message, registration }) => {
-                      if (registration) {
-                        upsertRegistration(registration)
-                      }
-                      setAddDriverMessage(message.replace(/\s+Added!$/, ''))
-                      setTimeout(() => setAddDriverMessage(''), 3000)
-                    }}
-                  />
-                </div>
-                <div className={styles.adminActionSlot}>
-                  <TeamPickerTrigger
-                    onOpen={() => {
-                      teamOverridesRef.current = new Map()
-                      setPendingAdditions([])
-                      setPendingDrops(new Set())
-                      setIsTeamModalOpen(true)
-                      initializeLockedTeams()
-                    }}
-                    disabled={!canAssignTeams}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+              <QuickRegistration
+                raceId={race.id}
+                carClasses={carClasses}
+                onDropdownToggle={setIsRegisterOpen}
+                eventId={eventId}
+                eventLicenseGroup={eventLicenseGroup}
+                userLicenseLevel={userLicenseLevel}
+              />
+            ))}
 
-        {!isRaceCompleted &&
-          !isAdmin &&
-          (isUserRegistered && currentUserRegistration ? (
-            <div className={styles.registrationActionContainer}>
-              <div
-                className={`${styles.userActionStack} ${
-                  !canShowClassChangeAction ? styles.userActionStackSingle : ''
-                }`}
-              >
-                {canShowClassChangeAction && (
-                  <EditableCarClass
-                    registrationId={currentUserRegistration.id}
-                    currentCarClassId={currentUserRegistration.carClass.id}
-                    currentCarClassShortName={
-                      currentUserRegistration.carClass.shortName ||
-                      currentUserRegistration.carClass.name
-                    }
-                    carClasses={carClasses}
-                    variant="full"
-                    showLabel={false}
-                  />
-                )}
-                <DropRegistrationButton
-                  registrationId={currentUserRegistration.id}
-                  onConfirmingChange={setIsDropConfirming}
-                  variant="full"
-                  isAssignedToTeam={isCurrentUserAssignedToTeam}
-                />
-              </div>
-            </div>
-          ) : (
-            <QuickRegistration
-              raceId={race.id}
-              carClasses={carClasses}
-              onDropdownToggle={setIsRegisterOpen}
-              eventId={eventId}
-              eventLicenseGroup={eventLicenseGroup}
-              userLicenseLevel={userLicenseLevel}
-            />
-          ))}
-
-        {isTeamModalOpen && canAssignTeams && (
-          <div className={styles.teamModalOverlay} onClick={handleCloseTeamModal}>
-            <div className={styles.teamModal} onClick={(event) => event.stopPropagation()}>
-              <div className={styles.teamModalHeader}>
-                <div className={styles.teamModalHeaderContent}>
-                  <h3 className={styles.teamModalTitle}>Assign Teams</h3>
-                  <p className={styles.teamModalSubtitle}>
-                    Drag drivers between teams, then save when you are ready.
-                  </p>
-                  <div className={styles.teamModalActions}>
-                    <MaxDriversPerTeamInput
-                      textValue={pendingMaxDriversText}
-                      strategy={pendingStrategy}
-                      onTextChange={handleMaxDriversTextChange}
-                      onStep={handleMaxDriversStep}
-                      onStrategyChange={handleStrategyChange}
-                      onRebalance={handleRebalance}
-                      disabled={!isAdmin}
-                    />
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className={styles.teamModalClose}
-                  onClick={handleCloseTeamModal}
-                  aria-label="Close team assignment"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              <div className={styles.teamModalBody}>
-                {renderTeamGrid({ includeAddTeam: true, allowAdminEdits: true })}
-              </div>
-              <div className={styles.teamModalFooter}>
-                {addDriverMessage && (
-                  <div className={styles.addDriverToast} title={addDriverMessage}>
-                    <span className={styles.addDriverName}>{addDriverMessage}</span>
-                    <span className={styles.addDriverSuffix}>Added!</span>
-                  </div>
-                )}
-                {saveError && (
-                  <div className={styles.errorModalOverlay} onClick={() => setSaveError('')}>
-                    <div className={styles.errorModal} onClick={(event) => event.stopPropagation()}>
-                      <h4 className={styles.errorModalTitle}>Save failed</h4>
-                      <p className={styles.errorModalMessage}>{saveError}</p>
-                      <button
-                        type="button"
-                        className={styles.errorModalButton}
-                        onClick={() => setSaveError('')}
-                      >
-                        Dismiss
-                      </button>
+          {isTeamModalOpen && canAssignTeams && (
+            <div className={styles.teamModalOverlay} onClick={handleCloseTeamModal}>
+              <div className={styles.teamModal} onClick={(event) => event.stopPropagation()}>
+                <div className={styles.teamModalHeader}>
+                  <div className={styles.teamModalHeaderContent}>
+                    <h3 className={styles.teamModalTitle}>Assign Teams</h3>
+                    <p className={styles.teamModalSubtitle}>
+                      Drag drivers between teams, then save when you are ready.
+                    </p>
+                    <div className={styles.teamModalActions}>
+                      <MaxDriversPerTeamInput
+                        textValue={pendingMaxDriversText}
+                        strategy={pendingStrategy}
+                        onTextChange={handleMaxDriversTextChange}
+                        onStep={handleMaxDriversStep}
+                        onStrategyChange={handleStrategyChange}
+                        onRebalance={handleRebalance}
+                        disabled={!isAdmin}
+                      />
                     </div>
                   </div>
-                )}
-                {crossClassWarning && (
+                  <button
+                    type="button"
+                    className={styles.teamModalClose}
+                    onClick={handleCloseTeamModal}
+                    aria-label="Close team assignment"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+                <div className={styles.teamModalBody}>
+                  {renderTeamGrid({ includeAddTeam: true, allowAdminEdits: true })}
+                </div>
+                <div className={styles.teamModalFooter}>
+                  {addDriverMessage && (
+                    <div className={styles.addDriverToast} title={addDriverMessage}>
+                      <span className={styles.addDriverName}>{addDriverMessage}</span>
+                      <span className={styles.addDriverSuffix}>Added!</span>
+                    </div>
+                  )}
+                  {saveError && (
+                    <div className={styles.errorModalOverlay} onClick={() => setSaveError('')}>
+                      <div
+                        className={styles.errorModal}
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <h4 className={styles.errorModalTitle}>Save failed</h4>
+                        <p className={styles.errorModalMessage}>{saveError}</p>
+                        <button
+                          type="button"
+                          className={styles.errorModalButton}
+                          onClick={() => setSaveError('')}
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {crossClassWarning && (
+                    <div
+                      className={styles.warningModalOverlay}
+                      onClick={() => setCrossClassWarning(null)}
+                    >
+                      <div
+                        className={styles.warningModal}
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <h4 className={styles.warningModalTitle}>Confirm car class change</h4>
+                        <p className={styles.warningModalMessage}>
+                          Placing the driver on this team will change their car class. Are you sure
+                          you want to do this?
+                        </p>
+                        <div className={styles.warningModalActions}>
+                          <button
+                            type="button"
+                            className={styles.warningConfirm}
+                            onClick={() => {
+                              const { registrationId, teamId, targetClassId } = crossClassWarning
+                              setCrossClassWarning(null)
+                              moveRegistrationToTeamWithClass(registrationId, teamId, targetClassId)
+                            }}
+                          >
+                            <Check size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.warningCancel}
+                            onClick={() => setCrossClassWarning(null)}
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <div className={styles.saveConfirmWrapper}>
+                    <button
+                      type="button"
+                      className={styles.teamModalSave}
+                      onClick={() => setSaveConfirming(true)}
+                      disabled={isSaving}
+                    >
+                      Save and Notify
+                    </button>
+                  </div>
+                </div>
+                {saveConfirming && (
                   <div
                     className={styles.warningModalOverlay}
-                    onClick={() => setCrossClassWarning(null)}
+                    onClick={() => setSaveConfirming(false)}
                   >
                     <div
                       className={styles.warningModal}
                       onClick={(event) => event.stopPropagation()}
                     >
-                      <h4 className={styles.warningModalTitle}>Confirm car class change</h4>
-                      <p className={styles.warningModalMessage}>
-                        Placing the driver on this team will change their car class. Are you sure
-                        you want to do this?
-                      </p>
+                      <h4 className={styles.warningModalTitle}>Confirm Save and Notify</h4>
+                      {saveChangeSummary.teamChanges.length === 0 &&
+                        saveChangeSummary.newlyFormedTeams.length === 0 &&
+                        saveChangeSummary.destructiveChanges.length === 0 &&
+                        saveChangeSummary.discordThreadsToCreate.length === 0 && (
+                          <p className={styles.warningModalMessage}>No changes detected.</p>
+                        )}
+                      {(saveChangeSummary.teamChanges.length > 0 ||
+                        saveChangeSummary.newlyFormedTeams.length > 0) && (
+                        <div className={styles.saveReviewSection}>
+                          <p className={styles.saveReviewTitle}>Team Changes</p>
+                          <div className={styles.saveSummaryList}>
+                            {saveChangeSummary.teamChanges.map((line) => (
+                              <p key={line} className={styles.saveSummaryItem}>
+                                {line}
+                              </p>
+                            ))}
+                            {saveChangeSummary.newlyFormedTeams.map((teamName) => (
+                              <p key={`created-${teamName}`} className={styles.saveSummaryItem}>
+                                Created team {teamName}.
+                              </p>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {saveChangeSummary.destructiveChanges.length > 0 && (
+                        <div className={styles.saveReviewSection}>
+                          <p className={styles.saveReviewTitle}>Destructive Changes</p>
+                          <div className={styles.saveSummaryList}>
+                            {saveChangeSummary.destructiveChanges.map((line) => (
+                              <p
+                                key={line}
+                                className={`${styles.saveSummaryItem} ${styles.saveSummaryDestructive}`}
+                              >
+                                {line}
+                              </p>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {saveChangeSummary.discordThreadsToCreate.length > 0 && (
+                        <div className={styles.saveReviewSection}>
+                          <p className={styles.saveReviewTitle}>Discord Threads To Create</p>
+                          <div className={styles.saveSummaryList}>
+                            {saveChangeSummary.discordThreadsToCreate.map((teamName) => (
+                              <p key={teamName} className={styles.saveSummaryItem}>
+                                Create thread for {teamName}.
+                              </p>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       <div className={styles.warningModalActions}>
                         <button
                           type="button"
                           className={styles.warningConfirm}
-                          onClick={() => {
-                            const { registrationId, teamId, targetClassId } = crossClassWarning
-                            setCrossClassWarning(null)
-                            moveRegistrationToTeamWithClass(registrationId, teamId, targetClassId)
-                          }}
+                          onClick={handleSave}
+                          aria-label="Confirm save and notify"
                         >
                           <Check size={16} />
                         </button>
                         <button
                           type="button"
                           className={styles.warningCancel}
-                          onClick={() => setCrossClassWarning(null)}
+                          onClick={() => setSaveConfirming(false)}
+                          aria-label="Cancel save and notify"
                         >
                           <X size={16} />
                         </button>
@@ -2609,114 +2706,25 @@ export default function RaceDetails({
                     </div>
                   </div>
                 )}
-                <div className={styles.saveConfirmWrapper}>
-                  <button
-                    type="button"
-                    className={styles.teamModalSave}
-                    onClick={() => setSaveConfirming(true)}
-                    disabled={isSaving}
-                  >
-                    {isSaving ? 'Saving...' : 'Save and Notify'}
-                  </button>
-                </div>
               </div>
-              {saveConfirming && (
-                <div
-                  className={styles.warningModalOverlay}
-                  onClick={() => setSaveConfirming(false)}
-                >
-                  <div className={styles.warningModal} onClick={(event) => event.stopPropagation()}>
-                    <h4 className={styles.warningModalTitle}>Confirm Save and Notify</h4>
-                    {saveChangeSummary.teamChanges.length === 0 &&
-                      saveChangeSummary.newlyFormedTeams.length === 0 &&
-                      saveChangeSummary.destructiveChanges.length === 0 &&
-                      saveChangeSummary.discordThreadsToCreate.length === 0 && (
-                        <p className={styles.warningModalMessage}>No changes detected.</p>
-                      )}
-                    {(saveChangeSummary.teamChanges.length > 0 ||
-                      saveChangeSummary.newlyFormedTeams.length > 0) && (
-                      <div className={styles.saveReviewSection}>
-                        <p className={styles.saveReviewTitle}>Team Changes</p>
-                        <div className={styles.saveSummaryList}>
-                          {saveChangeSummary.teamChanges.map((line) => (
-                            <p key={line} className={styles.saveSummaryItem}>
-                              {line}
-                            </p>
-                          ))}
-                          {saveChangeSummary.newlyFormedTeams.map((teamName) => (
-                            <p key={`created-${teamName}`} className={styles.saveSummaryItem}>
-                              Created team {teamName}.
-                            </p>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {saveChangeSummary.destructiveChanges.length > 0 && (
-                      <div className={styles.saveReviewSection}>
-                        <p className={styles.saveReviewTitle}>Destructive Changes</p>
-                        <div className={styles.saveSummaryList}>
-                          {saveChangeSummary.destructiveChanges.map((line) => (
-                            <p
-                              key={line}
-                              className={`${styles.saveSummaryItem} ${styles.saveSummaryDestructive}`}
-                            >
-                              {line}
-                            </p>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {saveChangeSummary.discordThreadsToCreate.length > 0 && (
-                      <div className={styles.saveReviewSection}>
-                        <p className={styles.saveReviewTitle}>Discord Threads To Create</p>
-                        <div className={styles.saveSummaryList}>
-                          {saveChangeSummary.discordThreadsToCreate.map((teamName) => (
-                            <p key={teamName} className={styles.saveSummaryItem}>
-                              Create thread for {teamName}.
-                            </p>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    <div className={styles.warningModalActions}>
-                      <button
-                        type="button"
-                        className={styles.warningConfirm}
-                        onClick={handleSave}
-                        aria-label="Confirm save and notify"
-                      >
-                        <Check size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.warningCancel}
-                        onClick={() => setSaveConfirming(false)}
-                        aria-label="Cancel save and notify"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
-          </div>
-        )}
+          )}
 
-        {isAdmin && !isRaceCompleted && addDriverMessage && (
-          <div className={styles.saveRow}>
-            <div className={styles.addDriverToast} title={addDriverMessage}>
-              <span className={styles.addDriverName}>{addDriverMessage}</span>
-              <span className={styles.addDriverSuffix}>Added!</span>
+          {isAdmin && !isRaceCompleted && addDriverMessage && (
+            <div className={styles.saveRow}>
+              <div className={styles.addDriverToast} title={addDriverMessage}>
+                <span className={styles.addDriverName}>{addDriverMessage}</span>
+                <span className={styles.addDriverSuffix}>Added!</span>
+              </div>
             </div>
+          )}
+        </div>
+        {isRaceCompleted && (
+          <div className={styles.raceCardOverlay}>
+            <span className={styles.raceCardOverlayLabel}>Timeslot Completed</span>
           </div>
         )}
       </div>
-      {isRaceCompleted && (
-        <div className={styles.raceCardOverlay}>
-          <span className={styles.raceCardOverlayLabel}>Timeslot Completed</span>
-        </div>
-      )}
-    </div>
+    </>
   )
 }

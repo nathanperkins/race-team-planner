@@ -4,6 +4,7 @@ import { useActionState, useState, useEffect, useRef, startTransition, useCallba
 import { updateRegistrationCarClass } from '@/app/actions'
 import { Car, ChevronDown } from 'lucide-react'
 import styles from './EditableCarClass.module.css'
+import LoadingOverlay from './LoadingOverlay'
 
 interface Props {
   registrationId?: string
@@ -161,54 +162,57 @@ export default function EditableCarClass({
   }
 
   return (
-    <div className={containerClassName} ref={dropdownRef}>
-      <button
-        type="button"
-        className={`${styles.editButton} ${isOpen ? styles.active : ''} ${
-          isPlaceholder ? styles.placeholder : ''
-        }`}
-        onClick={() => {
-          setIsOpen((prev) => {
-            const next = !prev
-            if (next) {
-              requestAnimationFrame(updateDropdownPlacement)
-            }
-            return next
-          })
-        }}
-        disabled={isPending}
-        title={displayText}
-        data-placeholder={isPlaceholder ? baseLabel : ''}
-      >
-        {(variant === 'pill' || variant === 'icon' || variant === 'full') && <Car size={12} />}
-        {variant !== 'icon' && <span className={styles.pillText}>{displayText}</span>}
-        {variant !== 'icon' && <ChevronDown size={12} className={styles.chevron} />}
-      </button>
-
-      {isOpen && (
-        <div
-          className={`${styles.dropdown} ${dropdownPlacement === 'up' ? styles.dropdownUp : ''}`}
-          style={dropdownMaxHeight ? { maxHeight: `${dropdownMaxHeight}px` } : undefined}
-          ref={dropdownMenuRef}
+    <>
+      {isPending && <LoadingOverlay message="Updating car class..." />}
+      <div className={containerClassName} ref={dropdownRef}>
+        <button
+          type="button"
+          className={`${styles.editButton} ${isOpen ? styles.active : ''} ${
+            isPlaceholder ? styles.placeholder : ''
+          }`}
+          onClick={() => {
+            setIsOpen((prev) => {
+              const next = !prev
+              if (next) {
+                requestAnimationFrame(updateDropdownPlacement)
+              }
+              return next
+            })
+          }}
+          disabled={isPending}
+          title={displayText}
+          data-placeholder={isPlaceholder ? baseLabel : ''}
         >
-          {carClasses.map((cc) => {
-            const label = cc.name === cc.shortName ? cc.name : `${cc.name} (${cc.shortName})`
-            return (
-              <button
-                key={cc.id}
-                type="button"
-                className={`${styles.dropdownItem} ${
-                  cc.id === currentCarClassId ? styles.active : ''
-                }`}
-                onClick={() => handleSelect(cc.id, cc.shortName)}
-                disabled={isPending}
-              >
-                {label}
-              </button>
-            )
-          })}
-        </div>
-      )}
-    </div>
+          {(variant === 'pill' || variant === 'icon' || variant === 'full') && <Car size={12} />}
+          {variant !== 'icon' && <span className={styles.pillText}>{displayText}</span>}
+          {variant !== 'icon' && <ChevronDown size={12} className={styles.chevron} />}
+        </button>
+
+        {isOpen && (
+          <div
+            className={`${styles.dropdown} ${dropdownPlacement === 'up' ? styles.dropdownUp : ''}`}
+            style={dropdownMaxHeight ? { maxHeight: `${dropdownMaxHeight}px` } : undefined}
+            ref={dropdownMenuRef}
+          >
+            {carClasses.map((cc) => {
+              const label = cc.name === cc.shortName ? cc.name : `${cc.name} (${cc.shortName})`
+              return (
+                <button
+                  key={cc.id}
+                  type="button"
+                  className={`${styles.dropdownItem} ${
+                    cc.id === currentCarClassId ? styles.active : ''
+                  }`}
+                  onClick={() => handleSelect(cc.id, cc.shortName)}
+                  disabled={isPending}
+                >
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </>
   )
 }

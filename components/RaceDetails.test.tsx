@@ -1,4 +1,5 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import RaceDetails from './RaceDetails'
 import React from 'react'
@@ -917,5 +918,60 @@ describe('RaceDetails Discord thread links', () => {
       .getAllByRole('link')
       .find((l) => l.getAttribute('title')?.includes('event discussion'))!
     expect(link).toHaveAttribute('href', 'https://discord.com/channels/guild-1/thread-999')
+  })
+
+  it('shows loading overlay while saving race edits', async () => {
+    const { saveRaceEdits } = await import('@/app/actions')
+    vi.mocked(saveRaceEdits).mockImplementation(
+      () => new Promise((resolve) => setTimeout(() => resolve({ message: 'Success' }), 200))
+    )
+
+    const mockRace = {
+      id: 'race-1',
+      startTime: new Date('2029-01-01T10:00:00Z'),
+      endTime: new Date('2029-01-01T22:00:00Z'),
+      teamsAssigned: false,
+      maxDriversPerTeam: 2,
+      teamAssignmentStrategy: 'BALANCED_IRATING' as const,
+      registrations: [],
+      discordTeamsThreadId: null,
+      discordTeamThreads: null,
+    }
+
+    const user = userEvent.setup()
+    render(
+      <RaceDetails
+        race={mockRace}
+        {...raceEventProps}
+        userId="admin-user"
+        isAdmin
+        carClasses={[]}
+        teams={[]}
+        allDrivers={[]}
+      />
+    )
+
+    // Open the team management modal
+    await user.click(screen.getByTestId('team-picker-trigger'))
+
+    // Click "Save and Notify" to show the confirm dialog
+    await user.click(screen.getByRole('button', { name: /save and notify/i }))
+
+    // Confirm the save
+    await user.click(screen.getByRole('button', { name: /confirm save and notify/i }))
+
+    // Loading overlay should appear immediately
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Saving and notifying...' })).toBeInTheDocument()
+    })
+
+    // Wait for save to complete to prevent timer leaking into subsequent tests
+    await waitFor(
+      () =>
+        expect(
+          screen.queryByRole('heading', { name: 'Saving and notifying...' })
+        ).not.toBeInTheDocument(),
+      { timeout: 500 }
+    )
   })
 })

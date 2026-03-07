@@ -178,4 +178,19 @@ describe('QuickRegistration', () => {
     // Warning should NOT appear (unknown license is not explicitly blocked)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
+
+  it('shows loading overlay while registering', async () => {
+    const { registerForRace } = await import('@/app/actions')
+    vi.mocked(registerForRace).mockReturnValue(new Promise(() => {}))
+
+    const user = userEvent.setup()
+    render(<QuickRegistration raceId="race-1" carClasses={mockCarClasses} />)
+
+    await user.click(screen.getByRole('button', { name: /Register/i }))
+    await user.click(screen.getByRole('button', { name: 'GT3' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Registering...' })).toBeInTheDocument()
+    })
+  })
 })

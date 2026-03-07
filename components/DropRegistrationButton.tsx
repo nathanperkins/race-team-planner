@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { deleteRegistration } from '@/app/actions'
 import styles from './DropRegistrationButton.module.css'
-import { Trash2, Check, X, Loader2, ChevronDown } from 'lucide-react'
+import { Trash2, Check, X, ChevronDown } from 'lucide-react'
+import LoadingOverlay from './LoadingOverlay'
 import { createLogger } from '@/lib/logger'
 
 const logger = createLogger('DropRegistrationButton')
@@ -28,7 +29,6 @@ export default function DropRegistrationButton({
   onConfirmDrop,
 }: Props) {
   const [status, setStatus] = useState<'idle' | 'confirming' | 'deleting'>('idle')
-
   const handleInitialClick = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -73,24 +73,26 @@ export default function DropRegistrationButton({
 
   if (status === 'deleting') {
     return (
-      <span
-        className={`${styles.dropWrapper} ${variant === 'full' ? styles.fullWidthWrapper : ''}`}
-      >
-        {variant === 'full' ? (
-          <button
-            className={`${styles.button} ${styles.fullWidthButton} ${styles.deleting} ${className || ''}`}
-            disabled
-          >
-            <span>Dropping...</span>
-            <ChevronDown size={14} />
-          </button>
-        ) : (
-          <button className={`${styles.button} ${styles.deleting} ${className || ''}`} disabled>
-            <Loader2 className={styles.spinner} size={14} />
-            <span>Dropping...</span>
-          </button>
-        )}
-      </span>
+      <>
+        {status === 'deleting' && <LoadingOverlay message="Dropping registration..." />}
+        <span
+          className={`${styles.dropWrapper} ${variant === 'full' ? styles.fullWidthWrapper : ''}`}
+        >
+          {variant === 'full' ? (
+            <button
+              className={`${styles.button} ${styles.fullWidthButton} ${styles.deleting} ${className || ''}`}
+              disabled
+            >
+              <span>Dropping...</span>
+              <ChevronDown size={14} />
+            </button>
+          ) : (
+            <button className={`${styles.button} ${styles.deleting} ${className || ''}`} disabled>
+              <span>Dropping...</span>
+            </button>
+          )}
+        </span>
+      </>
     )
   }
 

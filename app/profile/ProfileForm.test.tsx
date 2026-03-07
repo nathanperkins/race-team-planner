@@ -172,6 +172,22 @@ describe('ProfileForm', () => {
     expect(updateProfile).not.toHaveBeenCalled()
   })
 
+  it('shows loading overlay while saving', async () => {
+    vi.mocked(updateProfile).mockImplementation(
+      () => new Promise((resolve) => setTimeout(() => resolve({ success: true }), 200))
+    )
+
+    render(
+      <ProfileForm userId="user-123" initialCustomerId="123456" initialIracingName="Test User" />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /save changes/i }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Saving profile...' })).toBeInTheDocument()
+    })
+  })
+
   it('shows error if validation fails', async () => {
     vi.mocked(validateCustomerId).mockResolvedValue({
       success: false,
