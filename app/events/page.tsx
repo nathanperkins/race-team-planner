@@ -63,13 +63,25 @@ export default async function EventsPage({ searchParams }: PageProps) {
 
   const params = await searchParams
 
-  const userLicenseLevelPromise = prisma.user
-    .findUnique({
-      where: { id: session.user.id },
-      include: { racerStats: true },
-    })
+  const userProfilePromise = prisma.user.findUnique({
+    where: { id: session.user.id },
+    include: { racerStats: true },
+  })
+
+  const userLicenseLevelPromise = userProfilePromise
     .then((user) => user?.racerStats?.find((s) => s.categoryId === 5) ?? user?.racerStats?.[0])
     .then((stats) => getLicenseLevelFromName(stats?.groupName))
+
+  const userIsOnIracingTeamPromise = userProfilePromise.then(async (user) => {
+    if (!user?.iracingCustomerId) return false
+
+    const teamMembership = await prisma.teamMember.findUnique({
+      where: { custId: user.iracingCustomerId },
+      select: { id: true },
+    })
+
+    return !!teamMembership
+  })
 
   // Fetch unique racers (users who have signed up)
   const racersPromise = prisma.user.findMany({
@@ -92,7 +104,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
       orderBy: { createdAt: 'asc' },
       include: {
         teamMembers: {
-          select: { id: true },
+          select: { custId: true },
         },
       },
     })
@@ -102,6 +114,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
         name: team.alias || team.name,
         iracingTeamId: team.iracingTeamId,
         memberCount: team.teamMembers.length,
+        memberCustomerIds: team.teamMembers.map((member) => member.custId),
       }))
     )
 
@@ -302,13 +315,15 @@ export default async function EventsPage({ searchParams }: PageProps) {
     ? events.find((event) => event.id === params.eventId) || getEvent(params.eventId)
     : Promise.resolve(null)
 
-  const [carClasses, racers, userLicenseLevel, teams, selectedEvent] = await Promise.all([
-    carClassesPromise,
-    racersPromise,
-    userLicenseLevelPromise,
-    teamsPromise,
-    selectedEventPromise,
-  ])
+  const [carClasses, racers, userLicenseLevel, userIsOnIracingTeam, teams, selectedEvent] =
+    await Promise.all([
+      carClassesPromise,
+      racersPromise,
+      userLicenseLevelPromise,
+      userIsOnIracingTeamPromise,
+      teamsPromise,
+      selectedEventPromise,
+    ])
 
   return (
     <main className={styles.main}>
@@ -326,6 +341,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
         isAdmin={session.user.role === 'ADMIN'}
         userId={session.user.id}
         userLicenseLevel={userLicenseLevel}
+        isOnIracingTeam={userIsOnIracingTeam}
         teams={teams}
         discordGuildId={process.env.DISCORD_GUILD_ID}
         selectedEvent={selectedEvent}

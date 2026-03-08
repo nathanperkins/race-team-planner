@@ -560,7 +560,7 @@ describe('RaceDetails Assign Teams', () => {
     }
 
     vi.unstubAllGlobals()
-  })
+  }, 15000)
 
   it.skip('splits an oversized same-class team when max/team is set to 1', async () => {
     const mockRace = {

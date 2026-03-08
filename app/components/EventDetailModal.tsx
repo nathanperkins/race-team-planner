@@ -57,6 +57,7 @@ interface Driver {
   id: string
   name: string | null
   image: string | null
+  iracingCustomerId?: number | null
 }
 
 interface EventDetailModalProps {
@@ -65,7 +66,14 @@ interface EventDetailModalProps {
   isAdmin: boolean
   userId: string
   userLicenseLevel: LicenseLevel | null
-  teams: Array<{ id: string; name: string; iracingTeamId: number | null; memberCount?: number }>
+  isOnIracingTeam?: boolean
+  teams: Array<{
+    id: string
+    name: string
+    iracingTeamId: number | null
+    memberCount?: number
+    memberCustomerIds?: number[]
+  }>
   discordGuildId?: string
 }
 
@@ -75,6 +83,7 @@ export default function EventDetailModal({
   isAdmin,
   userId,
   userLicenseLevel,
+  isOnIracingTeam,
   teams,
   discordGuildId,
 }: EventDetailModalProps) {
@@ -322,6 +331,7 @@ export default function EventDetailModal({
                   eventRelHumidity={event.relHumidity}
                   eventLicenseGroup={event.licenseGroup}
                   userLicenseLevel={userLicenseLevel}
+                  isOnIracingTeam={isOnIracingTeam}
                 />
               ))}
             </div>

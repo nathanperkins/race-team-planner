@@ -11,6 +11,7 @@ interface Driver {
   id: string
   name: string | null
   image: string | null
+  iracingCustomerId?: number | null
 }
 
 interface Props {

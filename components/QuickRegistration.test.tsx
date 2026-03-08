@@ -193,4 +193,47 @@ describe('QuickRegistration', () => {
       expect(screen.getByRole('heading', { name: 'Registering...' })).toBeInTheDocument()
     })
   })
+
+  it('shows iRacing team membership warning when user is not on any synced iRacing team', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <QuickRegistration
+        raceId="race-1"
+        carClasses={mockCarClasses}
+        isOnIracingTeam={false}
+        eventLicenseGroup={null}
+      />
+    )
+
+    await user.click(screen.getByRole('button', { name: /Register/i }))
+    await user.click(screen.getByRole('button', { name: 'GT3' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+    })
+    expect(screen.getByText('Not on an iRacing Team Roster')).toBeInTheDocument()
+    expect(
+      screen.getByText(/not currently listed on any synced iRacing team roster/i)
+    ).toBeInTheDocument()
+  })
+
+  it('does not show iRacing team warning when user is on a synced iRacing team', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <QuickRegistration
+        raceId="race-1"
+        carClasses={mockCarClasses}
+        isOnIracingTeam={true}
+        eventLicenseGroup={null}
+      />
+    )
+
+    await user.click(screen.getByRole('button', { name: /Register/i }))
+    await user.click(screen.getByRole('button', { name: 'GT3' }))
+
+    expect(screen.queryByText('Not on an iRacing Team Roster')).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
 })

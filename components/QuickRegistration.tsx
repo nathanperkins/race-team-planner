@@ -15,6 +15,7 @@ interface Props {
   eventId?: string
   eventLicenseGroup?: number | null
   userLicenseLevel?: LicenseLevel | null
+  isOnIracingTeam?: boolean
 }
 
 type State = {
@@ -34,11 +35,13 @@ export default function QuickRegistration({
   eventId,
   eventLicenseGroup,
   userLicenseLevel,
+  isOnIracingTeam,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false)
   const [openDirection, setOpenDirection] = useState<'down' | 'up'>('down')
   const [state, formAction, isPending] = useActionState(registerForRace, initialState)
   const [showWarning, setShowWarning] = useState(false)
+  const [warningType, setWarningType] = useState<'license' | 'team' | null>(null)
   const [pendingClassId, setPendingClassId] = useState<string | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
@@ -87,6 +90,7 @@ export default function QuickRegistration({
 
   const handleSelect = (classId: string) => {
     setIsOpen(false)
+    let nextWarningType: 'license' | 'team' | null = null
 
     // Check eligibility if we have the necessary information
     if (
@@ -100,24 +104,34 @@ export default function QuickRegistration({
       const isEligible = isLicenseEligible(userLicenseLevel, eventLicense)
 
       if (!isEligible) {
-        // User is ineligible - show warning
-        setPendingClassId(classId)
-        setShowWarning(true)
-        return
+        nextWarningType = 'license'
       }
     }
 
-    // User is eligible or we don't have enough info to check - proceed
+    // Check if user is on any iRacing team from synced team-member data.
+    if (!nextWarningType && isOnIracingTeam === false) {
+      nextWarningType = 'team'
+    }
+
+    if (nextWarningType) {
+      setPendingClassId(classId)
+      setWarningType(nextWarningType)
+      setShowWarning(true)
+      return
+    }
+
     checkEligibilityAndSubmit(classId)
   }
 
   const handleCancelWarning = () => {
     setShowWarning(false)
+    setWarningType(null)
     setPendingClassId(null)
   }
 
   const handleContinueRegistration = () => {
     setShowWarning(false)
+    setWarningType(null)
     if (pendingClassId) {
       checkEligibilityAndSubmit(pendingClassId)
       setPendingClassId(null)
@@ -173,13 +187,23 @@ export default function QuickRegistration({
           <div className={styles.warningDialog}>
             <div className={styles.warningHeader}>
               <AlertTriangle size={24} color="#f59e0b" />
-              <h3>Ineligible for Race</h3>
+              <h3>
+                {warningType === 'team' ? 'Not on an iRacing Team Roster' : 'Ineligible for Race'}
+              </h3>
             </div>
             <div className={styles.warningBody}>
-              <p>
-                You do not meet the license requirements for this race. You can still register, but
-                you may not be eligible to participate in the official event.
-              </p>
+              {warningType === 'team' ? (
+                <p>
+                  You are not currently listed on any synced iRacing team roster. You can still
+                  register, but you may not be able to join a team race entry unless your iRacing
+                  team membership is updated before race registration opens.
+                </p>
+              ) : (
+                <p>
+                  You do not meet the license requirements for this race. You can still register,
+                  but you may not be eligible to participate in the official event.
+                </p>
+              )}
             </div>
             <div className={styles.warningActions}>
               <button

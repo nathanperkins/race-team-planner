@@ -45,6 +45,7 @@ import {
 import { buildTeamChangeSummary } from '@/lib/team-change-summary'
 import { createLogger } from '@/lib/logger'
 import { replaceTeamIdInOrder } from '@/lib/team-order'
+import { shouldWarnForTeamMembership } from '@/lib/team-membership-warning'
 
 const logger = createLogger('RaceDetails')
 
@@ -79,6 +80,7 @@ export interface RaceWithRegistrations {
     user?: {
       name: string | null
       image: string | null
+      iracingCustomerId?: number | null
       racerStats: Array<{
         category: string
         categoryId: number
@@ -101,6 +103,7 @@ interface Driver {
   id: string
   name: string | null
   image: string | null
+  iracingCustomerId?: number | null
 }
 
 type DriverDetailsResponse =
@@ -130,7 +133,13 @@ interface Props {
   userId: string
   isAdmin?: boolean
   carClasses: { id: string; name: string; shortName: string }[]
-  teams: Array<{ id: string; name: string; iracingTeamId: number | null; memberCount?: number }>
+  teams: Array<{
+    id: string
+    name: string
+    iracingTeamId: number | null
+    memberCount?: number
+    memberCustomerIds?: number[]
+  }>
   allDrivers?: Driver[]
   onDropdownToggle?: (open: boolean) => void
   discordGuildId?: string
@@ -144,6 +153,7 @@ interface Props {
   eventRelHumidity?: number | null
   eventLicenseGroup?: number | null
   userLicenseLevel?: number | null
+  isOnIracingTeam?: boolean
 }
 
 type LocalTeam = { id: string; name: string }
@@ -270,6 +280,7 @@ export default function RaceDetails({
   eventRelHumidity,
   eventLicenseGroup,
   userLicenseLevel,
+  isOnIracingTeam,
 }: Props) {
   const [isSaving, startSaveTransition] = useTransition()
   const now = new Date()
@@ -301,10 +312,45 @@ export default function RaceDetails({
     teamId: string
     targetClassId: string
   } | null>(null)
+  const [teamMembershipWarning, setTeamMembershipWarning] = useState<
+    | {
+        mode: 'single-registration'
+        registrationId: string
+        teamId: string
+        teamName: string
+        driverNames: string[]
+        driverKeys: string[]
+        driverMissingTeams: Array<{ driverName: string; teamNames: string[] }>
+        targetClassId?: string | null
+      }
+    | {
+        mode: 'team-reassign'
+        currentTeamId: string
+        teamId: string
+        teamName: string
+        driverNames: string[]
+        driverKeys: string[]
+        driverMissingTeams: Array<{ driverName: string; teamNames: string[] }>
+      }
+    | {
+        mode: 'direct-add'
+        teamId: string
+        teamName: string
+        driverNames: string[]
+        driverKeys: string[]
+        driverMissingTeams: Array<{ driverName: string; teamNames: string[] }>
+        driver: Driver
+        carClassId: string
+      }
+    | null
+  >(null)
   const [teamClassWarning, setTeamClassWarning] = useState<{
     teamId: string
     targetClassId: string
   } | null>(null)
+  const [acknowledgedTeamMembershipDriverKeys, setAcknowledgedTeamMembershipDriverKeys] = useState<
+    Set<string>
+  >(new Set())
   const [extraTeams, setExtraTeams] = useState<LocalTeam[]>([])
   const [revealedTeamIds, setRevealedTeamIds] = useState<string[]>([])
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false)
@@ -340,6 +386,14 @@ export default function RaceDetails({
     Object.entries(teamNameOverrides).forEach(([id, name]) => map.set(id, name))
     return map
   }, [teamList, teamNameOverrides])
+
+  const teamMemberCustomerIdsById = useMemo(() => {
+    const map = new Map<string, Set<number>>()
+    teams.forEach((team) => {
+      map.set(team.id, new Set(team.memberCustomerIds ?? []))
+    })
+    return map
+  }, [teams])
 
   const isUserRegistered = pendingRegistrations.some((reg) => reg.userId === userId)
   const registeredUserIds = pendingRegistrations
@@ -1046,6 +1100,8 @@ export default function RaceDetails({
         setTeamNameOverrides({})
         setEmptyTeamCarClassOverrides({})
         setTeamClassWarning(null)
+        setTeamMembershipWarning(null)
+        setAcknowledgedTeamMembershipDriverKeys(new Set())
         if (isAdmin) {
           setTeamsAssigned(pendingRegistrations.some((reg) => !!(reg.teamId || reg.team?.id)))
         }
@@ -1069,6 +1125,8 @@ export default function RaceDetails({
     setPendingDrops(new Set())
     setCrossClassWarning(null)
     setTeamClassWarning(null)
+    setTeamMembershipWarning(null)
+    setAcknowledgedTeamMembershipDriverKeys(new Set())
     setTeamPickerId(null)
     setTeamPickerQuery('')
     setTeamNameOverrides({})
@@ -1272,7 +1330,55 @@ export default function RaceDetails({
     setTeamPickerQuery('')
   }, [])
 
-  const replaceTeamAssignments = useCallback(
+  const getDriverIdentityKey = useCallback(
+    (reg: RaceWithRegistrations['registrations'][0]) => reg.userId ?? reg.manualDriverId ?? reg.id,
+    []
+  )
+
+  const formatTeamNameList = useCallback((teamNames: string[]) => {
+    if (teamNames.length === 0) return 'any synced iRacing team'
+    if (teamNames.length === 1) return teamNames[0]
+    if (teamNames.length === 2) return `${teamNames[0]} and ${teamNames[1]}`
+    return `${teamNames.slice(0, -1).join(', ')}, and ${teamNames[teamNames.length - 1]}`
+  }, [])
+
+  const getMissingRosterTeamsForDriver = useCallback(
+    (driverCustomerId: number | null | undefined) => {
+      return teams
+        .filter((team) =>
+          shouldWarnForTeamMembership(
+            teamMemberCustomerIdsById.get(team.id),
+            driverCustomerId ?? undefined
+          )
+        )
+        .map((team) => team.name)
+    },
+    [teamMemberCustomerIdsById, teams]
+  )
+
+  const getNonRosterDrivers = useCallback(
+    (teamId: string, registrations: typeof pendingRegistrations) => {
+      const teamMembers = teamMemberCustomerIdsById.get(teamId)
+      if (!teamMembers || teamMembers.size === 0) {
+        return []
+      }
+
+      const entries = new Map<string, string>()
+      registrations.forEach((reg) => {
+        const shouldWarn = shouldWarnForTeamMembership(teamMembers, reg.user?.iracingCustomerId)
+        if (shouldWarn) {
+          entries.set(
+            getDriverIdentityKey(reg),
+            reg.user?.name || reg.manualDriver?.name || 'Driver'
+          )
+        }
+      })
+      return Array.from(entries.entries()).map(([key, name]) => ({ key, name }))
+    },
+    [getDriverIdentityKey, teamMemberCustomerIdsById]
+  )
+
+  const applyReplaceTeamAssignments = useCallback(
     (currentTeamId: string, nextTeamId: string, nextTeamName: string) => {
       if (!currentTeamId || currentTeamId === nextTeamId) {
         closeTeamPicker()
@@ -1317,6 +1423,54 @@ export default function RaceDetails({
     [closeTeamPicker, isTempRegistrationId, updatePendingAddition]
   )
 
+  const replaceTeamAssignments = useCallback(
+    (currentTeamId: string, nextTeamId: string, nextTeamName: string) => {
+      if (!currentTeamId || currentTeamId === nextTeamId) {
+        closeTeamPicker()
+        return
+      }
+
+      const registrationsToMove = pendingRegistrations.filter((reg) => {
+        const regTeamId = reg.teamId ?? reg.team?.id ?? null
+        return regTeamId === currentTeamId
+      })
+      const nonRosterDrivers = getNonRosterDrivers(nextTeamId, registrationsToMove).filter(
+        (entry) => !acknowledgedTeamMembershipDriverKeys.has(entry.key)
+      )
+      if (nonRosterDrivers.length > 0) {
+        setTeamMembershipWarning({
+          mode: 'team-reassign',
+          currentTeamId,
+          teamId: nextTeamId,
+          teamName: nextTeamName,
+          driverNames: nonRosterDrivers.map((entry) => entry.name),
+          driverKeys: nonRosterDrivers.map((entry) => entry.key),
+          driverMissingTeams: nonRosterDrivers.map((entry) => {
+            const reg = registrationsToMove.find(
+              (candidate) => getDriverIdentityKey(candidate) === entry.key
+            )
+            return {
+              driverName: entry.name,
+              teamNames: getMissingRosterTeamsForDriver(reg?.user?.iracingCustomerId),
+            }
+          }),
+        })
+        return
+      }
+
+      applyReplaceTeamAssignments(currentTeamId, nextTeamId, nextTeamName)
+    },
+    [
+      applyReplaceTeamAssignments,
+      closeTeamPicker,
+      acknowledgedTeamMembershipDriverKeys,
+      getDriverIdentityKey,
+      getMissingRosterTeamsForDriver,
+      getNonRosterDrivers,
+      pendingRegistrations,
+    ]
+  )
+
   const moveRegistrationToTeam = useCallback(
     (registrationId: string, teamId: string | null, teamName?: string) => {
       if (isTempRegistrationId(registrationId)) {
@@ -1338,6 +1492,53 @@ export default function RaceDetails({
       )
     },
     [isTempRegistrationId, teamNameById, updatePendingAddition]
+  )
+
+  const queueMembershipWarningOrMove = useCallback(
+    (registrationId: string, teamId: string, options?: { targetClassId?: string }) => {
+      const reg = pendingRegistrations.find((entry) => entry.id === registrationId)
+      if (!reg) return
+
+      const customerId = reg.user?.iracingCustomerId
+      const teamMembers = teamMemberCustomerIdsById.get(teamId)
+      const shouldWarn = shouldWarnForTeamMembership(teamMembers, customerId)
+      const driverKey = getDriverIdentityKey(reg)
+
+      if (shouldWarn && !acknowledgedTeamMembershipDriverKeys.has(driverKey)) {
+        setTeamMembershipWarning({
+          mode: 'single-registration',
+          registrationId,
+          teamId,
+          teamName: teamNameById.get(teamId) || 'Team',
+          driverNames: [reg.user?.name || reg.manualDriver?.name || 'Driver'],
+          driverKeys: [driverKey],
+          driverMissingTeams: [
+            {
+              driverName: reg.user?.name || reg.manualDriver?.name || 'Driver',
+              teamNames: getMissingRosterTeamsForDriver(customerId),
+            },
+          ],
+          targetClassId: options?.targetClassId ?? null,
+        })
+        return
+      }
+
+      if (options?.targetClassId) {
+        moveRegistrationToTeamWithClass(registrationId, teamId, options.targetClassId)
+      } else {
+        moveRegistrationToTeam(registrationId, teamId)
+      }
+    },
+    [
+      moveRegistrationToTeam,
+      moveRegistrationToTeamWithClass,
+      acknowledgedTeamMembershipDriverKeys,
+      getDriverIdentityKey,
+      getMissingRosterTeamsForDriver,
+      pendingRegistrations,
+      teamMemberCustomerIdsById,
+      teamNameById,
+    ]
   )
 
   const handleDropOnTeam = useCallback(
@@ -1370,7 +1571,7 @@ export default function RaceDetails({
           return
         }
       }
-      moveRegistrationToTeam(registrationId, teamId)
+      queueMembershipWarningOrMove(registrationId, teamId)
     },
     [
       emptyTeamCarClassOverrides,
@@ -1378,6 +1579,7 @@ export default function RaceDetails({
       isTeamModalOpen,
       moveRegistrationToTeam,
       pendingRegistrations,
+      queueMembershipWarningOrMove,
     ]
   )
 
@@ -1392,9 +1594,44 @@ export default function RaceDetails({
         return
       }
       const newTeam = revealOrCreateTeam()
+      if (draggedReg) {
+        const nonRosterDrivers = getNonRosterDrivers(newTeam.id, [draggedReg]).filter(
+          (entry) => !acknowledgedTeamMembershipDriverKeys.has(entry.key)
+        )
+        if (nonRosterDrivers.length > 0) {
+          setTeamMembershipWarning({
+            mode: 'single-registration',
+            registrationId,
+            teamId: newTeam.id,
+            teamName: newTeam.name,
+            driverNames: nonRosterDrivers.map((entry) => entry.name),
+            driverKeys: nonRosterDrivers.map((entry) => entry.key),
+            driverMissingTeams: nonRosterDrivers.map((entry) => {
+              const reg = [draggedReg].find(
+                (candidate) => getDriverIdentityKey(candidate) === entry.key
+              )
+              return {
+                driverName: entry.name,
+                teamNames: getMissingRosterTeamsForDriver(reg?.user?.iracingCustomerId),
+              }
+            }),
+            targetClassId: null,
+          })
+          return
+        }
+      }
       moveRegistrationToTeam(registrationId, newTeam.id, newTeam.name)
     },
-    [isTeamLocked, moveRegistrationToTeam, pendingRegistrations, revealOrCreateTeam]
+    [
+      acknowledgedTeamMembershipDriverKeys,
+      getDriverIdentityKey,
+      getMissingRosterTeamsForDriver,
+      getNonRosterDrivers,
+      isTeamLocked,
+      moveRegistrationToTeam,
+      pendingRegistrations,
+      revealOrCreateTeam,
+    ]
   )
 
   const isDropdownOpen = isAddDriverOpen || isRegisterOpen
@@ -1595,6 +1832,51 @@ export default function RaceDetails({
       ])
     },
     [carClasses, pendingDrops, race.registrations, teamNameById]
+  )
+
+  const queueDirectAddDriver = useCallback(
+    (driver: Driver, teamId: string | null, carClassId: string) => {
+      if (!teamId) {
+        handleLocalAddDriver(driver, null, carClassId)
+        setAddDriverMessage(driver.name || 'Driver')
+        setTimeout(() => setAddDriverMessage(''), 3000)
+        return
+      }
+
+      const teamMembers = teamMemberCustomerIdsById.get(teamId)
+      const shouldWarn = shouldWarnForTeamMembership(teamMembers, driver.iracingCustomerId)
+      const driverKey = driver.id
+
+      if (shouldWarn && !acknowledgedTeamMembershipDriverKeys.has(driverKey)) {
+        setTeamMembershipWarning({
+          mode: 'direct-add',
+          teamId,
+          teamName: teamNameById.get(teamId) || 'Team',
+          driverNames: [driver.name || 'Driver'],
+          driverKeys: [driverKey],
+          driverMissingTeams: [
+            {
+              driverName: driver.name || 'Driver',
+              teamNames: getMissingRosterTeamsForDriver(driver.iracingCustomerId),
+            },
+          ],
+          driver,
+          carClassId,
+        })
+        return
+      }
+
+      handleLocalAddDriver(driver, teamId, carClassId)
+      setAddDriverMessage(driver.name || 'Driver')
+      setTimeout(() => setAddDriverMessage(''), 3000)
+    },
+    [
+      acknowledgedTeamMembershipDriverKeys,
+      handleLocalAddDriver,
+      getMissingRosterTeamsForDriver,
+      teamMemberCustomerIdsById,
+      teamNameById,
+    ]
   )
 
   const showTeamsInCard = teamsAssigned
@@ -2184,13 +2466,11 @@ export default function RaceDetails({
                 buttonLabel="Register Driver"
                 onSelectDriver={(driver) => {
                   const resolvedTeamId = teamId === 'unassigned' ? null : teamId
-                  handleLocalAddDriver(
+                  queueDirectAddDriver(
                     driver,
                     resolvedTeamId,
                     teamRegistrations[0]?.carClass.id || lastDriverCarClass
                   )
-                  setAddDriverMessage(driver.name || 'Driver')
-                  setTimeout(() => setAddDriverMessage(''), 3000)
                 }}
                 onSuccess={({ message, registration }) => {
                   if (registration) {
@@ -2437,6 +2717,7 @@ export default function RaceDetails({
                     eventId={eventId}
                     eventLicenseGroup={eventLicenseGroup}
                     userLicenseLevel={userLicenseLevel}
+                    isOnIracingTeam={isOnIracingTeam}
                   />
                 </div>
               )}
@@ -2465,6 +2746,7 @@ export default function RaceDetails({
                         teamOverridesRef.current = new Map()
                         setPendingAdditions([])
                         setPendingDrops(new Set())
+                        setAcknowledgedTeamMembershipDriverKeys(new Set())
                         setIsTeamModalOpen(true)
                         initializeLockedTeams()
                       }}
@@ -2514,6 +2796,7 @@ export default function RaceDetails({
                 eventId={eventId}
                 eventLicenseGroup={eventLicenseGroup}
                 userLicenseLevel={userLicenseLevel}
+                isOnIracingTeam={isOnIracingTeam}
               />
             ))}
 
@@ -2596,7 +2879,9 @@ export default function RaceDetails({
                             onClick={() => {
                               const { registrationId, teamId, targetClassId } = crossClassWarning
                               setCrossClassWarning(null)
-                              moveRegistrationToTeamWithClass(registrationId, teamId, targetClassId)
+                              queueMembershipWarningOrMove(registrationId, teamId, {
+                                targetClassId,
+                              })
                             }}
                           >
                             <Check size={16} />
@@ -2605,6 +2890,84 @@ export default function RaceDetails({
                             type="button"
                             className={styles.warningCancel}
                             onClick={() => setCrossClassWarning(null)}
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {teamMembershipWarning && (
+                    <div
+                      className={styles.warningModalOverlay}
+                      onClick={() => setTeamMembershipWarning(null)}
+                    >
+                      <div
+                        className={styles.warningModal}
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <h4 className={styles.warningModalTitle}>Driver Not On Team Roster</h4>
+                        <p className={styles.warningModalMessage}>
+                          {teamMembershipWarning.driverMissingTeams.length === 1
+                            ? `${teamMembershipWarning.driverMissingTeams[0].driverName} is not currently in the synced iRacing roster for ${formatTeamNameList(teamMembershipWarning.driverMissingTeams[0].teamNames)}. You can continue anyway, but they may be unable to join this team at race registration time.`
+                            : teamMembershipWarning.driverMissingTeams
+                                .map(
+                                  (entry) =>
+                                    `${entry.driverName} is not currently in the synced iRacing roster for ${formatTeamNameList(entry.teamNames)}.`
+                                )
+                                .join(' ') +
+                              ' You can continue anyway, but they may be unable to join this team at race registration time.'}
+                        </p>
+                        <div className={styles.warningModalActions}>
+                          <button
+                            type="button"
+                            className={styles.warningConfirm}
+                            onClick={() => {
+                              const warning = teamMembershipWarning
+                              setTeamMembershipWarning(null)
+                              if (!warning) return
+                              setAcknowledgedTeamMembershipDriverKeys((prev) => {
+                                const next = new Set(prev)
+                                warning.driverKeys.forEach((key) => next.add(key))
+                                return next
+                              })
+                              if (warning.mode === 'team-reassign') {
+                                applyReplaceTeamAssignments(
+                                  warning.currentTeamId,
+                                  warning.teamId,
+                                  warning.teamName
+                                )
+                                return
+                              }
+                              if (warning.mode === 'direct-add') {
+                                handleLocalAddDriver(
+                                  warning.driver,
+                                  warning.teamId,
+                                  warning.carClassId
+                                )
+                                setAddDriverMessage(warning.driver.name || 'Driver')
+                                setTimeout(() => setAddDriverMessage(''), 3000)
+                                return
+                              }
+                              if (warning.targetClassId) {
+                                moveRegistrationToTeamWithClass(
+                                  warning.registrationId,
+                                  warning.teamId,
+                                  warning.targetClassId
+                                )
+                                return
+                              }
+                              moveRegistrationToTeam(warning.registrationId, warning.teamId)
+                            }}
+                            aria-label="Continue anyway with team assignment"
+                          >
+                            <Check size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.warningCancel}
+                            onClick={() => setTeamMembershipWarning(null)}
+                            aria-label="Cancel team assignment"
                           >
                             <X size={16} />
                           </button>

@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import RaceDetails from './RaceDetails'
@@ -129,6 +129,20 @@ describe('RaceDetails', () => {
           teamId: null,
           team: null,
         },
+        {
+          id: 'reg-2',
+          carClass: { id: 'class-1', name: 'Class 1', shortName: 'C1' },
+          userId: 'user-2',
+          user: {
+            name: 'User 2',
+            image: null,
+            iracingCustomerId: 99999,
+            racerStats: [],
+          },
+          manualDriver: null,
+          teamId: 'team-1',
+          team: { id: 'team-1', name: 'Team 1' },
+        },
       ],
       discordTeamsThreadId: null,
       discordTeamThreads: null,
@@ -170,6 +184,20 @@ describe('RaceDetails', () => {
           manualDriver: null,
           teamId: null,
           team: null,
+        },
+        {
+          id: 'reg-2',
+          carClass: { id: 'class-1', name: 'Class 1', shortName: 'C1' },
+          userId: 'user-2',
+          user: {
+            name: 'User 2',
+            image: null,
+            iracingCustomerId: 99999,
+            racerStats: [],
+          },
+          manualDriver: null,
+          teamId: 'team-1',
+          team: { id: 'team-1', name: 'Team 1' },
         },
       ],
       discordTeamsThreadId: null,
@@ -796,6 +824,119 @@ describe('RaceDetails', () => {
       t.textContent?.includes('Cannot change team - Discord thread exists')
     )
     expect(discordTooltip).toBeDefined()
+  })
+
+  it.skip('warns admins when assigning a driver to a team roster they are not on, then allows continue', async () => {
+    const mockRace = {
+      id: 'race-team-membership-warning',
+      startTime: new Date('2027-01-01T10:00:00Z'),
+      endTime: new Date('2027-01-01T12:00:00Z'),
+      teamsAssigned: true,
+      maxDriversPerTeam: 2,
+      teamAssignmentStrategy: 'BALANCED_IRATING' as const,
+      registrations: [
+        {
+          id: 'reg-1',
+          carClass: { id: 'class-1', name: 'Class 1', shortName: 'C1' },
+          userId: 'user-1',
+          user: {
+            name: 'User 1',
+            image: null,
+            iracingCustomerId: 12345,
+            racerStats: [],
+          },
+          manualDriver: null,
+          teamId: null,
+          team: null,
+        },
+        {
+          id: 'reg-2',
+          carClass: { id: 'class-1', name: 'Class 1', shortName: 'C1' },
+          userId: 'user-2',
+          user: {
+            name: 'User 2',
+            image: null,
+            iracingCustomerId: 99999,
+            racerStats: [],
+          },
+          manualDriver: null,
+          teamId: 'team-1',
+          team: { id: 'team-1', name: 'Team 1' },
+        },
+      ],
+      discordTeamsThreadId: null,
+      discordTeamThreads: null,
+    }
+
+    const { container } = render(
+      <RaceDetails
+        race={mockRace}
+        {...raceEventProps}
+        userId="admin-user"
+        isAdmin
+        carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
+        teams={[
+          {
+            id: 'team-1',
+            name: 'Team 1',
+            iracingTeamId: 111,
+            memberCount: 1,
+            memberCustomerIds: [99999],
+          },
+        ]}
+        allDrivers={[]}
+      />
+    )
+
+    fireEvent.click(screen.getByTestId('team-picker-trigger'))
+
+    const teamModalTitle = await screen.findByText('Assign Teams')
+    const teamModal = teamModalTitle.closest(`.${styles.teamModal}`) as HTMLElement | null
+    expect(teamModal).toBeTruthy()
+
+    let teamTile: Element | undefined
+    await waitFor(() => {
+      const teamTiles = Array.from(teamModal!.querySelectorAll(`.${styles.teamGroup}`))
+      teamTile = teamTiles.find((tile) => tile.textContent?.includes('Team 1'))
+      expect(teamTile).toBeTruthy()
+    })
+    expect(teamTile).toBeTruthy()
+
+    const reg1Driver = within(teamModal!).getByText('User 1')
+    const dragSource = reg1Driver.closest(`.${styles.driverRow}`) as HTMLElement | null
+    expect(dragSource).toBeTruthy()
+
+    const dataTransfer = {
+      data: {} as Record<string, string>,
+      setData(type: string, val: string) {
+        this.data[type] = val
+      },
+      getData(type: string) {
+        return this.data[type]
+      },
+    }
+
+    fireEvent.dragStart(dragSource!, { dataTransfer })
+    if (!dataTransfer.getData('text/plain')) {
+      dataTransfer.setData('text/plain', 'reg-1')
+    }
+
+    fireEvent.dragOver(teamTile as Element, { dataTransfer })
+    fireEvent.drop(teamTile as Element, {
+      dataTransfer,
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Driver Not On Team Roster')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByLabelText('Continue anyway with team assignment'))
+
+    await waitFor(() => {
+      expect(screen.queryByText('Driver Not On Team Roster')).not.toBeInTheDocument()
+    })
+
+    expect(container.querySelector('button[title="Move to unassigned"]')).toBeInTheDocument()
   })
 
   it('shows the add-to-calendar button for upcoming races', () => {

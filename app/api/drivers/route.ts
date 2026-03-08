@@ -12,6 +12,7 @@ export async function GET() {
           id: true,
           name: true,
           image: true,
+          iracingCustomerId: true,
         },
       }),
       prisma.manualDriver.findMany({
@@ -28,11 +29,13 @@ export async function GET() {
         id: u.id,
         name: u.name,
         image: u.image || `https://api.dicebear.com/9.x/avataaars/png?seed=${u.name}`,
+        iracingCustomerId: u.iracingCustomerId,
       })),
       ...manualDrivers.map((d) => ({
         id: d.id,
         name: d.name,
         image: d.image,
+        iracingCustomerId: null,
       })),
     ].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
 

@@ -60,7 +60,14 @@ interface EventsClientProps {
   isAdmin: boolean
   userId: string
   userLicenseLevel: LicenseLevel | null
-  teams: Array<{ id: string; name: string; iracingTeamId: number | null; memberCount?: number }>
+  isOnIracingTeam?: boolean
+  teams: Array<{
+    id: string
+    name: string
+    iracingTeamId: number | null
+    memberCount?: number
+    memberCustomerIds?: number[]
+  }>
   discordGuildId?: string
   selectedEvent?: EventWithRaces | null
 }
@@ -70,6 +77,7 @@ export default function EventsClient({
   isAdmin,
   userId,
   userLicenseLevel,
+  isOnIracingTeam,
   teams,
   discordGuildId,
   selectedEvent,
@@ -331,6 +339,7 @@ export default function EventsClient({
           isAdmin={isAdmin}
           userId={userId}
           userLicenseLevel={userLicenseLevel}
+          isOnIracingTeam={isOnIracingTeam}
           teams={teams}
           discordGuildId={discordGuildId}
         />
