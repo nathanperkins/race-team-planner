@@ -388,81 +388,84 @@
 }
 
 .modalContent {
-  background-color: #1e293b;
-  border: 1px solid #334155;
-  border-radius: 1rem;
-  padding: 2rem;
-  width: 90%;
-  max-width: 400px;
-  box-shadow:
-    0 20px 25px -5px rgba(0, 0, 0, 0.1),
-    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  width: min(440px, calc(100% - 2rem));
+  background: #0f172a;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: 0 25px 45px rgba(0, 0, 0, 0.45);
+  text-align: center;
+  color: #e2e8f0;
 }
 
 .modalTitle {
-  font-size: 1.25rem;
+  margin: 0 0 0.5rem;
+  font-size: 1.45rem;
   font-weight: 700;
-  color: white;
-  margin-bottom: 1rem;
+  color: #facc15;
 }
 
 .modalText {
-  color: #cbd5e1;
-  margin-bottom: 1.5rem;
+  color: #e5e7eb;
+  margin: 0 0 1rem;
+  font-size: 1rem;
   line-height: 1.5;
 }
 
 .modalHighlight {
-  color: #60a5fa;
-  font-weight: 600;
+  color: #93c5fd;
+  font-weight: 700;
   display: block;
-  margin-top: 0.5rem;
-  font-size: 1.125rem;
-  background: rgba(59, 130, 246, 0.1);
-  padding: 0.75rem;
-  border-radius: 0.5rem;
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  margin-top: 0.35rem;
+  font-size: 0.95rem;
+  background: rgba(59, 130, 246, 0.15);
+  padding: 0.6rem;
+  border-radius: 10px;
+  border: 1px solid rgba(96, 165, 250, 0.3);
   text-align: center;
 }
 
 .modalActions {
   display: flex;
-  gap: 1rem;
-  margin-top: 1.5rem;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
 }
 
 .modalCancelButton {
-  flex: 1;
-  background-color: transparent;
-  border: 1px solid #475569;
-  color: #94a3b8;
-  padding: 0.75rem;
-  border-radius: 0.5rem;
+  border: none;
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  min-height: 2.75rem;
+  padding: 0 0.95rem;
+  border-radius: 999px;
   cursor: pointer;
-  transition: all 0.2s;
-  font-size: 0.875rem;
-  font-weight: 500;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
 .modalCancelButton:hover {
-  background-color: #334155;
-  color: white;
-  text-decoration: none;
+  background: rgba(239, 68, 68, 0.34);
 }
 
 .confirmButton {
-  flex: 1;
-  background-color: #2563eb;
-  border: 1px solid #2563eb;
-  color: white;
-  padding: 0.75rem;
-  border-radius: 0.5rem;
+  border: none;
+  background: rgba(16, 185, 129, 0.2);
+  color: #86efac;
+  min-height: 2.75rem;
+  padding: 0 0.95rem;
+  border-radius: 999px;
   cursor: pointer;
   font-weight: 600;
-  transition: all 0.2s;
-  font-size: 0.875rem;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+  font-size: 0.9rem;
 }
 
 .confirmButton:hover {
-  background-color: #1d4ed8;
+  background: rgba(16, 185, 129, 0.34);
 }

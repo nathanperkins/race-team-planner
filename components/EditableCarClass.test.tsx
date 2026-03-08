@@ -15,7 +15,6 @@ const mockCarClasses = [
 describe('EditableCarClass', () => {
   beforeEach(() => {
     vi.resetAllMocks()
-    vi.stubGlobal('alert', vi.fn())
   })
 
   it('shows loading overlay while updating car class', async () => {
@@ -65,7 +64,7 @@ describe('EditableCarClass', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
-  it('shows alert when action returns an error message', async () => {
+  it('shows warning dialog when action returns an error message', async () => {
     const { updateRegistrationCarClass } = await import('@/app/actions')
     vi.mocked(updateRegistrationCarClass).mockImplementation(() =>
       Promise.resolve({ message: 'Failed to update car class', timestamp: Date.now() })
@@ -85,9 +84,8 @@ describe('EditableCarClass', () => {
     await user.click(screen.getByRole('button', { name: /GTE/i }))
 
     await waitFor(() => {
-      expect(window.alert).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to update car class')
-      )
+      expect(screen.getByRole('dialog', { name: 'Update Failed' })).toBeInTheDocument()
+      expect(screen.getByText(/Failed to update car class/i)).toBeInTheDocument()
     })
   })
 

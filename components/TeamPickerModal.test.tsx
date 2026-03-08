@@ -27,7 +27,6 @@ const baseProps = {
 describe('TeamPickerModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.stubGlobal('alert', vi.fn())
   })
 
   it('renders the Submit Teams button', () => {

@@ -1,0 +1,78 @@
+.warningModalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 8, 17, 0.72);
+  backdrop-filter: blur(2px);
+  z-index: 1400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.warningModal {
+  width: min(440px, calc(100% - 2rem));
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(22, 34, 54, 0.95), rgba(10, 18, 34, 0.95)), rgba(9, 16, 30, 0.95);
+  box-shadow: 0 20px 46px rgba(0, 0, 0, 0.45);
+  color: #e5e7eb;
+}
+
+.warningModalTitle {
+  margin: 0;
+  padding: 1rem 1.25rem 0.75rem;
+  color: #facc15;
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.warningModalMessage {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 1rem 1.25rem;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.warningModalActions {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0.25rem 1.25rem 1.15rem;
+}
+
+.warningConfirm,
+.warningCancel {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0 0.95rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.warningConfirm {
+  background: rgba(16, 185, 129, 0.2);
+  color: #86efac;
+}
+
+.warningConfirm:hover {
+  background: rgba(16, 185, 129, 0.34);
+}
+
+.warningCancel {
+  background: rgba(239, 68, 68, 0.22);
+  color: #fca5a5;
+}
+
+.warningCancel:hover {
+  background: rgba(239, 68, 68, 0.34);
+}

@@ -101,89 +101,66 @@
 
 .warningOverlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.75);
+  inset: 0;
+  background: rgba(15, 23, 42, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 1.5rem;
   z-index: 1000;
-  animation: fadeIn 0.2s ease-in-out;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
 }
 
 .warningDialog {
-  background-color: #1f2937;
-  border: 1px solid #374151;
-  border-radius: 0.75rem;
-  box-shadow:
-    0 20px 25px -5px rgba(0, 0, 0, 0.5),
-    0 10px 10px -5px rgba(0, 0, 0, 0.4);
-  max-width: 28rem;
-  width: 90%;
-  animation: slideIn 0.3s ease-out;
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateY(-2rem);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+  width: min(440px, calc(100% - 2rem));
+  background: #0f172a;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: 0 25px 45px rgba(0, 0, 0, 0.45);
+  text-align: center;
+  color: #e2e8f0;
 }
 
 .warningHeader {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 1.5rem;
-  border-bottom: 1px solid #374151;
+  justify-content: center;
+  gap: 0.6rem;
+  margin: 0 0 0.5rem;
 }
 
 .warningHeader h3 {
   margin: 0;
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: #f3f4f6;
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: #facc15;
 }
 
 .warningBody {
-  padding: 1.5rem;
+  margin: 0 0 1rem;
+  text-align: center;
 }
 
 .warningBody p {
   margin: 0;
-  color: #d1d5db;
-  font-size: 0.9375rem;
-  line-height: 1.6;
+  color: #e5e7eb;
+  font-size: 1rem;
+  line-height: 1.5;
 }
 
 .warningActions {
   display: flex;
+  justify-content: center;
   gap: 0.75rem;
-  padding: 1rem 1.5rem 1.5rem;
-  justify-content: flex-end;
 }
 
 .warningCancelButton,
 .warningContinueButton {
-  padding: 0.625rem 1.25rem;
-  border-radius: 0.5rem;
-  font-weight: 500;
-  font-size: 0.875rem;
+  min-height: 2.75rem;
+  padding: 0 0.95rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.9rem;
   cursor: pointer;
   transition: all 0.2s;
   border: none;

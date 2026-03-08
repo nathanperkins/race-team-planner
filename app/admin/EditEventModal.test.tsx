@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import EditEventModal from './EditEventModal'
@@ -32,10 +32,6 @@ const mockEvent = {
 describe('EditEventModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.stubGlobal(
-      'confirm',
-      vi.fn(() => true)
-    )
   })
 
   it('renders the form with prefilled event data', () => {
@@ -86,20 +82,19 @@ describe('EditEventModal', () => {
     render(<EditEventModal onClose={mockOnClose} event={mockEvent} />)
 
     await user.click(screen.getByRole('button', { name: /delete event/i }))
+    const dialog = screen.getByRole('dialog', { name: 'Delete Event?' })
+    await user.click(within(dialog).getByRole('button', { name: /confirm/i }))
 
     expect(screen.getByRole('heading', { name: 'Deleting event...' })).toBeInTheDocument()
   })
 
-  it('does not delete if confirm is cancelled', async () => {
-    vi.stubGlobal(
-      'confirm',
-      vi.fn(() => false)
-    )
-
+  it('does not delete if confirmation modal is cancelled', async () => {
     const user = userEvent.setup()
     render(<EditEventModal onClose={mockOnClose} event={mockEvent} />)
 
     await user.click(screen.getByRole('button', { name: /delete event/i }))
+    const dialog = screen.getByRole('dialog', { name: 'Delete Event?' })
+    await user.click(within(dialog).getByRole('button', { name: /cancel/i }))
 
     expect(deleteCustomEvent).not.toHaveBeenCalled()
   })

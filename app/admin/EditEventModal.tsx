@@ -5,6 +5,7 @@ import { useActionState, useEffect, useRef, useState } from 'react'
 import { updateCustomEvent, deleteCustomEvent } from './actions'
 import styles from './AddEventModal.module.css'
 import LoadingOverlay from '@/components/LoadingOverlay'
+import WarningDialog from '@/components/WarningDialog'
 interface EventData {
   id: string
   name: string
@@ -32,6 +33,7 @@ export default function EditEventModal({ onClose, event }: EditEventModalProps) 
   const [state, formAction, pending] = useActionState(updateCustomEvent, { message: '' })
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const modalRef = useRef<HTMLDivElement>(null)
   // Close on successful submission
   useEffect(() => {
@@ -59,10 +61,7 @@ export default function EditEventModal({ onClose, event }: EditEventModalProps) 
   }
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
-      return
-    }
-
+    setConfirmDeleteOpen(false)
     setIsDeleting(true)
     setDeleteError('')
 
@@ -322,7 +321,7 @@ export default function EditEventModal({ onClose, event }: EditEventModalProps) 
               <button
                 type="button"
                 className={styles.deleteButton}
-                onClick={handleDelete}
+                onClick={() => setConfirmDeleteOpen(true)}
                 disabled={isDeleting || pending}
               >
                 <Trash2 size={16} />
@@ -343,6 +342,13 @@ export default function EditEventModal({ onClose, event }: EditEventModalProps) 
           </form>
         </div>
       </div>
+      <WarningDialog
+        isOpen={confirmDeleteOpen}
+        title="Delete Event?"
+        message="Are you sure you want to delete this event? This action cannot be undone."
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmDeleteOpen(false)}
+      />
     </>
   )
 }

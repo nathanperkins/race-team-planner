@@ -10,7 +10,6 @@ vi.mock('@/app/actions', () => ({
 describe('DropRegistrationButton', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.stubGlobal('alert', vi.fn())
   })
 
   it('shows loading overlay while dropping registration', async () => {
@@ -40,7 +39,7 @@ describe('DropRegistrationButton', () => {
     expect(screen.queryByText('Dropping registration...')).not.toBeInTheDocument()
   })
 
-  it('shows alert and reverts to idle when deleteRegistration throws', async () => {
+  it('shows warning dialog and reverts to idle when deleteRegistration throws', async () => {
     const { deleteRegistration } = await import('@/app/actions')
     vi.mocked(deleteRegistration).mockRejectedValue(new Error('Network error'))
 
@@ -51,7 +50,8 @@ describe('DropRegistrationButton', () => {
     await user.click(screen.getByRole('button', { name: /Confirm drop/i }))
 
     await waitFor(() => {
-      expect(window.alert).toHaveBeenCalledWith('Failed to drop registration. Please try again.')
+      expect(screen.getByRole('dialog', { name: 'Drop Failed' })).toBeInTheDocument()
+      expect(screen.getByText('Failed to drop registration. Please try again.')).toBeInTheDocument()
     })
 
     // Button returns to idle state

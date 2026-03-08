@@ -5,6 +5,7 @@ import { updateRegistrationCarClass } from '@/app/actions'
 import { Car, ChevronDown } from 'lucide-react'
 import styles from './EditableCarClass.module.css'
 import LoadingOverlay from './LoadingOverlay'
+import WarningDialog from './WarningDialog'
 
 interface Props {
   registrationId?: string
@@ -50,6 +51,7 @@ export default function EditableCarClass({
   const [dropdownPlacement, setDropdownPlacement] = useState<'up' | 'down'>('down')
   const [dropdownMaxHeight, setDropdownMaxHeight] = useState<number | undefined>(undefined)
   const [pendingLabel, setPendingLabel] = useState<string | null>(null)
+  const [updateError, setUpdateError] = useState('')
   const [state, formAction, isPending] = useActionState(updateRegistrationCarClass, initialState)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const dropdownMenuRef = useRef<HTMLDivElement>(null)
@@ -110,7 +112,7 @@ export default function EditableCarClass({
 
       if (state.message !== 'Success') {
         const prefix = `Failed to update to ${pendingLabel}: `
-        alert(`${prefix}${state.message}`)
+        setUpdateError(`${prefix}${state.message}`)
       }
 
       // Clear pending label after handling
@@ -213,6 +215,14 @@ export default function EditableCarClass({
           </div>
         )}
       </div>
+      <WarningDialog
+        isOpen={updateError.length > 0}
+        title="Update Failed"
+        message={updateError}
+        onConfirm={() => setUpdateError('')}
+        hideCancel
+        confirmLabel="OK"
+      />
     </>
   )
 }

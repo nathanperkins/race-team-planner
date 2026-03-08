@@ -26,6 +26,7 @@ import {
   syncTeamMembers,
 } from './teams/actions'
 import styles from './TeamManagement.module.css'
+import WarningDialog from '@/components/WarningDialog'
 
 interface Team {
   id: string
@@ -67,6 +68,7 @@ export default function TeamManagement() {
   const [processing, setProcessing] = useState<string | null>(null)
   const [inspectingTeam, setInspectingTeam] = useState<TeamMembersData | null>(null)
   const [loadingMembers, setLoadingMembers] = useState(false)
+  const [pendingDeleteTeam, setPendingDeleteTeam] = useState<Team | null>(null)
 
   useEffect(() => {
     fetchTeams()
@@ -128,7 +130,6 @@ export default function TeamManagement() {
   }
 
   async function handleDeleteTeam(id: string) {
-    if (!confirm('Are you sure you want to delete this team?')) return
     setError(null)
     setProcessing(id)
     try {
@@ -323,7 +324,7 @@ export default function TeamManagement() {
                               <Edit2 size={16} />
                             </button>
                             <button
-                              onClick={() => handleDeleteTeam(team.id)}
+                              onClick={() => setPendingDeleteTeam(team)}
                               className={styles.deleteBtn}
                               disabled={!!processing}
                               title="Delete team"
@@ -402,6 +403,18 @@ export default function TeamManagement() {
           </div>
         </div>
       )}
+      <WarningDialog
+        isOpen={pendingDeleteTeam !== null}
+        title="Delete Team?"
+        message="Are you sure you want to delete this team?"
+        onConfirm={() => {
+          if (!pendingDeleteTeam) return
+          const teamId = pendingDeleteTeam.id
+          setPendingDeleteTeam(null)
+          void handleDeleteTeam(teamId)
+        }}
+        onCancel={() => setPendingDeleteTeam(null)}
+      />
     </div>
   )
 }

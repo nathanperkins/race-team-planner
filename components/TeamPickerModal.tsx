@@ -24,6 +24,7 @@ import styles from './TeamPickerModal.module.css'
 import { RaceWithRegistrations, ExtendedRegistration } from './RaceDetails'
 import { createLogger } from '@/lib/logger'
 import LoadingOverlay from './LoadingOverlay'
+import WarningDialog from './WarningDialog'
 
 const logger = createLogger('TeamPickerModal')
 
@@ -81,6 +82,7 @@ export default function TeamPickerModal({
   const [selectedDriverIds, setSelectedDriverIds] = useState<Set<string>>(new Set())
   const [results, setResults] = useState<TeamComposition[]>([])
   const [saving, setSaving] = useState(false)
+  const [modalWarning, setModalWarning] = useState<{ title: string; message: string } | null>(null)
   // Map registrations to Driver objects
   const rosterDrivers = useMemo(() => {
     // If we have event registrations (full list), use them. Otherwise fallback to just this race.
@@ -280,7 +282,10 @@ export default function TeamPickerModal({
     const openTeams = results.filter((r) => !r.locked)
 
     if (openTeams.length === 0) {
-      alert('No open teams available. Please add a team first or unlock an existing one.')
+      setModalWarning({
+        title: 'No Open Teams',
+        message: 'No open teams available. Please add a team first or unlock an existing one.',
+      })
       return
     }
 
@@ -298,7 +303,10 @@ export default function TeamPickerModal({
     )
 
     if (pool.length === 0) {
-      alert('No available drivers to balance (check selection or unlock teams).')
+      setModalWarning({
+        title: 'No Available Drivers',
+        message: 'No available drivers to balance (check selection or unlock teams).',
+      })
       return
     }
 
@@ -347,7 +355,10 @@ export default function TeamPickerModal({
     setSaving(true)
     try {
       if (results.some((r) => r.isGeneric)) {
-        alert('Please assign all teams to a real team name before submitting.')
+        setModalWarning({
+          title: 'Team Assignment Required',
+          message: 'Please assign all teams to a real team name before submitting.',
+        })
         return
       }
 
@@ -371,7 +382,10 @@ export default function TeamPickerModal({
       onClose()
     } catch (err) {
       logger.error({ err, raceId, carClassId }, 'Failed to save team assignments')
-      alert('Failed to save team assignments')
+      setModalWarning({
+        title: 'Save Failed',
+        message: 'Failed to save team assignments',
+      })
     } finally {
       setSaving(false)
     }
@@ -872,6 +886,14 @@ export default function TeamPickerModal({
           </div>
         </div>
       </div>
+      <WarningDialog
+        isOpen={modalWarning !== null}
+        title={modalWarning?.title || 'Notice'}
+        message={modalWarning?.message || ''}
+        onConfirm={() => setModalWarning(null)}
+        hideCancel
+        confirmLabel="OK"
+      />
     </>
   )
 }

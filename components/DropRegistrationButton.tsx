@@ -6,6 +6,7 @@ import styles from './DropRegistrationButton.module.css'
 import { Trash2, Check, X, ChevronDown } from 'lucide-react'
 import LoadingOverlay from './LoadingOverlay'
 import { createLogger } from '@/lib/logger'
+import WarningDialog from './WarningDialog'
 
 const logger = createLogger('DropRegistrationButton')
 
@@ -29,6 +30,7 @@ export default function DropRegistrationButton({
   onConfirmDrop,
 }: Props) {
   const [status, setStatus] = useState<'idle' | 'confirming' | 'deleting'>('idle')
+  const [dropError, setDropError] = useState('')
   const handleInitialClick = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -53,7 +55,7 @@ export default function DropRegistrationButton({
       logger.error({ err: error, registrationId }, 'Failed to drop registration')
       setStatus('idle')
       onConfirmingChange?.(false)
-      alert('Failed to drop registration. Please try again.')
+      setDropError('Failed to drop registration. Please try again.')
       return
     }
 
@@ -169,6 +171,14 @@ export default function DropRegistrationButton({
           </div>
         </div>
       )}
+      <WarningDialog
+        isOpen={dropError.length > 0}
+        title="Drop Failed"
+        message={dropError}
+        onConfirm={() => setDropError('')}
+        hideCancel
+        confirmLabel="OK"
+      />
     </>
   )
 }
