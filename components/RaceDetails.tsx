@@ -44,6 +44,7 @@ import {
 } from '@/lib/utils'
 import { buildTeamChangeSummary } from '@/lib/team-change-summary'
 import { createLogger } from '@/lib/logger'
+import { replaceTeamIdInOrder } from '@/lib/team-order'
 
 const logger = createLogger('RaceDetails')
 
@@ -1278,9 +1279,7 @@ export default function RaceDetails({
         return
       }
       setTeamOrder((prev) => {
-        if (prev.length === 0) return prev
-        if (prev.includes(nextTeamId) && nextTeamId !== currentTeamId) return prev
-        return prev.map((id) => (id === currentTeamId ? nextTeamId : id))
+        return replaceTeamIdInOrder(prev, currentTeamId, nextTeamId)
       })
       setPendingRegistrations((prev) =>
         prev.map((reg) => {
