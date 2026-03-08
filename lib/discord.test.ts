@@ -1913,6 +1913,30 @@ describe('createOrUpdateTeamThread', () => {
     expect(body.auto_archive_duration).toBe(1440)
   })
 
+  it('pins the starter message when creating a team thread', async () => {
+    const mockThreadId = 'new-team-thread-pin'
+
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: mockThreadId }),
+      } as Response)
+      .mockResolvedValueOnce({ ok: true, status: 204 } as Response)
+
+    await createOrUpdateTeamThread({
+      teamName: 'Team Alpha',
+      eventName: 'GT3 Challenge',
+      raceStartTime: new Date('2026-02-15T18:00:00Z'),
+      members: [],
+    })
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining(`/channels/${mockThreadId}/pins/${mockThreadId}`),
+      expect.objectContaining({ method: 'PUT' })
+    )
+  })
+
   it('should add all users to a newly created team thread', async () => {
     const mockThreadId = 'new-team-thread-123'
 
@@ -2318,6 +2342,30 @@ describe('createOrUpdateEventThread', () => {
     expect(threadCreateCall).toBeDefined()
     const body = JSON.parse(threadCreateCall![1]!.body as string)
     expect(body.auto_archive_duration).toBe(1440)
+  })
+
+  it('pins the starter message when creating an event thread', async () => {
+    const mockThreadId = 'new-event-thread-pin'
+
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: mockThreadId }),
+      } as Response)
+      .mockResolvedValueOnce({ ok: true, status: 204 } as Response)
+
+    await createOrUpdateEventThread({
+      eventName: 'GT3 Challenge',
+      raceUrl: 'https://example.com/race',
+      carClasses: ['GT3'],
+      timeslots: [{ raceStartTime: new Date('2026-02-15T18:00:00Z'), teams: [], unassigned: [] }],
+    })
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining(`/channels/${mockThreadId}/pins/${mockThreadId}`),
+      expect.objectContaining({ method: 'PUT' })
+    )
   })
 
   it('should add all users to a newly created event thread', async () => {
@@ -2745,12 +2793,18 @@ describe('createEventDiscussionThread', () => {
 
   it('returns existingThreadId if the thread already exists', async () => {
     const existingThreadId = 'existing-thread-123'
-    vi.mocked(fetch).mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({ parent_id: forumId }),
-      text: async () => '',
-    } as Response)
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ parent_id: forumId }),
+        text: async () => '',
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 204,
+        text: async () => '',
+      } as Response)
 
     const result = await createEventDiscussionThread({
       eventName: 'GT3 Challenge',
@@ -2758,8 +2812,11 @@ describe('createEventDiscussionThread', () => {
       existingThreadId,
     })
     expect(result).toBe(existingThreadId)
-    expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(fetch)).toHaveBeenCalledTimes(2)
     expect(vi.mocked(fetch).mock.calls[0][0]).toContain(`/channels/${existingThreadId}`)
+    expect(vi.mocked(fetch).mock.calls[1][0]).toContain(
+      `/channels/${existingThreadId}/pins/${existingThreadId}`
+    )
   })
 
   it('creates a new thread when existingThreadId is not found (404)', async () => {
@@ -2804,6 +2861,33 @@ describe('createEventDiscussionThread', () => {
       eventStartTime: new Date('2026-02-15T18:00:00Z'),
     })
     expect(result).toBe(newThreadId)
+  })
+
+  it('pins the starter message when creating a discussion thread', async () => {
+    const newThreadId = 'new-thread-pin-123'
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: newThreadId }),
+        text: async () => '',
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 204,
+        text: async () => '',
+      } as Response)
+
+    const result = await createEventDiscussionThread({
+      eventName: 'GT3 Challenge',
+      eventStartTime: new Date('2026-02-15T18:00:00Z'),
+    })
+
+    expect(result).toBe(newThreadId)
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining(`/channels/${newThreadId}/pins/${newThreadId}`),
+      expect.objectContaining({ method: 'PUT' })
+    )
   })
 
   it('returns null when thread creation fails', async () => {

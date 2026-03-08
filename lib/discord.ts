@@ -986,6 +986,60 @@ export async function addUsersToThread(threadId: string, discordUserIds: string[
   )
 }
 
+async function pinThreadStarterMessage(threadId: string, botToken: string): Promise<void> {
+  try {
+    let response = await fetch(`${DISCORD_API_BASE}/channels/${threadId}/pins/${threadId}`, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bot ${botToken}`,
+      },
+    })
+
+    if (response.ok) return
+
+    // In some thread types, starter message ID may not equal thread ID.
+    // Fall back to locating the bot-authored message and pinning that instead.
+    const fallbackMessageId = await findBotMessageInThread(threadId, botToken)
+    if (!fallbackMessageId || fallbackMessageId === threadId) {
+      const errorText = await response.text()
+      logger.warn(
+        {
+          threadId,
+          status: response.status,
+          statusText: response.statusText,
+          errorText,
+          fallbackMessageId,
+        },
+        'Failed to pin thread starter message'
+      )
+      return
+    }
+
+    response = await fetch(`${DISCORD_API_BASE}/channels/${threadId}/pins/${fallbackMessageId}`, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bot ${botToken}`,
+      },
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      logger.warn(
+        {
+          threadId,
+          messageId: fallbackMessageId,
+          status: response.status,
+          statusText: response.statusText,
+          errorText,
+        },
+        'Failed to pin thread starter message'
+      )
+    }
+  } catch (error) {
+    logger.warn({ err: error, threadId }, 'Failed to pin thread starter message')
+  }
+}
+
 export {
   buildDiscordAppLink,
   buildDiscordWebLink,
@@ -1123,6 +1177,7 @@ export async function createOrUpdateEventThread(data: {
       const newId = (thread.id as string) ?? null
       if (newId) {
         logger.info(`✅ Created event thread: ${newId} in ${threadParentId}`)
+        await pinThreadStarterMessage(newId, botToken)
         const allMemberDiscordIds = Array.from(allDiscordIds.values())
         if (allMemberDiscordIds.length > 0) {
           await addUsersToThread(newId, allMemberDiscordIds)
@@ -1160,6 +1215,7 @@ export async function createOrUpdateEventThread(data: {
     }
 
     // Add all current members to the thread (ensures new drivers are added)
+    await pinThreadStarterMessage(threadId, botToken)
     if (allMemberDiscordIds.length > 0) {
       await addUsersToThread(threadId, allMemberDiscordIds)
     }
@@ -1198,6 +1254,7 @@ export async function createEventDiscussionThread(options: {
       botToken,
     })
     if (exists) {
+      await pinThreadStarterMessage(options.existingThreadId, botToken)
       return options.existingThreadId
     }
     logger.warn(`⚠️ Event thread ${options.existingThreadId} missing; creating a replacement`)
@@ -1280,6 +1337,7 @@ export async function createEventDiscussionThread(options: {
   const threadId = thread.id ?? null
   if (threadId) {
     logger.info(`✅ Created event discussion thread: ${threadId} in ${threadParentId}`)
+    await pinThreadStarterMessage(threadId, botToken)
   }
   return threadId
 }
@@ -1482,6 +1540,7 @@ export async function createOrUpdateTeamThread(options: {
         // If upsert succeeded, the thread exists and was updated
         if (upsertResponse.ok) {
           logger.info(`✅ Reused existing team thread: ${options.existingThreadId}`)
+          await pinThreadStarterMessage(options.existingThreadId, botToken)
 
           // Add all current members to the thread (ensures new drivers are added)
           if (options.memberDiscordIds?.length) {
@@ -1568,6 +1627,7 @@ export async function createOrUpdateTeamThread(options: {
   const threadId = thread.id ?? null
   if (threadId) {
     logger.info(`✅ Created team thread: ${threadId} in ${threadParentId}`)
+    await pinThreadStarterMessage(threadId, botToken)
   }
   if (threadId && options.memberDiscordIds?.length) {
     await addUsersToThread(threadId, options.memberDiscordIds)

@@ -75,7 +75,7 @@ describe('discord thread recovery', () => {
     })
 
     expect(threadId).toBe('thread-123')
-    expect(fetch).toHaveBeenCalledTimes(7)
+    expect(fetch).toHaveBeenCalledTimes(8)
   })
 
   it('creates a replacement team thread when linked thread is missing', async () => {
@@ -101,7 +101,7 @@ describe('discord thread recovery', () => {
     })
 
     expect(threadId).toBe('new-thread-456')
-    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(fetch).toHaveBeenCalledTimes(3)
     expect(fetch).toHaveBeenNthCalledWith(
       2,
       expect.stringContaining('/channels/fake-channel-id/threads'),
@@ -143,12 +143,19 @@ describe('discord thread recovery', () => {
   })
 
   it('reuses existing event discussion thread when it still exists', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      statusText: 'OK',
-      json: async () => ({ parent_id: 'fake-channel-id' }),
-    } as Response)
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: async () => ({ parent_id: 'fake-channel-id' }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 204,
+        statusText: 'No Content',
+        text: async () => '',
+      } as Response)
 
     const threadId = await createEventDiscussionThread({
       eventName: 'GT3 Challenge',
@@ -157,7 +164,7 @@ describe('discord thread recovery', () => {
     })
 
     expect(threadId).toBe('shared-thread-123')
-    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(fetch).toHaveBeenCalledTimes(2)
     expect(fetch).toHaveBeenCalledWith(
       expect.stringContaining('/channels/shared-thread-123'),
       expect.objectContaining({
