@@ -1,4 +1,4 @@
-import pRetry from 'p-retry'
+import pRetry, { AbortError } from 'p-retry'
 import { appTitle, appLocale, appTimeZone } from './config'
 import {
   OnboardingNotificationData,
@@ -988,53 +988,38 @@ export async function addUsersToThread(threadId: string, discordUserIds: string[
 
 async function pinThreadStarterMessage(threadId: string, botToken: string): Promise<void> {
   try {
-    let response = await fetch(`${DISCORD_API_BASE}/channels/${threadId}/pins/${threadId}`, {
-      method: 'PUT',
-      headers: {
-        Authorization: `Bot ${botToken}`,
+    await pRetry(
+      async () => {
+        const starterPinResponse = await fetch(
+          `${DISCORD_API_BASE}/channels/${threadId}/pins/${threadId}`,
+          {
+            method: 'PUT',
+            headers: {
+              Authorization: `Bot ${botToken}`,
+            },
+          }
+        )
+        if (starterPinResponse.ok) return
+
+        const starterErrorText = await starterPinResponse.text()
+        if (starterPinResponse.status === 401 || starterPinResponse.status === 403) {
+          throw new AbortError(
+            `Pin permission/config error: ${starterPinResponse.status} ${starterPinResponse.statusText}`
+          )
+        }
+
+        throw new Error(
+          `Failed to pin thread starter for thread ${threadId}: ` +
+            `${starterPinResponse.status} ${starterPinResponse.statusText} (${starterErrorText})`
+        )
       },
-    })
-
-    if (response.ok) return
-
-    // In some thread types, starter message ID may not equal thread ID.
-    // Fall back to locating the bot-authored message and pinning that instead.
-    const fallbackMessageId = await findBotMessageInThread(threadId, botToken)
-    if (!fallbackMessageId || fallbackMessageId === threadId) {
-      const errorText = await response.text()
-      logger.warn(
-        {
-          threadId,
-          status: response.status,
-          statusText: response.statusText,
-          errorText,
-          fallbackMessageId,
-        },
-        'Failed to pin thread starter message'
-      )
-      return
-    }
-
-    response = await fetch(`${DISCORD_API_BASE}/channels/${threadId}/pins/${fallbackMessageId}`, {
-      method: 'PUT',
-      headers: {
-        Authorization: `Bot ${botToken}`,
-      },
-    })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      logger.warn(
-        {
-          threadId,
-          messageId: fallbackMessageId,
-          status: response.status,
-          statusText: response.statusText,
-          errorText,
-        },
-        'Failed to pin thread starter message'
-      )
-    }
+      {
+        retries: 4,
+        minTimeout: 250,
+        maxTimeout: 1200,
+        factor: 2,
+      }
+    )
   } catch (error) {
     logger.warn({ err: error, threadId }, 'Failed to pin thread starter message')
   }
