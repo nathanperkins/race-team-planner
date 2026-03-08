@@ -437,7 +437,7 @@ describe('EventsClient LIVE badge', () => {
 // ---------------------------------------------------------------------------
 
 describe('EventsClient race pill completed state', () => {
-  it('applies completed style to race pills whose start time is in the past', () => {
+  it('applies completed style to race pills whose end time is in the past', () => {
     const weeks = [
       makeWeek({
         events: [
@@ -445,7 +445,7 @@ describe('EventsClient race pill completed state', () => {
             races: [
               makeRace({
                 startTime: new Date('2026-01-01T06:00:00Z'),
-                endTime: new Date('2026-01-01T08:00:00Z'),
+                endTime: new Date('2026-01-01T07:00:00Z'),
               }),
             ],
           }),
@@ -464,6 +464,37 @@ describe('EventsClient race pill completed state', () => {
     )
 
     expect(container.querySelector('[class*="racePillCompleted"]')).toBeInTheDocument()
+  })
+
+  it('applies live style to race pills when race has started but not ended', () => {
+    const now = new Date()
+    const weeks = [
+      makeWeek({
+        events: [
+          makeEvent({
+            races: [
+              makeRace({
+                startTime: new Date(now.getTime() - 60_000),
+                endTime: new Date(now.getTime() + 60_000),
+              }),
+            ],
+          }),
+        ],
+      }),
+    ]
+
+    const { container } = render(
+      <EventsClient
+        weeks={weeks}
+        isAdmin={false}
+        userId="user-1"
+        userLicenseLevel={null}
+        teams={[]}
+      />
+    )
+
+    expect(container.querySelector('[class*="racePillLive"]')).toBeInTheDocument()
+    expect(container.querySelector('[class*="racePillCompleted"]')).not.toBeInTheDocument()
   })
 
   it('does not apply completed style to future race pills', () => {

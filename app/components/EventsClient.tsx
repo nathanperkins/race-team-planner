@@ -281,12 +281,19 @@ export default function EventsClient({
 
                       <div className={styles.racePills}>
                         {event.races.map((race) => {
-                          const isRaceStarted = now > new Date(race.startTime)
+                          const raceStart = new Date(race.startTime)
+                          const raceEnd = new Date(race.endTime)
+                          const isRaceCompleted = now > raceEnd
+                          const isRaceLive = now >= raceStart && now <= raceEnd
                           return (
                             <div
                               key={race.id}
                               className={`${styles.racePill} ${
-                                isRaceStarted ? styles.racePillCompleted : ''
+                                isRaceCompleted
+                                  ? styles.racePillCompleted
+                                  : isRaceLive
+                                    ? styles.racePillLive
+                                    : ''
                               }`}
                             >
                               {new Date(race.startTime).toLocaleDateString('en-US', {

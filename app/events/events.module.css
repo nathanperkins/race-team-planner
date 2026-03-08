@@ -428,6 +428,13 @@
   border-color: rgba(255, 255, 255, 0.08);
 }
 
+.racePillLive {
+  color: #6ee7b7;
+  background: rgba(16, 185, 129, 0.18);
+  border-color: rgba(16, 185, 129, 0.45);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.15);
+}
+
 .racePillCompleted::after {
   content: '';
   position: absolute;
