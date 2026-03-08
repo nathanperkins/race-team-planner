@@ -13,7 +13,6 @@ import {
   buildTeamsAssignedChatNotification,
   buildTeamsAssignedEmbeds,
   collectDiscordIds,
-  formatISODate,
   normalizeSeriesName,
   parseDiscordErrorBody,
 } from './discord-utils'
@@ -27,6 +26,24 @@ const DISCORD_RETRY_CONFIG = { retries: 3, minTimeout: 100, maxTimeout: 2000, fa
 
 /** Auto-archive duration for Discord threads in minutes (1 day = 1440). */
 const THREAD_AUTO_ARCHIVE_DURATION = 1440
+
+function compactTeamNameForThread(teamName: string): string {
+  const normalized = teamName.trim().replace(/\s+/g, ' ')
+  if (normalized.length <= 85) return normalized
+  return `${normalized.slice(0, 82).trim()}...`
+}
+
+function resolveTeamThreadLabel(options: {
+  teamName: string
+  teamAlias?: string | null
+  teamOfficialName?: string | null
+}): string {
+  const alias = options.teamAlias?.trim()
+  if (alias) return compactTeamNameForThread(alias)
+
+  const officialName = options.teamOfficialName?.trim() || options.teamName.trim()
+  return compactTeamNameForThread(officialName)
+}
 
 async function getDiscordThreadParentInfo(options: { threadId: string; botToken: string }) {
   return pRetry(async () => {
@@ -1010,11 +1027,23 @@ export async function createOrUpdateEventThread(data: {
   const threadParentId = forumId || channelId
 
   try {
-    const threadName = buildEventThreadName(
-      data.eventName,
-      data.timeslots[0]?.raceStartTime ?? new Date(),
-      { locale: appLocale, timeZone: appTimeZone }
-    )
+    const raceStartTimes = data.timeslots
+      .map((slot) => slot.raceStartTime)
+      .filter((value): value is Date => value instanceof Date)
+    const firstStartTime =
+      raceStartTimes.length > 0
+        ? new Date(Math.min(...raceStartTimes.map((value) => value.getTime())))
+        : new Date()
+    const lastStartTime =
+      raceStartTimes.length > 0
+        ? new Date(Math.max(...raceStartTimes.map((value) => value.getTime())))
+        : firstStartTime
+
+    const threadName = buildEventThreadName(data.eventName, firstStartTime, {
+      locale: appLocale,
+      timeZone: appTimeZone,
+      lastStartTime,
+    })
     const allDiscordIds = collectDiscordIds(data.timeslots)
     const embeds = buildTeamsAssignedEmbeds(data, appTitle, {
       locale: appLocale,
@@ -1257,6 +1286,8 @@ export async function createEventDiscussionThread(options: {
 
 export async function createOrUpdateTeamThread(options: {
   teamName: string
+  teamAlias?: string | null
+  teamOfficialName?: string | null
   eventName: string
   raceStartTime: Date
   existingThreadId?: string | null
@@ -1283,6 +1314,11 @@ export async function createOrUpdateTeamThread(options: {
   }
 
   const threadParentId = forumId || channelId
+  const teamThreadLabel = resolveTeamThreadLabel({
+    teamName: options.teamName,
+    teamAlias: options.teamAlias,
+    teamOfficialName: options.teamOfficialName,
+  })
   let createdByName = options.actorName
   const editedByName = options.actorName
 
@@ -1328,14 +1364,14 @@ export async function createOrUpdateTeamThread(options: {
 
   // Build the team thread embed
   const buildTeamEmbed = () => ({
-    title: `🏎️ Team Thread: ${options.teamName}`,
-    description: `Official preparation and coordination thread for **${options.teamName}** in **${options.eventName}**.`,
+    title: `🏎️ Team Thread: ${teamThreadLabel}`,
+    description: `Official preparation and coordination thread for **${teamThreadLabel}** in **${options.eventName}**.`,
     color: 0x5865f2, // Blurple
     url: options.raceUrl,
     fields: [
       {
         name: '🏎️ Team',
-        value: options.teamName,
+        value: teamThreadLabel,
         inline: true,
       },
       {
@@ -1480,17 +1516,17 @@ export async function createOrUpdateTeamThread(options: {
   }
 
   const cleanName = normalizeSeriesName(options.eventName)
-  const dateLabel = formatISODate(options.raceStartTime, {
-    locale: appLocale,
+  const dateLabel = new Intl.DateTimeFormat(appLocale, {
+    month: 'numeric',
+    day: 'numeric',
     timeZone: appTimeZone,
-  })
+  }).format(options.raceStartTime)
   const timeLabel = new Intl.DateTimeFormat(appLocale, {
     hour: 'numeric',
     minute: '2-digit',
-    timeZoneName: 'short',
     timeZone: appTimeZone,
   }).format(options.raceStartTime)
-  const threadName = `${options.teamName} • ${cleanName} (${dateLabel} - ${timeLabel})`
+  const threadName = `${teamThreadLabel} • ${cleanName} (${dateLabel} ${timeLabel})`
 
   const threadResponse = await fetch(`${DISCORD_API_BASE}/channels/${threadParentId}/threads`, {
     method: 'POST',
@@ -1599,6 +1635,8 @@ export async function refreshAllTeamThreads(
     try {
       await createOrUpdateTeamThread({
         teamName: team.alias || team.name,
+        teamAlias: team.alias,
+        teamOfficialName: team.name,
         eventName: event.name,
         raceStartTime: team.raceStartTime,
         existingThreadId: threadId,

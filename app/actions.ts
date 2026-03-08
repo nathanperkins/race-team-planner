@@ -1886,6 +1886,8 @@ function buildTeamsFromRegistrations(
     string,
     {
       name: string
+      alias: string | null
+      officialName: string
       members: Array<{
         name: string
         carClass: string
@@ -1921,6 +1923,8 @@ function buildTeamsFromRegistrations(
     if (reg.teamId && reg.team) {
       const existing = teamsMap.get(reg.teamId) || {
         name: reg.team.alias || reg.team.name,
+        alias: reg.team.alias ?? null,
+        officialName: reg.team.name,
         members: [],
       }
       existing.members.push({
@@ -2436,6 +2440,8 @@ export async function sendTeamsAssignmentNotificationWithData(
           const existingThreadId = teamThreads[teamId]
           const threadId = await createOrUpdateTeamThread({
             teamName: team.name,
+            teamAlias: team.alias,
+            teamOfficialName: team.officialName,
             eventName: event.name,
             raceStartTime: race.startTime,
             existingThreadId,

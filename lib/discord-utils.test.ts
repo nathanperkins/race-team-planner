@@ -612,18 +612,27 @@ describe('Discord Utils', () => {
   })
 
   describe('buildEventThreadName', () => {
-    it('builds thread name with normalized series and ISO date format', () => {
+    it('builds thread name with normalized series and month/day date format', () => {
       const name = buildEventThreadName(
         'GT3 Fanatic Series - 2024 Season 1',
         new Date('2026-02-11T20:00:00Z'),
         { locale: 'en-US', timeZone: 'America/Los_Angeles' }
       )
-      expect(name).toBe('GT3 Fanatic Series (2026-02-11)')
+      expect(name).toBe('GT3 Fanatic Series (2/11)')
+    })
+
+    it('builds a date range when lastStartTime is provided', () => {
+      const name = buildEventThreadName('IMSA Endurance', new Date('2026-03-20T18:00:00Z'), {
+        locale: 'en-US',
+        timeZone: 'America/Los_Angeles',
+        lastStartTime: new Date('2026-03-23T18:00:00Z'),
+      })
+      expect(name).toBe('IMSA Endurance (3/20-3/23)')
     })
 
     it('uses defaults for locale and timezone', () => {
       const name = buildEventThreadName('IMSA', new Date('2026-02-11T20:00:00Z'))
-      expect(name).toMatch(/IMSA \(\d{4}-\d{2}-\d{2}\)/)
+      expect(name).toMatch(/IMSA \(\d{1,2}\/\d{1,2}\)/)
     })
   })
 

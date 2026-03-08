@@ -346,14 +346,33 @@ export function formatISODate(
   return formatter.format(date)
 }
 
+/** Format date as M/D (no year) using locale/timezone. */
+export function formatMonthDay(
+  date: Date,
+  options?: { locale?: string; timeZone?: string }
+): string {
+  const locale = options?.locale ?? 'en-US'
+  const timeZone = options?.timeZone ?? 'America/Los_Angeles'
+  const formatter = new Intl.DateTimeFormat(locale, {
+    month: 'numeric',
+    day: 'numeric',
+    timeZone,
+  })
+  return formatter.format(date)
+}
+
 /** Build a Discord thread name for an event (date only, no specific time). */
 export function buildEventThreadName(
   eventName: string,
   firstStartTime: Date,
-  options?: { locale?: string; timeZone?: string }
+  options?: { locale?: string; timeZone?: string; lastStartTime?: Date }
 ): string {
   const cleanName = normalizeSeriesName(eventName)
-  const dateLabel = formatISODate(firstStartTime, options)
+  const startDateLabel = formatMonthDay(firstStartTime, options)
+  const endStartTime = options?.lastStartTime ?? firstStartTime
+  const endDateLabel = formatMonthDay(endStartTime, options)
+  const dateLabel =
+    startDateLabel === endDateLabel ? startDateLabel : `${startDateLabel}-${endDateLabel}`
   return `${cleanName} (${dateLabel})`
 }
 
