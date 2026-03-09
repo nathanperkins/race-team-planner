@@ -188,16 +188,19 @@ export default function QuickRegistration({
             <div className={styles.warningHeader}>
               <AlertTriangle size={24} color="#f59e0b" />
               <h3>
-                {warningType === 'team' ? 'Not on an iRacing Team Roster' : 'Ineligible for Race'}
+                {warningType === 'team' ? 'Missing from iRacing Team' : 'Ineligible for Race'}
               </h3>
             </div>
             <div className={styles.warningBody}>
               {warningType === 'team' ? (
-                <p>
-                  You are not currently listed on any synced iRacing team roster. You can still
-                  register, but you may not be able to join a team race entry unless your iRacing
-                  team membership is updated before race registration opens.
-                </p>
+                <>
+                  <p>
+                    You are not currently listed in some or all of the community iRacing teams. You
+                    can still register for races, but your team would not be able to register you in
+                    iRacing when the event registration opens, unless this is resolved.
+                  </p>
+                  <p>Please contact an admin to be added to the team.</p>
+                </>
               ) : (
                 <p>
                   You do not meet the license requirements for this race. You can still register,

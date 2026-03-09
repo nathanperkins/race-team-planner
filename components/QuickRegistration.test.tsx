@@ -212,10 +212,11 @@ describe('QuickRegistration', () => {
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
-    expect(screen.getByText('Not on an iRacing Team Roster')).toBeInTheDocument()
+    expect(screen.getByText('Missing from iRacing Team')).toBeInTheDocument()
     expect(
-      screen.getByText(/not currently listed on any synced iRacing team roster/i)
+      screen.getByText(/not currently listed in some or all of the community/i)
     ).toBeInTheDocument()
+    expect(screen.getByText(/please contact an admin to be added to the team/i)).toBeInTheDocument()
   })
 
   it('does not show iRacing team warning when user is on a synced iRacing team', async () => {
@@ -233,7 +234,7 @@ describe('QuickRegistration', () => {
     await user.click(screen.getByRole('button', { name: /Register/i }))
     await user.click(screen.getByRole('button', { name: 'GT3' }))
 
-    expect(screen.queryByText('Not on an iRacing Team Roster')).not.toBeInTheDocument()
+    expect(screen.queryByText('Missing from iRacing Team')).not.toBeInTheDocument()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })
