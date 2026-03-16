@@ -2,6 +2,36 @@
 
 The most notable changes to this project are documented here.
 
+## Version 1.4 {#version-1.4}
+
+**Released on <time datetime="2026-03-15">March 15, 2026</time>**
+
+[8 issues completed][Milestone 4] by **[Nathan]** and **[Steven]**.
+
+### Highlights
+
+Version 1.4 focuses on better UI feedback, improved team picker interactions, and refined Discord notifications. Key updates include standardizing alerts across the app, bringing team creation inline for the picker, and handling edge cases in multi-timeslot event registrations more gracefully.
+
+### User Experience
+
+- **Standardized alerts and popups** - Standardized alerts and popups style and sizing across the app for visual consistency ([#157](https://github.com/nathanperkins/race-team-planner/issues/157) by [Steven])
+- **Loading indicators** - Added a loading indicator when an action takes too long, providing better visual feedback during background processes ([#96](https://github.com/nathanperkins/race-team-planner/issues/96) by [Nathan])
+
+### Discord Notifications
+
+- **Pinned thread posts** - The main post within event and team discussion threads is now pinned automatically for easy access ([#155](https://github.com/nathanperkins/race-team-planner/issues/155) by [Steven])
+- **Team aliases in titles** - Changed team thread titles to use the team alias instead of the full team name, making them cleaner and easier to read ([#158](https://github.com/nathanperkins/race-team-planner/issues/158) by [Steven])
+- **Better distinct timeslot registrations** - Roster change notifications now make it clear when a racer drops one registration but is still registered in another timeslot in the same event ([#147](https://github.com/nathanperkins/race-team-planner/issues/147) by [Nathan])
+
+### Events
+
+- **Live event highlighting** - Event timeslots are now visually highlighted when live, and crossed out only after their end time has passed ([#153](https://github.com/nathanperkins/race-team-planner/issues/153) by [Steven])
+
+### Team Picker
+
+- **Inline team creation** - Using the "create team" feature within the team picker now updates correctly in place ([#50](https://github.com/nathanperkins/race-team-planner/issues/50) by [Steven])
+- **Missing registration warnings** - The UI will now block or warn racers that aren't assigned to the necessary iRacing teams based on the parameters of the event ([#34](https://github.com/nathanperkins/race-team-planner/issues/34) by [Steven])
+
 ## Version 1.3 {#version-1.3}
 
 **Released on <time datetime="2026-03-02">March 2, 2026</time>**
@@ -227,5 +257,6 @@ Thanks to our testers for these suggestions and bug reports!
 [Milestone 1]: https://github.com/nathanperkins/race-team-planner/issues?q=milestone%3A1.1+is%3Aclosed+reason%3Acompleted
 [Milestone 2]: https://github.com/nathanperkins/race-team-planner/issues?q=milestone%3A1.2%20is%3Aclosed%20reason%3Acompleted%20is%3Aissue
 [Milestone 3]: https://github.com/nathanperkins/race-team-planner/issues?q=milestone%3A1.3%20is%3Aclosed%20reason%3Acompleted
+[Milestone 4]: https://github.com/nathanperkins/race-team-planner/issues?q=milestone%3A1.4%20is%3Aclosed%20reason%3Acompleted
 [Feedback 1]: https://github.com/nathanperkins/race-team-planner/issues?q=milestone%3A1.1%20is%3Aclosed%20reason%3Acompleted%20label%3Afeedback
 [Feedback 2]: https://github.com/nathanperkins/race-team-planner/issues?q=milestone%3A1.2%20is%3Aclosed%20reason%3Acompleted%20label%3Afeedback
