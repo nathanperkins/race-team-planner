@@ -670,10 +670,7 @@ describe('Discord Utils', () => {
         ],
       }
 
-      const embeds = buildTeamsAssignedEmbeds(data, 'Test App', {
-        locale: 'en-US',
-        timeZone: 'UTC',
-      })
+      const embeds = buildTeamsAssignedEmbeds(data, 'Test App')
 
       expect(embeds).toHaveLength(1)
       const embed = embeds[0]
@@ -803,10 +800,7 @@ describe('Discord Utils', () => {
         ],
       }
 
-      const embeds = buildTeamsAssignedEmbeds(data, 'Test App', {
-        locale: 'en-US',
-        timeZone: 'UTC',
-      })
+      const embeds = buildTeamsAssignedEmbeds(data, 'Test App')
 
       expect(embeds[0].description).toContain('⏰ **<t:1770840000:F>**')
       expect(embeds[0].description).toContain('⏰ **<t:1770847200:F>**')
@@ -841,10 +835,7 @@ describe('Discord Utils', () => {
         ],
       }
 
-      const embeds = buildTeamsAssignedEmbeds(data, 'Test App', {
-        locale: 'en-US',
-        timeZone: 'UTC',
-      })
+      const embeds = buildTeamsAssignedEmbeds(data, 'Test App')
 
       const desc = embeds[0].description
 

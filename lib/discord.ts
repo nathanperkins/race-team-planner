@@ -1084,10 +1084,7 @@ export async function createOrUpdateEventThread(data: {
       lastStartTime,
     })
     const allDiscordIds = collectDiscordIds(data.timeslots)
-    const embeds = buildTeamsAssignedEmbeds(data, appTitle, {
-      locale: appLocale,
-      timeZone: appTimeZone,
-    })
+    const embeds = buildTeamsAssignedEmbeds(data, appTitle)
 
     let threadId = data.threadId ?? null
     if (threadId) {

@@ -378,14 +378,7 @@ export function formatRaceTimesValue(timeslots: RaceTimeslotData[]): string {
 }
 
 /** Build embeds for teams assigned notification. */
-export function buildTeamsAssignedEmbeds(
-  data: TeamsAssignedNotificationData,
-  appTitle: string,
-  options?: { locale?: string; timeZone?: string }
-) {
-  const locale = options?.locale ?? 'en-US'
-  const timeZone = options?.timeZone ?? 'America/Los_Angeles'
-
+export function buildTeamsAssignedEmbeds(data: TeamsAssignedNotificationData, appTitle: string) {
   const carClasses = [...data.carClasses].sort()
 
   // Build event info header
