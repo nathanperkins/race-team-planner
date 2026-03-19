@@ -70,6 +70,7 @@ describe('admin actions', () => {
       expect(createArgs.data.races.create).toHaveLength(2)
       expect(createArgs.data.races.create[0].startTime.toISOString()).toContain('2027-06-01T')
       expect(createArgs.data.races.create[1].startTime.toISOString()).toContain('2027-06-02T')
+      expect(createArgs.data.raceIds).toBeUndefined()
     })
 
     it('returns error if missing track, startTimes, or car classes', async () => {
@@ -112,7 +113,9 @@ describe('admin actions', () => {
       const result = await updateCustomEvent({ message: '' }, formData)
       expect(result).toEqual({ message: 'Success' })
 
-      expect(prisma.event.update).toHaveBeenCalled()
+      const updateArgs = vi.mocked(prisma.event.update).mock.calls[0][0]
+      expect(updateArgs.data.name).toBe('Updated Sebring')
+      expect(updateArgs.data.raceIds).toBeUndefined()
       expect(prisma.race.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'race-1' },

@@ -92,10 +92,17 @@ export async function createCustomEvent(prevState: State, formData: FormData): P
     // Create the event with a single race and custom car classes
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const eventData: any = {
-      ...data,
-      id: undefined, // Let DB generate ID for new events
-      carClasses: undefined, // Handled separately via connect
-      startTimes: undefined, // Handled separately under races
+      name: data.name,
+      track: data.track,
+      trackConfig: data.trackConfig,
+      description: data.description,
+      durationMins: data.durationMins,
+      licenseGroup: data.licenseGroup,
+      tempValue: data.tempValue,
+      tempUnits: data.tempUnits,
+      relHumidity: data.relHumidity,
+      skies: data.skies,
+      precipChance: data.precipChance,
       startTime: earliestStart,
       endTime: latestEnd,
       races: {
@@ -230,11 +237,17 @@ export async function updateCustomEvent(prevState: State, formData: FormData): P
     await prisma.$transaction(async (tx: any) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const updateData: any = {
-        ...data,
-        id: undefined, // Don't try to update the ID
-        carClasses: undefined,
-        startTimes: undefined,
-        raceIds: undefined,
+        name: data.name,
+        track: data.track,
+        trackConfig: data.trackConfig,
+        description: data.description,
+        durationMins: data.durationMins,
+        licenseGroup: data.licenseGroup,
+        tempValue: data.tempValue,
+        tempUnits: data.tempUnits,
+        relHumidity: data.relHumidity,
+        skies: data.skies,
+        precipChance: data.precipChance,
         startTime: earliestStart,
         endTime: latestEnd,
       }
