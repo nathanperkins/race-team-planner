@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import TriggerReportButton from './TriggerReportButton'
@@ -64,9 +64,7 @@ describe('TriggerReportButton', () => {
     render(<TriggerReportButton />)
     await user.click(screen.getByRole('button', { name: /send weekly report/i }))
 
-    await waitFor(() => {
-      expect(screen.getByText(/sent successfully/i)).toBeInTheDocument()
-    })
+    expect(await screen.findByText(/sent successfully/i)).toBeInTheDocument()
     expect(screen.getByText('Sent to #general.')).toBeInTheDocument()
   })
 
@@ -80,9 +78,7 @@ describe('TriggerReportButton', () => {
     render(<TriggerReportButton />)
     await user.click(screen.getByRole('button', { name: /send weekly report/i }))
 
-    await waitFor(() => {
-      expect(screen.getByText(/sending failed/i)).toBeInTheDocument()
-    })
+    expect(await screen.findByText(/sending failed/i)).toBeInTheDocument()
     expect(screen.getByText(/error: no channel configured/i)).toBeInTheDocument()
   })
 
@@ -93,9 +89,7 @@ describe('TriggerReportButton', () => {
     render(<TriggerReportButton />)
     await user.click(screen.getByRole('button', { name: /send weekly report/i }))
 
-    await waitFor(() => {
-      expect(screen.getByText(/sending failed/i)).toBeInTheDocument()
-    })
+    expect(await screen.findByText(/sending failed/i)).toBeInTheDocument()
     expect(screen.getByText(/unexpected error/i)).toBeInTheDocument()
   })
 
@@ -109,9 +103,7 @@ describe('TriggerReportButton', () => {
     render(<TriggerReportButton />)
     await user.click(screen.getByRole('button', { name: /send weekly report/i }))
 
-    await waitFor(() => {
-      expect(screen.getByText(/sent successfully/i)).toBeInTheDocument()
-    })
+    expect(await screen.findByText(/sent successfully/i)).toBeInTheDocument()
 
     await user.click(screen.getByText('Close'))
 

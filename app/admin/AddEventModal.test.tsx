@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import AddEventModal from './AddEventModal'
@@ -99,8 +99,6 @@ describe('AddEventModal', () => {
     await fillRequiredFields(user)
     await user.click(screen.getByRole('button', { name: /create event/i }))
 
-    await waitFor(() => {
-      expect(screen.getByText('Event name already exists')).toBeInTheDocument()
-    })
+    expect(await screen.findByText('Event name already exists')).toBeInTheDocument()
   })
 })

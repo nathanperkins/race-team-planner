@@ -120,8 +120,6 @@ describe('EditEventModal', () => {
 
     await user.click(screen.getByRole('button', { name: /update event/i }))
 
-    await waitFor(() => {
-      expect(screen.getByText('Failed to update event')).toBeInTheDocument()
-    })
+    expect(await screen.findByText('Failed to update event')).toBeInTheDocument()
   })
 })

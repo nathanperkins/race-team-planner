@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import React from 'react'
@@ -70,9 +70,7 @@ describe('BackfillNicknamesButton', () => {
     render(<BackfillNicknamesButton />)
     await user.click(screen.getByRole('button', { name: /backfill discord nicknames/i }))
 
-    await waitFor(() => {
-      expect(screen.getByText(/backfill complete/i)).toBeInTheDocument()
-    })
+    expect(await screen.findByText(/backfill complete/i)).toBeInTheDocument()
     expect(screen.getByText(/Done. Updated: 3/)).toBeInTheDocument()
   })
 
@@ -86,9 +84,7 @@ describe('BackfillNicknamesButton', () => {
     render(<BackfillNicknamesButton />)
     await user.click(screen.getByRole('button', { name: /backfill discord nicknames/i }))
 
-    await waitFor(() => {
-      expect(screen.getByText(/backfill failed/i)).toBeInTheDocument()
-    })
+    expect(await screen.findByText(/backfill failed/i)).toBeInTheDocument()
     expect(screen.getByText(/error: unauthorized/i)).toBeInTheDocument()
   })
 
@@ -99,9 +95,7 @@ describe('BackfillNicknamesButton', () => {
     render(<BackfillNicknamesButton />)
     await user.click(screen.getByRole('button', { name: /backfill discord nicknames/i }))
 
-    await waitFor(() => {
-      expect(screen.getByText(/backfill failed/i)).toBeInTheDocument()
-    })
+    expect(await screen.findByText(/backfill failed/i)).toBeInTheDocument()
     expect(screen.getByText(/unexpected error/i)).toBeInTheDocument()
   })
 
@@ -115,9 +109,7 @@ describe('BackfillNicknamesButton', () => {
     render(<BackfillNicknamesButton />)
     await user.click(screen.getByRole('button', { name: /backfill discord nicknames/i }))
 
-    await waitFor(() => {
-      expect(screen.getByText(/backfill complete/i)).toBeInTheDocument()
-    })
+    expect(await screen.findByText(/backfill complete/i)).toBeInTheDocument()
 
     // Use getByText to avoid ambiguity with the X icon button (also aria-label="Close")
     await user.click(screen.getByText('Close'))
