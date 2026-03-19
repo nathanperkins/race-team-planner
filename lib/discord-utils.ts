@@ -283,12 +283,8 @@ export function formatMultiTimeslotTeamLines(
   const lines: string[] = []
 
   for (const slot of timeslots) {
-    const timeLabel = new Intl.DateTimeFormat(locale, {
-      hour: 'numeric',
-      minute: '2-digit',
-      timeZoneName: 'short',
-      timeZone,
-    }).format(slot.raceStartTime)
+    const unix = Math.floor(slot.raceStartTime.getTime() / 1000)
+    const timeLabel = `<t:${unix}:F>`
 
     lines.push(`━━━━━━━━━━━━━━━━━━━━`)
     lines.push(`⏰ **${timeLabel}**`)

@@ -704,11 +704,11 @@ describe('Discord Utils', () => {
 
       // Check that description contains team sections with new time dividers
       expect(embed.description).toContain('━━━━━━━━━━━━━━━━━━━━')
-      expect(embed.description).toContain('⏰ **8:00 PM UTC**')
+      expect(embed.description).toContain('⏰ **<t:1770840000:F>**')
       expect(embed.description).toContain('**Team Red**')
       expect(embed.description).toContain('• GT3')
       expect(embed.description).toContain('• 2500 SOF')
-      expect(embed.description).toContain('⏰ **10:00 PM UTC**')
+      expect(embed.description).toContain('⏰ **<t:1770847200:F>**')
       expect(embed.description).toContain('**Team Blue**')
 
       // Verify no fields are used (event info is in description now)
@@ -814,8 +814,8 @@ describe('Discord Utils', () => {
         timeZone: 'UTC',
       })
 
-      expect(embeds[0].description).toContain('⏰ **8:00 PM UTC**')
-      expect(embeds[0].description).toContain('⏰ **10:00 PM UTC**')
+      expect(embeds[0].description).toContain('⏰ **<t:1770840000:F>**')
+      expect(embeds[0].description).toContain('⏰ **<t:1770847200:F>**')
       expect(embeds[0].description).toContain('_No teams or drivers assigned yet._')
     })
 
@@ -855,15 +855,15 @@ describe('Discord Utils', () => {
       const desc = embeds[0].description
 
       // First timeslot has teams
-      expect(desc).toContain('⏰ **8:00 PM UTC**')
+      expect(desc).toContain('⏰ **<t:1770840000:F>**')
       expect(desc).toContain('**Team One**')
 
       // Second timeslot is empty - should show message
-      expect(desc).toContain('⏰ **10:00 PM UTC**')
+      expect(desc).toContain('⏰ **<t:1770847200:F>**')
       expect(desc).toContain('_No teams or drivers assigned yet._')
 
       // Third timeslot has unassigned drivers
-      expect(desc).toContain('⏰ **12:00 AM UTC**')
+      expect(desc).toContain('⏰ **<t:1770854400:F>**')
       expect(desc).toContain('**Unassigned - GT3**')
       expect(desc).toContain('• Bob')
     })
