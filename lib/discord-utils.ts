@@ -278,8 +278,6 @@ export function formatMultiTimeslotTeamLines(
   timeslots: RaceTimeslotData[],
   options?: { locale?: string; timeZone?: string }
 ) {
-  const locale = options?.locale ?? 'en-US'
-  const timeZone = options?.timeZone ?? 'America/Los_Angeles'
   const lines: string[] = []
 
   for (const slot of timeslots) {
