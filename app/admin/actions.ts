@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { createLogger } from '@/lib/logger'
+import { validateCustomEventForm } from './customEventSchema'
 
 const logger = createLogger('admin-actions')
 
@@ -19,40 +20,23 @@ export async function createCustomEvent(prevState: State, formData: FormData): P
       return { message: 'Unauthorized. Admin access required.' }
     }
 
-    const name = formData.get('name') as string
-    const track = formData.get('track') as string
-    const trackConfig = formData.get('trackConfig') as string
-    const description = formData.get('description') as string
-    const startTimes = formData.getAll('startTimes') as string[]
-    const durationMins = formData.get('durationMins') as string
-    const licenseGroup = formData.get('licenseGroup') as string
-    const tempValue = formData.get('tempValue') as string
-    const tempUnits = formData.get('tempUnits') as string
-    const relHumidity = formData.get('relHumidity') as string
-    const skies = formData.get('skies') as string
-    const precipChance = formData.get('precipChance') as string
-    const carClasses = formData.get('carClasses') as string
-
-    if (!name || !track || startTimes.length === 0 || startTimes.some((st) => !st) || !carClasses) {
-      return { message: 'Name, track, car classes, and at least one start time are required.' }
+    const validation = validateCustomEventForm(formData)
+    if (!validation.success) {
+      return { message: validation.error }
     }
 
-    const startDates = startTimes.map((st) => new Date(st))
-
-    if (startDates.some((sd) => isNaN(sd.getTime()))) {
-      return { message: 'Invalid date format in one of the start times.' }
-    }
+    const { data, startDates } = validation
 
     // Sort start dates to find the earliest event start and latest event end
     startDates.sort((a, b) => a.getTime() - b.getTime())
     const earliestStart = startDates[0]
 
-    const duration = durationMins ? parseInt(durationMins) : 60
+    const duration = data.durationMins ? data.durationMins : 60
     const latestEnd = new Date(startDates[startDates.length - 1].getTime() + duration * 60000)
 
     // Parse car classes from comma-separated input
-    const customCarClasses = carClasses
-      ? carClasses
+    const customCarClasses = data.carClasses
+      ? data.carClasses
           .split(',')
           .map((cc) => cc.trim())
           .filter((cc) => cc.length > 0)
@@ -108,19 +92,12 @@ export async function createCustomEvent(prevState: State, formData: FormData): P
     // Create the event with a single race and custom car classes
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const eventData: any = {
-      name,
-      track,
-      trackConfig: trackConfig || null,
-      description: description || null,
+      ...data,
+      id: undefined, // Let DB generate ID for new events
+      carClasses: undefined, // Handled separately via connect
+      startTimes: undefined, // Handled separately under races
       startTime: earliestStart,
       endTime: latestEnd,
-      durationMins: durationMins ? parseInt(durationMins) : null,
-      licenseGroup: licenseGroup ? parseInt(licenseGroup) : null,
-      tempValue: tempValue ? parseInt(tempValue) : null,
-      tempUnits: tempUnits ? parseInt(tempUnits) : null,
-      relHumidity: relHumidity ? parseInt(relHumidity) : null,
-      skies: skies ? parseInt(skies) : null,
-      precipChance: precipChance ? parseInt(precipChance) : null,
       races: {
         create: startDates.map((sd) => ({
           startTime: sd,
@@ -161,30 +138,12 @@ export async function updateCustomEvent(prevState: State, formData: FormData): P
     const eventId = formData.get('eventId') as string
     if (!eventId) return { message: 'Event ID is required.' }
 
-    const name = formData.get('name') as string
-    const track = formData.get('track') as string
-    const trackConfig = formData.get('trackConfig') as string
-    const description = formData.get('description') as string
-    const startTimes = formData.getAll('startTimes') as string[]
-    const raceIds = formData.getAll('raceIds') as string[]
-    const durationMins = formData.get('durationMins') as string
-    const licenseGroup = formData.get('licenseGroup') as string
-    const tempValue = formData.get('tempValue') as string
-    const tempUnits = formData.get('tempUnits') as string
-    const relHumidity = formData.get('relHumidity') as string
-    const skies = formData.get('skies') as string
-    const precipChance = formData.get('precipChance') as string
-    const carClasses = formData.get('carClasses') as string
-
-    if (!name || !track || startTimes.length === 0 || startTimes.some((st) => !st) || !carClasses) {
-      return { message: 'Name, track, car classes, and at least one start time are required.' }
+    const validation = validateCustomEventForm(formData)
+    if (!validation.success) {
+      return { message: validation.error }
     }
 
-    const startDates = startTimes.map((st) => new Date(st))
-
-    if (startDates.some((sd) => isNaN(sd.getTime()))) {
-      return { message: 'Invalid date format.' }
-    }
+    const { data, startDates } = validation
 
     // Sort start dates to find the earliest event start and latest event end
     const sortedStartDates = [...startDates].sort((a, b) => a.getTime() - b.getTime())
@@ -202,14 +161,14 @@ export async function updateCustomEvent(prevState: State, formData: FormData): P
     }
 
     // Calculate end time based on duration (default to 1 hour if not provided)
-    const duration = durationMins ? parseInt(durationMins) : 60
+    const duration = data.durationMins ? data.durationMins : 60
     const latestEnd = new Date(
       sortedStartDates[sortedStartDates.length - 1].getTime() + duration * 60000
     )
 
     // Parse car classes from comma-separated input
-    const customCarClasses = carClasses
-      ? carClasses
+    const customCarClasses = data.carClasses
+      ? data.carClasses
           .split(',')
           .map((cc) => cc.trim())
           .filter((cc) => cc.length > 0)
@@ -271,19 +230,13 @@ export async function updateCustomEvent(prevState: State, formData: FormData): P
     await prisma.$transaction(async (tx: any) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const updateData: any = {
-        name,
-        track,
-        trackConfig: trackConfig || null,
-        description: description || null,
+        ...data,
+        id: undefined, // Don't try to update the ID
+        carClasses: undefined,
+        startTimes: undefined,
+        raceIds: undefined,
         startTime: earliestStart,
         endTime: latestEnd,
-        durationMins: durationMins ? parseInt(durationMins) : null,
-        licenseGroup: licenseGroup ? parseInt(licenseGroup) : null,
-        tempValue: tempValue ? parseInt(tempValue) : null,
-        tempUnits: tempUnits ? parseInt(tempUnits) : null,
-        relHumidity: relHumidity ? parseInt(relHumidity) : null,
-        skies: skies ? parseInt(skies) : null,
-        precipChance: precipChance ? parseInt(precipChance) : null,
       }
 
       // Only update carClasses if there are classes to set
@@ -311,7 +264,7 @@ export async function updateCustomEvent(prevState: State, formData: FormData): P
 
       for (let i = 0; i < startDates.length; i++) {
         const sd = startDates[i]
-        const rId = raceIds[i]
+        const rId = data.raceIds ? data.raceIds[i] : undefined
         const raceEnd = new Date(sd.getTime() + duration * 60000)
 
         if (rId && existingRaceIds.includes(rId)) {

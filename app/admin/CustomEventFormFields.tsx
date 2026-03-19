@@ -6,21 +6,7 @@ interface Timeslot {
   startTime: string
 }
 
-export interface CustomEventData {
-  id?: string
-  name?: string
-  track?: string
-  trackConfig?: string | null
-  description?: string | null
-  durationMins?: number | null
-  licenseGroup?: number | null
-  tempValue?: number | null
-  tempUnits?: number | null
-  relHumidity?: number | null
-  skies?: number | null
-  precipChance?: number | null
-  carClasses?: Array<{ shortName: string }>
-}
+import { CustomEventData } from './customEventSchema'
 
 interface CustomEventFormFieldsProps {
   event?: CustomEventData

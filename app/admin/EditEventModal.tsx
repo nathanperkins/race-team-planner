@@ -7,32 +7,11 @@ import styles from './AddEventModal.module.css'
 import LoadingOverlay from '@/components/LoadingOverlay'
 import WarningDialog from '@/components/WarningDialog'
 import CustomEventFormFields from './CustomEventFormFields'
-interface EventData {
-  id: string
-  name: string
-  track: string
-  trackConfig?: string | null
-  description?: string | null
-  startTime: Date | string
-  endTime: Date | string
-  durationMins?: number | null
-  licenseGroup?: number | null
-  tempValue?: number | null
-  tempUnits?: number | null
-  relHumidity?: number | null
-  skies?: number | null
-  precipChance?: number | null
-  carClasses?: Array<{ shortName: string }>
-  races?: Array<{
-    id: string
-    startTime: Date | string
-    endTime: Date | string
-  }>
-}
+import { CustomEventData } from './customEventSchema'
 
 interface EditEventModalProps {
   onClose: () => void
-  event: EventData
+  event: CustomEventData
 }
 
 export default function EditEventModal({ onClose, event }: EditEventModalProps) {
@@ -70,7 +49,7 @@ export default function EditEventModal({ onClose, event }: EditEventModalProps) 
     if (event.races && event.races.length > 0) {
       return event.races.map((r) => ({ id: r.id, startTime: formatDateForInput(r.startTime) }))
     }
-    return [{ id: '', startTime: formatDateForInput(event.startTime) }]
+    return [{ id: '', startTime: formatDateForInput(event.startTime || '') }]
   })
 
   const handleDelete = async () => {
@@ -78,7 +57,7 @@ export default function EditEventModal({ onClose, event }: EditEventModalProps) 
     setIsDeleting(true)
     setDeleteError('')
 
-    const result = await deleteCustomEvent(event.id)
+    const result = await deleteCustomEvent(event.id!)
 
     if (result.success) {
       onClose()
