@@ -304,10 +304,8 @@ export async function updateCustomEvent(prevState: State, formData: FormData): P
       })
 
       // Handle races
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const existingRaces = await tx.race.findMany({ where: { eventId } })
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const existingRaceIds = existingRaces.map((r: any) => r.id)
+      const existingRaceIds = existingRaces.map((r: { id: string }) => r.id)
 
       const newRaceIdsToKeep: string[] = []
 
