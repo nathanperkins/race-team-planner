@@ -2,6 +2,30 @@
 
 The most notable changes to this project are documented here.
 
+## Version 1.5 {#version-1.5}
+
+**Released on <time datetime="2026-03-18">March 18, 2026</time>**
+
+[3 issues completed][Milestone 5] by **[Nathan]**.
+
+### Highlights
+
+Version 1.5 focuses on cleaning up test reliability, improving the organization of custom events, and enhancing the localized experience for Discord notifications. Significant updates include a unified form for custom event management, full support for multi-timeslot custom events, and much cleaner date/time formatting in Discord that automatically adapts to the user's local timezone.
+
+### Custom Events
+
+- **Unified event management** - Extracted custom event form logic to a shared component and increased validation coverage using Zod ([#163](https://github.com/nathanperkins/race-team-planner/issues/163) by [Nathan])
+- **Multi-timeslot support** - Custom events now support multiple race times, consistent with iRacing-hosted events ([#163](https://github.com/nathanperkins/race-team-planner/issues/163) by [Nathan])
+- **Layout fix for descriptions** - Fixed a bug where event descriptions were displayed below the timeslot list; they are now correctly placed above the location and weather details ([#164](https://github.com/nathanperkins/race-team-planner/issues/164) by [Nathan])
+
+### Discord Notifications
+
+- **Full date and localized timestamps** - Timeslot dividers in Discord notifications now use native Discord timestamps. This ensures the full date is displayed and all times are automatically converted to each user's local timezone ([#165](https://github.com/nathanperkins/race-team-planner/issues/165) by [Nathan])
+
+### Infrastructure & Testing
+
+- **Improved test reliability** - Refactored various tests to use `findBy*` queries instead of suboptimal `waitFor` wrapping, resolving several linter warnings about unused imports ([#163](https://github.com/nathanperkins/race-team-planner/issues/163) by [Nathan])
+
 ## Version 1.4 {#version-1.4}
 
 **Released on <time datetime="2026-03-15">March 15, 2026</time>**
@@ -258,5 +282,6 @@ Thanks to our testers for these suggestions and bug reports!
 [Milestone 2]: https://github.com/nathanperkins/race-team-planner/issues?q=milestone%3A1.2%20is%3Aclosed%20reason%3Acompleted%20is%3Aissue
 [Milestone 3]: https://github.com/nathanperkins/race-team-planner/issues?q=milestone%3A1.3%20is%3Aclosed%20reason%3Acompleted
 [Milestone 4]: https://github.com/nathanperkins/race-team-planner/issues?q=milestone%3A1.4%20is%3Aclosed%20reason%3Acompleted
+[Milestone 5]: https://github.com/nathanperkins/race-team-planner/issues?q=milestone%3A1.5%20is%3Aclosed%20reason%3Acompleted
 [Feedback 1]: https://github.com/nathanperkins/race-team-planner/issues?q=milestone%3A1.1%20is%3Aclosed%20reason%3Acompleted%20label%3Afeedback
 [Feedback 2]: https://github.com/nathanperkins/race-team-planner/issues?q=milestone%3A1.2%20is%3Aclosed%20reason%3Acompleted%20label%3Afeedback
