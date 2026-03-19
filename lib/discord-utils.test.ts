@@ -304,10 +304,7 @@ describe('Discord Utils', () => {
           ],
         },
       ]
-      const lines = formatMultiTimeslotTeamLines(timeslots, {
-        locale: 'en-US',
-        timeZone: 'UTC',
-      })
+      const lines = formatMultiTimeslotTeamLines(timeslots)
       // Should have timeslot dividers with clock emoji
       const timeHeaders = lines.filter((l) => l.includes('⏰'))
       expect(timeHeaders).toHaveLength(2)
@@ -331,10 +328,7 @@ describe('Discord Utils', () => {
           unassigned: [{ name: 'Dave', carClass: 'GT3' }],
         },
       ]
-      const lines = formatMultiTimeslotTeamLines(timeslots, {
-        locale: 'en-US',
-        timeZone: 'UTC',
-      })
+      const lines = formatMultiTimeslotTeamLines(timeslots)
       expect(lines).toContain('• Charlie')
       expect(lines).toContain('• Dave')
       expect(lines.filter((l) => l === '**Unassigned - GT3**')).toHaveLength(2)

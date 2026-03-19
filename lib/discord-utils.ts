@@ -274,10 +274,7 @@ export function formatTeamLines(
   return lines
 }
 
-export function formatMultiTimeslotTeamLines(
-  timeslots: RaceTimeslotData[],
-  options?: { locale?: string; timeZone?: string }
-) {
+export function formatMultiTimeslotTeamLines(timeslots: RaceTimeslotData[]) {
   const lines: string[] = []
 
   for (const slot of timeslots) {
@@ -425,7 +422,7 @@ export function buildTeamsAssignedEmbeds(
     eventInfoLines.push('')
   }
 
-  const teamLines = formatMultiTimeslotTeamLines(data.timeslots, { locale, timeZone })
+  const teamLines = formatMultiTimeslotTeamLines(data.timeslots)
   const allLines = [...eventInfoLines, ...teamLines]
   const chunks = chunkLines(allLines, 3800)
 
