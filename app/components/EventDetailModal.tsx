@@ -169,6 +169,11 @@ export default function EventDetailModal({
                     skies: event.skies,
                     precipChance: event.precipChance,
                     carClasses: event.carClasses,
+                    races: event.races.map((r) => ({
+                      id: r.id,
+                      startTime: r.startTime,
+                      endTime: r.endTime,
+                    })),
                   }}
                 />
               )}

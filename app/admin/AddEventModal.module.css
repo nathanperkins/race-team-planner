@@ -195,3 +195,64 @@
   border-radius: 8px;
   font-size: 0.9rem;
 }
+
+.timeslotsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.sectionHeaderLine {
+  margin-bottom: 0.25rem;
+}
+
+.timeslotRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.timeslotRow .field {
+  flex: 1;
+  margin: 0;
+}
+
+.removeTimeslotButton {
+  background: none;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  padding: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.removeTimeslotButton:hover {
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.addTimeslotButton {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition: all 0.2s;
+  margin-top: 0.25rem;
+  width: fit-content;
+}
+
+.addTimeslotButton:hover {
+  background: #2563eb;
+}

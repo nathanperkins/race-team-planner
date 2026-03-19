@@ -21,6 +21,11 @@ interface EventData {
   skies?: number | null
   precipChance?: number | null
   carClasses?: Array<{ shortName: string }>
+  races?: Array<{
+    id: string
+    startTime: Date | string
+    endTime: Date | string
+  }>
 }
 
 interface EditEventButtonProps {

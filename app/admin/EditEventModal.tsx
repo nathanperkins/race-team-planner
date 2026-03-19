@@ -6,6 +6,7 @@ import { updateCustomEvent, deleteCustomEvent } from './actions'
 import styles from './AddEventModal.module.css'
 import LoadingOverlay from '@/components/LoadingOverlay'
 import WarningDialog from '@/components/WarningDialog'
+import { Plus } from 'lucide-react'
 interface EventData {
   id: string
   name: string
@@ -22,6 +23,11 @@ interface EventData {
   skies?: number | null
   precipChance?: number | null
   carClasses?: Array<{ shortName: string }>
+  races?: Array<{
+    id: string
+    startTime: Date | string
+    endTime: Date | string
+  }>
 }
 
 interface EditEventModalProps {
@@ -59,6 +65,13 @@ export default function EditEventModal({ onClose, event }: EditEventModalProps) 
     const local = new Date(d.getTime() - offset * 60 * 1000)
     return local.toISOString().slice(0, 16)
   }
+
+  const [timeslots, setTimeslots] = useState<Array<{ id: string; startTime: string }>>(() => {
+    if (event.races && event.races.length > 0) {
+      return event.races.map((r) => ({ id: r.id, startTime: formatDateForInput(r.startTime) }))
+    }
+    return [{ id: '', startTime: formatDateForInput(event.startTime) }]
+  })
 
   const handleDelete = async () => {
     setConfirmDeleteOpen(false)
@@ -168,18 +181,57 @@ export default function EditEventModal({ onClose, event }: EditEventModalProps) 
               />
             </div>
 
-            <div className={styles.field}>
-              <label htmlFor="startTime" className={styles.label}>
-                Start Time *
-              </label>
-              <input
-                type="datetime-local"
-                id="startTime"
-                name="startTime"
-                className={styles.input}
-                defaultValue={formatDateForInput(event.startTime)}
-                required
-              />
+            <div className={styles.timeslotsContainer}>
+              <div className={styles.sectionHeaderLine}>
+                <label className={styles.label}>Timeslots *</label>
+              </div>
+
+              {timeslots.map((ts, index) => (
+                <div key={index} className={styles.timeslotRow}>
+                  <div className={styles.field}>
+                    <input type="hidden" name="raceIds" value={ts.id} />
+                    <input
+                      type="datetime-local"
+                      name="startTimes"
+                      className={styles.input}
+                      value={ts.startTime}
+                      onChange={(e) => {
+                        const newTs = [...timeslots]
+                        newTs[index].startTime = e.target.value
+                        setTimeslots(newTs)
+                      }}
+                      required
+                    />
+                  </div>
+                  {timeslots.length > 1 && (
+                    <button
+                      type="button"
+                      className={styles.removeTimeslotButton}
+                      onClick={() => {
+                        const newTs = timeslots.filter((_, i) => i !== index)
+                        setTimeslots(newTs)
+                      }}
+                      title="Remove timeslot"
+                    >
+                      <X size={18} />
+                    </button>
+                  )}
+                </div>
+              ))}
+
+              <button
+                type="button"
+                className={styles.addTimeslotButton}
+                onClick={() => {
+                  const lastTs = timeslots[timeslots.length - 1]
+                  setTimeslots([
+                    ...timeslots,
+                    { id: '', startTime: lastTs ? lastTs.startTime : '' },
+                  ])
+                }}
+              >
+                <Plus size={16} /> Add Timeslot
+              </button>
             </div>
 
             <div className={styles.fieldRow}>

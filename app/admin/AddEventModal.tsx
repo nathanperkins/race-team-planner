@@ -1,16 +1,18 @@
 'use client'
 
 import { X } from 'lucide-react'
-import { useActionState, useEffect, useRef } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import { createCustomEvent } from './actions'
 import styles from './AddEventModal.module.css'
 import LoadingOverlay from '@/components/LoadingOverlay'
+import { Plus } from 'lucide-react'
 interface AddEventModalProps {
   onClose: () => void
 }
 
 export default function AddEventModal({ onClose }: AddEventModalProps) {
   const [state, formAction, pending] = useActionState(createCustomEvent, { message: '' })
+  const [timeslots, setTimeslots] = useState<string[]>([''])
   const modalRef = useRef<HTMLDivElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
 
@@ -98,17 +100,53 @@ export default function AddEventModal({ onClose }: AddEventModalProps) {
               />
             </div>
 
-            <div className={styles.field}>
-              <label htmlFor="startTime" className={styles.label}>
-                Start Time *
-              </label>
-              <input
-                type="datetime-local"
-                id="startTime"
-                name="startTime"
-                className={styles.input}
-                required
-              />
+            <div className={styles.timeslotsContainer}>
+              <div className={styles.sectionHeaderLine}>
+                <label className={styles.label}>Timeslots *</label>
+              </div>
+
+              {timeslots.map((ts, index) => (
+                <div key={index} className={styles.timeslotRow}>
+                  <div className={styles.field}>
+                    <input
+                      type="datetime-local"
+                      name="startTimes"
+                      className={styles.input}
+                      value={ts}
+                      onChange={(e) => {
+                        const newTs = [...timeslots]
+                        newTs[index] = e.target.value
+                        setTimeslots(newTs)
+                      }}
+                      required
+                    />
+                  </div>
+                  {timeslots.length > 1 && (
+                    <button
+                      type="button"
+                      className={styles.removeTimeslotButton}
+                      onClick={() => {
+                        const newTs = timeslots.filter((_, i) => i !== index)
+                        setTimeslots(newTs)
+                      }}
+                      title="Remove timeslot"
+                    >
+                      <X size={18} />
+                    </button>
+                  )}
+                </div>
+              ))}
+
+              <button
+                type="button"
+                className={styles.addTimeslotButton}
+                onClick={() => {
+                  const lastTs = timeslots[timeslots.length - 1]
+                  setTimeslots([...timeslots, lastTs || ''])
+                }}
+              >
+                <Plus size={16} /> Add Timeslot
+              </button>
             </div>
 
             <div className={styles.fieldRow}>

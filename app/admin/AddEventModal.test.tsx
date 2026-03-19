@@ -13,7 +13,11 @@ const mockOnClose = vi.fn()
 const fillRequiredFields = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.type(screen.getByLabelText(/event name/i), 'Sebring 12hr')
   await user.type(screen.getByLabelText(/^track \*/i), 'Sebring International Raceway')
-  await user.type(screen.getByLabelText(/start time/i), '2027-06-01T10:00')
+
+  const inputs = document.querySelectorAll('input[name="startTimes"]')
+  if (inputs.length > 0) {
+    await user.type(inputs[0] as HTMLElement, '2027-06-01T10:00')
+  }
 }
 
 describe('AddEventModal', () => {
@@ -25,7 +29,7 @@ describe('AddEventModal', () => {
     render(<AddEventModal onClose={mockOnClose} />)
     expect(screen.getByLabelText(/event name/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/^track \*/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/start time/i)).toBeInTheDocument()
+    expect(document.querySelector('input[name="startTimes"]')).toBeInTheDocument()
   })
 
   it('renders the Create Event submit button', () => {

@@ -23,7 +23,7 @@ export async function createCustomEvent(prevState: State, formData: FormData): P
     const track = formData.get('track') as string
     const trackConfig = formData.get('trackConfig') as string
     const description = formData.get('description') as string
-    const startTime = formData.get('startTime') as string
+    const startTimes = formData.getAll('startTimes') as string[]
     const durationMins = formData.get('durationMins') as string
     const licenseGroup = formData.get('licenseGroup') as string
     const tempValue = formData.get('tempValue') as string
@@ -33,19 +33,22 @@ export async function createCustomEvent(prevState: State, formData: FormData): P
     const precipChance = formData.get('precipChance') as string
     const carClassesInput = formData.get('carClassesInput') as string
 
-    if (!name || !track || !startTime) {
-      return { message: 'Name, track, and start time are required.' }
+    if (!name || !track || startTimes.length === 0 || startTimes.some((st) => !st)) {
+      return { message: 'Name, track, and at least one start time are required.' }
     }
 
-    const startDate = new Date(startTime)
+    const startDates = startTimes.map((st) => new Date(st))
 
-    if (isNaN(startDate.getTime())) {
-      return { message: 'Invalid date format.' }
+    if (startDates.some((sd) => isNaN(sd.getTime()))) {
+      return { message: 'Invalid date format in one of the start times.' }
     }
 
-    // Calculate end time based on duration (default to 1 hour if not provided)
+    // Sort start dates to find the earliest event start and latest event end
+    startDates.sort((a, b) => a.getTime() - b.getTime())
+    const earliestStart = startDates[0]
+
     const duration = durationMins ? parseInt(durationMins) : 60
-    const endDate = new Date(startDate.getTime() + duration * 60000)
+    const latestEnd = new Date(startDates[startDates.length - 1].getTime() + duration * 60000)
 
     // Parse car classes from comma-separated input
     const customCarClasses = carClassesInput
@@ -109,8 +112,8 @@ export async function createCustomEvent(prevState: State, formData: FormData): P
       track,
       trackConfig: trackConfig || null,
       description: description || null,
-      startTime: startDate,
-      endTime: endDate,
+      startTime: earliestStart,
+      endTime: latestEnd,
       durationMins: durationMins ? parseInt(durationMins) : null,
       licenseGroup: licenseGroup ? parseInt(licenseGroup) : null,
       tempValue: tempValue ? parseInt(tempValue) : null,
@@ -119,10 +122,10 @@ export async function createCustomEvent(prevState: State, formData: FormData): P
       skies: skies ? parseInt(skies) : null,
       precipChance: precipChance ? parseInt(precipChance) : null,
       races: {
-        create: {
-          startTime: startDate,
-          endTime: endDate,
-        },
+        create: startDates.map((sd) => ({
+          startTime: sd,
+          endTime: new Date(sd.getTime() + duration * 60000),
+        })),
       },
     }
 
@@ -162,7 +165,8 @@ export async function updateCustomEvent(prevState: State, formData: FormData): P
     const track = formData.get('track') as string
     const trackConfig = formData.get('trackConfig') as string
     const description = formData.get('description') as string
-    const startTime = formData.get('startTime') as string
+    const startTimes = formData.getAll('startTimes') as string[]
+    const raceIds = formData.getAll('raceIds') as string[]
     const durationMins = formData.get('durationMins') as string
     const licenseGroup = formData.get('licenseGroup') as string
     const tempValue = formData.get('tempValue') as string
@@ -172,15 +176,19 @@ export async function updateCustomEvent(prevState: State, formData: FormData): P
     const precipChance = formData.get('precipChance') as string
     const carClassesInput = formData.get('carClassesInput') as string
 
-    if (!name || !track || !startTime) {
-      return { message: 'Name, track, and start time are required.' }
+    if (!name || !track || startTimes.length === 0 || startTimes.some((st) => !st)) {
+      return { message: 'Name, track, and at least one start time are required.' }
     }
 
-    const startDate = new Date(startTime)
+    const startDates = startTimes.map((st) => new Date(st))
 
-    if (isNaN(startDate.getTime())) {
+    if (startDates.some((sd) => isNaN(sd.getTime()))) {
       return { message: 'Invalid date format.' }
     }
+
+    // Sort start dates to find the earliest event start and latest event end
+    const sortedStartDates = [...startDates].sort((a, b) => a.getTime() - b.getTime())
+    const earliestStart = sortedStartDates[0]
 
     // Verify event is editable (not synced)
     const existingEvent = await prisma.event.findUnique({
@@ -195,7 +203,9 @@ export async function updateCustomEvent(prevState: State, formData: FormData): P
 
     // Calculate end time based on duration (default to 1 hour if not provided)
     const duration = durationMins ? parseInt(durationMins) : 60
-    const endDate = new Date(startDate.getTime() + duration * 60000)
+    const latestEnd = new Date(
+      sortedStartDates[sortedStartDates.length - 1].getTime() + duration * 60000
+    )
 
     // Parse car classes from comma-separated input
     const customCarClasses = carClassesInput
@@ -265,8 +275,8 @@ export async function updateCustomEvent(prevState: State, formData: FormData): P
         track,
         trackConfig: trackConfig || null,
         description: description || null,
-        startTime: startDate,
-        endTime: endDate,
+        startTime: earliestStart,
+        endTime: latestEnd,
         durationMins: durationMins ? parseInt(durationMins) : null,
         licenseGroup: licenseGroup ? parseInt(licenseGroup) : null,
         tempValue: tempValue ? parseInt(tempValue) : null,
@@ -293,17 +303,46 @@ export async function updateCustomEvent(prevState: State, formData: FormData): P
         data: updateData,
       })
 
-      // Optional: Update associated races if they matched the old event window strictly?
-      // For now, let's just assume custom events created via our tool have parallel races.
-      // We will update ALL races for this event to the new times.
-      // This might be destructive for complex events, but for "Custom Events" it's expected.
-      await tx.race.updateMany({
-        where: { eventId: eventId },
-        data: {
-          startTime: startDate,
-          endTime: endDate,
-        },
-      })
+      // Handle races
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const existingRaces = await tx.race.findMany({ where: { eventId } })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const existingRaceIds = existingRaces.map((r: any) => r.id)
+
+      const newRaceIdsToKeep: string[] = []
+
+      for (let i = 0; i < startDates.length; i++) {
+        const sd = startDates[i]
+        const rId = raceIds[i]
+        const raceEnd = new Date(sd.getTime() + duration * 60000)
+
+        if (rId && existingRaceIds.includes(rId)) {
+          // Update existing race
+          await tx.race.update({
+            where: { id: rId },
+            data: { startTime: sd, endTime: raceEnd },
+          })
+          newRaceIdsToKeep.push(rId)
+        } else {
+          // Create new race
+          const newR = await tx.race.create({
+            data: {
+              eventId,
+              startTime: sd,
+              endTime: raceEnd,
+            },
+          })
+          newRaceIdsToKeep.push(newR.id)
+        }
+      }
+
+      // Delete races that were removed
+      const racesToDelete = existingRaceIds.filter((id: string) => !newRaceIdsToKeep.includes(id))
+      if (racesToDelete.length > 0) {
+        await tx.race.deleteMany({
+          where: { id: { in: racesToDelete } },
+        })
+      }
     })
 
     revalidatePath('/events')
