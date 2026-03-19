@@ -252,10 +252,14 @@
 }
 
 .description {
-  color: rgba(234, 240, 255, 0.75);
+  color: rgba(234, 240, 255, 0.85);
   font-size: 14px;
   line-height: 1.6;
-  margin: 0;
+  margin: 1rem 0 0.5rem 0;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 3px solid rgba(147, 197, 253, 0.4);
+  border-radius: 0 8px 8px 0;
 }
 
 .statsBar {

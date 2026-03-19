@@ -208,6 +208,16 @@ export default function EventDetailModal({
                   {seasonInfo.seasonYear} • Season {seasonInfo.seasonQuarter} • Week{' '}
                   {seasonInfo.raceWeek}
                 </div>
+                {event.description && (
+                  <p className={styles.description}>
+                    {event.description
+                      .split('\n')
+                      .filter(
+                        (line) => !line.toLowerCase().includes('races') && !line.includes('GMT')
+                      )
+                      .join('\n')}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -335,15 +345,6 @@ export default function EventDetailModal({
                 />
               ))}
             </div>
-
-            {event.description && (
-              <p className={styles.description}>
-                {event.description
-                  .split('\n')
-                  .filter((line) => !line.toLowerCase().includes('races') && !line.includes('GMT'))
-                  .join('\n')}
-              </p>
-            )}
           </div>
         </div>
       </div>
