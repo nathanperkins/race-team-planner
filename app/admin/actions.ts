@@ -31,10 +31,10 @@ export async function createCustomEvent(prevState: State, formData: FormData): P
     const relHumidity = formData.get('relHumidity') as string
     const skies = formData.get('skies') as string
     const precipChance = formData.get('precipChance') as string
-    const carClassesInput = formData.get('carClassesInput') as string
+    const carClasses = formData.get('carClasses') as string
 
-    if (!name || !track || startTimes.length === 0 || startTimes.some((st) => !st)) {
-      return { message: 'Name, track, and at least one start time are required.' }
+    if (!name || !track || startTimes.length === 0 || startTimes.some((st) => !st) || !carClasses) {
+      return { message: 'Name, track, car classes, and at least one start time are required.' }
     }
 
     const startDates = startTimes.map((st) => new Date(st))
@@ -51,8 +51,8 @@ export async function createCustomEvent(prevState: State, formData: FormData): P
     const latestEnd = new Date(startDates[startDates.length - 1].getTime() + duration * 60000)
 
     // Parse car classes from comma-separated input
-    const customCarClasses = carClassesInput
-      ? carClassesInput
+    const customCarClasses = carClasses
+      ? carClasses
           .split(',')
           .map((cc) => cc.trim())
           .filter((cc) => cc.length > 0)
@@ -174,10 +174,10 @@ export async function updateCustomEvent(prevState: State, formData: FormData): P
     const relHumidity = formData.get('relHumidity') as string
     const skies = formData.get('skies') as string
     const precipChance = formData.get('precipChance') as string
-    const carClassesInput = formData.get('carClassesInput') as string
+    const carClasses = formData.get('carClasses') as string
 
-    if (!name || !track || startTimes.length === 0 || startTimes.some((st) => !st)) {
-      return { message: 'Name, track, and at least one start time are required.' }
+    if (!name || !track || startTimes.length === 0 || startTimes.some((st) => !st) || !carClasses) {
+      return { message: 'Name, track, car classes, and at least one start time are required.' }
     }
 
     const startDates = startTimes.map((st) => new Date(st))
@@ -208,8 +208,8 @@ export async function updateCustomEvent(prevState: State, formData: FormData): P
     )
 
     // Parse car classes from comma-separated input
-    const customCarClasses = carClassesInput
-      ? carClassesInput
+    const customCarClasses = carClasses
+      ? carClasses
           .split(',')
           .map((cc) => cc.trim())
           .filter((cc) => cc.length > 0)

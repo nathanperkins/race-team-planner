@@ -80,15 +80,16 @@ export default function CustomEventFormFields({
       </div>
 
       <div className={styles.field}>
-        <label htmlFor="carClassesInput" className={styles.label}>
-          Car Classes
+        <label htmlFor="carClasses" className={styles.label}>
+          Car Classes *
         </label>
         <input
           type="text"
-          id="carClassesInput"
-          name="carClassesInput"
+          id="carClasses"
+          name="carClasses"
           className={styles.input}
-          placeholder="e.g., GTP, LMP2, GT3 (comma-separated, optional)"
+          placeholder="e.g., GTP, LMP2 (comma-separated)"
+          required
           defaultValue={
             event?.carClasses && event.carClasses.length > 0
               ? event.carClasses.map((cc) => cc.shortName).join(', ')

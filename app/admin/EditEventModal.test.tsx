@@ -26,7 +26,7 @@ const mockEvent = {
   relHumidity: null,
   skies: null,
   precipChance: null,
-  carClasses: [],
+  carClasses: [{ shortName: 'GTP' }],
 }
 
 describe('EditEventModal', () => {

@@ -13,6 +13,7 @@ const mockOnClose = vi.fn()
 const fillRequiredFields = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.type(screen.getByLabelText(/event name/i), 'Sebring 12hr')
   await user.type(screen.getByLabelText(/^track \*/i), 'Sebring International Raceway')
+  await user.type(screen.getByLabelText(/^Car Classes \*/i), 'GTP, LMP2')
 
   const inputs = document.querySelectorAll('input[name="startTimes"]')
   if (inputs.length > 0) {

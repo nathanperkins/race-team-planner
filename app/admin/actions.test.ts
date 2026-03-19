@@ -54,6 +54,7 @@ describe('admin actions', () => {
       formData.append('name', 'Sebring 12hr')
       formData.append('track', 'Sebring International Raceway')
       formData.append('durationMins', '720')
+      formData.append('carClasses', 'GTP, LMP2')
       formData.append('startTimes', '2027-06-01T10:00:00')
       formData.append('startTimes', '2027-06-02T10:00:00')
 
@@ -71,9 +72,10 @@ describe('admin actions', () => {
       expect(createArgs.data.races.create[1].startTime.toISOString()).toContain('2027-06-02T')
     })
 
-    it('returns error if missing track or startTimes', async () => {
+    it('returns error if missing track, startTimes, or car classes', async () => {
       const formData = new FormData()
       formData.append('name', 'Missing Stuff')
+      // Missing track, startTimes, carClassesInput
 
       const result = await createCustomEvent({ message: '' }, formData)
       expect(result.message).toContain('are required')
@@ -87,6 +89,7 @@ describe('admin actions', () => {
       formData.append('name', 'Updated Sebring')
       formData.append('track', 'Sebring Raceway')
       formData.append('durationMins', '720')
+      formData.append('carClasses', 'GTP, LMP2')
 
       formData.append('startTimes', '2027-06-01T10:00:00')
       formData.append('raceIds', 'race-1') // Update existing
@@ -128,6 +131,7 @@ describe('admin actions', () => {
       formData.append('eventId', 'event-1')
       formData.append('name', 'Updated Sebring')
       formData.append('track', 'Sebring Raceway')
+      formData.append('carClasses', 'GTP')
       formData.append('startTimes', '2027-06-01T10:00:00')
 
       // Mock an event that has an externalId
