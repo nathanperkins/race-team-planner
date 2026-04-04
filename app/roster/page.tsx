@@ -6,7 +6,7 @@ import Image from 'next/image'
 import styles from './roster.module.css'
 import UserRoleBadge from '@/components/UserRoleBadge'
 import { getLicenseColor } from '@/lib/utils'
-import { CalendarDays } from 'lucide-react'
+import { CalendarDays, Hash } from 'lucide-react'
 import CompletedEventsButton from '@/components/CompletedEventsButton'
 
 import RosterSortControls from './RosterSortControls'
@@ -130,6 +130,11 @@ export default async function RosterPage({ searchParams }: Props) {
                     {licenseLabel} {stats.safetyRating.toFixed(2)} {stats.irating}
                   </span>
                 )}
+                {user.iracingCustomerId && (
+                  <span className={styles.customerIdBadge} title="iRacing Customer ID">
+                    <Hash size={12} /> {user.iracingCustomerId}
+                  </span>
+                )}
               </div>
 
               {view === 'grid' && (
@@ -163,6 +168,11 @@ export default async function RosterPage({ searchParams }: Props) {
                       }}
                     >
                       {licenseLabel} {stats.safetyRating.toFixed(2)} {stats.irating}
+                    </span>
+                  )}
+                  {user.iracingCustomerId && (
+                    <span className={styles.customerIdBadge} title="iRacing Customer ID">
+                      <Hash size={12} /> {user.iracingCustomerId}
                     </span>
                   )}
                   <Link

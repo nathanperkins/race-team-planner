@@ -314,6 +314,26 @@
   margin-top: 0;
 }
 
+.customerIdBadge {
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid #334155;
+  background-color: #1e293b;
+  color: #94a3b8;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.customerIdBadge:hover {
+  border-color: #475569;
+  color: #cbd5e1;
+}
+
 .syncNote {
   font-size: 0.75rem;
   color: #64748b;
