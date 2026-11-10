@@ -10,6 +10,7 @@ export const authConfig = {
           Discord({
             clientId: process.env.AUTH_DISCORD_ID,
             clientSecret: process.env.AUTH_DISCORD_SECRET,
+            issuer: 'https://discord.com',
           }),
         ]
       : []),

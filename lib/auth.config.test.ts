@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { authConfig } from './auth.config'
 import { SESSION_VERSION } from '@/lib/config'
 import { UserRole } from '@prisma/client'
@@ -93,6 +93,32 @@ describe('auth.config', () => {
         expect(result.user.expectationsVersion).toBe(token.expectationsVersion)
         expect(result.version).toBe(token.version)
       })
+    })
+  })
+
+  describe('providers', () => {
+    it('configures Discord provider with expected issuer for RFC 9207', async () => {
+      vi.resetModules()
+      const originalEnv = process.env.AUTH_DISCORD_ID
+      process.env.AUTH_DISCORD_ID = 'test-discord-id'
+      try {
+        const { authConfig: freshConfig } = await import('./auth.config')
+        const discordProvider = freshConfig.providers.find(
+          (p: any) => (typeof p === 'function' ? p().id : p.id) === 'discord'
+        ) as any
+        const providerConfig =
+          typeof discordProvider === 'function' ? discordProvider() : discordProvider
+        expect(providerConfig).toBeDefined()
+        const issuer = providerConfig.issuer ?? providerConfig.options?.issuer
+        expect(issuer).toBe('https://discord.com')
+      } finally {
+        if (originalEnv !== undefined) {
+          process.env.AUTH_DISCORD_ID = originalEnv
+        } else {
+          delete process.env.AUTH_DISCORD_ID
+        }
+        vi.resetModules()
+      }
     })
   })
 })
