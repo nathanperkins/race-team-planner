@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo } from 'react'
 import Image from 'next/image'
 import {
   X,
@@ -75,10 +75,9 @@ export default function TeamPickerModal({
   const [manualDrivers, setManualDrivers] = useState<Driver[]>([])
   const [newManualName, setNewManualName] = useState('')
   const [newManualIR, setNewManualIR] = useState('')
-  const [selectedDriverIds, setSelectedDriverIds] = useState<Set<string>>(new Set())
-  const [results, setResults] = useState<TeamComposition[]>([])
   const [saving, setSaving] = useState(false)
   const [modalWarning, setModalWarning] = useState<{ title: string; message: string } | null>(null)
+
   // Map registrations to Driver objects
   const rosterDrivers = useMemo(() => {
     // If we have event registrations (full list), use them. Otherwise fallback to just this race.
@@ -160,26 +159,16 @@ export default function TeamPickerModal({
     return Array.from(uniqueDrivers.values())
   }, [initialRegistrations, eventRegistrations, raceId, carClassId, raceStartTime])
 
-  // Initialize selection and load existing teams
-  useEffect(() => {
-    // Select all drivers by default?
-    // Maybe only select 'Unassigned' and 'Assigned' by default?
-    // User requested "grouping", didn't specify default selection change.
-    // But usually you wouldn't balance across different times.
-    // Let's stick safe and select Unassigned + Assigned + Manual.
-    // Wait, `rosterDrivers` includes different time/class.
-    // If I balance, I probably don't want "Different Time" people unless checking them.
-    // So let's default select only Unassigned/Assigned (Current Class, Current Time).
-    const validIds = new Set(
+  const [selectedDriverIds, setSelectedDriverIds] = useState<Set<string>>(() => {
+    return new Set(
       rosterDrivers
         .filter((d) => d.category === 'Unassigned' || d.category === 'Assigned')
         .map((d) => d.id)
     )
-    setSelectedDriverIds(validIds)
+  })
 
-    // Group existing assignments into locked teams
+  const [results, setResults] = useState<TeamComposition[]>(() => {
     const existingTeamsMap = new Map<string, TeamComposition>()
-
     initialRegistrations.forEach((reg) => {
       if (reg.team?.id) {
         if (!existingTeamsMap.has(reg.team.id)) {
@@ -191,19 +180,48 @@ export default function TeamPickerModal({
             isGeneric: false,
           })
         }
-
-        // Find the driver object from rosterDrivers to ensure consistency
         const driver = rosterDrivers.find((d) => d.id === reg.id)
         if (driver) {
           existingTeamsMap.get(reg.team.id)!.drivers.push(driver)
         }
       }
     })
+    return Array.from(existingTeamsMap.values())
+  })
 
+  // Adjust selection and existing teams during render when rosterDrivers changes
+  const [prevRosterDrivers, setPrevRosterDrivers] = useState(rosterDrivers)
+  if (prevRosterDrivers !== rosterDrivers) {
+    setPrevRosterDrivers(rosterDrivers)
+    const validIds = new Set(
+      rosterDrivers
+        .filter((d) => d.category === 'Unassigned' || d.category === 'Assigned')
+        .map((d) => d.id)
+    )
+    setSelectedDriverIds(validIds)
+
+    const existingTeamsMap = new Map<string, TeamComposition>()
+    initialRegistrations.forEach((reg) => {
+      if (reg.team?.id) {
+        if (!existingTeamsMap.has(reg.team.id)) {
+          existingTeamsMap.set(reg.team.id, {
+            teamId: reg.team.id,
+            teamName: reg.team.alias || reg.team.name,
+            drivers: [],
+            locked: true,
+            isGeneric: false,
+          })
+        }
+        const driver = rosterDrivers.find((d) => d.id === reg.id)
+        if (driver) {
+          existingTeamsMap.get(reg.team.id)!.drivers.push(driver)
+        }
+      }
+    })
     if (existingTeamsMap.size > 0) {
       setResults(Array.from(existingTeamsMap.values()))
     }
-  }, [rosterDrivers, initialRegistrations])
+  }
 
   const allAvailableDrivers = useMemo(
     () => [...rosterDrivers, ...manualDrivers],

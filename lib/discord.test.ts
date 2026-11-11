@@ -1290,7 +1290,7 @@ describe('postRosterChangeNotifications', () => {
 
     const rosterChanges = [
       { type: 'added' as const, driverName: 'Alice', teamName: 'Team One' },
-      { type: 'dropped' as const, driverName: 'Bob' },
+      { type: 'dropped' as const, driverName: 'Bob', stillRegisteredCount: 0 },
     ]
 
     await postRosterChangeNotifications(
@@ -1510,6 +1510,7 @@ describe('postRosterChangeNotifications', () => {
         type: 'dropped' as const,
         driverName: 'Bob',
         fromTeam: 'Team One',
+        stillRegisteredCount: 0,
       },
     ]
 
@@ -1550,6 +1551,7 @@ describe('postRosterChangeNotifications', () => {
         type: 'dropped' as const,
         driverName: 'Bob',
         fromTeam: 'Unassigned',
+        stillRegisteredCount: 0,
       },
     ]
 
@@ -2400,14 +2402,12 @@ describe('createOrUpdateEventThread', () => {
                   carClass: 'GT3',
                   discordId: 'discord-alice',
                   registrationId: 'reg-1',
-                  rating: 2000,
                 },
                 {
                   name: 'Bob',
                   carClass: 'GT3',
                   discordId: 'discord-bob',
                   registrationId: 'reg-2',
-                  rating: 1800,
                 },
               ],
             },
@@ -2419,7 +2419,6 @@ describe('createOrUpdateEventThread', () => {
                   carClass: 'GT3',
                   discordId: 'discord-charlie',
                   registrationId: 'reg-3',
-                  rating: 1900,
                 },
               ],
             },
@@ -2490,21 +2489,18 @@ describe('createOrUpdateEventThread', () => {
                   carClass: 'GT3',
                   discordId: 'discord-alice',
                   registrationId: 'reg-1',
-                  rating: 2000,
                 },
                 {
                   name: 'Bob',
                   carClass: 'GT3',
                   discordId: 'discord-bob',
                   registrationId: 'reg-2',
-                  rating: 1800,
                 },
                 {
                   name: 'Dave',
                   carClass: 'GT3',
                   discordId: 'discord-dave',
                   registrationId: 'reg-3',
-                  rating: 2100,
                 },
               ],
             },
@@ -2544,7 +2540,7 @@ describe('createOrUpdateEventThread', () => {
             {
               name: 'Team Alpha',
               members: [
-                { name: 'Alice', carClass: 'GT3', rating: 2000 }, // No discordId
+                { name: 'Alice', carClass: 'GT3' }, // No discordId
               ],
             },
           ],
@@ -2679,7 +2675,14 @@ describe('sendTeamsAssignedNotification', () => {
     timeslots: [{ raceStartTime: new Date('2027-06-14T18:00:00Z'), teams: [], unassigned: [] }],
     eventUrl: 'http://localhost:3000/events/event-123',
     adminName: 'Admin',
-    rosterChanges: [{ type: 'dropped' as const, driverName: 'User 1', fromTeam: 'Team One' }],
+    rosterChanges: [
+      {
+        type: 'dropped' as const,
+        driverName: 'User 1',
+        fromTeam: 'Team One',
+        stillRegisteredCount: 0,
+      },
+    ],
   }
 
   beforeEach(() => {

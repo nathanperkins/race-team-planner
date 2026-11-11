@@ -846,7 +846,6 @@ export default function RaceDetails({
     []
   )
 
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const nextAuto =
       race.maxDriversPerTeam ??
@@ -986,7 +985,6 @@ export default function RaceDetails({
       }
     }
   }, [race, isTeamModalOpen, teamNameById])
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleMaxDriversTextChange = useCallback((value: string) => {
     setPendingMaxDriversText(value)

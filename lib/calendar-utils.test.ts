@@ -382,8 +382,8 @@ describe('downloadIcs', () => {
     revokeObjectURLMock = vi.fn()
     clickMock = vi.fn()
 
-    global.URL.createObjectURL = createObjectURLMock
-    global.URL.revokeObjectURL = revokeObjectURLMock
+    global.URL.createObjectURL = createObjectURLMock as any
+    global.URL.revokeObjectURL = revokeObjectURLMock as any
 
     const fakeAnchor = {
       href: '',

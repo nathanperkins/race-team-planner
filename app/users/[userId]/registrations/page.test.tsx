@@ -48,14 +48,14 @@ describe('UserRegistrationsPage sorting and filtering', () => {
     const mockSession = {
       user: { id: 'user-1', name: 'Test User', role: 'USER' },
       expires: '2026-12-31T23:59:59.999Z',
-    }
+    } as any
 
-    const mockUser = { id: 'user-1', name: 'Test User' }
+    const mockUser = { id: 'user-1', name: 'Test User' } as any
 
     const now = new Date('2026-02-15T00:00:00Z')
     vi.setSystemTime(now)
 
-    vi.mocked(auth).mockResolvedValue(mockSession)
+    vi.mocked(auth as any).mockResolvedValue(mockSession)
     vi.mocked(prisma.user.findUnique).mockResolvedValue(mockUser)
     vi.mocked(prisma.registration.findMany).mockResolvedValue([])
 
@@ -81,14 +81,14 @@ describe('UserRegistrationsPage sorting and filtering', () => {
     const mockSession = {
       user: { id: 'user-1', name: 'Test User', role: 'USER' },
       expires: '2026-12-31T23:59:59.999Z',
-    }
+    } as any
 
-    const mockUser = { id: 'user-1', name: 'Test User' }
+    const mockUser = { id: 'user-1', name: 'Test User' } as any
 
     const now = new Date('2026-02-15T00:00:00Z')
     vi.setSystemTime(now)
 
-    vi.mocked(auth).mockResolvedValue(mockSession)
+    vi.mocked(auth as any).mockResolvedValue(mockSession)
     vi.mocked(prisma.user.findUnique).mockResolvedValue(mockUser)
     vi.mocked(prisma.registration.findMany).mockResolvedValue([])
 
@@ -117,14 +117,14 @@ describe('UserRegistrationsPage sorting and filtering', () => {
     const mockSession = {
       user: { id: 'user-1', name: 'Test User', role: 'USER' },
       expires: '2026-12-31T23:59:59.999Z',
-    }
+    } as any
 
-    const mockUser = { id: 'user-1', name: 'Test User' }
+    const mockUser = { id: 'user-1', name: 'Test User' } as any
 
     const now = new Date('2026-02-15T00:00:00Z')
     vi.setSystemTime(now)
 
-    vi.mocked(auth).mockResolvedValue(mockSession)
+    vi.mocked(auth as any).mockResolvedValue(mockSession)
     vi.mocked(prisma.user.findUnique).mockResolvedValue(mockUser)
     vi.mocked(prisma.registration.findMany).mockResolvedValue([])
 
@@ -150,8 +150,8 @@ describe('AddToCalendar button visibility on registrations page', () => {
   const mockSession = {
     user: { id: 'user-1', name: 'Test User', role: 'USER' },
     expires: '2026-12-31T23:59:59.999Z',
-  }
-  const mockUser = { id: 'user-1', name: 'Test User' }
+  } as any
+  const mockUser = { id: 'user-1', name: 'Test User' } as any
   const now = new Date('2026-02-22T00:00:00Z')
 
   const makeRegistration = (endTime: Date) => ({
@@ -187,7 +187,7 @@ describe('AddToCalendar button visibility on registrations page', () => {
     const prisma = (await import('@/lib/prisma')).default
 
     vi.setSystemTime(now)
-    vi.mocked(auth).mockResolvedValue(mockSession)
+    vi.mocked(auth as any).mockResolvedValue(mockSession)
     vi.mocked(prisma.user.findUnique).mockResolvedValue(mockUser)
     vi.mocked(prisma.registration.findMany).mockResolvedValue([
       makeRegistration(new Date('2027-06-01T12:00:00Z')), // future
@@ -205,7 +205,7 @@ describe('AddToCalendar button visibility on registrations page', () => {
     const prisma = (await import('@/lib/prisma')).default
 
     vi.setSystemTime(now)
-    vi.mocked(auth).mockResolvedValue(mockSession)
+    vi.mocked(auth as any).mockResolvedValue(mockSession)
     vi.mocked(prisma.user.findUnique).mockResolvedValue(mockUser)
     vi.mocked(prisma.registration.findMany).mockResolvedValue([
       makeRegistration(new Date('2025-01-01T12:00:00Z')), // past

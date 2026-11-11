@@ -64,7 +64,7 @@ describe('admin actions', () => {
 
       expect(result).toEqual({ message: 'Success' })
 
-      const createArgs = vi.mocked(prisma.event.create).mock.calls[0][0]
+      const createArgs = vi.mocked(prisma.event.create).mock.calls[0][0] as any
       expect(createArgs.data.name).toBe('Sebring 12hr')
       // Races should be created for each start time
       expect(createArgs.data.races.create).toHaveLength(2)
@@ -113,7 +113,7 @@ describe('admin actions', () => {
       const result = await updateCustomEvent({ message: '' }, formData)
       expect(result).toEqual({ message: 'Success' })
 
-      const updateArgs = vi.mocked(prisma.event.update).mock.calls[0][0]
+      const updateArgs = vi.mocked(prisma.event.update).mock.calls[0][0] as any
       expect(updateArgs.data.name).toBe('Updated Sebring')
       expect(updateArgs.data.raceIds).toBeUndefined()
       expect(prisma.race.update).toHaveBeenCalledWith(

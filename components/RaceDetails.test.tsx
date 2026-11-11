@@ -664,7 +664,7 @@ describe('RaceDetails', () => {
         userId="admin-user"
         isAdmin
         carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
-        teams={[{ id: 'team-1', name: 'Team Alpha' }]}
+        teams={[{ id: 'team-1', name: 'Team Alpha', iracingTeamId: null }]}
         allDrivers={[]}
       />
     )
@@ -725,7 +725,7 @@ describe('RaceDetails', () => {
         userId="admin-user"
         isAdmin
         carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
-        teams={[{ id: 'team-1', name: 'Team Alpha' }]}
+        teams={[{ id: 'team-1', name: 'Team Alpha', iracingTeamId: null }]}
         allDrivers={[]}
       />
     )
@@ -802,8 +802,8 @@ describe('RaceDetails', () => {
         isAdmin
         carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
         teams={[
-          { id: 'team-1', name: 'Team Alpha' },
-          { id: 'team-2', name: 'Team Beta' },
+          { id: 'team-1', name: 'Team Alpha', iracingTeamId: null },
+          { id: 'team-2', name: 'Team Beta', iracingTeamId: null },
         ]}
         allDrivers={[]}
       />

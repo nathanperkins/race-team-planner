@@ -501,7 +501,7 @@ describe('sendTeamsAssignmentNotification', () => {
     vi.mocked(prisma.race.findUnique).mockResolvedValue(mockRace as any)
     // Simulate DB filter: return nothing when teamId filter is applied, full list otherwise.
     // This makes the test fail when the bug is present and pass when it is fixed.
-    vi.mocked(prisma.registration.findMany).mockImplementation(async (query: any) => {
+    vi.mocked(prisma.registration.findMany as any).mockImplementation(async (query: any) => {
       if (query?.where?.teamId) return []
       return [assignedDriver, unassignedDriver] as any
     })
@@ -668,7 +668,7 @@ describe('sendTeamsAssignmentNotification', () => {
     ] as any)
     // Simulate DB filter: when teamsAssigned:true is applied, the unassigned sibling is
     // excluded. Without the filter it is returned, enabling the empty-timeslot branch.
-    vi.mocked(prisma.race.findMany).mockImplementation(async (query: any) => {
+    vi.mocked(prisma.race.findMany as any).mockImplementation(async (query: any) => {
       if (query?.where?.teamsAssigned === true) return []
       return [
         {
@@ -1469,12 +1469,12 @@ describe('deleteRegistration notifications', () => {
     const race2Result = callArgs.find((r: any) => r.id === 'race-2')
 
     // race-1 should only have team-1
-    expect(race1Result.teams).toHaveLength(1)
-    expect(race1Result.teams[0].id).toBe('team-1')
+    expect(race1Result?.teams).toHaveLength(1)
+    expect(race1Result?.teams[0].id).toBe('team-1')
 
     // race-2 should only have team-2 (not team-1 bleeding over due to shared teamMap)
-    expect(race2Result.teams).toHaveLength(1)
-    expect(race2Result.teams[0].id).toBe('team-2')
+    expect(race2Result?.teams).toHaveLength(1)
+    expect(race2Result?.teams[0].id).toBe('team-2')
 
     delete process.env.NEXTAUTH_URL
   })
@@ -1498,14 +1498,14 @@ describe('deleteRegistration notifications', () => {
         discordTeamThreads: { 'team-1': 'team-thread-1' },
       },
     } as any)
-    vi.mocked(prisma.registration.delete).mockImplementation(async () => {
+    vi.mocked(prisma.registration.delete as any).mockImplementation(async () => {
       // Simulate async delete that takes a moment
       await new Promise((resolve) => setTimeout(resolve, 10))
       deleteCompleted = true
       return {} as any
     })
     vi.mocked(postRosterChangeNotifications).mockResolvedValue(undefined as any)
-    vi.mocked(prisma.race.findMany).mockImplementation(() => {
+    vi.mocked(prisma.race.findMany as any).mockImplementation(() => {
       if (!deleteCompleted) findManyCalledBeforeDelete = true
       return Promise.resolve([
         {
@@ -2110,7 +2110,7 @@ describe('saveRaceEdits - Discord thread validation', () => {
       expires: '2026-12-31T23:59:59.999Z',
     }
 
-    vi.mocked(auth).mockResolvedValue(mockSession)
+    vi.mocked(auth as any).mockResolvedValue(mockSession)
 
     // Mock race with Discord threads
     vi.mocked(prisma.race.findUnique).mockResolvedValue({
@@ -2162,7 +2162,7 @@ describe('saveRaceEdits - Discord thread validation', () => {
       expires: '2026-12-31T23:59:59.999Z',
     }
 
-    vi.mocked(auth).mockResolvedValue(mockSession)
+    vi.mocked(auth as any).mockResolvedValue(mockSession)
 
     // Mock race with Discord threads
     vi.mocked(prisma.race.findUnique).mockResolvedValue({
@@ -2229,7 +2229,7 @@ describe('saveRaceEdits - Discord thread validation', () => {
       expires: '2026-12-31T23:59:59.999Z',
     }
 
-    vi.mocked(auth).mockResolvedValue(mockSession)
+    vi.mocked(auth as any).mockResolvedValue(mockSession)
 
     // Mock race with Discord threads
     vi.mocked(prisma.race.findUnique).mockResolvedValue({
@@ -2296,7 +2296,7 @@ describe('saveRaceEdits - Discord thread validation', () => {
       expires: '2026-12-31T23:59:59.999Z',
     }
 
-    vi.mocked(auth).mockResolvedValue(mockSession)
+    vi.mocked(auth as any).mockResolvedValue(mockSession)
 
     // Mock race with Discord threads
     vi.mocked(prisma.race.findUnique).mockResolvedValue({
@@ -2625,13 +2625,13 @@ describe('saveRaceEdits - registration operations', () => {
   it('runs rebalancing before updating race settings when applyRebalance is true', async () => {
     const calls: string[] = []
 
-    vi.mocked(prisma.registration.findMany).mockImplementation(async (query: any) => {
+    vi.mocked(prisma.registration.findMany as any).mockImplementation(async (query: any) => {
       if (query?.distinct) {
         calls.push('loadCarClassIds')
       }
       return []
     })
-    vi.mocked(prisma.race.update).mockImplementation(async () => {
+    vi.mocked(prisma.race.update as any).mockImplementation(async () => {
       calls.push('race.update')
       return {} as any
     })

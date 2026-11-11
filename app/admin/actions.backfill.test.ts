@@ -38,7 +38,7 @@ describe('backfillDiscordNicknamesAction', () => {
   })
 
   it('returns unauthorized if session is missing', async () => {
-    vi.mocked(auth).mockResolvedValue(null)
+    vi.mocked(auth as any).mockResolvedValue(null)
 
     const result = await backfillDiscordNicknamesAction()
 
