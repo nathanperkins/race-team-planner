@@ -35,13 +35,19 @@ export async function register() {
       verifyEventsForum,
     } = await import('@/lib/discord')
 
+    const [bot, guild, adminRoles, notificationsChannel, eventsForum] = await Promise.all([
+      verifyBotToken(),
+      verifyGuildAccess(),
+      verifyAdminRoles(),
+      verifyNotificationsChannel(),
+      verifyEventsForum(),
+    ])
+
     // 1. Verify Token
-    const bot = await verifyBotToken()
     if (bot) {
       logger.info(`[Discord] Bot Identity Verified: ${bot.name} (${bot.id}) ✅`)
 
       // 2. Verify Guild Access
-      const guild = await verifyGuildAccess()
       if (guild) {
         logger.info(
           `[Discord] Guild Access Verified: "${guild.name}" (${process.env.DISCORD_GUILD_ID}) ✅`
@@ -53,7 +59,6 @@ export async function register() {
       }
 
       // 3. Verify Admin Roles
-      const adminRoles = await verifyAdminRoles()
       if (adminRoles.length > 0) {
         logger.info(`[Discord] Admin Roles Verified: ${adminRoles.join(', ')} ✅`)
       } else if (process.env.DISCORD_ADMIN_ROLE_IDS) {
@@ -61,7 +66,6 @@ export async function register() {
       }
 
       // 4. Verify Notifications Channel
-      const notificationsChannel = await verifyNotificationsChannel()
       if (notificationsChannel) {
         logger.info(
           `[Discord] Notifications Channel Verified: #${notificationsChannel.name} (${process.env.DISCORD_NOTIFICATIONS_CHANNEL_ID}) ✅`
@@ -75,7 +79,6 @@ export async function register() {
       }
 
       // 5. Verify Events Forum
-      const eventsForum = await verifyEventsForum()
       if (eventsForum) {
         logger.info(
           `[Discord] Events Forum Verified: #${eventsForum.name} (${process.env.DISCORD_EVENTS_FORUM_ID}) ✅`
