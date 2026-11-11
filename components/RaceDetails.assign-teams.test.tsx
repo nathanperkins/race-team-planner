@@ -866,8 +866,7 @@ describe('RaceDetails Assign Teams', () => {
     const assignedRow = assignedNameNode?.closest('[draggable]')
     expect(assignedRow).toBeTruthy()
     const moveButton = assignedRow?.querySelector('button[title="Move to unassigned"]') as
-      | HTMLButtonElement
-      | undefined
+      HTMLButtonElement | undefined
     expect(moveButton).toBeTruthy()
     fireEvent.click(moveButton!)
 

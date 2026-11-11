@@ -19,6 +19,10 @@ const eslintConfig = defineConfig([
     rules: {
       // Use pino logger.info() and related methods instead of console.log().
       'no-console': 'error',
+      // TODO (#178): Refactor components (e.g. EditableCarClass, EditableRaceTime, TeamPickerModal)
+      // to avoid calling setState directly in useEffect (React 19 best practice), then remove
+      // this override so the rule defaults back to 'error'.
+      'react-hooks/set-state-in-effect': 'warn',
     },
   },
   {

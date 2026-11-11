@@ -35,11 +35,7 @@ interface Driver {
   image?: string | null
   isManual?: boolean
   category?:
-    | 'Unassigned'
-    | 'Assigned'
-    | 'Different Class'
-    | 'Different Time'
-    | 'Different Time and Class'
+    'Unassigned' | 'Assigned' | 'Different Class' | 'Different Time' | 'Different Time and Class'
   originalClass?: string
   originalTime?: Date
   userId?: string
