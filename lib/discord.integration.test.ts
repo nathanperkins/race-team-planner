@@ -390,4 +390,112 @@ describe('sendTeamsAssignmentNotificationWithData', () => {
     expect(teamNames.some((n) => n.includes('Team A'))).toBe(true)
     expect(teamNames.some((n) => n.includes('Team B'))).toBe(true)
   })
+
+  it('uses the modified timeslot startTime for drop notifications and updates emptied team thread without touching sibling timeslot threads (issues #174, #175)', async () => {
+    const tenAm = new Date('2026-06-14T10:00:00Z')
+    const fivePm = new Date('2026-06-14T17:00:00Z')
+    const tenAmUnix = Math.floor(tenAm.getTime() / 1000)
+    const fivePmUnix = Math.floor(fivePm.getTime() / 1000)
+
+    const event = await seedEvent({ startTime: tenAm, endTime: new Date('2026-06-14T21:00:00Z') })
+    const carClass = await seedCarClass()
+    const team = await seedTeam('Shared Global Team')
+    const alice = await seedUser('Alice', 'alice-discord-10am')
+
+    const tenAmRace = await seedRace(event.id, {
+      startTime: tenAm,
+      endTime: new Date('2026-06-14T13:00:00Z'),
+      teamsAssigned: true,
+      discordTeamsThreadId: 'event-thread-id',
+      discordTeamThreads: { [team.id]: 'team-10am-thread' },
+    })
+    await seedRegistration(tenAmRace.id, carClass.id, alice.id, team.id)
+
+    const fivePmRace = await seedRace(event.id, {
+      startTime: fivePm,
+      endTime: new Date('2026-06-14T20:00:00Z'),
+      teamsAssigned: true,
+      discordTeamsThreadId: 'event-thread-id',
+      discordTeamThreads: { [team.id]: 'team-5pm-thread' },
+      discordTeamsSnapshot: {
+        'dropped-reg-5pm': {
+          teamId: team.id,
+          driverName: 'Bob',
+          carClassName: 'GT3',
+        },
+      },
+    })
+
+    vi.mocked(fetch).mockImplementation(async (url, opts) => {
+      const urlStr = typeof url === 'string' ? url : url.toString()
+      const method = opts?.method ?? 'GET'
+
+      if (urlStr.endsWith('/users/@me') && method === 'GET') {
+        return mockFetchSuccess({ id: 'bot-user-id' })
+      }
+      if (
+        (urlStr.endsWith('/channels/team-5pm-thread') ||
+          urlStr.endsWith('/channels/event-thread-id')) &&
+        method === 'GET'
+      ) {
+        const id = urlStr.split('/').pop()
+        return mockFetchSuccess({ id, parent_id: 'events-forum-id' })
+      }
+      if (
+        (urlStr.endsWith('/channels/team-5pm-thread/messages/team-5pm-thread') ||
+          urlStr.endsWith('/channels/event-thread-id/messages/event-thread-id')) &&
+        method === 'GET'
+      ) {
+        const id = urlStr.split('/').pop()
+        return mockFetchSuccess({
+          id,
+          author: { id: 'bot-user-id' },
+          embeds: [{ fields: [{ name: 'Created By', value: 'Test Admin' }] }],
+        })
+      }
+      return mockFetchSuccess()
+    })
+
+    const data = await loadRaceAssignmentData(fivePmRace.id)
+    await sendTeamsAssignmentNotificationWithData(data, {
+      id: 'admin-user-id',
+      name: 'Test Admin',
+      role: 'ADMIN',
+    })
+
+    const calls = vi.mocked(fetch).mock.calls
+
+    // 1. Sibling 10:00 AM team thread must never be touched
+    const tenAmThreadCalls = calls.filter(([url]) => url.toString().includes('team-10am-thread'))
+    expect(tenAmThreadCalls).toHaveLength(0)
+
+    // 2. 5:00 PM emptied team thread starter message is PATCHed with "*No drivers registered*" and 5:00 PM timestamp
+    const fivePmTeamPatch = calls.find(
+      ([url, opts]) =>
+        url.toString().endsWith('/channels/team-5pm-thread/messages/team-5pm-thread') &&
+        opts?.method === 'PATCH'
+    )
+    expect(fivePmTeamPatch).toBeDefined()
+    const fivePmPatchBody = fivePmTeamPatch![1]!.body as string
+    expect(fivePmPatchBody).toContain('*No drivers registered*')
+    expect(fivePmPatchBody).toContain(`<t:${fivePmUnix}:F>`)
+    expect(fivePmPatchBody).not.toContain(`<t:${tenAmUnix}:F>`)
+
+    // 3. Roster drop notifications in both event-thread-id and team-5pm-thread use 5:00 PM timestamp (not 10:00 AM)
+    const eventDropPost = calls.find(
+      ([url, opts]) =>
+        url.toString().endsWith('/channels/event-thread-id/messages') && opts?.method === 'POST'
+    )
+    expect(eventDropPost).toBeDefined()
+    expect(eventDropPost![1]!.body as string).toContain(`<t:${fivePmUnix}:F>`)
+    expect(eventDropPost![1]!.body as string).not.toContain(`<t:${tenAmUnix}:F>`)
+
+    const teamDropPost = calls.find(
+      ([url, opts]) =>
+        url.toString().endsWith('/channels/team-5pm-thread/messages') && opts?.method === 'POST'
+    )
+    expect(teamDropPost).toBeDefined()
+    expect(teamDropPost![1]!.body as string).toContain(`<t:${fivePmUnix}:F>`)
+    expect(teamDropPost![1]!.body as string).not.toContain(`<t:${tenAmUnix}:F>`)
+  })
 })
