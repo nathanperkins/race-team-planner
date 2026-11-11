@@ -114,10 +114,11 @@ Automated encrypted backups are configured in production via Cloud Run Jobs and 
   - **Important**: Store this key securely! Without it, backups cannot be decrypted.
 
 - **Backup Retention**:
-  | Type | Retention |
-  |------|-----------|
-  | Hourly | 7 days |
-  | Weekly | 16 weeks |
+
+  | Type   | Retention |
+  | ------ | --------- |
+  | Hourly | 7 days    |
+  | Weekly | 16 weeks  |
 
 - **Restoring a Backup**:
   ```bash

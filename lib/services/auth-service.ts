@@ -8,8 +8,7 @@ import type { GuildMembershipResult } from '@/lib/discord'
 const logger = createLogger('auth-service')
 
 export type MembershipVerification =
-  | { granted: true; data: GuildMembershipResult }
-  | { granted: false; redirectUrl: string }
+  { granted: true; data: GuildMembershipResult } | { granted: false; redirectUrl: string }
 
 export interface UserRefreshData {
   role: UserRole
