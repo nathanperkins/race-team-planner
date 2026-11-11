@@ -176,12 +176,46 @@ describe('buildTeamChangeSummary', () => {
       type: 'dropped',
       driverName: 'Bob',
       fromTeamName: 'Carbon',
+      fromCarClassName: 'GT3',
       destructive: true,
     })
 
     const rosterChanges = buildRosterChangesFromTeamChangeDetails(details)
     expect(rosterChanges).toEqual([
-      { type: 'dropped', driverName: 'Bob', fromTeam: 'Carbon', stillRegisteredCount: 0 },
+      {
+        type: 'dropped',
+        driverName: 'Bob',
+        fromTeam: 'Carbon',
+        carClassName: 'GT3',
+        stillRegisteredCount: 0,
+      },
+    ])
+  })
+
+  it('omits Unknown fallback carClassName when building dropped roster changes', () => {
+    const teamNameById = new Map([['team-1', 'Carbon']])
+    const details = buildTeamChangeDetails({
+      teamNameById,
+      originalRecords: [
+        {
+          id: 'reg-1',
+          driverName: 'Bob',
+          teamId: 'team-1',
+          teamName: 'Carbon',
+          carClassName: 'Unknown',
+        },
+      ],
+      pendingRecords: [],
+    })
+
+    const rosterChanges = buildRosterChangesFromTeamChangeDetails(details)
+    expect(rosterChanges).toEqual([
+      {
+        type: 'dropped',
+        driverName: 'Bob',
+        fromTeam: 'Carbon',
+        stillRegisteredCount: 0,
+      },
     ])
   })
 

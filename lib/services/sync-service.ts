@@ -13,7 +13,7 @@ const logger = createLogger('sync-service')
  */
 export async function runIRacingSync(source: SyncSource = SyncSource.MANUAL) {
   if (!features.iracingSync) {
-    return { success: false, error: 'iRacing integration is not enabled' }
+    return { success: false as const, error: 'iRacing integration is not enabled' }
   }
 
   // 1. Initialize Sync Log
@@ -163,7 +163,7 @@ export async function runIRacingSync(source: SyncSource = SyncSource.MANUAL) {
     revalidatePath('/roster')
 
     return {
-      success: true,
+      success: true as const,
       eventsCount: externalEvents.length,
       carClassesCount: externalCarClasses.length,
       usersCount: usersToSync.length,
@@ -183,7 +183,7 @@ export async function runIRacingSync(source: SyncSource = SyncSource.MANUAL) {
     })
 
     return {
-      success: false,
+      success: false as const,
       error: message,
     }
   }

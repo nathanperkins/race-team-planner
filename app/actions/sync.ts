@@ -15,7 +15,7 @@ const logger = createLogger('sync')
 export async function syncGlobalDataAction() {
   const session = await auth()
   if (session?.user?.role !== UserRole.ADMIN) {
-    return { success: false, error: 'Unauthorized: Admin role required' }
+    return { success: false as const, error: 'Unauthorized: Admin role required' }
   }
 
   return runIRacingSync(SyncSource.MANUAL)
