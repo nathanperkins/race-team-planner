@@ -1571,6 +1571,46 @@ describe('postRosterChangeNotifications', () => {
       expect.anything()
     )
   })
+
+  it('includes car class in dropped embed payloads sent to event and team threads', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+    } as Response)
+
+    const teamThreads = {
+      'team-1': 'team-thread-1',
+    }
+    const teamNameById = new Map([['team-1', 'Team One']])
+
+    await postRosterChangeNotifications(
+      eventThreadId,
+      [
+        {
+          type: 'dropped',
+          driverName: 'Bob',
+          fromTeam: 'Team One',
+          carClassName: 'GT3',
+          stillRegisteredCount: 0,
+        },
+      ],
+      botToken,
+      'Admin User',
+      raceStartTime,
+      teamThreads,
+      teamNameById
+    )
+
+    expect(fetch).toHaveBeenCalledTimes(2)
+    for (const [, requestInit] of vi.mocked(fetch).mock.calls) {
+      const payload = JSON.parse((requestInit as RequestInit).body as string)
+      expect(payload.embeds[0].fields).toContainEqual({
+        name: '🚫 Dropped from Race',
+        value: '**Bob** (GT3, was on Team One)',
+        inline: false,
+      })
+    }
+  })
 })
 
 describe('sendWeeklyScheduleNotification', () => {

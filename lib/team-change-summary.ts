@@ -346,6 +346,7 @@ export function buildTeamChangeDetails(params: {
         toTeamId: null,
         fromTeamName,
         toTeamName: 'Unassigned',
+        fromCarClassName: original.carClassName,
         line: `Dropped ${original.driverName} from ${fromTeamName}.`,
         destructive: true,
       })
@@ -398,11 +399,13 @@ export function buildRosterChangesFromTeamChangeDetails(
     }
 
     if (detail.type === 'dropped') {
+      const carClassName = detail.fromCarClassName?.trim()
       rosterChanges.push({
         type: 'dropped',
         driverName: detail.driverName,
         fromTeam: detail.fromTeamName,
         stillRegisteredCount: 0,
+        ...(carClassName && carClassName !== 'Unknown' ? { carClassName } : {}),
       })
       return
     }

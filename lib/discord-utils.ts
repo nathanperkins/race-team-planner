@@ -35,7 +35,13 @@ export interface RaceTimeslotData {
 
 export type RosterChange =
   | { type: 'added'; driverName: string; teamName: string }
-  | { type: 'dropped'; driverName: string; fromTeam?: string; stillRegisteredCount: number }
+  | {
+      type: 'dropped'
+      driverName: string
+      fromTeam?: string
+      stillRegisteredCount: number
+      carClassName?: string
+    }
   | { type: 'moved'; driverName: string; fromTeam: string; toTeam: string }
   | { type: 'unassigned'; driverName: string; fromTeam: string }
   | {
@@ -955,11 +961,15 @@ export function detectRosterChanges(
       }
       const fromTeam =
         previous.teamId === null ? 'Unassigned' : (teamNameById.get(previous.teamId) ?? 'Team')
+      const previousCarClassName = previous.carClassName?.trim()
       rosterChanges.push({
         type: 'dropped',
         driverName: previous.driverName,
         fromTeam,
         stillRegisteredCount: 0,
+        ...(previousCarClassName && previousCarClassName !== 'Unknown'
+          ? { carClassName: previousCarClassName }
+          : {}),
       })
     }
   })
@@ -1049,13 +1059,20 @@ export function buildRosterChangesEmbed(
       name: '🚫 Dropped from Race',
       value: dropped
         .map((c) => {
-          const teamNote =
-            !c.fromTeam || c.fromTeam === 'Unassigned' ? '' : ` (was on ${c.fromTeam})`
+          const details: string[] = []
+          const carClassName = c.carClassName?.trim()
+          if (carClassName && carClassName !== 'Unknown') {
+            details.push(carClassName)
+          }
+          if (c.fromTeam && c.fromTeam !== 'Unassigned') {
+            details.push(`was on ${c.fromTeam}`)
+          }
+          const detailsNote = details.length > 0 ? ` (${details.join(', ')})` : ''
           const stillNote =
             c.stillRegisteredCount > 0
               ? ` — *still registered in ${c.stillRegisteredCount} other timeslot${c.stillRegisteredCount === 1 ? '' : 's'}*`
               : ''
-          return `**${c.driverName}**${teamNote}${stillNote}`
+          return `**${c.driverName}**${detailsNote}${stillNote}`
         })
         .join('\n'),
       inline: false,

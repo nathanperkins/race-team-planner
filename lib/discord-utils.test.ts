@@ -1066,6 +1066,22 @@ describe('Discord Utils', () => {
       })
     })
 
+    it('detects driver drops including carClassName when present in snapshot', () => {
+      const previousSnapshot = {
+        reg1: { teamId: 'team1', driverName: 'Bob', carClassName: 'GT3' },
+      }
+      const currentSnapshot = {}
+      const changes = detectRosterChanges(previousSnapshot, currentSnapshot, teamNameById)
+      expect(changes).toHaveLength(1)
+      expect(changes[0]).toEqual({
+        type: 'dropped',
+        driverName: 'Bob',
+        fromTeam: 'Team Alpha',
+        carClassName: 'GT3',
+        stillRegisteredCount: 0,
+      })
+    })
+
     it('detects multiple changes in one update', () => {
       const previousSnapshot = {
         reg1: { teamId: 'team1', driverName: 'Alice' },
@@ -1280,6 +1296,90 @@ describe('Discord Utils', () => {
       expect(embed.fields).toHaveLength(2) // Timeslot + Dropped from Race
       expect(embed.fields[1].name).toBe('🚫 Dropped from Race')
       expect(embed.fields[1].value).toBe('**Bob**')
+    })
+
+    it('builds embed with dropped drivers including car class and team', () => {
+      const embed = buildRosterChangesEmbed(
+        [
+          {
+            type: 'dropped',
+            driverName: 'Bob',
+            fromTeam: 'Team Alpha',
+            carClassName: 'GT3',
+            stillRegisteredCount: 0,
+          },
+        ],
+        appTitle,
+        adminName,
+        raceStartTime
+      )
+      expect(embed.fields).toHaveLength(2)
+      expect(embed.fields[1].name).toBe('🚫 Dropped from Race')
+      expect(embed.fields[1].value).toBe('**Bob** (GT3, was on Team Alpha)')
+    })
+
+    it('builds embed with dropped drivers including car class when unassigned', () => {
+      const embed = buildRosterChangesEmbed(
+        [
+          {
+            type: 'dropped',
+            driverName: 'Bob',
+            fromTeam: 'Unassigned',
+            carClassName: 'GT3',
+            stillRegisteredCount: 0,
+          },
+        ],
+        appTitle,
+        adminName,
+        raceStartTime
+      )
+      expect(embed.fields).toHaveLength(2)
+      expect(embed.fields[1].name).toBe('🚫 Dropped from Race')
+      expect(embed.fields[1].value).toBe('**Bob** (GT3)')
+    })
+
+    it('builds embed with dropped drivers combining car class, team, and still-registered note', () => {
+      const embed = buildRosterChangesEmbed(
+        [
+          {
+            type: 'dropped',
+            driverName: 'Bob',
+            fromTeam: 'Team Alpha',
+            carClassName: 'GT3',
+            stillRegisteredCount: 1,
+          },
+        ],
+        appTitle,
+        adminName,
+        raceStartTime
+      )
+      expect(embed.fields[1].value).toBe(
+        '**Bob** (GT3, was on Team Alpha) — *still registered in 1 other timeslot*'
+      )
+    })
+
+    it('ignores blank or Unknown carClassName on dropped drivers', () => {
+      const embed = buildRosterChangesEmbed(
+        [
+          {
+            type: 'dropped',
+            driverName: 'Bob',
+            fromTeam: 'Team Alpha',
+            carClassName: 'Unknown',
+            stillRegisteredCount: 0,
+          },
+          {
+            type: 'dropped',
+            driverName: 'Alice',
+            carClassName: '   ',
+            stillRegisteredCount: 0,
+          },
+        ],
+        appTitle,
+        adminName,
+        raceStartTime
+      )
+      expect(embed.fields[1].value).toBe('**Bob** (was on Team Alpha)\n**Alice**')
     })
 
     it('appends still-registered note when stillRegisteredCount is 1', () => {

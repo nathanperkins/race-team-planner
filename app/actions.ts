@@ -677,6 +677,7 @@ export async function deleteRegistration(registrationId: string): Promise<void> 
         team: { select: { id: true, name: true, alias: true } },
         user: { select: { name: true } },
         manualDriver: { select: { name: true } },
+        carClass: { select: { name: true, shortName: true } },
         race: {
           select: {
             id: true,
@@ -769,9 +770,21 @@ export async function deleteRegistration(registrationId: string): Promise<void> 
             const driverName =
               registration.user?.name || registration.manualDriver?.name || 'Unknown Driver'
             const fromTeam = registration.team?.alias || registration.team?.name || 'Unassigned'
+            const carClassName =
+              registration.carClass?.shortName?.trim() ||
+              registration.carClass?.name?.trim() ||
+              undefined
             return postRosterChangeNotifications(
               eventThreadId,
-              [{ type: 'dropped', driverName, fromTeam, stillRegisteredCount }],
+              [
+                {
+                  type: 'dropped',
+                  driverName,
+                  fromTeam,
+                  stillRegisteredCount,
+                  ...(carClassName ? { carClassName } : {}),
+                },
+              ],
               process.env.DISCORD_BOT_TOKEN || '',
               session.user.name || driverName,
               registration.race!.startTime,
