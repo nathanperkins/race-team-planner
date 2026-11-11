@@ -703,7 +703,7 @@ describe('Discord Utils', () => {
       expect(embed.description).toContain('**Team Blue**')
 
       // Verify no fields are used (event info is in description now)
-      expect(embed.fields).toBeUndefined()
+      expect('fields' in embed).toBe(false)
     })
 
     it('builds single-timeslot embed without time headers', () => {

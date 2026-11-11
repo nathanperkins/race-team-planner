@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState, useEffect, useRef, startTransition, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useTransition } from 'react'
 import { updateRegistrationCarClass } from '@/app/actions'
 import { Car, ChevronDown } from 'lucide-react'
 import styles from './EditableCarClass.module.css'
@@ -50,12 +50,10 @@ export default function EditableCarClass({
   const [isOpen, setIsOpen] = useState(false)
   const [dropdownPlacement, setDropdownPlacement] = useState<'up' | 'down'>('down')
   const [dropdownMaxHeight, setDropdownMaxHeight] = useState<number | undefined>(undefined)
-  const [pendingLabel, setPendingLabel] = useState<string | null>(null)
   const [updateError, setUpdateError] = useState('')
-  const [state, formAction, isPending] = useActionState(updateRegistrationCarClass, initialState)
+  const [isPending, startTransition] = useTransition()
   const dropdownRef = useRef<HTMLDivElement>(null)
   const dropdownMenuRef = useRef<HTMLDivElement>(null)
-  const lastProcessedTimestamp = useRef<number>(0)
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -94,46 +92,28 @@ export default function EditableCarClass({
     return () => window.removeEventListener('resize', handleResize)
   }, [isOpen, updateDropdownPlacement])
 
-  useEffect(() => {
-    // Only process if we have a state message, a pending action was initiated (pendingLabel),
-    // and this state update hasn't been processed yet.
-    if (
-      state.message &&
-      pendingLabel &&
-      state.timestamp &&
-      state.timestamp !== lastProcessedTimestamp.current
-    ) {
-      // Mark as processed
-      lastProcessedTimestamp.current = state.timestamp
-
-      // Always close dropdown when a message (success or error) is received
-      // eslint-disable-next-line
-      setIsOpen(false)
-
-      if (state.message !== 'Success') {
-        const prefix = `Failed to update to ${pendingLabel}: `
-        setUpdateError(`${prefix}${state.message}`)
-      }
-
-      // Clear pending label after handling
-      setPendingLabel(null)
-    }
-  }, [state, pendingLabel])
-
   const handleSelect = (classId: string, label: string) => {
     if (!registrationId) return
+    setIsOpen(false)
     if (deferSubmit) {
-      setIsOpen(false)
       onChange?.(classId)
       return
     }
     onChange?.(classId)
-    setPendingLabel(label)
     const formData = new FormData()
     formData.append('registrationId', registrationId)
     formData.append('carClassId', classId)
-    startTransition(() => {
-      formAction(formData)
+    startTransition(async () => {
+      try {
+        const result = await updateRegistrationCarClass(initialState, formData)
+        if (result.message && result.message !== 'Success') {
+          const prefix = `Failed to update to ${label}: `
+          setUpdateError(`${prefix}${result.message}`)
+        }
+      } catch (err) {
+        const prefix = `Failed to update to ${label}: `
+        setUpdateError(`${prefix}${err instanceof Error ? err.message : 'Unknown error'}`)
+      }
     })
   }
 

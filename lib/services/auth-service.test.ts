@@ -36,6 +36,7 @@ describe('auth-service', () => {
 
   describe('shouldRefreshUser', () => {
     const validToken = {
+      role: UserRole.USER,
       version: SESSION_VERSION,
       expectationsVersion: CURRENT_EXPECTATIONS_VERSION,
       iracingCustomerId: 12345,

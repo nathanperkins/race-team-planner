@@ -142,7 +142,7 @@ function makeEvent(
     carClasses: [
       { id: 'class-1', externalId: 1, name: 'IMSA23', shortName: 'IMSA23', createdAt: new Date() },
     ],
-    races: (fields.races ?? [makeRace()]) as EventWithRaces['races'],
+    races: (fields.races ?? [makeRace()]) as unknown as EventWithRaces['races'],
   } as EventWithRaces
 }
 

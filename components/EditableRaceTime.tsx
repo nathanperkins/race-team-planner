@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState, useEffect, useRef, startTransition } from 'react'
+import { useState, useEffect, useRef, useTransition } from 'react'
 import { updateRegistrationRaceTime } from '@/app/actions'
 import { ChevronDown } from 'lucide-react'
 import styles from './EditableRaceTime.module.css'
@@ -46,11 +46,9 @@ export default function EditableRaceTime({
   }
 
   const [isOpen, setIsOpen] = useState(false)
-  const [pendingLabel, setPendingLabel] = useState<string | null>(null)
   const [updateError, setUpdateError] = useState('')
-  const [state, formAction, isPending] = useActionState(updateRegistrationRaceTime, initialState)
+  const [isPending, startTransition] = useTransition()
   const dropdownRef = useRef<HTMLDivElement>(null)
-  const lastProcessedTimestamp = useRef<number>(0)
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -62,28 +60,9 @@ export default function EditableRaceTime({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  useEffect(() => {
-    if (
-      state.message &&
-      pendingLabel &&
-      state.timestamp &&
-      state.timestamp !== lastProcessedTimestamp.current
-    ) {
-      lastProcessedTimestamp.current = state.timestamp
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setIsOpen(false)
-
-      if (state.message !== 'Success') {
-        const prefix = `Failed to update to ${pendingLabel}: `
-        setUpdateError(`${prefix}${state.message}`)
-      }
-
-      setPendingLabel(null)
-    }
-  }, [state, pendingLabel])
-
   const handleSelect = (raceId: string, startTime: Date) => {
     if (!registrationId) return
+    setIsOpen(false)
 
     const label = `${startTime.toLocaleDateString(undefined, dateOnlyFormat)} - ${startTime.toLocaleTimeString(
       undefined,
@@ -93,13 +72,21 @@ export default function EditableRaceTime({
         timeZoneName: 'short',
       }
     )}`
-    setPendingLabel(label)
 
     const formData = new FormData()
     formData.append('registrationId', registrationId)
     formData.append('raceId', raceId)
-    startTransition(() => {
-      formAction(formData)
+    startTransition(async () => {
+      try {
+        const result = await updateRegistrationRaceTime(initialState, formData)
+        if (result.message && result.message !== 'Success') {
+          const prefix = `Failed to update to ${label}: `
+          setUpdateError(`${prefix}${result.message}`)
+        }
+      } catch (err) {
+        const prefix = `Failed to update to ${label}: `
+        setUpdateError(`${prefix}${err instanceof Error ? err.message : 'Unknown error'}`)
+      }
     })
   }
 

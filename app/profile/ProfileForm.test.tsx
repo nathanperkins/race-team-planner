@@ -174,7 +174,17 @@ describe('ProfileForm', () => {
 
   it('shows loading overlay while saving', async () => {
     vi.mocked(updateProfile).mockImplementation(
-      () => new Promise((resolve) => setTimeout(() => resolve({ success: true }), 200))
+      () =>
+        new Promise((resolve) =>
+          setTimeout(
+            () =>
+              resolve({
+                success: true,
+                data: { iracingCustomerId: 123456, expectationsVersion: 1 },
+              }),
+            200
+          )
+        )
     )
 
     render(
