@@ -457,6 +457,41 @@ describe('Discord Utils', () => {
       // Should not have fields in the simplified format
       expect(embed.fields).toEqual([])
     })
+
+    it('matches same-class racers by carClassId even when carClassName strings differ', () => {
+      const embed = buildRegistrationEmbed(
+        {
+          ...data,
+          carClassId: 'class-gt3',
+          carClassName: 'GT3 Class',
+          otherRegisteredDrivers: [
+            {
+              name: 'Team Driver',
+              carClassId: 'class-gt3',
+              carClassName: 'GT3',
+              discordId: '111',
+            },
+            {
+              name: 'Unassigned Driver',
+              carClassId: 'class-gt3',
+              carClassName: 'GT3',
+            },
+            {
+              name: 'Other Class Driver',
+              carClassId: 'class-lmp2',
+              carClassName: 'GT3 Class',
+            },
+          ],
+        },
+        appTitle,
+        { includeRegisteredDrivers: true }
+      )
+
+      expect(embed.description).toContain('<@123>')
+      expect(embed.description).toContain('<@111>')
+      expect(embed.description).toContain('Unassigned Driver')
+      expect(embed.description).not.toContain('Other Class Driver')
+    })
   })
 
   describe('buildOnboardingEmbed', () => {

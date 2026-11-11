@@ -32,7 +32,7 @@ function isRegistrationUserForeignKeyError(error: unknown): boolean {
 async function getOtherRegisteredDriversForRace(
   raceId: string,
   excludeRegistrationId: string
-): Promise<Array<{ name: string; carClassName: string; discordId?: string }>> {
+): Promise<Array<{ name: string; carClassId?: string; carClassName: string; discordId?: string }>> {
   const registrations =
     (await prisma.registration.findMany({
       where: {
@@ -41,6 +41,7 @@ async function getOtherRegisteredDriversForRace(
       },
       orderBy: { createdAt: 'asc' },
       select: {
+        carClassId: true,
         carClass: {
           select: {
             name: true,
@@ -70,16 +71,22 @@ async function getOtherRegisteredDriversForRace(
     .map((reg) => {
       const name = reg.user?.name || reg.manualDriver?.name || ''
       if (!name) return null
-      const carClassName = reg.carClass?.shortName || reg.carClass?.name || ''
+      const carClassName = reg.carClass?.shortName?.trim() || reg.carClass?.name?.trim() || ''
       if (!carClassName) return null
       const discordId = reg.user?.accounts?.[0]?.providerAccountId
       return {
         name,
+        ...(reg.carClassId ? { carClassId: reg.carClassId } : {}),
         carClassName,
         ...(discordId ? { discordId } : {}),
       }
     })
-    .filter((entry): entry is { name: string; carClassName: string; discordId?: string } => !!entry)
+    .filter(
+      (
+        entry
+      ): entry is { name: string; carClassId?: string; carClassName: string; discordId?: string } =>
+        !!entry
+    )
 }
 
 async function getAutoTeamId(
@@ -609,7 +616,7 @@ export async function registerForRace(prevState: State, formData: FormData) {
         const otherRegisteredDrivers = getOtherRegisteredDriversForRace(raceId, registration.id)
         const carClass = prisma.carClass.findUniqueOrThrow({
           where: { id: carClassId },
-          select: { name: true },
+          select: { name: true, shortName: true },
         })
 
         const [resolvedDrivers, resolvedCarClass] = await Promise.all([
@@ -621,7 +628,8 @@ export async function registerForRace(prevState: State, formData: FormData) {
           userAvatarUrl: user.image || undefined,
           eventName: race.event.name,
           raceStartTime: race.startTime,
-          carClassName: resolvedCarClass.name,
+          carClassId,
+          carClassName: resolvedCarClass.shortName?.trim() || resolvedCarClass.name,
           eventUrl: `${baseUrl}/events?eventId=${race.event.id}`,
           discordUser: discordAccount?.providerAccountId
             ? {
@@ -2934,7 +2942,8 @@ export async function adminRegisterDriver(prevState: State, formData: FormData) 
           userAvatarUrl: registration.user.image || undefined,
           eventName: registration.race.event.name,
           raceStartTime: registration.race.startTime,
-          carClassName: registration.carClass.name,
+          carClassId: registration.carClassId || carClassId,
+          carClassName: registration.carClass.shortName?.trim() || registration.carClass.name,
           eventUrl: `${baseUrl}/events?eventId=${registration.race.event.id}`,
           discordUser: discordAccount?.providerAccountId
             ? {
