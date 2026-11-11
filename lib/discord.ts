@@ -1556,6 +1556,13 @@ export async function createOrUpdateTeamThread(options: {
         )
       }
     }
+
+    if (options.members !== undefined && options.members.length === 0) {
+      logger.info(
+        `ℹ️ Skipping replacement thread creation for emptied team thread ${options.existingThreadId}`
+      )
+      return null
+    }
   }
 
   const cleanName = normalizeSeriesName(options.eventName)
@@ -1639,7 +1646,7 @@ export async function refreshAllTeamThreads(
       id: string
       name: string
       alias: string | null
-      carClass: { name: string } | null
+      carClass: { name: string; shortName?: string | null } | null
       registrations: Array<{
         id: string
         user: {
@@ -1658,6 +1665,8 @@ export async function refreshAllTeamThreads(
     raceId?: string
     allTeams?: Array<{ id: string; name: string; alias: string | null }>
     fallbackCarClassByTeamId?: Record<string, string>
+    actorName?: string
+    mainEventThreadUrl?: string
   }
 ): Promise<void> {
   const scopedRaces = options?.raceId ? races.filter((race) => race.id === options.raceId) : races
@@ -1684,7 +1693,10 @@ export async function refreshAllTeamThreads(
     const teamOfficialName = team?.name ?? fallbackTeam!.name
     const teamAlias = team ? team.alias : fallbackTeam!.alias
     const raceStartTime = team?.raceStartTime ?? primaryRace.startTime
-    const carClassName = team?.carClass?.name ?? options?.fallbackCarClassByTeamId?.[teamId]
+    const carClassName =
+      team?.carClass?.shortName?.trim() ||
+      team?.carClass?.name ||
+      options?.fallbackCarClassByTeamId?.[teamId]
     const memberNames = team
       ? team.registrations.map((reg) => reg.user?.name || reg.manualDriver?.name || 'Unknown')
       : []
@@ -1704,6 +1716,7 @@ export async function refreshAllTeamThreads(
         eventName: event.name,
         raceStartTime,
         existingThreadId: threadId,
+        mainEventThreadUrl: options?.mainEventThreadUrl,
         raceUrl: `${baseUrl}/events?eventId=${event.id}`,
         track: event.track ?? undefined,
         trackConfig: event.trackConfig ?? undefined,
@@ -1712,6 +1725,7 @@ export async function refreshAllTeamThreads(
         carClassName,
         members: memberNames,
         memberDiscordIds,
+        actorName: options?.actorName,
       })
     } catch (error) {
       logger.error({ err: error, teamId, threadId }, 'Failed to refresh team thread')

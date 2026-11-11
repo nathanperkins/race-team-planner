@@ -918,6 +918,42 @@ describe('sendTeamsAssignmentNotification', () => {
       })
     )
   })
+
+  it('prunes deleted empty team thread ID from race.discordTeamThreads when createOrUpdateTeamThread returns null', async () => {
+    const fivePm = new Date('2026-06-14T17:00:00Z')
+    const mockRace = setupMockRace({
+      startTime: fivePm,
+      teamsAssigned: true,
+      discordTeamsThreadId: 'event-thread-id',
+      discordTeamThreads: { 'team-1': 'deleted-team-thread-5pm' },
+      discordTeamsSnapshot: {
+        'reg-1': { teamId: 'team-1', driverName: 'User 1', carClassName: 'GT3' },
+      },
+    })
+
+    vi.mocked(prisma.race.findUnique).mockResolvedValue(mockRace as any)
+    vi.mocked(prisma.registration.findMany).mockResolvedValue([])
+    vi.mocked(prisma.race.findFirst).mockResolvedValue({
+      discordTeamsThreadId: 'event-thread-id',
+    } as any)
+    vi.mocked(prisma.race.findMany).mockResolvedValue([])
+    vi.mocked(createOrUpdateTeamThread).mockResolvedValue(null)
+    vi.mocked(createOrUpdateEventThread).mockResolvedValue({
+      ok: true,
+      threadId: 'event-thread-id',
+    })
+
+    await sendTeamsAssignmentNotification(raceId)
+
+    expect(prisma.race.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: raceId },
+        data: expect.objectContaining({
+          discordTeamThreads: {},
+        }),
+      })
+    )
+  })
 })
 
 describe('loadRaceAssignmentData', () => {
@@ -1708,6 +1744,33 @@ describe('deleteRegistration notifications', () => {
         },
       },
     })
+  })
+
+  it('skips prisma.team.findMany when the dropped race has no discordTeamThreads', async () => {
+    vi.mocked(prisma.registration.findUnique).mockResolvedValue({
+      id: 'reg-no-team-threads',
+      userId: 'user-1',
+      teamId: null,
+      team: null,
+      user: { name: 'User One' },
+      manualDriver: null,
+      race: {
+        id: 'race-1',
+        startTime: new Date('2099-01-01T18:00:00Z'),
+        endTime: new Date('2099-01-01T22:00:00Z'),
+        eventId: 'event-1',
+        discordTeamsThreadId: 'event-thread-1',
+        discordTeamThreads: {},
+      },
+    } as any)
+    vi.mocked(prisma.registration.delete).mockResolvedValue({} as any)
+    vi.mocked(postRosterChangeNotifications).mockResolvedValue(undefined as any)
+    vi.mocked(prisma.race.findMany).mockResolvedValue([])
+
+    await deleteRegistration('reg-no-team-threads')
+
+    expect(prisma.team.findMany).not.toHaveBeenCalled()
+    expect(refreshAllTeamThreads).not.toHaveBeenCalled()
   })
 
   it('only fetches races for thread update after the registration is deleted', async () => {

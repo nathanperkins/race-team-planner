@@ -2331,6 +2331,32 @@ describe('createOrUpdateTeamThread', () => {
     )
   })
 
+  it('returns null instead of creating a replacement thread when existing thread returns 404 and members is empty', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      statusText: 'Not Found',
+      text: async () => 'Unknown Channel',
+    } as Response)
+
+    const result = await createOrUpdateTeamThread({
+      teamName: 'Team Alpha',
+      eventName: 'GT3 Challenge',
+      raceStartTime: new Date('2026-02-15T18:00:00Z'),
+      existingThreadId: 'deleted-empty-thread-123',
+      members: [],
+    })
+
+    expect(result).toBeNull()
+
+    const createCalls = vi
+      .mocked(fetch)
+      .mock.calls.filter(
+        ([url, opts]) => url?.toString().endsWith('/threads') && opts?.method === 'POST'
+      )
+    expect(createCalls).toHaveLength(0)
+  })
+
   it('recreates event thread in forum when existing thread has wrong parent', async () => {
     const existingThreadId = 'legacy-channel-thread'
     const replacementThreadId = 'forum-thread-123'
@@ -3321,6 +3347,102 @@ describe('refreshAllTeamThreads', () => {
       .map((call) => call[0].toString())
     expect(addedUserUrls).toEqual([
       expect.stringContaining(`/channels/${tenAmThreadId}/thread-members/discord-morning`),
+    ])
+  })
+
+  it('prefers carClass.shortName over carClass.name and forwards actorName and mainEventThreadUrl', async () => {
+    const threadId = 'team-thread-short-name'
+    const mainEventThreadUrl = 'https://discord.com/channels/guild-1/event-thread-1'
+
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: threadId, parent_id: forumId }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ embeds: [{ fields: [{ name: 'Created By', value: 'Creator' }] }] }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 'bot-user-id' }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: threadId, author: { id: 'bot-user-id' } }),
+      } as Response)
+      .mockResolvedValueOnce({ ok: true, status: 200 } as Response)
+      .mockResolvedValue({ ok: true, status: 204 } as Response)
+
+    await refreshAllTeamThreads(
+      [
+        {
+          id: 'race-1',
+          startTime: new Date('2026-06-14T18:00:00Z'),
+          event: {
+            id: 'event-1',
+            name: 'IMSA Endurance',
+            track: 'Watkins Glen',
+            trackConfig: null,
+            tempValue: null,
+            precipChance: null,
+          },
+          teams: [
+            {
+              id: 'team-1',
+              name: 'Team One',
+              alias: null,
+              carClass: { name: 'Grand Touring Prototype', shortName: 'GTP' },
+              registrations: [
+                {
+                  id: 'reg-1',
+                  user: { name: 'Alice', image: null, accounts: [] },
+                  manualDriver: null,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      { 'team-1': threadId },
+      botToken,
+      'http://localhost:3000',
+      {
+        raceId: 'race-1',
+        actorName: 'Dropping Driver',
+        mainEventThreadUrl,
+      }
+    )
+
+    const patchCall = vi
+      .mocked(fetch)
+      .mock.calls.find(
+        ([url, opts]) =>
+          url?.toString().includes(`/channels/${threadId}/messages/`) && opts?.method === 'PATCH'
+      )
+    expect(patchCall).toBeDefined()
+    const body = JSON.parse(patchCall![1]!.body as string)
+    const fields = body.embeds[0].fields as Array<{ name: string; value: string }>
+    expect(fields).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: '🏁 Class', value: 'GTP' }),
+        expect.objectContaining({ name: 'Edited By', value: 'Dropping Driver' }),
+      ])
+    )
+    expect(body.components).toEqual([
+      {
+        type: 1,
+        components: [
+          expect.objectContaining({
+            label: 'View Main Event Thread',
+            url: mainEventThreadUrl,
+          }),
+        ],
+      },
     ])
   })
 })
