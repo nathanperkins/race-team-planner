@@ -832,6 +832,92 @@ describe('sendTeamsAssignmentNotification', () => {
       })
     )
   })
+
+  it('passes edited race.startTime to sendTeamsAssignedNotification even when an earlier sibling race exists (issue #175)', async () => {
+    const tenAm = new Date('2026-06-14T10:00:00Z')
+    const fivePm = new Date('2026-06-14T17:00:00Z')
+    const mockRace = setupMockRace({
+      id: 'race-5pm',
+      startTime: fivePm,
+      teamsAssigned: true,
+      discordTeamsThreadId: 'event-thread-id',
+      discordTeamThreads: { 'team-1': 'team-thread-5pm' },
+      discordTeamsSnapshot: {
+        'reg-1': { teamId: 'team-1', driverName: 'User 1', carClassName: 'GT3' },
+      },
+    })
+
+    vi.mocked(prisma.race.findUnique).mockResolvedValue(mockRace as any)
+    // User 1 dropped from the 5 PM race
+    vi.mocked(prisma.registration.findMany).mockResolvedValue([])
+    vi.mocked(prisma.race.findFirst).mockResolvedValue({
+      discordTeamsThreadId: 'event-thread-id',
+    } as any)
+    vi.mocked(prisma.race.findMany).mockResolvedValue([
+      {
+        id: 'race-10am',
+        startTime: tenAm,
+        discordTeamThreads: { 'team-1': 'team-thread-10am' },
+        teamsAssigned: false,
+      },
+    ] as any)
+    vi.mocked(createOrUpdateEventThread).mockResolvedValue({
+      ok: true,
+      threadId: 'event-thread-id',
+    })
+
+    await sendTeamsAssignmentNotification('race-5pm')
+
+    expect(sendTeamsAssignedNotification).toHaveBeenCalledWith(
+      'event-thread-id',
+      expect.objectContaining({
+        raceStartTime: fivePm,
+        timeslots: [
+          expect.objectContaining({ raceStartTime: tenAm }),
+          expect.objectContaining({ raceStartTime: fivePm }),
+        ],
+      }),
+      expect.objectContaining({ title: '🏁 Teams Updated' })
+    )
+  })
+
+  it('updates existing team thread with empty members list when all members of a team drop (issue #174)', async () => {
+    const fivePm = new Date('2026-06-14T17:00:00Z')
+    const mockRace = setupMockRace({
+      startTime: fivePm,
+      teamsAssigned: true,
+      discordTeamsThreadId: 'event-thread-id',
+      discordTeamThreads: { 'team-1': 'team-thread-5pm' },
+      discordTeamsSnapshot: {
+        'reg-1': { teamId: 'team-1', driverName: 'User 1', carClassName: 'GT3' },
+      },
+    })
+
+    vi.mocked(prisma.race.findUnique).mockResolvedValue(mockRace as any)
+    vi.mocked(prisma.registration.findMany).mockResolvedValue([])
+    vi.mocked(prisma.race.findFirst).mockResolvedValue({
+      discordTeamsThreadId: 'event-thread-id',
+    } as any)
+    vi.mocked(prisma.race.findMany).mockResolvedValue([])
+    vi.mocked(createOrUpdateTeamThread).mockResolvedValue('team-thread-5pm')
+    vi.mocked(createOrUpdateEventThread).mockResolvedValue({
+      ok: true,
+      threadId: 'event-thread-id',
+    })
+
+    await sendTeamsAssignmentNotification(raceId)
+
+    expect(createOrUpdateTeamThread).toHaveBeenCalledWith(
+      expect.objectContaining({
+        teamName: 'Team One',
+        existingThreadId: 'team-thread-5pm',
+        raceStartTime: fivePm,
+        carClassName: 'GT3',
+        members: [],
+        memberDiscordIds: [],
+      })
+    )
+  })
 })
 
 describe('loadRaceAssignmentData', () => {
@@ -974,6 +1060,29 @@ describe('loadRaceAssignmentData', () => {
 
     expect(result.existingEventThreadRecord?.discordTeamsThreadId).toBe('existing-thread-999')
   })
+
+  it('includes teams referenced in discordTeamThreads or discordTeamsSnapshot in allTeams query even when emptied', async () => {
+    vi.mocked(prisma.race.findUnique).mockResolvedValue({
+      ...mockRace,
+      discordTeamThreads: { 'team-thread-ref': 'thread-1' },
+      discordTeamsSnapshot: {
+        'reg-old': { teamId: 'team-snap-ref', driverName: 'Old Driver', carClassName: 'GT3' },
+      },
+    } as any)
+
+    await loadRaceAssignmentData(raceId)
+
+    expect(prisma.team.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          OR: [
+            { registrations: { some: { raceId } } },
+            { id: { in: ['team-thread-ref', 'team-snap-ref'] } },
+          ],
+        },
+      })
+    )
+  })
 })
 
 describe('deleteRegistration notifications', () => {
@@ -988,7 +1097,7 @@ describe('deleteRegistration notifications', () => {
     ] as any)
   })
 
-  it('sends notification when the dropped race has no thread but a sibling race in the event does', async () => {
+  it('sends notification to shared event thread without inheriting sibling discordTeamThreads when the dropped race has no threads (issue #174)', async () => {
     vi.mocked(prisma.registration.findUnique).mockResolvedValue({
       id: 'reg-cross',
       userId: 'user-1',
@@ -1008,7 +1117,6 @@ describe('deleteRegistration notifications', () => {
     vi.mocked(prisma.registration.delete).mockResolvedValue({} as any)
     vi.mocked(prisma.race.findFirst).mockResolvedValue({
       discordTeamsThreadId: 'event-thread-from-race-1',
-      discordTeamThreads: { 'team-1': 'team-thread-1' },
     } as any)
     vi.mocked(postRosterChangeNotifications).mockResolvedValue(undefined as any)
 
@@ -1020,7 +1128,7 @@ describe('deleteRegistration notifications', () => {
       expect.any(String),
       'User One',
       expect.any(Date),
-      { 'team-1': 'team-thread-1' },
+      {},
       expect.any(Map)
     )
   })
@@ -1375,7 +1483,11 @@ describe('deleteRegistration notifications', () => {
       ]),
       { 'team-1': 'team-thread-1', 'team-2': 'team-thread-2' },
       expect.any(String),
-      'http://localhost:3000'
+      'http://localhost:3000',
+      expect.objectContaining({
+        raceId: 'race-1',
+        allTeams: expect.any(Array),
+      })
     )
 
     delete process.env.NEXTAUTH_URL
@@ -1475,20 +1587,22 @@ describe('deleteRegistration notifications', () => {
     delete process.env.NEXTAUTH_URL
   })
 
-  it('passes each race only its own teams to refreshAllTeamThreads for multi-race events', async () => {
+  it('passes only the dropped race to refreshAllTeamThreads so sibling timeslots with the same global team ID never overwrite threads (issue #174)', async () => {
     vi.mocked(prisma.registration.findUnique).mockResolvedValue({
       id: 'reg-6',
       userId: 'user-1',
       teamId: 'team-1',
       team: { id: 'team-1', name: 'Team One', alias: null },
+      carClass: { name: 'GT3 Class', shortName: 'GT3' },
       user: { name: 'User One' },
       manualDriver: null,
       race: {
         id: 'race-1',
-        endTime: new Date('2099-01-01T00:00:00Z'),
+        startTime: new Date('2099-01-01T10:00:00Z'),
+        endTime: new Date('2099-01-01T14:00:00Z'),
         eventId: 'event-1',
         discordTeamsThreadId: 'event-thread-1',
-        discordTeamThreads: { 'team-1': 'team-thread-1', 'team-2': 'team-thread-2' },
+        discordTeamThreads: { 'team-1': 'team-thread-10am' },
       },
     } as any)
     vi.mocked(prisma.registration.delete).mockResolvedValue({} as any)
@@ -1526,17 +1640,17 @@ describe('deleteRegistration notifications', () => {
       },
       {
         id: 'race-2',
-        startTime: new Date('2099-01-02T10:00:00Z'),
-        endTime: new Date('2099-01-02T14:00:00Z'),
+        startTime: new Date('2099-01-01T17:00:00Z'),
+        endTime: new Date('2099-01-01T21:00:00Z'),
         eventId: 'event-1',
-        discordTeamsThreadId: null,
+        discordTeamsThreadId: 'event-thread-1',
         registrations: [
           {
             id: 'reg-other-2',
-            teamId: 'team-2',
+            teamId: 'team-1', // Same global Team ID in a later timeslot!
             user: { name: 'Driver B', image: null, accounts: [] },
             manualDriver: null,
-            team: { id: 'team-2', name: 'Team Two', alias: null },
+            team: { id: 'team-1', name: 'Team One', alias: null },
             carClass: { name: 'GT3' },
           },
         ],
@@ -1550,18 +1664,50 @@ describe('deleteRegistration notifications', () => {
     await deleteRegistration('reg-6')
 
     const callArgs = vi.mocked(refreshAllTeamThreads).mock.calls[0][0]
-    const race1Result = callArgs.find((r: any) => r.id === 'race-1')
-    const race2Result = callArgs.find((r: any) => r.id === 'race-2')
-
-    // race-1 should only have team-1
-    expect(race1Result?.teams).toHaveLength(1)
-    expect(race1Result?.teams[0].id).toBe('team-1')
-
-    // race-2 should only have team-2 (not team-1 bleeding over due to shared teamMap)
-    expect(race2Result?.teams).toHaveLength(1)
-    expect(race2Result?.teams[0].id).toBe('team-2')
+    expect(callArgs).toHaveLength(1)
+    expect(callArgs[0].id).toBe('race-1')
+    expect(callArgs[0].teams).toHaveLength(1)
+    expect(callArgs[0].teams[0].registrations[0].user?.name).toBe('Driver A')
 
     delete process.env.NEXTAUTH_URL
+  })
+
+  it('removes dropped registrationId from race.discordTeamsSnapshot so subsequent modal saves do not emit duplicate drop notifications (issue #174)', async () => {
+    vi.mocked(prisma.registration.findUnique).mockResolvedValue({
+      id: 'reg-dropped-1',
+      userId: 'user-1',
+      teamId: 'team-1',
+      team: { id: 'team-1', name: 'Team One', alias: null },
+      user: { name: 'User One' },
+      manualDriver: null,
+      race: {
+        id: 'race-1',
+        startTime: new Date('2099-01-01T10:00:00Z'),
+        endTime: new Date('2099-01-01T14:00:00Z'),
+        eventId: 'event-1',
+        discordTeamsThreadId: 'event-thread-1',
+        discordTeamThreads: { 'team-1': 'team-thread-1' },
+        discordTeamsSnapshot: {
+          'reg-dropped-1': { teamId: 'team-1', driverName: 'User One', carClassName: 'GT3' },
+          'reg-staying-2': { teamId: 'team-1', driverName: 'User Two', carClassName: 'GT3' },
+        },
+      },
+    } as any)
+    vi.mocked(prisma.registration.delete).mockResolvedValue({} as any)
+    vi.mocked(prisma.race.update).mockResolvedValue({} as any)
+    vi.mocked(postRosterChangeNotifications).mockResolvedValue(undefined as any)
+    vi.mocked(prisma.race.findMany).mockResolvedValue([])
+
+    await deleteRegistration('reg-dropped-1')
+
+    expect(prisma.race.update).toHaveBeenCalledWith({
+      where: { id: 'race-1' },
+      data: {
+        discordTeamsSnapshot: {
+          'reg-staying-2': { teamId: 'team-1', driverName: 'User Two', carClassName: 'GT3' },
+        },
+      },
+    })
   })
 
   it('only fetches races for thread update after the registration is deleted', async () => {

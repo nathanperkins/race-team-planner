@@ -855,6 +855,7 @@ export async function sendTeamsAssignedNotification(
   threadId: string,
   data: {
     eventName: string
+    raceStartTime?: Date
     timeslots: import('./discord-utils').RaceTimeslotData[]
     eventUrl: string
     rosterChanges?: import('./discord-utils').RosterChange[]
@@ -923,7 +924,7 @@ export async function sendTeamsAssignedNotification(
 
     // Post roster change notifications if provided
     if (data.rosterChanges && data.rosterChanges.length > 0 && data.adminName) {
-      const raceStartTime = data.timeslots[0].raceStartTime
+      const raceStartTime = data.raceStartTime ?? data.timeslots[0].raceStartTime
       await postRosterChangeNotifications(
         threadId,
         data.rosterChanges,
@@ -1424,11 +1425,12 @@ export async function createOrUpdateTeamThread(options: {
         value: `<t:${Math.floor(options.raceStartTime.getTime() / 1000)}:F>`,
         inline: true,
       },
-      ...(options.members?.length
+      ...(options.members !== undefined
         ? [
             {
               name: '👥 Members',
-              value: options.members.join('\n'),
+              value:
+                options.members.length > 0 ? options.members.join('\n') : '*No drivers registered*',
               inline: false,
             },
           ]
@@ -1651,43 +1653,63 @@ export async function refreshAllTeamThreads(
   }>,
   teamThreads: Record<string, string>,
   botToken: string,
-  baseUrl: string
+  baseUrl: string,
+  options?: {
+    raceId?: string
+    allTeams?: Array<{ id: string; name: string; alias: string | null }>
+    fallbackCarClassByTeamId?: Record<string, string>
+  }
 ): Promise<void> {
-  // Build a map of team ID to team data across all races
+  const scopedRaces = options?.raceId ? races.filter((race) => race.id === options.raceId) : races
+  const primaryRace = scopedRaces[0]
+  if (!primaryRace?.event) return
+
+  // Build a map of team ID to team data across scoped races
   const teamsById = new Map<string, (typeof races)[0]['teams'][0] & { raceStartTime: Date }>()
-  for (const race of races) {
+  for (const race of scopedRaces) {
     for (const team of race.teams) {
       teamsById.set(team.id, { ...team, raceStartTime: race.startTime })
     }
   }
 
+  const fallbackTeamById = new Map((options?.allTeams ?? []).map((team) => [team.id, team]))
+
   // Update each team thread in parallel
   const teamThreadUpdates = Object.entries(teamThreads).map(async ([teamId, threadId]) => {
     const team = teamsById.get(teamId)
-    if (!team || !races[0]?.event) return
+    const fallbackTeam = fallbackTeamById.get(teamId)
+    if (!team && !fallbackTeam) return
 
-    const event = races[0].event
-    const memberNames = team.registrations.map(
-      (reg) => reg.user?.name || reg.manualDriver?.name || 'Unknown'
-    )
-    const memberDiscordIds = team.registrations
-      .map((reg) => reg.user?.accounts.find((acc) => acc.provider === 'discord')?.providerAccountId)
-      .filter((id): id is string => Boolean(id))
+    const event = primaryRace.event
+    const teamOfficialName = team?.name ?? fallbackTeam!.name
+    const teamAlias = team ? team.alias : fallbackTeam!.alias
+    const raceStartTime = team?.raceStartTime ?? primaryRace.startTime
+    const carClassName = team?.carClass?.name ?? options?.fallbackCarClassByTeamId?.[teamId]
+    const memberNames = team
+      ? team.registrations.map((reg) => reg.user?.name || reg.manualDriver?.name || 'Unknown')
+      : []
+    const memberDiscordIds = team
+      ? team.registrations
+          .map(
+            (reg) => reg.user?.accounts.find((acc) => acc.provider === 'discord')?.providerAccountId
+          )
+          .filter((id): id is string => Boolean(id))
+      : []
 
     try {
       await createOrUpdateTeamThread({
-        teamName: team.alias || team.name,
-        teamAlias: team.alias,
-        teamOfficialName: team.name,
+        teamName: teamAlias || teamOfficialName,
+        teamAlias,
+        teamOfficialName,
         eventName: event.name,
-        raceStartTime: team.raceStartTime,
+        raceStartTime,
         existingThreadId: threadId,
         raceUrl: `${baseUrl}/events?eventId=${event.id}`,
         track: event.track ?? undefined,
         trackConfig: event.trackConfig ?? undefined,
         tempValue: event.tempValue,
         precipChance: event.precipChance,
-        carClassName: team.carClass?.name,
+        carClassName,
         members: memberNames,
         memberDiscordIds,
       })

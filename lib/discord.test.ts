@@ -16,6 +16,7 @@ import {
   sendWeeklyScheduleNotification,
   createOrUpdateEventThread,
   createOrUpdateTeamThread,
+  refreshAllTeamThreads,
   addUsersToThread,
   createEventDiscussionThread,
 } from './discord'
@@ -2298,6 +2299,38 @@ describe('createOrUpdateTeamThread', () => {
     expect(addUsersCalls).toHaveLength(0)
   })
 
+  it('shows "*No drivers registered*" in Members field when members is an empty array', async () => {
+    const mockThreadId = 'empty-team-thread-123'
+
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: mockThreadId }),
+      } as Response)
+      .mockResolvedValue({ ok: true, status: 204 } as Response)
+
+    await createOrUpdateTeamThread({
+      teamName: 'Team Alpha',
+      eventName: 'GT3 Challenge',
+      raceStartTime: new Date('2026-02-15T18:00:00Z'),
+      members: [],
+    })
+
+    const createCallBody = JSON.parse(
+      (vi.mocked(fetch).mock.calls[0][1] as RequestInit).body as string
+    )
+    const fields = createCallBody.message.embeds[0].fields as Array<{ name: string; value: string }>
+    expect(fields).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: '👥 Members',
+          value: '*No drivers registered*',
+        }),
+      ])
+    )
+  })
+
   it('recreates event thread in forum when existing thread has wrong parent', async () => {
     const existingThreadId = 'legacy-channel-thread'
     const replacementThreadId = 'forum-thread-123'
@@ -2765,6 +2798,55 @@ describe('sendTeamsAssignedNotification', () => {
       )
     expect(eventThreadCall).toBeDefined()
   })
+
+  it('uses data.raceStartTime rather than earliest timeslot when posting roster changes (issue #175)', async () => {
+    const earlyTimeslot = new Date('2027-06-14T10:00:00Z')
+    const editedTimeslot = new Date('2027-06-14T17:00:00Z')
+    const expectedUnix = Math.floor(editedTimeslot.getTime() / 1000)
+
+    vi.mocked(fetch).mockResolvedValue({ ok: true, status: 200 } as Response)
+
+    await sendTeamsAssignedNotification(threadId, {
+      ...baseData,
+      raceStartTime: editedTimeslot,
+      timeslots: [
+        { raceStartTime: earlyTimeslot, teams: [], unassigned: [] },
+        { raceStartTime: editedTimeslot, teams: [], unassigned: [] },
+      ],
+      teamThreads: { 'team-1': 'team-thread-5pm' },
+      teamNameById: new Map([['team-1', 'Team One']]),
+    })
+
+    const eventThreadCall = vi
+      .mocked(fetch)
+      .mock.calls.find(
+        ([url, opts]) =>
+          typeof url === 'string' &&
+          url.includes(`/channels/${threadId}/messages`) &&
+          opts?.method === 'POST'
+      )
+    expect(eventThreadCall).toBeDefined()
+    const eventBody = JSON.parse(eventThreadCall![1]!.body as string)
+    const timeslotField = eventBody.embeds[0].fields.find(
+      (f: { name: string }) => f.name === '🕐 Timeslot'
+    )
+    expect(timeslotField.value).toBe(`<t:${expectedUnix}:F>`)
+
+    const teamThreadCall = vi
+      .mocked(fetch)
+      .mock.calls.find(
+        ([url, opts]) =>
+          typeof url === 'string' &&
+          url.includes('/channels/team-thread-5pm/messages') &&
+          opts?.method === 'POST'
+      )
+    expect(teamThreadCall).toBeDefined()
+    const teamBody = JSON.parse(teamThreadCall![1]!.body as string)
+    const teamTimeslotField = teamBody.embeds[0].fields.find(
+      (f: { name: string }) => f.name === '🕐 Timeslot'
+    )
+    expect(teamTimeslotField.value).toBe(`<t:${expectedUnix}:F>`)
+  })
 })
 
 describe('createEventDiscussionThread', () => {
@@ -3008,5 +3090,237 @@ describe('createEventDiscussionThread', () => {
     expect(trackField.value).toBe('Spa-Francorchamps (Grand Prix)')
     const weatherField = embed.fields.find((f: { name: string }) => f.name === '🌤️ Weather')
     expect(weatherField.value).toBe('72°F, 15% Rain')
+  })
+})
+
+describe('refreshAllTeamThreads', () => {
+  const botToken = 'fake-bot-token'
+  const forumId = 'forum-456'
+  const mockBotUserId = 'bot-user-999'
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn())
+    vi.stubEnv('DISCORD_BOT_TOKEN', botToken)
+    vi.stubEnv('DISCORD_EVENTS_FORUM_ID', forumId)
+    vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('updates emptied team thread to show no drivers registered when all members dropped (issue #174)', async () => {
+    const existingThreadId = 'team-1-10am-thread'
+    const tenAm = new Date('2026-06-14T10:00:00Z')
+    const expectedUnix = Math.floor(tenAm.getTime() / 1000)
+
+    vi.mocked(fetch).mockImplementation(async (input, init) => {
+      const url = input.toString()
+      if (
+        url.endsWith(`/channels/${existingThreadId}`) &&
+        (!init?.method || init.method === 'GET')
+      ) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ id: existingThreadId, parent_id: forumId }),
+        } as Response
+      }
+      if (url.endsWith('/users/@me')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ id: mockBotUserId }),
+        } as Response
+      }
+      if (url.includes(`/channels/${existingThreadId}/messages`)) {
+        if (init?.method === 'PATCH') {
+          return { ok: true, status: 200, json: async () => ({}) } as Response
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => [{ id: 'msg-1', author: { id: mockBotUserId }, embeds: [] }],
+        } as Response
+      }
+      return { ok: true, status: 204, json: async () => ({}) } as Response
+    })
+
+    await refreshAllTeamThreads(
+      [
+        {
+          id: 'race-10am',
+          startTime: tenAm,
+          event: {
+            id: 'event-1',
+            name: 'Watkins Glen 6H',
+            track: 'Watkins Glen',
+            trackConfig: 'Boot',
+            tempValue: 70,
+            precipChance: 0,
+          },
+          teams: [], // All members dropped from team-1!
+        },
+      ],
+      { 'team-1': existingThreadId },
+      botToken,
+      'http://localhost:3000',
+      {
+        allTeams: [{ id: 'team-1', name: 'Team One', alias: 'Alpha' }],
+        fallbackCarClassByTeamId: { 'team-1': 'GT3' },
+      }
+    )
+
+    const patchCall = vi
+      .mocked(fetch)
+      .mock.calls.find(
+        ([url, opts]) =>
+          url?.toString().includes(`/channels/${existingThreadId}/messages/`) &&
+          opts?.method === 'PATCH'
+      )
+    expect(patchCall).toBeDefined()
+    const body = JSON.parse(patchCall![1]!.body as string)
+    const fields = body.embeds[0].fields as Array<{ name: string; value: string }>
+    expect(fields).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: '🏁 Class', value: 'GT3' }),
+        expect.objectContaining({ name: '🕐 Race Start', value: `<t:${expectedUnix}:F>` }),
+        expect.objectContaining({ name: '👥 Members', value: '*No drivers registered*' }),
+      ])
+    )
+
+    const addUsersCalls = vi
+      .mocked(fetch)
+      .mock.calls.filter((call) => call[0]?.toString().includes('/thread-members/'))
+    expect(addUsersCalls).toHaveLength(0)
+  })
+
+  it('scopes team lookup to options.raceId so sibling timeslot with same team ID does not overwrite thread or add sibling members (issue #174)', async () => {
+    const tenAmThreadId = 'team-1-10am-thread'
+    const tenAm = new Date('2026-06-14T10:00:00Z')
+    const fivePm = new Date('2026-06-14T17:00:00Z')
+    const expectedTenAmUnix = Math.floor(tenAm.getTime() / 1000)
+
+    vi.mocked(fetch).mockImplementation(async (input, init) => {
+      const url = input.toString()
+      if (url.endsWith(`/channels/${tenAmThreadId}`) && (!init?.method || init.method === 'GET')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ id: tenAmThreadId, parent_id: forumId }),
+        } as Response
+      }
+      if (url.endsWith('/users/@me')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ id: mockBotUserId }),
+        } as Response
+      }
+      if (url.includes(`/channels/${tenAmThreadId}/messages`)) {
+        if (init?.method === 'PATCH') {
+          return { ok: true, status: 200, json: async () => ({}) } as Response
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => [{ id: 'msg-1', author: { id: mockBotUserId }, embeds: [] }],
+        } as Response
+      }
+      return { ok: true, status: 204, json: async () => ({}) } as Response
+    })
+
+    const sharedEvent = {
+      id: 'event-1',
+      name: 'Watkins Glen 6H',
+      track: 'Watkins Glen',
+      trackConfig: 'Boot',
+      tempValue: 70,
+      precipChance: 0,
+    }
+
+    await refreshAllTeamThreads(
+      [
+        {
+          id: 'race-10am',
+          startTime: tenAm,
+          event: sharedEvent,
+          teams: [
+            {
+              id: 'team-1',
+              name: 'Team One',
+              alias: 'Alpha',
+              carClass: { name: 'GT3' },
+              registrations: [
+                {
+                  id: 'reg-10am-remaining',
+                  user: {
+                    name: 'Morning Driver',
+                    image: null,
+                    accounts: [{ provider: 'discord', providerAccountId: 'discord-morning' }],
+                  },
+                  manualDriver: null,
+                },
+              ],
+            },
+          ],
+        },
+        {
+          id: 'race-5pm',
+          startTime: fivePm,
+          event: sharedEvent,
+          teams: [
+            {
+              id: 'team-1',
+              name: 'Team One',
+              alias: 'Alpha',
+              carClass: { name: 'GT3' },
+              registrations: [
+                {
+                  id: 'reg-5pm-driver',
+                  user: {
+                    name: 'Evening Driver',
+                    image: null,
+                    accounts: [{ provider: 'discord', providerAccountId: 'discord-evening' }],
+                  },
+                  manualDriver: null,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      { 'team-1': tenAmThreadId },
+      botToken,
+      'http://localhost:3000',
+      { raceId: 'race-10am' }
+    )
+
+    const patchCall = vi
+      .mocked(fetch)
+      .mock.calls.find(
+        ([url, opts]) =>
+          url?.toString().includes(`/channels/${tenAmThreadId}/messages/`) &&
+          opts?.method === 'PATCH'
+      )
+    expect(patchCall).toBeDefined()
+    const body = JSON.parse(patchCall![1]!.body as string)
+    const fields = body.embeds[0].fields as Array<{ name: string; value: string }>
+    expect(fields).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: '🕐 Race Start', value: `<t:${expectedTenAmUnix}:F>` }),
+        expect.objectContaining({ name: '👥 Members', value: 'Morning Driver' }),
+      ])
+    )
+
+    const addedUserUrls = vi
+      .mocked(fetch)
+      .mock.calls.filter((call) => call[0]?.toString().includes('/thread-members/'))
+      .map((call) => call[0].toString())
+    expect(addedUserUrls).toEqual([
+      expect.stringContaining(`/channels/${tenAmThreadId}/thread-members/discord-morning`),
+    ])
   })
 })

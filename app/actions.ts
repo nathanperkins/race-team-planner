@@ -693,6 +693,7 @@ export async function deleteRegistration(registrationId: string): Promise<void> 
             endTime: true,
             eventId: true,
             discordTeamsThreadId: true,
+            discordTeamsSnapshot: true,
             discordTeamThreads: true,
             // Fetch sibling registrations to count how many this user still has in the event
             // after dropping this one — avoids an extra round-trip.
@@ -734,8 +735,8 @@ export async function deleteRegistration(registrationId: string): Promise<void> 
       },
     })
 
-    // If the dropped race has no Discord thread, look for one from a sibling race in the
-    // event. Run in parallel with the delete so there's no extra latency in that case.
+    // If the dropped race has no Discord thread, look for the shared event-level thread from a
+    // sibling race. Never inherit discordTeamThreads — team threads are scoped per timeslot.
     const eventThreadFallbackPromise = registration.race.discordTeamsThreadId
       ? Promise.resolve(null)
       : prisma.race.findFirst({
@@ -743,10 +744,29 @@ export async function deleteRegistration(registrationId: string): Promise<void> 
             eventId: registration.race.eventId,
             NOT: { discordTeamsThreadId: null },
           },
-          select: { discordTeamsThreadId: true, discordTeamThreads: true },
+          select: { discordTeamsThreadId: true },
         })
 
     const parallelWork = [deletePromise as unknown as Promise<void>]
+
+    // Keep race.discordTeamsSnapshot in sync so subsequent Team Modal saves do not emit a
+    // duplicate drop notification for a registration that already dropped here.
+    const existingSnapshot = registration.race.discordTeamsSnapshot
+    if (
+      existingSnapshot &&
+      typeof existingSnapshot === 'object' &&
+      !Array.isArray(existingSnapshot) &&
+      registrationId in (existingSnapshot as Record<string, unknown>)
+    ) {
+      const updatedSnapshot = { ...(existingSnapshot as Record<string, unknown>) }
+      delete updatedSnapshot[registrationId]
+      parallelWork.push(
+        prisma.race.update({
+          where: { id: registration.race.id },
+          data: { discordTeamsSnapshot: updatedSnapshot as Prisma.InputJsonValue },
+        }) as unknown as Promise<void>
+      )
+    }
 
     // Emit roster-change notifications for user/admin drops without blocking the drop flow.
     try {
@@ -754,9 +774,7 @@ export async function deleteRegistration(registrationId: string): Promise<void> 
       const eventThreadId =
         registration.race.discordTeamsThreadId ?? eventThreadFallback?.discordTeamsThreadId ?? null
       const teamThreads =
-        (registration.race.discordTeamThreads as Record<string, string> | null) ??
-        (eventThreadFallback?.discordTeamThreads as Record<string, string> | null) ??
-        {}
+        (registration.race.discordTeamThreads as Record<string, string> | null) ?? {}
       if (eventThreadId) {
         // Count how many OTHER registrations this user still has in the same event.
         // Computed locally from data already fetched in findUnique — no extra round-trip.
@@ -766,40 +784,41 @@ export async function deleteRegistration(registrationId: string): Promise<void> 
               .filter((r) => r.userId === registration.userId && r.id !== registrationId).length
           : 0
 
-        const rosterUpdate = prisma.team
-          .findMany({
-            select: { id: true, name: true, alias: true },
-            where: {
-              id: { in: Object.keys(teamThreads) },
-            },
-          })
-          .then((teams) => {
-            const teamNameById = new Map(teams.map((team) => [team.id, team.alias || team.name]))
-            const driverName =
-              registration.user?.name || registration.manualDriver?.name || 'Unknown Driver'
-            const fromTeam = registration.team?.alias || registration.team?.name || 'Unassigned'
-            const carClassName =
-              registration.carClass?.shortName?.trim() ||
-              registration.carClass?.name?.trim() ||
-              undefined
-            return postRosterChangeNotifications(
-              eventThreadId,
-              [
-                {
-                  type: 'dropped',
-                  driverName,
-                  fromTeam,
-                  stillRegisteredCount,
-                  ...(carClassName ? { carClassName } : {}),
-                },
-              ],
-              process.env.DISCORD_BOT_TOKEN || '',
-              session.user.name || driverName,
-              registration.race!.startTime,
-              teamThreads,
-              teamNameById
-            )
-          })
+        const carClassName =
+          registration.carClass?.shortName?.trim() ||
+          registration.carClass?.name?.trim() ||
+          undefined
+
+        const teamsPromise = prisma.team.findMany({
+          select: { id: true, name: true, alias: true },
+          where: {
+            id: { in: Object.keys(teamThreads) },
+          },
+        })
+
+        const rosterUpdate = teamsPromise.then((teams) => {
+          const teamNameById = new Map(teams.map((team) => [team.id, team.alias || team.name]))
+          const driverName =
+            registration.user?.name || registration.manualDriver?.name || 'Unknown Driver'
+          const fromTeam = registration.team?.alias || registration.team?.name || 'Unassigned'
+          return postRosterChangeNotifications(
+            eventThreadId,
+            [
+              {
+                type: 'dropped',
+                driverName,
+                fromTeam,
+                stillRegisteredCount,
+                ...(carClassName ? { carClassName } : {}),
+              },
+            ],
+            process.env.DISCORD_BOT_TOKEN || '',
+            session.user.name || driverName,
+            registration.race!.startTime,
+            teamThreads,
+            teamNameById
+          )
+        })
         parallelWork.push(rosterUpdate)
 
         // Update the main event discussion post and team discussion posts to reflect the drop
@@ -876,16 +895,48 @@ export async function deleteRegistration(registrationId: string): Promise<void> 
 
         parallelWork.push(updateEventThread as Promise<void>)
 
-        // Update all team discussion posts
+        // Update team discussion posts strictly for the dropped race timeslot
         if (Object.keys(teamThreads).length > 0) {
-          // Build races data with teams for refreshAllTeamThreads
-          const refreshTeamThreads = races.then((races) =>
-            refreshAllTeamThreads(
-              racesWithTeams(races),
-              teamThreads,
-              process.env.DISCORD_BOT_TOKEN || '',
-              baseUrl
-            )
+          const fallbackCarClassByTeamId: Record<string, string> = {}
+          if (
+            existingSnapshot &&
+            typeof existingSnapshot === 'object' &&
+            !Array.isArray(existingSnapshot)
+          ) {
+            for (const entry of Object.values(existingSnapshot as Record<string, unknown>)) {
+              if (
+                entry &&
+                typeof entry === 'object' &&
+                'teamId' in entry &&
+                'carClassName' in entry
+              ) {
+                const snapTeamId = (entry as { teamId?: unknown }).teamId
+                const snapClass = (entry as { carClassName?: unknown }).carClassName
+                if (typeof snapTeamId === 'string' && typeof snapClass === 'string' && snapClass) {
+                  fallbackCarClassByTeamId[snapTeamId] = snapClass
+                }
+              }
+            }
+          }
+          if (registration.teamId && carClassName) {
+            fallbackCarClassByTeamId[registration.teamId] = carClassName
+          }
+
+          const refreshTeamThreads = Promise.all([races, teamsPromise]).then(
+            ([allRaces, teams]) => {
+              const droppedRaceOnly = allRaces.filter((r) => r.id === registration.race.id)
+              return refreshAllTeamThreads(
+                racesWithTeams(droppedRaceOnly),
+                teamThreads,
+                process.env.DISCORD_BOT_TOKEN || '',
+                baseUrl,
+                {
+                  raceId: registration.race.id,
+                  allTeams: teams.map((t) => ({ id: t.id, name: t.name, alias: t.alias ?? null })),
+                  fallbackCarClassByTeamId,
+                }
+              )
+            }
           )
 
           parallelWork.push(refreshTeamThreads)
@@ -2325,6 +2376,29 @@ export async function loadRaceAssignmentData(raceId: string): Promise<RaceAssign
     throw new Error('Race not found')
   }
 
+  const existingTeamThreadIds =
+    raceWithEvent.discordTeamThreads &&
+    typeof raceWithEvent.discordTeamThreads === 'object' &&
+    !Array.isArray(raceWithEvent.discordTeamThreads)
+      ? Object.keys(raceWithEvent.discordTeamThreads as Record<string, unknown>)
+      : []
+  const snapshotTeamIds =
+    raceWithEvent.discordTeamsSnapshot &&
+    typeof raceWithEvent.discordTeamsSnapshot === 'object' &&
+    !Array.isArray(raceWithEvent.discordTeamsSnapshot)
+      ? Object.values(raceWithEvent.discordTeamsSnapshot as Record<string, unknown>)
+          .map((entry) => {
+            if (typeof entry === 'string') return entry
+            if (entry && typeof entry === 'object' && 'teamId' in entry) {
+              const teamId = (entry as { teamId?: unknown }).teamId
+              return typeof teamId === 'string' ? teamId : null
+            }
+            return null
+          })
+          .filter((id): id is string => Boolean(id))
+      : []
+  const referencedTeamIds = Array.from(new Set([...existingTeamThreadIds, ...snapshotTeamIds]))
+
   // Load data in parallel after getting the base race information
   const [currentRegistrations, allTeams, existingEventThreadRecord, siblingRaces] =
     await Promise.all([
@@ -2334,15 +2408,20 @@ export async function loadRaceAssignmentData(raceId: string): Promise<RaceAssign
         include: registrationInclude,
       }),
 
-      // Load only teams that are used in this race for team name mapping
+      // Load teams used in this race plus any teams previously linked via threads or snapshot
       prisma.team.findMany({
-        where: {
-          registrations: {
-            some: {
-              raceId: raceId,
-            },
-          },
-        },
+        where:
+          referencedTeamIds.length > 0
+            ? {
+                OR: [{ registrations: { some: { raceId } } }, { id: { in: referencedTeamIds } }],
+              }
+            : {
+                registrations: {
+                  some: {
+                    raceId: raceId,
+                  },
+                },
+              },
         select: { id: true, name: true, alias: true },
       }),
 
@@ -2451,8 +2530,47 @@ export async function sendTeamsAssignmentNotificationWithData(
       buildDiscordWebLink
     )
 
-    await Promise.all(
-      Array.from(teamsMap.entries()).map(async ([teamId, team]) => {
+    // Determine mentions and previous snapshot before updating threads so emptied team threads
+    // can preserve their last-known car class.
+    const previousSnapshot =
+      (race.discordTeamsSnapshot as
+        | Record<
+            string,
+            {
+              teamId: string | null
+              driverName: string
+              carClassId?: string
+              carClassName?: string
+            }
+          >
+        | Record<string, string | null>
+        | null) ?? null
+    const isLegacyPreviousSnapshot =
+      previousSnapshot &&
+      Object.values(previousSnapshot).some((v) => typeof v === 'string' || v === null)
+    const normalizedPreviousSnapshot: Record<
+      string,
+      { teamId: string | null; driverName: string; carClassName?: string }
+    > | null = previousSnapshot
+      ? isLegacyPreviousSnapshot
+        ? Object.fromEntries(
+            Object.entries(previousSnapshot as Record<string, string | null>).map(
+              ([id, teamId]) => [id, { teamId, driverName: 'Driver', carClassName: undefined }]
+            )
+          )
+        : (previousSnapshot as Record<
+            string,
+            { teamId: string | null; driverName: string; carClassName?: string }
+          >)
+      : null
+
+    const allTeamsById = new Map(allTeams.map((t) => [t.id, t]))
+    const emptiedTeamThreadEntries = Object.entries(teamThreads).filter(
+      ([teamId, existingThreadId]) => Boolean(existingThreadId) && !teamsMap.has(teamId)
+    )
+
+    await Promise.all([
+      ...Array.from(teamsMap.entries()).map(async ([teamId, team]) => {
         const memberDiscordIds = team.members
           .map((member) => member.discordId)
           .filter((id): id is string => Boolean(id))
@@ -2486,8 +2604,46 @@ export async function sendTeamsAssignmentNotificationWithData(
         } catch (error) {
           logger.error({ err: error }, 'Failed to create team thread')
         }
-      })
-    )
+      }),
+      ...emptiedTeamThreadEntries.map(async ([teamId, existingThreadId]) => {
+        const teamRecord = allTeamsById.get(teamId)
+        if (!teamRecord) return
+        const lastKnownCarClass = normalizedPreviousSnapshot
+          ? Object.values(normalizedPreviousSnapshot).find(
+              (s) => s.teamId === teamId && s.carClassName
+            )?.carClassName
+          : undefined
+
+        try {
+          const threadId = await createOrUpdateTeamThread({
+            teamName: teamRecord.alias || teamRecord.name,
+            teamAlias: teamRecord.alias ?? undefined,
+            teamOfficialName: teamRecord.name,
+            eventName: event.name,
+            raceStartTime: race.startTime,
+            existingThreadId,
+            mainEventThreadUrl,
+            memberDiscordIds: [],
+            raceUrl,
+            track: event.track ?? undefined,
+            trackConfig: event.trackConfig ?? undefined,
+            tempValue: event.tempValue,
+            precipChance: event.precipChance,
+            carClassName: lastKnownCarClass,
+            members: [],
+            actorName: user.name || 'Admin',
+          })
+          if (threadId) {
+            if (threadId !== existingThreadId) {
+              newlyCreatedOrReplacedTeamThreadIds.add(threadId)
+            }
+            teamThreads[teamId] = threadId
+          }
+        } catch (error) {
+          logger.error({ err: error, teamId }, 'Failed to update emptied team thread')
+        }
+      }),
+    ])
 
     await Promise.all(
       Array.from(teamsMap.entries()).map(async ([teamId, team]) => {
@@ -2509,20 +2665,6 @@ export async function sendTeamsAssignmentNotificationWithData(
       }
     }
 
-    // Determine mentions: only users whose assignments changed in the current race
-    const previousSnapshot =
-      (race.discordTeamsSnapshot as
-        | Record<
-            string,
-            {
-              teamId: string | null
-              driverName: string
-              carClassId?: string
-              carClassName?: string
-            }
-          >
-        | Record<string, string | null>
-        | null) ?? null
     const mentionRegistrationIds = new Set<string>()
 
     // Build team name mapping - include ALL teams, not just those with current members
@@ -2531,24 +2673,6 @@ export async function sendTeamsAssignmentNotificationWithData(
 
     const { buildRosterChangesFromTeamChangeDetails, buildTeamChangeDetails } =
       await import('@/lib/team-change-summary')
-    const isLegacyPreviousSnapshot =
-      previousSnapshot &&
-      Object.values(previousSnapshot).some((v) => typeof v === 'string' || v === null)
-    const normalizedPreviousSnapshot: Record<
-      string,
-      { teamId: string | null; driverName: string; carClassName?: string }
-    > | null = previousSnapshot
-      ? isLegacyPreviousSnapshot
-        ? Object.fromEntries(
-            Object.entries(previousSnapshot as Record<string, string | null>).map(
-              ([id, teamId]) => [id, { teamId, driverName: 'Driver', carClassName: undefined }]
-            )
-          )
-        : (previousSnapshot as Record<
-            string,
-            { teamId: string | null; driverName: string; carClassName?: string }
-          >)
-      : null
 
     const originalRecords = normalizedPreviousSnapshot
       ? Object.entries(normalizedPreviousSnapshot).map(([id, snapshot]) => ({
@@ -2702,6 +2826,7 @@ export async function sendTeamsAssignmentNotificationWithData(
         threadId,
         {
           eventName: event.name,
+          raceStartTime: race.startTime,
           timeslots,
           eventUrl: raceUrl,
           rosterChanges: rosterChangesForNotification,
