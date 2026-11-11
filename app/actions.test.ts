@@ -18,6 +18,7 @@ import {
   sendRegistrationNotification,
   sendTeamsAssignedNotification,
 } from '@/lib/discord'
+import { buildRegistrationEmbed } from '@/lib/discord-utils'
 
 // Mock prisma
 vi.mock('@/lib/prisma', () => ({
@@ -1851,6 +1852,89 @@ describe('registerForRace', () => {
       })
     )
   })
+
+  it('includes team-assigned and unassigned racers in Racers in Class when shortName differs from name', async () => {
+    vi.mocked(prisma.race.findUnique).mockResolvedValue({
+      startTime: new Date('2026-02-11T20:00:00Z'),
+      endTime: new Date('2026-02-12T20:00:00Z'),
+      eventId: 'event-123',
+      discordTeamsThreadId: 'existing-thread-id',
+      maxDriversPerTeam: null,
+      teamsAssigned: true,
+      teamAssignmentStrategy: 'BALANCED_IRATING',
+      event: {
+        id: 'event-123',
+        name: 'GT3 Challenge',
+        track: 'Spa',
+        trackConfig: 'Endurance',
+        tempValue: 75,
+        precipChance: 10,
+        carClasses: [{ name: 'GT3 Class' }],
+        customCarClasses: [],
+      },
+    } as any)
+
+    vi.mocked(prisma.carClass.findUniqueOrThrow).mockResolvedValue({
+      name: 'GT3 Class',
+      shortName: 'GT3',
+    } as any)
+
+    vi.mocked(prisma.registration.findMany).mockResolvedValue([
+      {
+        id: 'reg-team-driver',
+        carClassId: 'class-1',
+        teamId: 'team-alpha',
+        carClass: { name: 'GT3 Class', shortName: 'GT3' },
+        user: {
+          name: 'Team Driver',
+          image: null,
+          accounts: [{ providerAccountId: 'discord-team' }],
+        },
+        manualDriver: null,
+      },
+      {
+        id: 'reg-unassigned-driver',
+        carClassId: 'class-1',
+        teamId: null,
+        carClass: { name: 'GT3 Class', shortName: 'GT3' },
+        user: null,
+        manualDriver: { name: 'Manual Unassigned', irating: 2000 },
+      },
+      {
+        id: 'reg-other-class',
+        carClassId: 'class-2',
+        teamId: 'team-beta',
+        carClass: { name: 'LMP2 Class', shortName: 'LMP2' },
+        user: {
+          name: 'LMP2 Driver',
+          image: null,
+          accounts: [{ providerAccountId: 'discord-lmp2' }],
+        },
+        manualDriver: null,
+      },
+    ] as any)
+
+    const formData = new FormData()
+    formData.set('raceId', 'race-123')
+    formData.set('carClassId', 'class-1')
+
+    const result = await registerForRace({ message: '' }, formData)
+    expect(result).toEqual({ message: 'Success' })
+
+    const notificationData = vi.mocked(sendRegistrationNotification).mock.calls[0]?.[0]
+    expect(notificationData).toBeDefined()
+    expect(notificationData.carClassName).toBe('GT3')
+    expect(notificationData.carClassId).toBe('class-1')
+
+    const embed = buildRegistrationEmbed(notificationData, 'Test App', {
+      includeRegisteredDrivers: true,
+    })
+    expect(embed.description).toContain('<@discord-1>')
+    expect(embed.description).toContain('<@discord-team>')
+    expect(embed.description).toContain('Manual Unassigned')
+    expect(embed.description).not.toContain('LMP2 Driver')
+    expect(embed.description).not.toContain('<@discord-lmp2>')
+  })
 })
 
 describe('adminRegisterDriver', () => {
@@ -2129,6 +2213,90 @@ describe('adminRegisterDriver', () => {
         guildId: 'test-guild-id',
       })
     )
+  })
+
+  it('includes existing team-assigned drivers in Racers in Class when admin registers driver and shortName differs from name', async () => {
+    vi.mocked(prisma.race.findUnique).mockResolvedValueOnce({
+      startTime: new Date('2026-02-11T20:00:00Z'),
+      endTime: new Date('2026-02-12T20:00:00Z'),
+      eventId: 'event-123',
+      maxDriversPerTeam: null,
+      teamsAssigned: false,
+      teamAssignmentStrategy: 'BALANCED_IRATING',
+    } as any)
+
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ id: 'user-2' } as any)
+    vi.mocked(prisma.registration.findUnique).mockResolvedValue(null)
+    vi.mocked(prisma.registration.create).mockResolvedValue({ id: 'reg-created' } as any)
+    vi.mocked(prisma.registration.update).mockResolvedValue({} as any)
+    vi.mocked(prisma.registration.findFirst).mockResolvedValue({
+      id: 'reg-created',
+      carClassId: 'class-1',
+      user: {
+        name: 'New Driver',
+        image: null,
+        accounts: [{ providerAccountId: 'discord-new' }],
+        racerStats: [],
+      },
+      race: {
+        startTime: new Date('2026-02-11T20:00:00Z'),
+        discordTeamsThreadId: 'existing-thread-id',
+        event: {
+          id: 'event-123',
+          name: 'GT3 Challenge',
+          track: 'Spa',
+          trackConfig: 'Endurance',
+          tempValue: 75,
+          precipChance: 10,
+        },
+      },
+      carClass: { id: 'class-1', name: 'GT3 Class', shortName: 'GT3' },
+      team: null,
+      manualDriver: null,
+    } as any)
+
+    vi.mocked(prisma.registration.findMany).mockResolvedValue([
+      {
+        id: 'reg-team-driver',
+        carClassId: 'class-1',
+        teamId: 'team-alpha',
+        carClass: { name: 'GT3 Class', shortName: 'GT3' },
+        user: {
+          name: 'Team Driver',
+          image: null,
+          accounts: [{ providerAccountId: 'discord-team' }],
+        },
+        manualDriver: null,
+      },
+    ] as any)
+
+    vi.mocked(prisma.race.findFirst).mockResolvedValue({
+      discordTeamsThreadId: 'existing-thread-id',
+    } as any)
+
+    vi.mocked(createOrUpdateEventThread).mockResolvedValueOnce({
+      ok: true,
+      threadId: 'existing-thread-id',
+    })
+
+    const formData = new FormData()
+    formData.set('raceId', 'race-123')
+    formData.set('userId', 'user-2')
+    formData.set('carClassId', 'class-1')
+
+    const result = await adminRegisterDriver({ message: '' }, formData)
+    expect(result.message).toBe('Success')
+
+    const notificationData = vi.mocked(sendRegistrationNotification).mock.calls[0]?.[0]
+    expect(notificationData).toBeDefined()
+    expect(notificationData.carClassName).toBe('GT3')
+    expect(notificationData.carClassId).toBe('class-1')
+
+    const embed = buildRegistrationEmbed(notificationData, 'Test App', {
+      includeRegisteredDrivers: true,
+    })
+    expect(embed.description).toContain('<@discord-new>')
+    expect(embed.description).toContain('<@discord-team>')
   })
 })
 

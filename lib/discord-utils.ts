@@ -76,10 +76,16 @@ export interface RegistrationNotificationData {
   userAvatarUrl?: string
   eventName: string
   raceStartTime: Date
+  carClassId?: string
   carClassName: string
   eventUrl: string
   discordUser?: { id: string; name: string }
-  otherRegisteredDrivers?: Array<{ name: string; carClassName: string; discordId?: string }>
+  otherRegisteredDrivers?: Array<{
+    name: string
+    carClassId?: string
+    carClassName: string
+    discordId?: string
+  }>
   threadId: string
   guildId: string
   track?: string
@@ -588,6 +594,7 @@ export function buildRegistrationEmbed(
   if (options?.includeRegisteredDrivers) {
     const newRegistrant = {
       name: data.userName,
+      carClassId: data.carClassId,
       carClassName: data.carClassName,
       discordId: data.discordUser?.id,
     }
@@ -595,9 +602,11 @@ export function buildRegistrationEmbed(
       (entry) => entry.name.trim().length > 0 && entry.carClassName.trim().length > 0
     )
 
-    // Only include racers in the same class
-    const sameClassRacers = [newRegistrant, ...others].filter(
-      (racer) => racer.carClassName === data.carClassName
+    // Only include racers in the same class (prefer exact ID match when available)
+    const sameClassRacers = [newRegistrant, ...others].filter((racer) =>
+      data.carClassId && racer.carClassId
+        ? racer.carClassId === data.carClassId
+        : racer.carClassName === data.carClassName
     )
 
     const descriptionLines: string[] = []
