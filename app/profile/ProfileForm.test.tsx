@@ -90,13 +90,12 @@ describe('ProfileForm', () => {
     const saveButton = screen.getByRole('button', { name: /save changes/i })
     fireEvent.click(saveButton)
 
-    // Wait for validation to complete
+    // Wait for validation transition to complete and modal to render
     await waitFor(() => {
       expect(validateCustomerId).toHaveBeenCalledWith(987654)
+      expect(screen.getByText(/confirm iracing identity/i)).toBeTruthy()
     })
 
-    // Expect Modal to appear
-    expect(screen.getByText(/confirm iracing identity/i)).toBeTruthy()
     expect(screen.getByText(/New Racer/)).toBeTruthy()
     // The number might be split or formatted, but it should be present in the document text
     expect(screen.getByText((content) => content.includes('987654'))).toBeTruthy()
@@ -195,6 +194,11 @@ describe('ProfileForm', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Saving profile...' })).toBeInTheDocument()
+    })
+
+    // Wait for pending transition to settle so the timer doesn't leak into subsequent tests
+    await waitFor(() => {
+      expect(screen.queryByRole('heading', { name: 'Saving profile...' })).not.toBeInTheDocument()
     })
   })
 
