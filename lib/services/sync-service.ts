@@ -1,4 +1,9 @@
-import { fetchSpecialEvents, fetchCarClasses, fetchDriverStats } from '@/lib/iracing'
+import {
+  fetchSpecialEvents,
+  fetchCarClasses,
+  fetchDriverStats,
+  fetchTeamMembers,
+} from '@/lib/iracing'
 import prisma from '@/lib/prisma'
 import { features } from '@/lib/config'
 import { SyncStatus, SyncSource } from '@prisma/client'
@@ -149,6 +154,35 @@ export async function runIRacingSync(source: SyncSource = SyncSource.MANUAL) {
     }
     logger.info(`[${source}] Finished syncing stats.`)
 
+    // 5b. Sync iRacing Team Memberships for all registered iRacing teams
+    const teamsToSync = await prisma.team.findMany({
+      where: {
+        iracingTeamId: { gt: 0 },
+      },
+      select: { id: true, iracingTeamId: true },
+    })
+
+    logger.info(`[${source}] Syncing memberships for ${teamsToSync.length} teams...`)
+
+    let syncedTeamsCount = 0
+    for (const team of teamsToSync) {
+      try {
+        const teamSyncResult = await syncSingleTeamMembers(team.id, team.iracingTeamId, usersToSync)
+        if (teamSyncResult.synced) {
+          syncedTeamsCount += 1
+        }
+      } catch (teamError) {
+        logger.error(
+          { err: teamError, teamId: team.id, iracingTeamId: team.iracingTeamId, source },
+          'Failed to sync memberships for team'
+        )
+        // Continue to next team
+      }
+    }
+    logger.info(
+      `[${source}] Finished syncing team memberships (${syncedTeamsCount}/${teamsToSync.length}).`
+    )
+
     // 6. Update Log to Success
     await prisma.syncLog.update({
       where: { id: log.id },
@@ -161,12 +195,14 @@ export async function runIRacingSync(source: SyncSource = SyncSource.MANUAL) {
 
     revalidatePath('/events')
     revalidatePath('/roster')
+    revalidatePath('/admin')
 
     return {
       success: true as const,
       eventsCount: externalEvents.length,
       carClassesCount: externalCarClasses.length,
       usersCount: usersToSync.length,
+      teamsCount: syncedTeamsCount,
     }
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error'
@@ -265,4 +301,107 @@ export async function syncUserStats(userId: string, overrideCustomerId?: number)
   revalidatePath(`/users/${userId}`)
 
   return { success: true, count: Object.keys(memberInfo.licenses).length }
+}
+
+/**
+ * Syncs iRacing team memberships for a single team, updating TeamMember rows,
+ * TeamMemberRole records, and enrolled User-to-Team relations atomically.
+ */
+export async function syncSingleTeamMembers(
+  teamId: string,
+  iracingTeamId: number,
+  preloadedUsers?: Array<{ id: string; iracingCustomerId: number | null }>
+): Promise<{ synced: boolean; memberCount: number }> {
+  if (!iracingTeamId || iracingTeamId <= 0) {
+    logger.warn(
+      { teamId, iracingTeamId },
+      'Skipping team member sync for non-iRacing placeholder team'
+    )
+    return { synced: false, memberCount: 0 }
+  }
+
+  const iracingMembers = await fetchTeamMembers(iracingTeamId)
+
+  // Every valid iRacing team has at least its owner; fetchTeamMembers returns []
+  // on transient network/auth errors, so preserve cached memberships rather than wiping.
+  if (iracingMembers.length === 0) {
+    logger.warn(
+      { teamId, iracingTeamId },
+      'Received empty roster from iRacing; preserving cached team memberships'
+    )
+    return { synced: false, memberCount: 0 }
+  }
+
+  const uniqueMembers = Array.from(new Map(iracingMembers.map((m) => [m.custId, m])).values())
+
+  const upsertedMembers = await Promise.all(
+    uniqueMembers.map((member) =>
+      prisma.teamMember.upsert({
+        where: { custId: member.custId },
+        create: {
+          custId: member.custId,
+          displayName: member.displayName,
+        },
+        update: {
+          displayName: member.displayName,
+        },
+      })
+    )
+  )
+
+  const users =
+    preloadedUsers ??
+    (await prisma.user.findMany({
+      where: {
+        iracingCustomerId: {
+          not: null,
+        },
+      },
+      select: {
+        id: true,
+        iracingCustomerId: true,
+      },
+    }))
+
+  const memberCustomerIds = new Set(uniqueMembers.map((m) => m.custId))
+  const matchingUserIds = users
+    .filter(
+      (user): user is { id: string; iracingCustomerId: number } =>
+        user.iracingCustomerId !== null && memberCustomerIds.has(user.iracingCustomerId)
+    )
+    .map((user) => ({ id: user.id }))
+
+  const roleByCustId = new Map(
+    uniqueMembers.map((m) => [m.custId, { isOwner: m.owner || false, isAdmin: m.admin || false }])
+  )
+
+  await prisma.$transaction([
+    prisma.teamMemberRole.deleteMany({
+      where: { teamId },
+    }),
+    prisma.teamMemberRole.createMany({
+      data: upsertedMembers.map((tm) => {
+        const role = roleByCustId.get(tm.custId)
+        return {
+          teamMemberId: tm.id,
+          teamId,
+          isOwner: role?.isOwner ?? false,
+          isAdmin: role?.isAdmin ?? false,
+        }
+      }),
+    }),
+    prisma.team.update({
+      where: { id: teamId },
+      data: {
+        teamMembers: {
+          set: upsertedMembers.map((tm) => ({ id: tm.id })),
+        },
+        members: {
+          set: matchingUserIds,
+        },
+      },
+    }),
+  ])
+
+  return { synced: true, memberCount: uniqueMembers.length }
 }

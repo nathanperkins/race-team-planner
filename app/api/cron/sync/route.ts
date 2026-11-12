@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
       eventsCount: result.eventsCount,
       carClassesCount: result.carClassesCount,
       usersCount: result.usersCount,
+      teamsCount: result.teamsCount,
     })
   } else {
     return NextResponse.json(

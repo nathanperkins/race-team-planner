@@ -29,7 +29,14 @@ describe('SyncButton', () => {
       () =>
         new Promise((resolve) =>
           setTimeout(
-            () => resolve({ success: true, eventsCount: 5, carClassesCount: 3, usersCount: 10 }),
+            () =>
+              resolve({
+                success: true,
+                eventsCount: 5,
+                carClassesCount: 3,
+                usersCount: 10,
+                teamsCount: 2,
+              }),
             100
           )
         )
@@ -48,7 +55,14 @@ describe('SyncButton', () => {
       () =>
         new Promise((resolve) =>
           setTimeout(
-            () => resolve({ success: true, eventsCount: 5, carClassesCount: 3, usersCount: 10 }),
+            () =>
+              resolve({
+                success: true,
+                eventsCount: 5,
+                carClassesCount: 3,
+                usersCount: 10,
+                teamsCount: 2,
+              }),
             100
           )
         )
@@ -67,6 +81,7 @@ describe('SyncButton', () => {
       eventsCount: 12,
       carClassesCount: 6,
       usersCount: 48,
+      teamsCount: 4,
     })
 
     render(<SyncButton />)
@@ -78,6 +93,7 @@ describe('SyncButton', () => {
     expect(screen.getByText(/12 events/)).toBeInTheDocument()
     expect(screen.getByText(/6 car classes/)).toBeInTheDocument()
     expect(screen.getByText(/48 users/)).toBeInTheDocument()
+    expect(screen.getByText(/4 teams/)).toBeInTheDocument()
   })
 
   it('shows error state when action returns success: false', async () => {
@@ -116,6 +132,7 @@ describe('SyncButton', () => {
       eventsCount: 0,
       carClassesCount: 0,
       usersCount: 0,
+      teamsCount: 0,
     })
 
     render(<SyncButton />)
