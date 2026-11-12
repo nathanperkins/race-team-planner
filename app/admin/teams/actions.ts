@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { fetchTeamInfo, fetchTeamMembers } from '@/lib/iracing'
+import { syncSingleTeamMembers } from '@/lib/services/sync-service'
 import { createLogger } from '@/lib/logger'
 
 const logger = createLogger('admin-teams-actions')
@@ -46,95 +47,18 @@ export async function syncTeamMembers(teamId: string) {
     throw new Error('Team not found')
   }
 
-  // Fetch latest members from iRacing
-  const iracingMembers = await fetchTeamMembers(team.iracingTeamId)
-
-  // Delete existing roles for this team
-  await prisma.teamMemberRole.deleteMany({
-    where: { teamId: team.id },
-  })
-
-  // Disconnect all team members from this team
-  await prisma.team.update({
-    where: { id: team.id },
-    data: {
-      teamMembers: {
-        set: [],
-      },
-    },
-  })
-
-  // Process each member from iRacing
-  for (const member of iracingMembers) {
-    // Find or create TeamMember
-    let teamMember = await prisma.teamMember.findUnique({
-      where: { custId: member.custId },
-    })
-
-    if (!teamMember) {
-      teamMember = await prisma.teamMember.create({
-        data: {
-          custId: member.custId,
-          displayName: member.displayName,
-        },
-      })
-    }
-
-    // Create role for this team
-    await prisma.teamMemberRole.create({
-      data: {
-        teamMemberId: teamMember.id,
-        teamId: team.id,
-        isOwner: member.owner || false,
-        isAdmin: member.admin || false,
-      },
-    })
-
-    // Connect team member to team
-    await prisma.team.update({
-      where: { id: team.id },
-      data: {
-        teamMembers: {
-          connect: { id: teamMember.id },
-        },
-      },
-    })
-  }
-
-  // Update user-team relationships
-  const users = await prisma.user.findMany({
-    where: {
-      iracingCustomerId: {
-        not: null,
-      },
-    },
-    select: {
-      id: true,
-      iracingCustomerId: true,
-    },
-  })
-
-  const memberCustomerIds = new Set(iracingMembers.map((m) => m.custId))
-  const matchingUserIds = users
-    .filter(
-      (user) => user.iracingCustomerId !== null && memberCustomerIds.has(user.iracingCustomerId)
+  const result = await syncSingleTeamMembers(team.id, team.iracingTeamId)
+  if (!result.synced) {
+    throw new Error(
+      'Could not fetch team members from iRacing. Existing cached roster was preserved.'
     )
-    .map((user) => ({ id: user.id }))
-
-  // Update team-user connections
-  await prisma.team.update({
-    where: { id: team.id },
-    data: {
-      members: {
-        set: matchingUserIds,
-      },
-    },
-  })
+  }
 
   revalidatePath('/admin')
   revalidatePath('/roster')
+  revalidatePath('/events')
 
-  return { success: true, memberCount: iracingMembers.length }
+  return { success: true, memberCount: result.memberCount }
 }
 
 export async function getTeamMembers(teamId: string) {

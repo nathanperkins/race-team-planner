@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { batchAssignTeams } from './actions'
+import { batchAssignTeams, syncTeamMembers } from './actions'
 import prisma from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { sendTeamsAssignmentNotification } from '@/app/actions'
+import { syncSingleTeamMembers } from '@/lib/services/sync-service'
+import { revalidatePath } from 'next/cache'
 
 // Mock dependencies
 vi.mock('@/lib/prisma', () => ({
@@ -11,7 +13,14 @@ vi.mock('@/lib/prisma', () => ({
     race: {
       findUnique: vi.fn(),
     },
+    team: {
+      findUnique: vi.fn(),
+    },
   },
+}))
+
+vi.mock('@/lib/services/sync-service', () => ({
+  syncSingleTeamMembers: vi.fn(),
 }))
 
 vi.mock('@/lib/auth', () => ({
@@ -323,5 +332,48 @@ describe('batchAssignTeams', () => {
       where: { id: raceId },
       data: { teamsAssigned: true },
     })
+  })
+})
+
+describe('syncTeamMembers', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('rejects non-admin users', async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'user-1', role: 'USER' } } as any)
+
+    await expect(syncTeamMembers('team-1')).rejects.toThrow('Unauthorized')
+    expect(syncSingleTeamMembers).not.toHaveBeenCalled()
+  })
+
+  it('delegates to syncSingleTeamMembers and revalidates admin, roster, and events paths', async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'admin-1', role: 'ADMIN' } } as any)
+    vi.mocked(prisma.team.findUnique).mockResolvedValue({
+      id: 'team-1',
+      iracingTeamId: 77777,
+    } as any)
+    vi.mocked(syncSingleTeamMembers).mockResolvedValue({ synced: true, memberCount: 12 })
+
+    const result = await syncTeamMembers('team-1')
+
+    expect(syncSingleTeamMembers).toHaveBeenCalledWith('team-1', 77777)
+    expect(result).toEqual({ success: true, memberCount: 12 })
+    expect(revalidatePath).toHaveBeenCalledWith('/admin')
+    expect(revalidatePath).toHaveBeenCalledWith('/roster')
+    expect(revalidatePath).toHaveBeenCalledWith('/events')
+  })
+
+  it('throws a descriptive error when syncSingleTeamMembers skips wiping on an empty/failed response', async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'admin-1', role: 'ADMIN' } } as any)
+    vi.mocked(prisma.team.findUnique).mockResolvedValue({
+      id: 'team-1',
+      iracingTeamId: 77777,
+    } as any)
+    vi.mocked(syncSingleTeamMembers).mockResolvedValue({ synced: false, memberCount: 0 })
+
+    await expect(syncTeamMembers('team-1')).rejects.toThrow(
+      'Could not fetch team members from iRacing'
+    )
   })
 })

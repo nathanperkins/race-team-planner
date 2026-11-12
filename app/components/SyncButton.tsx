@@ -32,6 +32,7 @@ export default function SyncButton() {
             `• ${result.eventsCount} events`,
             `• ${result.carClassesCount} car classes`,
             `• ${result.usersCount} users`,
+            `• ${result.teamsCount} teams`,
           ].join('\n')
         )
       } else {
