@@ -1536,6 +1536,17 @@ async function processTeamEdits(
   return tempTeamMap
 }
 
+export interface DroppedRegistrationSnapshot {
+  id: string
+  userId: string | null
+  manualDriverId: string | null
+  teamId: string | null
+  teamName: string | null
+  driverName: string
+  carClassId?: string
+  carClassName?: string
+}
+
 /**
  * Processes pending drops, additions, and updates
  * Combines all registration operations into a single transaction for atomicity
@@ -1554,17 +1565,45 @@ async function processRegistrationEdits(
   }>,
   updates: Array<{ id: string; carClassId: string; teamId: string | null }>,
   tempTeamMap: Map<string, string> = new Map()
-): Promise<{ teamsWereAssigned: boolean }> {
+): Promise<{
+  teamsWereAssigned: boolean
+  droppedRegistrations: DroppedRegistrationSnapshot[]
+}> {
   const allRegistrationOperations: Prisma.PrismaPromise<unknown>[] = []
   let teamsWereAssigned = false
+  let droppedRegistrations: DroppedRegistrationSnapshot[] = []
 
   const resolveTeamId = (teamId: string | null | undefined): string | null => {
     if (!teamId) return null
     return tempTeamMap.get(teamId) ?? teamId
   }
 
-  // BATCHED PENDING DROPS - filter by raceId in the query to avoid a findMany round trip
+  // BATCHED PENDING DROPS - capture pre-drop metadata first so unassigned racers who signed up
+  // outside Team Picker still emit drop notifications on save.
   if (isAdmin && pendingDrops.length > 0) {
+    const rowsToDrop = await prisma.registration.findMany({
+      where: { id: { in: pendingDrops }, raceId },
+      select: {
+        id: true,
+        userId: true,
+        manualDriverId: true,
+        teamId: true,
+        team: { select: { id: true, name: true, alias: true } },
+        user: { select: { name: true } },
+        manualDriver: { select: { name: true } },
+        carClass: { select: { id: true, name: true, shortName: true } },
+      },
+    })
+    droppedRegistrations = (rowsToDrop ?? []).map((row) => ({
+      id: row.id,
+      userId: row.userId ?? null,
+      manualDriverId: row.manualDriverId ?? null,
+      teamId: row.teamId ?? null,
+      teamName: row.team?.alias || row.team?.name || null,
+      driverName: row.user?.name || row.manualDriver?.name || 'Driver',
+      carClassId: row.carClass?.id,
+      carClassName: row.carClass?.shortName?.trim() || row.carClass?.name?.trim() || undefined,
+    }))
     allRegistrationOperations.push(
       prisma.registration.deleteMany({ where: { id: { in: pendingDrops }, raceId } })
     )
@@ -1691,7 +1730,7 @@ async function processRegistrationEdits(
     await prisma.$transaction(allRegistrationOperations)
   }
 
-  return { teamsWereAssigned }
+  return { teamsWereAssigned, droppedRegistrations }
 }
 
 /**
@@ -1703,7 +1742,8 @@ async function updateRaceSettings(
   maxDriversPerTeam: number | null,
   teamAssignmentStrategy: TeamAssignmentStrategy | null,
   teamsWereAssigned: boolean,
-  alreadyAssigned: boolean
+  alreadyAssigned: boolean,
+  droppedRegistrations?: DroppedRegistrationSnapshot[]
 ): Promise<void> {
   const teamsAssigned = alreadyAssigned || teamsWereAssigned
   await prisma.race.update({
@@ -1719,7 +1759,10 @@ async function updateRaceSettings(
   // even when there are only unassigned drivers. The notification logic inside will skip
   // sending a chat message when no teams are assigned and there are no roster changes.
   try {
-    await sendTeamsAssignmentNotification(raceId)
+    await sendTeamsAssignmentNotification(
+      raceId,
+      droppedRegistrations && droppedRegistrations.length > 0 ? { droppedRegistrations } : undefined
+    )
   } catch (notificationError) {
     logger.error({ err: notificationError }, 'Failed to send teams assigned notification')
   }
@@ -1873,6 +1916,7 @@ export async function saveRaceEdits(formData: FormData) {
 
     // Process registration edits (drops, additions, updates)
     let teamsWereAssigned = false
+    let droppedRegistrations: DroppedRegistrationSnapshot[] = []
     try {
       const result = await processRegistrationEdits(
         isAdmin,
@@ -1884,6 +1928,7 @@ export async function saveRaceEdits(formData: FormData) {
         tempTeamMap
       )
       teamsWereAssigned = result.teamsWereAssigned
+      droppedRegistrations = result.droppedRegistrations
     } catch (error) {
       if (error instanceof Error) {
         return { message: error.message }
@@ -1907,7 +1952,8 @@ export async function saveRaceEdits(formData: FormData) {
         maxDriversPerTeam,
         teamAssignmentStrategy,
         teamsWereAssigned,
-        race.teamsAssigned
+        race.teamsAssigned,
+        droppedRegistrations
       )
     }
 
@@ -2267,7 +2313,10 @@ function buildTimeslotsForEventThread(
  * 4. Coordinates calls to lib/discord.ts to perform the actual API actions.
  * 5. Persists the resulting Discord IDs (Thread IDs) and Snapshots back to the database.
  */
-export async function sendTeamsAssignmentNotification(raceId: string) {
+export async function sendTeamsAssignmentNotification(
+  raceId: string,
+  options?: { droppedRegistrations?: DroppedRegistrationSnapshot[] }
+) {
   const session = await auth()
   if (!session || !session.user?.id) {
     return { message: 'Unauthorized' }
@@ -2286,11 +2335,15 @@ export async function sendTeamsAssignmentNotification(raceId: string) {
     const data = await loadRaceAssignmentData(raceId)
 
     // Execute the notification logic with preloaded data
-    return await sendTeamsAssignmentNotificationWithData(data, {
-      id: session.user.id,
-      name: session.user.name || undefined,
-      role: session.user.role,
-    })
+    return await sendTeamsAssignmentNotificationWithData(
+      data,
+      {
+        id: session.user.id,
+        name: session.user.name || undefined,
+        role: session.user.role,
+      },
+      options
+    )
   } catch (error) {
     logger.error({ err: error }, 'Failed to send teams assigned notification')
     return { message: 'Failed to send notification' }
@@ -2482,7 +2535,8 @@ export async function loadRaceAssignmentData(raceId: string): Promise<RaceAssign
  */
 export async function sendTeamsAssignmentNotificationWithData(
   data: RaceAssignmentData,
-  user: { id: string; name?: string; role: string }
+  user: { id: string; name?: string; role: string },
+  options?: { droppedRegistrations?: DroppedRegistrationSnapshot[] }
 ): Promise<{ message: string }> {
   const {
     raceWithEvent: race,
@@ -2672,15 +2726,71 @@ export async function sendTeamsAssignmentNotificationWithData(
 
     const mentionRegistrationIds = new Set<string>()
 
+    // Exclude any dropped record whose driver was re-added in the same save
+    const effectiveDrops = (options?.droppedRegistrations ?? []).filter(
+      (drop) =>
+        !registrations.some(
+          (reg) =>
+            reg.id === drop.id ||
+            (drop.userId !== null && reg.userId === drop.userId) ||
+            (drop.manualDriverId !== null && reg.manualDriverId === drop.manualDriverId)
+        )
+    )
+
+    // Count remaining sibling registrations across other timeslots in the same event (#147 parity)
+    const droppedUserIds = Array.from(
+      new Set(effectiveDrops.map((d) => d.userId).filter((id): id is string => Boolean(id)))
+    )
+    const stillRegisteredCountByRegId = new Map<string, number>()
+    if (droppedUserIds.length > 0 && siblingRaces.length > 0) {
+      const siblingRegsForDropped = await prisma.registration.findMany({
+        where: {
+          raceId: { in: siblingRaces.map((s) => s.id) },
+          userId: { in: droppedUserIds },
+        },
+        select: { userId: true },
+      })
+      const countByUserId = new Map<string, number>()
+      for (const row of siblingRegsForDropped ?? []) {
+        if (!row.userId) continue
+        countByUserId.set(row.userId, (countByUserId.get(row.userId) ?? 0) + 1)
+      }
+      for (const drop of effectiveDrops) {
+        if (drop.userId) {
+          stillRegisteredCountByRegId.set(drop.id, countByUserId.get(drop.userId) ?? 0)
+        }
+      }
+    }
+
     // Build team name mapping - include ALL teams, not just those with current members
     // This ensures we can look up team names for drivers who moved FROM teams
     const teamNameById = new Map(allTeams.map((team) => [team.id, team.alias || team.name]))
+    for (const drop of effectiveDrops) {
+      if (drop.teamId && drop.teamName && !teamNameById.has(drop.teamId)) {
+        teamNameById.set(drop.teamId, drop.teamName)
+      }
+    }
 
     const { buildRosterChangesFromTeamChangeDetails, buildTeamChangeDetails } =
       await import('@/lib/team-change-summary')
 
-    const originalRecords = normalizedPreviousSnapshot
-      ? Object.entries(normalizedPreviousSnapshot).map(([id, snapshot]) => ({
+    const effectivePreviousSnapshot = normalizedPreviousSnapshot
+      ? { ...normalizedPreviousSnapshot }
+      : null
+    if (effectivePreviousSnapshot) {
+      for (const drop of effectiveDrops) {
+        if (!(drop.id in effectivePreviousSnapshot)) {
+          effectivePreviousSnapshot[drop.id] = {
+            teamId: drop.teamId,
+            driverName: drop.driverName,
+            carClassName: drop.carClassName,
+          }
+        }
+      }
+    }
+
+    const originalRecords = effectivePreviousSnapshot
+      ? Object.entries(effectivePreviousSnapshot).map(([id, snapshot]) => ({
           id,
           driverName: snapshot.driverName || currentSnapshot[id]?.driverName || 'Driver',
           teamId: snapshot.teamId,
@@ -2700,8 +2810,10 @@ export async function sendTeamsAssignmentNotificationWithData(
       pendingRecords,
       teamNameById,
     })
-    const rosterChanges = normalizedPreviousSnapshot
-      ? buildRosterChangesFromTeamChangeDetails(sharedChangeDetails)
+    const rosterChanges = effectivePreviousSnapshot
+      ? buildRosterChangesFromTeamChangeDetails(sharedChangeDetails, {
+          stillRegisteredCountByRegistrationId: stillRegisteredCountByRegId,
+        })
       : []
 
     // Event-thread mentions: only newly registered drivers.
@@ -2819,14 +2931,39 @@ export async function sendTeamsAssignmentNotificationWithData(
 
     // 2. Send chat notification
     // Scenario 1: First save with any registrations → post "Teams Assigned"
-    //   (includes the case where all drivers are unassigned — no teams yet)
+    //   (includes the case where all drivers are unassigned — no teams yet, plus any drops)
+    // Scenario 1b: First save where all drivers were dropped → post drop notification to event thread only
     // Scenario 2: Update with actual changes → post "Teams Updated" + roster changes
     // Scenario 3: No change → skip entirely
     const isFirstAssignment = previousSnapshot === null
-    const rosterChangesForNotification =
-      !isFirstAssignment && rosterChanges.length > 0 ? rosterChanges : undefined
+    const firstSaveDroppedChanges =
+      isFirstAssignment && effectiveDrops.length > 0
+        ? effectiveDrops
+            .map((drop) => ({
+              type: 'dropped' as const,
+              driverName: drop.driverName,
+              fromTeam:
+                (drop.teamId ? (teamNameById.get(drop.teamId) ?? drop.teamName) : null) ||
+                'Unassigned',
+              stillRegisteredCount: stillRegisteredCountByRegId.get(drop.id) ?? 0,
+              ...(drop.carClassName && drop.carClassName !== 'Unknown'
+                ? { carClassName: drop.carClassName }
+                : {}),
+            }))
+            .sort((a, b) => a.driverName.localeCompare(b.driverName))
+        : []
+    const rosterChangesForNotification = isFirstAssignment
+      ? firstSaveDroppedChanges.length > 0
+        ? firstSaveDroppedChanges
+        : undefined
+      : rosterChanges.length > 0
+        ? rosterChanges
+        : undefined
 
-    if ((isFirstAssignment && registrations.length > 0) || rosterChangesForNotification) {
+    if (
+      (isFirstAssignment && registrations.length > 0) ||
+      (!isFirstAssignment && rosterChangesForNotification)
+    ) {
       await sendTeamsAssignedNotification(
         threadId,
         {
@@ -2845,13 +2982,33 @@ export async function sendTeamsAssignmentNotificationWithData(
           title: isFirstAssignment ? '🏁 Teams Assigned' : '🏁 Teams Updated',
         }
       )
+    } else if (
+      isFirstAssignment &&
+      registrations.length === 0 &&
+      firstSaveDroppedChanges.length > 0
+    ) {
+      await postRosterChangeNotifications(
+        threadId,
+        firstSaveDroppedChanges,
+        process.env.DISCORD_BOT_TOKEN || '',
+        user.name || 'Admin',
+        race.startTime,
+        teamThreads,
+        teamNameById,
+        Array.from(newlyCreatedOrReplacedTeamThreadIds),
+        teamMentionDiscordIdsRecord
+      )
     }
 
     // 3. Update database with thread info and roster snapshot
+    // Keep discordTeamsSnapshot unset when the first save left zero registrations so a future
+    // first assignment still emits "Teams Assigned".
     await prisma.race.update({
       where: { id: raceId },
       data: {
-        discordTeamsSnapshot: currentSnapshot,
+        ...(isFirstAssignment && registrations.length === 0
+          ? {}
+          : { discordTeamsSnapshot: currentSnapshot }),
         discordTeamThreads: teamThreads,
       },
     })

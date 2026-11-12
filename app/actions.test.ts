@@ -3108,3 +3108,356 @@ describe('saveRaceEdits - registration operations', () => {
     expect(calls.indexOf('loadCarClassIds')).toBeLessThan(calls.indexOf('race.update'))
   })
 })
+
+describe('saveRaceEdits - drop notifications for unassigned racers (issue #160)', () => {
+  const adminSession = {
+    user: { id: 'admin-1', name: 'Admin One', role: 'ADMIN' },
+    expires: '2099-12-31T23:59:59.999Z',
+  }
+
+  const raceStartTime = new Date('2099-03-01T20:00:00Z')
+  const raceEndTime = new Date('2099-03-01T22:00:00Z')
+
+  const makeRaceWithEvent = (overrides: Record<string, unknown> = {}) => ({
+    id: 'race-1',
+    startTime: raceStartTime,
+    endTime: raceEndTime,
+    eventId: 'event-1',
+    maxDriversPerTeam: null,
+    teamsAssigned: false,
+    discordTeamsThreadId: 'event-thread-1',
+    discordTeamsSnapshot: null,
+    discordTeamThreads: null,
+    event: {
+      id: 'event-1',
+      name: 'GT3 Challenge',
+      track: 'Spa',
+      trackConfig: null,
+      tempValue: null,
+      precipChance: null,
+      carClasses: [{ name: 'GT3' }, { name: 'LMP2' }],
+      customCarClasses: [],
+    },
+    ...overrides,
+  })
+
+  const makeFormData = (overrides: Record<string, string> = {}) => {
+    const fd = new FormData()
+    fd.set('raceId', 'race-1')
+    fd.set('maxDriversPerTeam', '')
+    fd.set('teamAssignmentStrategy', 'BALANCED_IRATING')
+    fd.set('applyRebalance', 'false')
+    fd.set('registrationUpdates', '[]')
+    fd.set('newTeams', '[]')
+    fd.set('pendingAdditions', '[]')
+    fd.set('pendingDrops', '[]')
+    fd.set('teamNameOverrides', '{}')
+    for (const [k, v] of Object.entries(overrides)) {
+      fd.set(k, v)
+    }
+    return fd
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.env.NEXTAUTH_URL = 'http://localhost:3000'
+    process.env.DISCORD_GUILD_ID = 'guild-123'
+    process.env.DISCORD_BOT_TOKEN = 'bot-token-123'
+    vi.mocked(auth).mockResolvedValue(adminSession as any)
+    vi.mocked(prisma.team.findMany).mockResolvedValue([])
+    vi.mocked(prisma.race.findFirst).mockResolvedValue({
+      discordTeamsThreadId: 'event-thread-1',
+    } as any)
+    vi.mocked(prisma.race.findMany).mockResolvedValue([])
+    vi.mocked(prisma.race.update).mockResolvedValue({} as any)
+    vi.mocked(prisma.race.updateMany).mockResolvedValue({ count: 1 } as any)
+    vi.mocked(prisma.registration.deleteMany).mockResolvedValue({ count: 1 } as any)
+    vi.mocked(createOrUpdateEventThread).mockResolvedValue({
+      ok: true,
+      threadId: 'event-thread-1',
+    })
+  })
+
+  afterEach(() => {
+    delete process.env.NEXTAUTH_URL
+    delete process.env.DISCORD_GUILD_ID
+    delete process.env.DISCORD_BOT_TOKEN
+  })
+
+  it('posts drop notification to event thread (without Teams Assigned chat post) when dropping sole unassigned racer on first save', async () => {
+    vi.mocked(prisma.race.findUnique).mockResolvedValue(makeRaceWithEvent() as any)
+    vi.mocked(prisma.registration.findMany)
+      // 1st call: pre-drop lookup in processRegistrationEdits
+      .mockResolvedValueOnce([
+        {
+          id: 'reg-unassigned-1',
+          userId: 'user-1',
+          manualDriverId: null,
+          teamId: null,
+          team: null,
+          user: { name: 'User 1' },
+          manualDriver: null,
+          carClass: { id: 'class-gt3', name: 'Grand Touring 3', shortName: 'GT3' },
+        },
+      ] as any)
+      // 2nd call: post-drop registrations in loadRaceAssignmentData (now empty)
+      .mockResolvedValueOnce([] as any)
+
+    const fd = makeFormData({
+      pendingDrops: JSON.stringify(['reg-unassigned-1']),
+    })
+
+    const result = await saveRaceEdits(fd)
+
+    expect(result.message).toBe('Success')
+    expect(createOrUpdateEventThread).toHaveBeenCalled()
+    expect(sendTeamsAssignedNotification).not.toHaveBeenCalled()
+    expect(postRosterChangeNotifications).toHaveBeenCalledWith(
+      'event-thread-1',
+      [
+        {
+          type: 'dropped',
+          driverName: 'User 1',
+          fromTeam: 'Unassigned',
+          carClassName: 'GT3',
+          stillRegisteredCount: 0,
+        },
+      ],
+      'bot-token-123',
+      'Admin One',
+      raceStartTime,
+      {},
+      expect.any(Map),
+      [],
+      {}
+    )
+
+    // Snapshot remains unset (not {}) so a future real first save still posts "Teams Assigned"
+    const snapshotUpdateCall = vi
+      .mocked(prisma.race.update)
+      .mock.calls.find((call) => 'discordTeamThreads' in (call[0]?.data ?? {}))
+    expect(snapshotUpdateCall).toBeDefined()
+    expect(snapshotUpdateCall?.[0]?.data).not.toHaveProperty('discordTeamsSnapshot')
+  })
+
+  it('includes dropped unassigned racer in rosterChanges alongside Teams Assigned when other drivers remain on first save', async () => {
+    vi.mocked(prisma.race.findUnique).mockResolvedValue(makeRaceWithEvent() as any)
+    vi.mocked(prisma.team.findMany).mockResolvedValue([
+      { id: 'team-1', name: 'Team One', alias: null },
+    ] as any)
+    vi.mocked(createOrUpdateTeamThread).mockResolvedValue('team-thread-1')
+    vi.mocked(prisma.registration.update).mockResolvedValue({} as any)
+
+    vi.mocked(prisma.registration.findMany)
+      // 1st call: pre-drop lookup in processRegistrationEdits
+      .mockResolvedValueOnce([
+        {
+          id: 'reg-drop',
+          userId: 'user-drop',
+          manualDriverId: null,
+          teamId: null,
+          team: null,
+          user: { name: 'Dropped Driver' },
+          manualDriver: null,
+          carClass: { id: 'class-gt3', name: 'GT3', shortName: 'GT3' },
+        },
+      ] as any)
+      // 2nd call: loadRegistrationsByIds for updates in processRegistrationEdits
+      .mockResolvedValueOnce([
+        { id: 'reg-keep', userId: 'user-keep', raceId: 'race-1', teamId: null },
+      ] as any)
+      // 3rd call: post-edit registrations in loadRaceAssignmentData
+      .mockResolvedValueOnce([
+        {
+          id: 'reg-keep',
+          userId: 'user-keep',
+          manualDriverId: null,
+          carClassId: 'class-gt3',
+          teamId: 'team-1',
+          team: { id: 'team-1', name: 'Team One', alias: null },
+          carClass: { id: 'class-gt3', name: 'GT3', shortName: 'GT3' },
+          user: {
+            name: 'Kept Driver',
+            accounts: [{ providerAccountId: 'discord-keep' }],
+            racerStats: [],
+          },
+          manualDriver: null,
+        },
+      ] as any)
+
+    const fd = makeFormData({
+      pendingDrops: JSON.stringify(['reg-drop']),
+      registrationUpdates: JSON.stringify([
+        { id: 'reg-keep', carClassId: 'class-gt3', teamId: 'team-1' },
+      ]),
+    })
+
+    const result = await saveRaceEdits(fd)
+
+    expect(result.message).toBe('Success')
+    expect(sendTeamsAssignedNotification).toHaveBeenCalledWith(
+      'event-thread-1',
+      expect.objectContaining({
+        rosterChanges: [
+          {
+            type: 'dropped',
+            driverName: 'Dropped Driver',
+            fromTeam: 'Unassigned',
+            carClassName: 'GT3',
+            stillRegisteredCount: 0,
+          },
+        ],
+      }),
+      expect.objectContaining({ title: '🏁 Teams Assigned' })
+    )
+  })
+
+  it('emits dropped roster change when dropping an unassigned racer who signed up after discordTeamsSnapshot was saved', async () => {
+    vi.mocked(prisma.race.findUnique).mockResolvedValue(
+      makeRaceWithEvent({
+        teamsAssigned: true,
+        discordTeamThreads: { 'team-1': 'team-thread-1' },
+        discordTeamsSnapshot: {
+          'reg-existing': {
+            teamId: 'team-1',
+            driverName: 'Existing Driver',
+            carClassId: 'class-gt3',
+            carClassName: 'GT3',
+          },
+        },
+      }) as any
+    )
+    vi.mocked(prisma.team.findMany).mockResolvedValue([
+      { id: 'team-1', name: 'Team One', alias: null },
+    ] as any)
+    vi.mocked(createOrUpdateTeamThread).mockResolvedValue('team-thread-1')
+
+    vi.mocked(prisma.registration.findMany)
+      // 1st call: pre-drop lookup in processRegistrationEdits (new signup not in snapshot)
+      .mockResolvedValueOnce([
+        {
+          id: 'reg-late-signup',
+          userId: 'user-late',
+          manualDriverId: null,
+          teamId: null,
+          team: null,
+          user: { name: 'Late Signup' },
+          manualDriver: null,
+          carClass: { id: 'class-lmp2', name: 'LMP2', shortName: 'LMP2' },
+        },
+      ] as any)
+      // 2nd call: post-drop registrations in loadRaceAssignmentData
+      .mockResolvedValueOnce([
+        {
+          id: 'reg-existing',
+          userId: 'user-existing',
+          manualDriverId: null,
+          carClassId: 'class-gt3',
+          teamId: 'team-1',
+          team: { id: 'team-1', name: 'Team One', alias: null },
+          carClass: { id: 'class-gt3', name: 'GT3', shortName: 'GT3' },
+          user: {
+            name: 'Existing Driver',
+            accounts: [{ providerAccountId: 'discord-existing' }],
+            racerStats: [],
+          },
+          manualDriver: null,
+        },
+      ] as any)
+
+    const fd = makeFormData({
+      pendingDrops: JSON.stringify(['reg-late-signup']),
+    })
+
+    const result = await saveRaceEdits(fd)
+
+    expect(result.message).toBe('Success')
+    expect(sendTeamsAssignedNotification).toHaveBeenCalledWith(
+      'event-thread-1',
+      expect.objectContaining({
+        rosterChanges: [
+          {
+            type: 'dropped',
+            driverName: 'Late Signup',
+            fromTeam: 'Unassigned',
+            carClassName: 'LMP2',
+            stillRegisteredCount: 0,
+          },
+        ],
+      }),
+      expect.objectContaining({ title: '🏁 Teams Updated' })
+    )
+  })
+
+  it('populates stillRegisteredCount across sibling timeslots when dropping a racer in Team Picker (#147 parity)', async () => {
+    vi.mocked(prisma.race.findUnique).mockResolvedValue(
+      makeRaceWithEvent({
+        teamsAssigned: true,
+        discordTeamsSnapshot: {
+          'reg-unassigned-1': {
+            teamId: null,
+            driverName: 'Multi-Slot Driver',
+            carClassId: 'class-gt3',
+            carClassName: 'GT3',
+          },
+        },
+      }) as any
+    )
+    vi.mocked(prisma.race.findMany).mockResolvedValue([
+      {
+        id: 'race-2',
+        startTime: new Date('2099-03-02T02:00:00Z'),
+        discordTeamThreads: null,
+        teamsAssigned: false,
+      },
+      {
+        id: 'race-3',
+        startTime: new Date('2099-03-02T08:00:00Z'),
+        discordTeamThreads: null,
+        teamsAssigned: false,
+      },
+    ] as any)
+
+    vi.mocked(prisma.registration.findMany)
+      // 1st call: pre-drop lookup in processRegistrationEdits
+      .mockResolvedValueOnce([
+        {
+          id: 'reg-unassigned-1',
+          userId: 'user-multi',
+          manualDriverId: null,
+          teamId: null,
+          team: null,
+          user: { name: 'Multi-Slot Driver' },
+          manualDriver: null,
+          carClass: { id: 'class-gt3', name: 'GT3', shortName: 'GT3' },
+        },
+      ] as any)
+      // 2nd call: post-drop registrations in loadRaceAssignmentData
+      .mockResolvedValueOnce([] as any)
+      // 3rd call: sibling registrations count for dropped userId
+      .mockResolvedValueOnce([{ userId: 'user-multi' }, { userId: 'user-multi' }] as any)
+
+    const fd = makeFormData({
+      pendingDrops: JSON.stringify(['reg-unassigned-1']),
+    })
+
+    const result = await saveRaceEdits(fd)
+
+    expect(result.message).toBe('Success')
+    expect(sendTeamsAssignedNotification).toHaveBeenCalledWith(
+      'event-thread-1',
+      expect.objectContaining({
+        rosterChanges: [
+          {
+            type: 'dropped',
+            driverName: 'Multi-Slot Driver',
+            fromTeam: 'Unassigned',
+            carClassName: 'GT3',
+            stillRegisteredCount: 2,
+          },
+        ],
+      }),
+      expect.objectContaining({ title: '🏁 Teams Updated' })
+    )
+  })
+})

@@ -375,7 +375,8 @@ export function buildTeamChangeDetails(params: {
 }
 
 export function buildRosterChangesFromTeamChangeDetails(
-  details: TeamChangeDetail[]
+  details: TeamChangeDetail[],
+  options?: { stillRegisteredCountByRegistrationId?: ReadonlyMap<string, number> }
 ): RosterChange[] {
   const rosterChanges: RosterChange[] = []
   const teamClassChangeGroups = new Map<
@@ -400,11 +401,13 @@ export function buildRosterChangesFromTeamChangeDetails(
 
     if (detail.type === 'dropped') {
       const carClassName = detail.fromCarClassName?.trim()
+      const stillRegisteredCount =
+        options?.stillRegisteredCountByRegistrationId?.get(detail.registrationId) ?? 0
       rosterChanges.push({
         type: 'dropped',
         driverName: detail.driverName,
         fromTeam: detail.fromTeamName,
-        stillRegisteredCount: 0,
+        stillRegisteredCount,
         ...(carClassName && carClassName !== 'Unknown' ? { carClassName } : {}),
       })
       return

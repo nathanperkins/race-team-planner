@@ -219,6 +219,36 @@ describe('buildTeamChangeSummary', () => {
     ])
   })
 
+  it('populates stillRegisteredCount from options when building dropped roster changes', () => {
+    const teamNameById = new Map<string, string>()
+    const details = buildTeamChangeDetails({
+      teamNameById,
+      originalRecords: [
+        {
+          id: 'reg-1',
+          driverName: 'Alice',
+          teamId: null,
+          teamName: null,
+          carClassName: 'GT3',
+        },
+      ],
+      pendingRecords: [],
+    })
+
+    const rosterChanges = buildRosterChangesFromTeamChangeDetails(details, {
+      stillRegisteredCountByRegistrationId: new Map([['reg-1', 2]]),
+    })
+    expect(rosterChanges).toEqual([
+      {
+        type: 'dropped',
+        driverName: 'Alice',
+        fromTeam: 'Unassigned',
+        carClassName: 'GT3',
+        stillRegisteredCount: 2,
+      },
+    ])
+  })
+
   it('groups team class changes with affected drivers', () => {
     const teamNameById = new Map([['team-1', 'Carbon']])
     const details = buildTeamChangeDetails({
