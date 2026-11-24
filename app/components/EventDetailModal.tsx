@@ -232,14 +232,11 @@ export default function EventDetailModal({
             </div>
 
             <div className={styles.carClassList}>
-              {displayRaces.map((race, idx) => {
+              {displayRaces.map((race) => {
                 const raceCompleted = new Date() > new Date(race.endTime)
                 const pillContent = (
                   <span suppressHydrationWarning>
-                    <Calendar size={14} />{' '}
-                    {formatRaceDateTime(race.startTime, timeZone, {
-                      includeTimeZoneName: idx === displayRaces.length - 1,
-                    })}
+                    <Calendar size={14} /> {formatRaceDateTime(race.startTime, timeZone)}
                   </span>
                 )
                 return raceCompleted ? (
