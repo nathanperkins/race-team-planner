@@ -180,4 +180,33 @@ describe('EventDetailModal', () => {
 
     expect(screen.getByText(/7:00 PM UTC/)).toBeInTheDocument()
   })
+
+  it('shows the timezone abbreviation on every timeslot pill for multi-timeslot events', () => {
+    const multiRaceEvent = {
+      ...mockEvent,
+      races: [
+        {
+          id: 'race-1',
+          startTime: new Date('2026-03-06T19:00:00Z'),
+          endTime: new Date('2026-03-06T20:00:00Z'),
+          registrations: [],
+        },
+        {
+          id: 'race-2',
+          startTime: new Date('2026-03-07T01:00:00Z'),
+          endTime: new Date('2026-03-07T02:00:00Z'),
+          registrations: [],
+        },
+      ],
+    }
+
+    render(
+      <TimeZoneProvider initialTimeZone="America/Los_Angeles">
+        <EventDetailModal {...defaultProps} event={multiRaceEvent as any} />
+      </TimeZoneProvider>
+    )
+
+    expect(screen.getByText(/3\/6\s*•\s*11:00 AM PST/)).toBeInTheDocument()
+    expect(screen.getByText(/3\/6\s*•\s*5:00 PM PST/)).toBeInTheDocument()
+  })
 })
