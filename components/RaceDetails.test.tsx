@@ -336,13 +336,58 @@ describe('RaceDetails', () => {
         race={mockRace}
         {...raceEventProps}
         userId="user-1"
-        carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
+        carClasses={[
+          { id: 'class-1', name: 'Class 1', shortName: 'C1' },
+          { id: 'class-2', name: 'Class 2', shortName: 'C2' },
+        ]}
         teams={[]}
         allDrivers={[]}
       />
     )
 
     expect(screen.getByTestId('editable-car-class-full')).toBeInTheDocument()
+  })
+
+  it('hides class-change action when race has only one car class', () => {
+    const mockRace = {
+      id: 'race-single-class',
+      startTime: new Date('2027-01-01T10:00:00Z'),
+      endTime: new Date('2027-01-01T12:00:00Z'),
+      teamsAssigned: false,
+      maxDriversPerTeam: 2,
+      teamAssignmentStrategy: 'BALANCED_IRATING' as const,
+      registrations: [
+        {
+          id: 'reg-user',
+          carClass: { id: 'class-1', name: 'Class 1', shortName: 'C1' },
+          userId: 'user-1',
+          user: {
+            name: 'User 1',
+            image: null,
+            racerStats: [],
+          },
+          manualDriver: null,
+          teamId: null,
+          team: null,
+        },
+      ],
+      discordTeamsThreadId: null,
+      discordTeamThreads: null,
+    }
+
+    render(
+      <RaceDetails
+        race={mockRace}
+        {...raceEventProps}
+        userId="user-1"
+        carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
+        teams={[]}
+        allDrivers={[]}
+      />
+    )
+
+    expect(screen.getByTestId('drop-registration-button')).toBeInTheDocument()
+    expect(screen.queryByTestId('editable-car-class-full')).not.toBeInTheDocument()
   })
 
   it('hides swap control when registered user is already assigned to a team', () => {
@@ -420,7 +465,10 @@ describe('RaceDetails', () => {
         {...raceEventProps}
         userId="admin-user"
         isAdmin
-        carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
+        carClasses={[
+          { id: 'class-1', name: 'Class 1', shortName: 'C1' },
+          { id: 'class-2', name: 'Class 2', shortName: 'C2' },
+        ]}
         teams={[]}
         allDrivers={[]}
       />
