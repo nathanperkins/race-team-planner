@@ -1,11 +1,14 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import EventDetailModal from './EventDetailModal'
+import { TimeZoneProvider } from '@/components/TimeZoneProvider'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 
 // Mock icons to avoid lucide-react render issues in tests if any
 vi.mock('lucide-react', () => ({
   X: () => <div data-testid="icon-x" />,
   Cloud: () => <div data-testid="icon-cloud" />,
+  Globe: () => <div data-testid="icon-globe" />,
   ShieldCheck: () => <div data-testid="icon-shield-check" />,
   ShieldX: () => <div data-testid="icon-shield-x" />,
   Thermometer: () => <div data-testid="icon-thermometer" />,
@@ -160,5 +163,21 @@ describe('EventDetailModal', () => {
       render(<EventDetailModal {...defaultProps} />)
       expect(screen.queryByTestId('add-to-calendar-button')).not.toBeInTheDocument()
     })
+  })
+
+  it('updates displayed race times when changing the display time zone selector', async () => {
+    const user = userEvent.setup()
+    render(
+      <TimeZoneProvider initialTimeZone="America/Los_Angeles">
+        <EventDetailModal {...defaultProps} />
+      </TimeZoneProvider>
+    )
+
+    expect(screen.getByText(/11:00 AM PST/)).toBeInTheDocument()
+
+    const tzSelect = screen.getByLabelText(/display time zone/i)
+    await user.selectOptions(tzSelect, 'UTC')
+
+    expect(screen.getByText(/7:00 PM UTC/)).toBeInTheDocument()
   })
 })

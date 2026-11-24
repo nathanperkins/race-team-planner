@@ -1,0 +1,53 @@
+.wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background-color: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 9999px;
+  padding: 0.35rem 0.75rem;
+  color: #e5e7eb;
+  max-width: 100%;
+  transition: border-color 0.15s ease;
+}
+
+.wrapper:focus-within {
+  border-color: #3b82f6;
+}
+
+.compact {
+  padding: 0.25rem 0.6rem;
+  background-color: rgba(17, 24, 39, 0.8);
+}
+
+.icon {
+  color: #60a5fa;
+  flex-shrink: 0;
+}
+
+.select {
+  background: transparent;
+  border: none;
+  color: #f3f4f6;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+  max-width: 300px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.select option,
+.select optgroup {
+  background-color: #111827;
+  color: #f3f4f6;
+}
+
+@media (max-width: 640px) {
+  .select {
+    max-width: 210px;
+  }
+}

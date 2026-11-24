@@ -29,6 +29,9 @@ import {
 import { Prisma } from '@prisma/client'
 import { getIracingSeasonInfo } from '@/lib/season-utils'
 import AddToCalendarButton from '@/components/AddToCalendarButton'
+import { useTimeZone } from '@/components/TimeZoneProvider'
+import TimeZoneSelector from '@/components/TimeZoneSelector'
+import { formatRaceDateTime } from '@/lib/timezone-utils'
 import styles from './EventDetailModal.module.css'
 
 type EventWithRaces = Prisma.EventGetPayload<{
@@ -88,6 +91,7 @@ export default function EventDetailModal({
   discordGuildId,
 }: EventDetailModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
+  const { timeZone } = useTimeZone()
   const [allDrivers, setAllDrivers] = useState<Driver[]>([])
   const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({})
 
@@ -177,6 +181,7 @@ export default function EventDetailModal({
                   }}
                 />
               )}
+              <TimeZoneSelector compact />
             </div>
             <button className={styles.closeButton} onClick={onClose} type="button">
               <X size={24} />
@@ -230,19 +235,12 @@ export default function EventDetailModal({
               {displayRaces.map((race, idx) => {
                 const raceCompleted = new Date() > new Date(race.endTime)
                 const pillContent = (
-                  <>
+                  <span suppressHydrationWarning>
                     <Calendar size={14} />{' '}
-                    {new Date(race.startTime).toLocaleDateString('en-US', {
-                      month: 'numeric',
-                      day: 'numeric',
-                    })}{' '}
-                    •{' '}
-                    {new Date(race.startTime).toLocaleTimeString('en-US', {
-                      hour: 'numeric',
-                      minute: '2-digit',
-                      timeZoneName: idx === displayRaces.length - 1 ? 'short' : undefined,
+                    {formatRaceDateTime(race.startTime, timeZone, {
+                      includeTimeZoneName: idx === displayRaces.length - 1,
                     })}
-                  </>
+                  </span>
                 )
                 return raceCompleted ? (
                   <span key={race.id} className={styles.carClassTag}>

@@ -94,4 +94,25 @@ describe('CustomEventFormFields', () => {
       { id: '', startTime: '2027-01-02T10:00' }, // index 0 was removed
     ])
   })
+
+  it('renders the Time Zone selector defaulting to UTC and triggers onTimeZoneChange', async () => {
+    const mockSetTimeslots = vi.fn()
+    const mockOnTimeZoneChange = vi.fn()
+    const user = userEvent.setup()
+
+    render(
+      <CustomEventFormFields
+        timeslots={[{ id: '', startTime: '2027-01-01T10:00' }]}
+        setTimeslots={mockSetTimeslots}
+        timeZone="UTC"
+        onTimeZoneChange={mockOnTimeZoneChange}
+      />
+    )
+
+    const tzSelect = screen.getByLabelText(/time zone/i)
+    expect(tzSelect).toHaveValue('UTC')
+
+    await user.selectOptions(tzSelect, 'America/Los_Angeles')
+    expect(mockOnTimeZoneChange).toHaveBeenCalledWith('America/Los_Angeles')
+  })
 })

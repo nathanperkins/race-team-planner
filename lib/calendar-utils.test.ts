@@ -247,6 +247,24 @@ describe('buildCalendarDescription', () => {
     const desc = buildCalendarDescription({ ...baseDescriptionInput, discordUrl })
     expect(desc).toContain(`Discord: ${discordUrl}`)
   })
+
+  it('formats Starts and Ends in the requested timeZone when provided', () => {
+    const descUtc = buildCalendarDescription({
+      ...baseDescriptionInput,
+      endTime: new Date('2026-06-13T18:00:00Z'),
+      timeZone: 'UTC',
+    })
+    expect(descUtc).toContain('12:00 PM UTC')
+    expect(descUtc).toContain('6:00 PM UTC')
+
+    const descEdt = buildCalendarDescription({
+      ...baseDescriptionInput,
+      endTime: new Date('2026-06-13T18:00:00Z'),
+      timeZone: 'America/New_York',
+    })
+    expect(descEdt).toContain('8:00 AM EDT')
+    expect(descEdt).toContain('2:00 PM EDT')
+  })
 })
 
 const eventWithoutDiscord: CalendarEventInput = {

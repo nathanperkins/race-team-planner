@@ -19,6 +19,7 @@ export interface CalendarDescriptionInput {
   carClasses?: Array<{ name: string; shortName?: string | null }>
   appUrl: string
   discordUrl?: string | null
+  timeZone?: string
 }
 
 function formatDuration(minutes: number): string {
@@ -38,6 +39,7 @@ export function buildCalendarDescription(input: CalendarDescriptionInput): strin
   lines.push('')
 
   const timeFormatOptions: Intl.DateTimeFormatOptions = {
+    ...(input.timeZone ? { timeZone: input.timeZone } : {}),
     weekday: 'short',
     month: 'numeric',
     day: 'numeric',

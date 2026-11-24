@@ -1,12 +1,21 @@
 import { auth } from '@/lib/auth'
 import prisma from '@/lib/prisma'
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import EventFilters from '../components/EventFilters'
 import LastSyncStatus from '@/components/LastSyncStatus'
+import TimeZoneSelector from '@/components/TimeZoneSelector'
 import EventsClient from '../components/EventsClient'
 import { Prisma } from '@prisma/client'
 import { getLicenseLevelFromName, getLicenseForGroup, isLicenseEligible } from '@/lib/utils'
 import { getEvent } from '@/lib/queries'
+import {
+  DEFAULT_TIMEZONE,
+  TIMEZONE_COOKIE_NAME,
+  getDayBoundsInTimeZone,
+  getWeekStartInTimeZone,
+  parseTimeZoneCookie,
+} from '@/lib/timezone-utils'
 
 import styles from './events.module.css'
 import { getIracingSeasonInfo } from '@/lib/season-utils'
@@ -158,30 +167,32 @@ export default async function EventsPage({ searchParams }: PageProps) {
     where.AND = andConditions
   }
 
-  // Time filtering
+  // Time filtering (anchored in the viewer's selected timezone cookie, falling back to UTC)
+  const cookieStore = await cookies()
+  const viewerTimeZone =
+    parseTimeZoneCookie(cookieStore.get(TIMEZONE_COOKIE_NAME)?.value) ?? DEFAULT_TIMEZONE
   const startTimeFilter: Prisma.DateTimeFilter = {}
 
-  function getWeekStart(date: Date): Date {
-    const d = new Date(date)
-    const day = d.getDay()
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1)
-    d.setDate(diff)
-    d.setHours(0, 0, 0, 0)
-    return d
-  }
-
   if (params.from) {
-    const d = new Date(params.from)
-    if (!isNaN(d.getTime())) startTimeFilter.gte = d
+    const dayBounds = getDayBoundsInTimeZone(params.from, viewerTimeZone)
+    if (dayBounds) {
+      startTimeFilter.gte = dayBounds.startOfDay
+    } else {
+      const d = new Date(params.from)
+      if (!isNaN(d.getTime())) startTimeFilter.gte = d
+    }
   } else {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    startTimeFilter.gte = getWeekStart(today)
+    startTimeFilter.gte = getWeekStartInTimeZone(new Date(), viewerTimeZone)
   }
 
   if (params.to) {
-    const d = new Date(params.to)
-    if (!isNaN(d.getTime())) startTimeFilter.lte = d
+    const dayBounds = getDayBoundsInTimeZone(params.to, viewerTimeZone)
+    if (dayBounds) {
+      startTimeFilter.lte = dayBounds.endOfDay
+    } else {
+      const d = new Date(params.to)
+      if (!isNaN(d.getTime())) startTimeFilter.lte = d
+    }
   }
 
   where.startTime = startTimeFilter
@@ -332,6 +343,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
           <h1>Upcoming Events</h1>
           <LastSyncStatus />
         </div>
+        <TimeZoneSelector />
       </div>
 
       <EventFilters carClasses={carClasses} racers={racers} currentFilters={params} />

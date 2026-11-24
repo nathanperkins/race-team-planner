@@ -101,4 +101,21 @@ describe('AddEventModal', () => {
 
     expect(await screen.findByText('Event name already exists')).toBeInTheDocument()
   })
+
+  it('defaults Time Zone to GMT / UTC and converts entered timeslots when changing timezone', async () => {
+    const user = userEvent.setup()
+    render(<AddEventModal onClose={mockOnClose} />)
+
+    const tzSelect = screen.getByLabelText(/time zone/i)
+    expect(tzSelect).toHaveValue('UTC')
+
+    const startInput = document.querySelector('input[name="startTimes"]') as HTMLInputElement
+    await user.type(startInput, '2027-03-20T12:00')
+    expect(startInput.value).toBe('2027-03-20T12:00')
+
+    // Switch to America/Los_Angeles (PDT, UTC-7) -> 05:00
+    await user.selectOptions(tzSelect, 'America/Los_Angeles')
+    expect(tzSelect).toHaveValue('America/Los_Angeles')
+    expect(startInput.value).toBe('2027-03-20T05:00')
+  })
 })
