@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  AlertTriangle,
   CornerDownLeft,
   Check,
   ChevronDown,
@@ -47,7 +48,10 @@ import {
 import { buildTeamChangeSummary } from '@/lib/team-change-summary'
 import { createLogger } from '@/lib/logger'
 import { replaceTeamIdInOrder } from '@/lib/team-order'
-import { shouldWarnForTeamMembership } from '@/lib/team-membership-warning'
+import {
+  getTeamMembershipWarningMessage,
+  shouldWarnForTeamMembership,
+} from '@/lib/team-membership-warning'
 
 const logger = createLogger('RaceDetails')
 
@@ -396,6 +400,14 @@ export default function RaceDetails({
       map.set(team.id, new Set(team.memberCustomerIds ?? []))
     })
     return map
+  }, [teams])
+
+  const allSyncedTeamMemberCustomerIds = useMemo(() => {
+    const ids = new Set<number>()
+    teams.forEach((team) => {
+      ;(team.memberCustomerIds ?? []).forEach((custId) => ids.add(custId))
+    })
+    return ids
   }, [teams])
 
   const isUserRegistered = pendingRegistrations.some((reg) => reg.userId === userId)
@@ -1935,7 +1947,19 @@ export default function RaceDetails({
     const showRowActions = canShowAdminTeamPickerActions && !isRaceCompleted
     const canDragThisRow =
       enableDrag && allowAdminEdits && isTeamModalOpen && canAssignTeams && !isTeamLockedForRow
-    const hasTeamAssigned = !!(reg.teamId ?? reg.team?.id)
+    const assignedTeamId = reg.teamId ?? reg.team?.id ?? null
+    const assignedTeamName = assignedTeamId
+      ? reg.team?.alias || reg.team?.name || teamNameById.get(assignedTeamId) || null
+      : null
+    const hasTeamAssigned = !!assignedTeamId
+    const teamMembershipWarningText = getTeamMembershipWarningMessage({
+      assignedTeamId,
+      assignedTeamName,
+      driverCustomerId: reg.user?.iracingCustomerId,
+      isManualDriver: Boolean(reg.manualDriver && !reg.user),
+      teamMemberCustomerIdsById,
+      allSyncedTeamMemberCustomerIds,
+    })
     const canEditCarClass = allowAdminEdits && isAdmin && !isRaceCompleted && !hasTeamAssigned
     const driverName = reg.user?.name || reg.manualDriver?.name || 'Driver'
     const driverImage = reg.user?.image || reg.manualDriver?.image
@@ -1996,6 +2020,16 @@ export default function RaceDetails({
                 <div className={styles.manualIcon} title="Manual Entry">
                   <UserCog size={14} />
                 </div>
+              )}
+              {teamMembershipWarningText && (
+                <span
+                  className={`instant-tooltip ${styles.teamWarningIcon}`}
+                  role="img"
+                  aria-label={teamMembershipWarningText}
+                  title={teamMembershipWarningText}
+                >
+                  <AlertTriangle size={14} aria-hidden="true" />
+                </span>
               )}
               <span
                 className={`${styles.statsBadge} ${!hasStats || !isRacerEligible ? `instant-tooltip ${styles.statsBadgeIneligible}` : ''}`}

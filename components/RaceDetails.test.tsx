@@ -1163,4 +1163,156 @@ describe('RaceDetails Discord thread links', () => {
       { timeout: 500 }
     )
   })
+
+  describe('iRacing team membership warning icon (#161)', () => {
+    const syncedTeams = [
+      {
+        id: 'team-1',
+        name: 'SRG Alpha',
+        iracingTeamId: 1001,
+        memberCount: 1,
+        memberCustomerIds: [11111],
+      },
+      {
+        id: 'team-2',
+        name: 'SRG Beta',
+        iracingTeamId: 1002,
+        memberCount: 1,
+        memberCustomerIds: [22222],
+      },
+    ]
+
+    it('shows warning icon to all users for unassigned racers not on any community iRacing team', () => {
+      const mockRace = {
+        id: 'race-team-warn-1',
+        startTime: new Date('2029-01-01T10:00:00Z'),
+        endTime: new Date('2029-01-01T12:00:00Z'),
+        teamsAssigned: false,
+        maxDriversPerTeam: 2,
+        teamAssignmentStrategy: 'BALANCED_IRATING' as const,
+        registrations: [
+          {
+            id: 'reg-member',
+            carClass: { id: 'class-1', name: 'GT3', shortName: 'GT3' },
+            userId: 'user-member',
+            user: { name: 'Member Driver', image: null, iracingCustomerId: 11111, racerStats: [] },
+            manualDriver: null,
+            teamId: null,
+            team: null,
+          },
+          {
+            id: 'reg-non-member',
+            carClass: { id: 'class-1', name: 'GT3', shortName: 'GT3' },
+            userId: 'user-non-member',
+            user: {
+              name: 'Non-Member Driver',
+              image: null,
+              iracingCustomerId: 99999,
+              racerStats: [],
+            },
+            manualDriver: null,
+            teamId: null,
+            team: null,
+          },
+        ],
+        discordTeamsThreadId: null,
+        discordTeamThreads: null,
+      }
+
+      render(
+        <RaceDetails
+          race={mockRace}
+          {...raceEventProps}
+          userId="viewer-user"
+          isAdmin={false}
+          carClasses={[{ id: 'class-1', name: 'GT3', shortName: 'GT3' }]}
+          teams={syncedTeams}
+          allDrivers={[]}
+        />
+      )
+
+      const memberRow = screen.getByText('Member Driver').closest(`.${styles.driverRow}`)!
+      const nonMemberRow = screen.getByText('Non-Member Driver').closest(`.${styles.driverRow}`)!
+
+      expect(
+        within(memberRow as HTMLElement).queryByRole('img', { name: /not a member/i })
+      ).not.toBeInTheDocument()
+      expect(
+        within(nonMemberRow as HTMLElement).getByRole('img', {
+          name: 'Not a member of any community iRacing team.',
+        })
+      ).toBeInTheDocument()
+    })
+
+    it('shows team-specific warning when assigned racer is not on their assigned iRacing team', () => {
+      const mockRace = {
+        id: 'race-team-warn-2',
+        startTime: new Date('2029-01-01T10:00:00Z'),
+        endTime: new Date('2029-01-01T12:00:00Z'),
+        teamsAssigned: true,
+        maxDriversPerTeam: 2,
+        teamAssignmentStrategy: 'BALANCED_IRATING' as const,
+        registrations: [
+          {
+            id: 'reg-on-team',
+            carClass: { id: 'class-1', name: 'GT3', shortName: 'GT3' },
+            userId: 'user-1',
+            user: { name: 'Alpha Member', image: null, iracingCustomerId: 11111, racerStats: [] },
+            manualDriver: null,
+            teamId: 'team-1',
+            team: { id: 'team-1', name: 'SRG Alpha' },
+          },
+          {
+            id: 'reg-wrong-team',
+            carClass: { id: 'class-1', name: 'GT3', shortName: 'GT3' },
+            userId: 'user-2',
+            user: { name: 'Beta Only', image: null, iracingCustomerId: 22222, racerStats: [] },
+            manualDriver: null,
+            teamId: 'team-1',
+            team: { id: 'team-1', name: 'SRG Alpha' },
+          },
+          {
+            id: 'reg-manual',
+            carClass: { id: 'class-1', name: 'GT3', shortName: 'GT3' },
+            userId: null,
+            user: null,
+            manualDriverId: 'manual-1',
+            manualDriver: { id: 'manual-1', name: 'Guest Driver', irating: 2000, image: null },
+            teamId: 'team-1',
+            team: { id: 'team-1', name: 'SRG Alpha' },
+          },
+        ],
+        discordTeamsThreadId: null,
+        discordTeamThreads: null,
+      }
+
+      render(
+        <RaceDetails
+          race={mockRace}
+          {...raceEventProps}
+          userId="viewer-user"
+          isAdmin={false}
+          carClasses={[{ id: 'class-1', name: 'GT3', shortName: 'GT3' }]}
+          teams={syncedTeams}
+          allDrivers={[]}
+        />
+      )
+
+      const alphaRow = screen.getByText('Alpha Member').closest(`.${styles.driverRow}`)!
+      const betaOnlyRow = screen.getByText('Beta Only').closest(`.${styles.driverRow}`)!
+      const manualRow = screen.getByText('Guest Driver').closest(`.${styles.driverRow}`)!
+
+      expect(
+        within(alphaRow as HTMLElement).queryByRole('img', { name: /not a member/i })
+      ).not.toBeInTheDocument()
+      expect(
+        within(betaOnlyRow as HTMLElement).getByRole('img', {
+          name: 'Not a member of SRG Alpha on iRacing.',
+        })
+      ).toBeInTheDocument()
+      expect(
+        within(manualRow as HTMLElement).queryByRole('img', { name: /not a member/i })
+      ).not.toBeInTheDocument()
+    })
+  })
 })
