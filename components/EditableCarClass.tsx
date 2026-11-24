@@ -93,7 +93,7 @@ export default function EditableCarClass({
   }, [isOpen, updateDropdownPlacement])
 
   const handleSelect = (classId: string, label: string) => {
-    if (!registrationId) return
+    if (!registrationId || classId === currentCarClassId) return
     setIsOpen(false)
     if (deferSubmit) {
       onChange?.(classId)
@@ -132,7 +132,14 @@ export default function EditableCarClass({
     .filter(Boolean)
     .join(' ')
 
-  if (readOnly || !registrationId || !carClasses) {
+  const hasAlternativeClass = Boolean(
+    carClasses && carClasses.some((cc) => cc.id !== currentCarClassId)
+  )
+
+  if (readOnly || !registrationId || !carClasses || !hasAlternativeClass) {
+    if (variant === 'full' && !hasAlternativeClass) {
+      return null
+    }
     return (
       <div className={containerClassName}>
         <p className={styles.displayOnly}>
@@ -177,16 +184,16 @@ export default function EditableCarClass({
             ref={dropdownMenuRef}
           >
             {carClasses.map((cc) => {
+              const isCurrent = cc.id === currentCarClassId
               const label = cc.name === cc.shortName ? cc.name : `${cc.name} (${cc.shortName})`
               return (
                 <button
                   key={cc.id}
                   type="button"
-                  className={`${styles.dropdownItem} ${
-                    cc.id === currentCarClassId ? styles.active : ''
-                  }`}
+                  className={`${styles.dropdownItem} ${isCurrent ? styles.active : ''}`}
                   onClick={() => handleSelect(cc.id, cc.shortName)}
-                  disabled={isPending}
+                  disabled={isPending || isCurrent}
+                  aria-current={isCurrent ? 'true' : undefined}
                 >
                   {label}
                 </button>

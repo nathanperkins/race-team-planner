@@ -1888,7 +1888,10 @@ export default function RaceDetails({
     currentUserRegistration &&
     (currentUserRegistration.teamId ?? currentUserRegistration.team?.id)
   )
-  const canShowClassChangeAction = !!currentUserRegistration && !isCurrentUserAssignedToTeam
+  const canShowClassChangeAction =
+    !!currentUserRegistration &&
+    !isCurrentUserAssignedToTeam &&
+    carClasses.some((cc) => cc.id !== currentUserRegistration.carClass.id)
 
   const saveChangeSummary = useMemo(() => {
     const originalRecords = race.registrations.map((reg) => ({
