@@ -15,6 +15,8 @@ import {
 } from '@/lib/utils'
 import type { CSSProperties } from 'react'
 import { Check, ShieldCheck, ShieldX, Timer, User } from 'lucide-react'
+import { useTimeZone } from '@/components/TimeZoneProvider'
+import { formatRaceDateTime } from '@/lib/timezone-utils'
 
 type EventWithRaces = Prisma.EventGetPayload<{
   include: {
@@ -84,6 +86,7 @@ export default function EventsClient({
 }: EventsClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { timeZone } = useTimeZone()
   // Captured once at render. On a long-lived page, time-based flags (isLive,
   // isRaceStarted) can go stale. Acceptable for now; a useNow() hook could
   // refresh on an interval if accuracy becomes important.
@@ -147,9 +150,15 @@ export default function EventsClient({
                 <div className={styles.wk}>
                   {`${week.seasonYear} - Season ${week.seasonQuarter} - Week ${week.weekNumber}`}
                 </div>
-                <div className={styles.range}>
-                  {week.weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} –{' '}
+                <div className={styles.range} suppressHydrationWarning>
+                  {week.weekStart.toLocaleDateString('en-US', {
+                    timeZone: 'UTC',
+                    month: 'short',
+                    day: 'numeric',
+                  })}{' '}
+                  –{' '}
                   {week.weekEnd.toLocaleDateString('en-US', {
+                    timeZone: 'UTC',
                     month: 'short',
                     day: 'numeric',
                     year: 'numeric',
@@ -296,15 +305,9 @@ export default function EventsClient({
                                     : ''
                               }`}
                             >
-                              {new Date(race.startTime).toLocaleDateString('en-US', {
-                                month: 'numeric',
-                                day: 'numeric',
-                              })}{' '}
-                              •{' '}
-                              {new Date(race.startTime).toLocaleTimeString('en-US', {
-                                hour: 'numeric',
-                                minute: '2-digit',
-                              })}
+                              <span suppressHydrationWarning>
+                                {formatRaceDateTime(raceStart, timeZone)}
+                              </span>
                               <span className={styles.racePillCount}>
                                 <User size={12} />
                                 {race.registrations.length}

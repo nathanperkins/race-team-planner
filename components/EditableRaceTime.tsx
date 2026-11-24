@@ -5,6 +5,7 @@ import { updateRegistrationRaceTime } from '@/app/actions'
 import { ChevronDown } from 'lucide-react'
 import styles from './EditableRaceTime.module.css'
 import FormattedDate from './FormattedDate'
+import { useTimeZone } from './TimeZoneProvider'
 import WarningDialog from './WarningDialog'
 
 interface Props {
@@ -35,6 +36,8 @@ export default function EditableRaceTime({
   readOnly = false,
   variant = 'table',
 }: Props) {
+  const { timeZone } = useTimeZone()
+
   const dateOnlyFormat: Intl.DateTimeFormatOptions = {
     month: 'numeric',
     day: 'numeric',
@@ -64,14 +67,15 @@ export default function EditableRaceTime({
     if (!registrationId) return
     setIsOpen(false)
 
-    const label = `${startTime.toLocaleDateString(undefined, dateOnlyFormat)} - ${startTime.toLocaleTimeString(
-      undefined,
-      {
-        ...timeOnlyFormat,
-        hour12: true,
-        timeZoneName: 'short',
-      }
-    )}`
+    const label = `${startTime.toLocaleDateString(undefined, {
+      ...dateOnlyFormat,
+      timeZone,
+    })} - ${startTime.toLocaleTimeString(undefined, {
+      ...timeOnlyFormat,
+      timeZone,
+      hour12: true,
+      timeZoneName: 'short',
+    })}`
 
     const formData = new FormData()
     formData.append('registrationId', registrationId)

@@ -5,6 +5,8 @@ import { useActionState, useEffect, useRef, useState } from 'react'
 import { createCustomEvent } from './actions'
 import styles from './AddEventModal.module.css'
 import LoadingOverlay from '@/components/LoadingOverlay'
+import { useTimeZone } from '@/components/TimeZoneProvider'
+import { DEFAULT_TIMEZONE, convertDateTimeLocalTimeZone } from '@/lib/timezone-utils'
 import CustomEventFormFields from './CustomEventFormFields'
 
 interface AddEventModalProps {
@@ -13,11 +15,23 @@ interface AddEventModalProps {
 
 export default function AddEventModal({ onClose }: AddEventModalProps) {
   const [state, formAction, pending] = useActionState(createCustomEvent, { message: '' })
+  const { localTimeZone } = useTimeZone()
+  const [timeZone, setTimeZone] = useState<string>(DEFAULT_TIMEZONE)
   const [timeslots, setTimeslots] = useState<Array<{ id: string; startTime: string }>>([
     { id: '', startTime: '' },
   ])
   const modalRef = useRef<HTMLDivElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
+
+  const handleTimeZoneChange = (nextTimeZone: string) => {
+    setTimeslots((prev) =>
+      prev.map((ts) => ({
+        ...ts,
+        startTime: convertDateTimeLocalTimeZone(ts.startTime, timeZone, nextTimeZone),
+      }))
+    )
+    setTimeZone(nextTimeZone)
+  }
 
   // Close on successful submission
   useEffect(() => {
@@ -49,7 +63,13 @@ export default function AddEventModal({ onClose }: AddEventModalProps) {
           </div>
 
           <form action={formAction} className={styles.form} ref={formRef}>
-            <CustomEventFormFields timeslots={timeslots} setTimeslots={setTimeslots} />
+            <CustomEventFormFields
+              timeslots={timeslots}
+              setTimeslots={setTimeslots}
+              timeZone={timeZone}
+              onTimeZoneChange={handleTimeZoneChange}
+              localTimeZone={localTimeZone}
+            />
 
             {state.message && state.message !== 'Success' && (
               <div className={styles.error}>{state.message}</div>

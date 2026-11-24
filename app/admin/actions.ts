@@ -28,11 +28,13 @@ export async function createCustomEvent(prevState: State, formData: FormData): P
     const { data, startDates } = validation
 
     // Sort start dates to find the earliest event start and latest event end
-    startDates.sort((a, b) => a.getTime() - b.getTime())
-    const earliestStart = startDates[0]
+    const sortedStartDates = [...startDates].sort((a, b) => a.getTime() - b.getTime())
+    const earliestStart = sortedStartDates[0]
 
     const duration = data.durationMins ? data.durationMins : 60
-    const latestEnd = new Date(startDates[startDates.length - 1].getTime() + duration * 60000)
+    const latestEnd = new Date(
+      sortedStartDates[sortedStartDates.length - 1].getTime() + duration * 60000
+    )
 
     // Parse car classes from comma-separated input
     const customCarClasses = data.carClasses
@@ -106,7 +108,7 @@ export async function createCustomEvent(prevState: State, formData: FormData): P
       startTime: earliestStart,
       endTime: latestEnd,
       races: {
-        create: startDates.map((sd) => ({
+        create: sortedStartDates.map((sd) => ({
           startTime: sd,
           endTime: new Date(sd.getTime() + duration * 60000),
         })),

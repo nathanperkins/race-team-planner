@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { DEFAULT_TIMEZONE, isValidTimeZone, parseDateTimeInTimeZone } from '@/lib/timezone-utils'
 
 export const customEventSchema = z.object({
   id: z.string().optional(),
@@ -7,9 +8,15 @@ export const customEventSchema = z.object({
   trackConfig: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
   carClasses: z.string().min(1, 'Car Classes are required'),
+  timeZone: z
+    .string()
+    .default(DEFAULT_TIMEZONE)
+    .refine((tz) => isValidTimeZone(tz), {
+      message: 'Invalid time zone selected.',
+    }),
   startTimes: z
     .array(
-      z.coerce.date({
+      z.date({
         message: 'Invalid date format in one of the start times.',
       })
     )
@@ -51,7 +58,23 @@ export interface CustomEventData {
 }
 
 export function validateCustomEventForm(formData: FormData) {
-  // Extract all fields
+  const rawTimeZone = formData.get('timeZone')?.toString() || DEFAULT_TIMEZONE
+  const rawStartTimes = formData.getAll('startTimes').map((val) => val.toString())
+  const rawRaceIds = formData.getAll('raceIds').map((val) => val.toString())
+
+  // Pair startTimes and raceIds BEFORE filtering blank rows so indices stay aligned
+  const pairedTimeslots = rawStartTimes
+    .map((rawTime, index) => ({
+      rawTime,
+      raceId: rawRaceIds[index] ?? '',
+    }))
+    .filter((slot) => slot.rawTime !== '')
+
+  const parseTimeZone = isValidTimeZone(rawTimeZone) ? rawTimeZone : DEFAULT_TIMEZONE
+  const parsedStartTimes = pairedTimeslots.map((slot) =>
+    parseDateTimeInTimeZone(slot.rawTime, parseTimeZone)
+  )
+
   const data = {
     id: formData.get('eventId')?.toString() || undefined,
     name: formData.get('name')?.toString() || '',
@@ -59,8 +82,9 @@ export function validateCustomEventForm(formData: FormData) {
     trackConfig: formData.get('trackConfig')?.toString() || null,
     description: formData.get('description')?.toString() || null,
     carClasses: formData.get('carClasses')?.toString() || '',
-    startTimes: formData.getAll('startTimes').filter((val) => val !== ''),
-    raceIds: formData.getAll('raceIds'),
+    timeZone: rawTimeZone,
+    startTimes: parsedStartTimes,
+    raceIds: rawRaceIds.length > 0 ? pairedTimeslots.map((slot) => slot.raceId) : undefined,
     durationMins: formData.get('durationMins') ? Number(formData.get('durationMins')) : null,
     licenseGroup: formData.get('licenseGroup') ? Number(formData.get('licenseGroup')) : null,
     tempValue: formData.get('tempValue') ? Number(formData.get('tempValue')) : null,
@@ -73,7 +97,6 @@ export function validateCustomEventForm(formData: FormData) {
   const result = customEventSchema.safeParse(data)
 
   if (!result.success) {
-    // Generate detailed error message string
     const errorMessages = result.error.issues.map((err) => `${err.message}`)
     return {
       success: false as const,

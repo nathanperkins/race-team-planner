@@ -147,5 +147,33 @@ describe('admin actions', () => {
       expect(result.message).toContain('Cannot edit synced events')
       expect(prisma.event.update).not.toHaveBeenCalled()
     })
+
+    it('preserves exact UTC startTime across repeated updates in non-UTC timezones', async () => {
+      vi.mocked(prisma.event.findUnique).mockResolvedValue({
+        id: 'event-1',
+        externalId: null,
+      } as any)
+      vi.mocked(prisma.race.findMany).mockResolvedValue([
+        { id: 'race-1', eventId: 'event-1' },
+      ] as any)
+
+      // 05:00 PDT in America/Los_Angeles == 12:00:00.000Z
+      const formData = new FormData()
+      formData.append('eventId', 'event-1')
+      formData.append('name', 'Sebring 12hr')
+      formData.append('track', 'Sebring Raceway')
+      formData.append('durationMins', '720')
+      formData.append('carClasses', 'GTP')
+      formData.append('timeZone', 'America/Los_Angeles')
+      formData.append('startTimes', '2027-03-20T05:00')
+      formData.append('raceIds', 'race-1')
+
+      const result = await updateCustomEvent({ message: '' }, formData)
+      expect(result).toEqual({ message: 'Success' })
+
+      const raceUpdateArgs = vi.mocked(prisma.race.update).mock.calls[0][0] as any
+      expect(raceUpdateArgs.data.startTime.toISOString()).toBe('2027-03-20T12:00:00.000Z')
+      expect(raceUpdateArgs.data.endTime.toISOString()).toBe('2027-03-21T00:00:00.000Z')
+    })
   })
 })

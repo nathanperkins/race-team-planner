@@ -1,23 +1,30 @@
 import { Plus, X } from 'lucide-react'
+import { TimeZoneOptions } from '@/components/TimeZoneSelector'
+import { DEFAULT_TIMEZONE } from '@/lib/timezone-utils'
 import styles from './AddEventModal.module.css'
+import { CustomEventData } from './customEventSchema'
 
 interface Timeslot {
   id: string
   startTime: string
 }
 
-import { CustomEventData } from './customEventSchema'
-
 interface CustomEventFormFieldsProps {
   event?: CustomEventData
   timeslots: Timeslot[]
   setTimeslots: (ts: Timeslot[]) => void
+  timeZone?: string
+  onTimeZoneChange?: (nextTimeZone: string) => void
+  localTimeZone?: string
 }
 
 export default function CustomEventFormFields({
   event,
   timeslots,
   setTimeslots,
+  timeZone = DEFAULT_TIMEZONE,
+  onTimeZoneChange,
+  localTimeZone,
 }: CustomEventFormFieldsProps) {
   return (
     <>
@@ -101,6 +108,21 @@ export default function CustomEventFormFields({
       <div className={styles.timeslotsContainer}>
         <div className={styles.sectionHeaderLine}>
           <label className={styles.label}>Timeslots *</label>
+          <div className={styles.timeZoneField}>
+            <label htmlFor="timeZone" className={styles.timeZoneLabel}>
+              Time Zone
+            </label>
+            <select
+              id="timeZone"
+              name="timeZone"
+              className={styles.timeZoneSelect}
+              value={onTimeZoneChange ? timeZone : undefined}
+              defaultValue={onTimeZoneChange ? undefined : timeZone}
+              onChange={onTimeZoneChange ? (e) => onTimeZoneChange(e.target.value) : undefined}
+            >
+              <TimeZoneOptions localTimeZone={localTimeZone} />
+            </select>
+          </div>
         </div>
 
         {timeslots.map((ts, index) => (
@@ -114,8 +136,9 @@ export default function CustomEventFormFields({
                 className={styles.input}
                 value={ts.startTime}
                 onChange={(e) => {
-                  const newTs = [...timeslots]
-                  newTs[index].startTime = e.target.value
+                  const newTs = timeslots.map((item, i) =>
+                    i === index ? { ...item, startTime: e.target.value } : item
+                  )
                   setTimeslots(newTs)
                 }}
                 required

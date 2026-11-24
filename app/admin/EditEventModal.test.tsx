@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import EditEventModal from './EditEventModal'
 import { updateCustomEvent, deleteCustomEvent } from './actions'
+import { TimeZoneProvider } from '@/components/TimeZoneProvider'
 
 vi.mock('./actions', () => ({
   updateCustomEvent: vi.fn(),
@@ -121,5 +122,26 @@ describe('EditEventModal', () => {
     await user.click(screen.getByRole('button', { name: /update event/i }))
 
     expect(await screen.findByText('Failed to update event')).toBeInTheDocument()
+  })
+
+  it('initializes in viewer timezone and converts timeslots without slippage when switching zones', async () => {
+    const user = userEvent.setup()
+    render(
+      <TimeZoneProvider initialTimeZone="America/Los_Angeles">
+        <EditEventModal onClose={mockOnClose} event={mockEvent} />
+      </TimeZoneProvider>
+    )
+
+    const tzSelect = screen.getByLabelText(/time zone/i)
+    expect(tzSelect).toHaveValue('America/Los_Angeles')
+
+    const startInput = document.querySelector('input[name="startTimes"]') as HTMLInputElement
+    // 2027-06-01T10:00:00Z == 2027-06-01T03:00 PDT
+    expect(startInput.value).toBe('2027-06-01T03:00')
+
+    // Switch to UTC -> 2027-06-01T10:00
+    await user.selectOptions(tzSelect, 'UTC')
+    expect(tzSelect).toHaveValue('UTC')
+    expect(startInput.value).toBe('2027-06-01T10:00')
   })
 })

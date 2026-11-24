@@ -6,6 +6,8 @@ import { updateCustomEvent, deleteCustomEvent } from './actions'
 import styles from './AddEventModal.module.css'
 import LoadingOverlay from '@/components/LoadingOverlay'
 import WarningDialog from '@/components/WarningDialog'
+import { useTimeZone } from '@/components/TimeZoneProvider'
+import { convertDateTimeLocalTimeZone, formatDateTimeForInput } from '@/lib/timezone-utils'
 import CustomEventFormFields from './CustomEventFormFields'
 import { CustomEventData } from './customEventSchema'
 
@@ -16,10 +18,13 @@ interface EditEventModalProps {
 
 export default function EditEventModal({ onClose, event }: EditEventModalProps) {
   const [state, formAction, pending] = useActionState(updateCustomEvent, { message: '' })
+  const { timeZone: viewerTimeZone, localTimeZone } = useTimeZone()
+  const [timeZone, setTimeZone] = useState<string>(viewerTimeZone)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const modalRef = useRef<HTMLDivElement>(null)
+
   // Close on successful submission
   useEffect(() => {
     if (state.message === 'Success') {
@@ -34,23 +39,25 @@ export default function EditEventModal({ onClose, event }: EditEventModalProps) 
     }
   }
 
-  // Format datetime-local string
-  const formatDateForInput = (date: Date | string) => {
-    if (!date) return ''
-    const d = new Date(date)
-    // Adjust to local ISO string (YYYY-MM-DDTHH:mm)
-    // This is a fast way to get local time into the input
-    const offset = d.getTimezoneOffset()
-    const local = new Date(d.getTime() - offset * 60 * 1000)
-    return local.toISOString().slice(0, 16)
-  }
-
   const [timeslots, setTimeslots] = useState<Array<{ id: string; startTime: string }>>(() => {
     if (event.races && event.races.length > 0) {
-      return event.races.map((r) => ({ id: r.id, startTime: formatDateForInput(r.startTime) }))
+      return event.races.map((r) => ({
+        id: r.id,
+        startTime: formatDateTimeForInput(r.startTime, viewerTimeZone),
+      }))
     }
-    return [{ id: '', startTime: formatDateForInput(event.startTime || '') }]
+    return [{ id: '', startTime: formatDateTimeForInput(event.startTime || '', viewerTimeZone) }]
   })
+
+  const handleTimeZoneChange = (nextTimeZone: string) => {
+    setTimeslots((prev) =>
+      prev.map((ts) => ({
+        ...ts,
+        startTime: convertDateTimeLocalTimeZone(ts.startTime, timeZone, nextTimeZone),
+      }))
+    )
+    setTimeZone(nextTimeZone)
+  }
 
   const handleDelete = async () => {
     setConfirmDeleteOpen(false)
@@ -88,6 +95,9 @@ export default function EditEventModal({ onClose, event }: EditEventModalProps) 
               event={event}
               timeslots={timeslots}
               setTimeslots={setTimeslots}
+              timeZone={timeZone}
+              onTimeZoneChange={handleTimeZoneChange}
+              localTimeZone={localTimeZone}
             />
 
             {state.message && state.message !== 'Success' && (

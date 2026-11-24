@@ -15,6 +15,8 @@ import {
 } from 'lucide-react'
 import Image from 'next/image'
 import { buildDiscordLink } from '@/lib/discord-utils'
+import { useTimeZone } from '@/components/TimeZoneProvider'
+import { formatRaceDateTime } from '@/lib/timezone-utils'
 import { Prisma } from '@prisma/client'
 import {
   type DragEvent,
@@ -283,6 +285,7 @@ export default function RaceDetails({
   isOnIracingTeam,
 }: Props) {
   const [isSaving, startSaveTransition] = useTransition()
+  const { timeZone } = useTimeZone()
   const now = new Date()
   const isRaceCompleted = now > new Date(race.endTime)
   const isRaceLive = now >= new Date(race.startTime) && now <= new Date(race.endTime)
@@ -2603,18 +2606,8 @@ export default function RaceDetails({
         <div className={styles.raceCardContent}>
           <div className={styles.raceHeader}>
             <div className={styles.raceHeaderLeft}>
-              <h4 className={styles.raceTitle}>
-                Timeslot:{' '}
-                {new Intl.DateTimeFormat('en-US', {
-                  month: 'numeric',
-                  day: 'numeric',
-                }).format(race.startTime)}{' '}
-                {' \u2022 '}
-                {new Intl.DateTimeFormat('en-US', {
-                  hour: 'numeric',
-                  minute: '2-digit',
-                  timeZoneName: 'short',
-                }).format(race.startTime)}
+              <h4 className={styles.raceTitle} suppressHydrationWarning>
+                Timeslot: {formatRaceDateTime(race.startTime, timeZone)}
               </h4>
               {isRaceLive && (
                 <span className={styles.liveBadge}>

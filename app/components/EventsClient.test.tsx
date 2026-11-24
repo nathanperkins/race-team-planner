@@ -2,6 +2,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useRouter, useSearchParams } from 'next/navigation'
 import EventsClient from './EventsClient'
+import { TimeZoneProvider } from '@/components/TimeZoneProvider'
+import TimeZoneSelector from '@/components/TimeZoneSelector'
 import type { Prisma } from '@prisma/client'
 import { LicenseLevel } from '@/lib/utils'
 
@@ -597,5 +599,35 @@ describe('EventsClient handleCloseModal URL cleanup', () => {
     expect(url).not.toContain('eventId')
     expect(url).toContain('from=2026-01-01')
     expect(url).toContain('name=test')
+  })
+})
+
+describe('EventsClient timezone formatting', () => {
+  it('formats race pills in the selected timezone while keeping official week range in UTC', () => {
+    // 2026-02-15T06:00:00Z is Feb 14, 10:00 PM PST in America/Los_Angeles, and Feb 15, 6:00 AM UTC
+    const weeks = [makeWeek()]
+
+    render(
+      <TimeZoneProvider initialTimeZone="America/Los_Angeles">
+        <TimeZoneSelector />
+        <EventsClient
+          weeks={weeks}
+          isAdmin={false}
+          userId="user-1"
+          userLicenseLevel={null}
+          teams={[]}
+        />
+      </TimeZoneProvider>
+    )
+
+    // Official week range stays anchored to canonical UTC dates (Feb 9 – Feb 16, 2026)
+    expect(screen.getByText(/Feb 9\s*–\s*Feb 16, 2026/)).toBeInTheDocument()
+    expect(screen.getByText(/2\/14\s*•\s*10:00 PM PST/)).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText(/display time zone/i), {
+      target: { value: 'UTC' },
+    })
+
+    expect(screen.getByText(/2\/15\s*•\s*6:00 AM UTC/)).toBeInTheDocument()
   })
 })

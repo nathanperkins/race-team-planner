@@ -1,8 +1,11 @@
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
+import { cookies } from 'next/headers'
 import './globals.css'
 import { auth } from '@/lib/auth'
 import LayoutWrapper from './components/LayoutWrapper'
+import { TimeZoneProvider } from '@/components/TimeZoneProvider'
+import { TIMEZONE_COOKIE_NAME, parseTimeZoneCookie } from '@/lib/timezone-utils'
 import { appTitle, feedbackUrl, userGuideUrl } from '@/lib/config'
 
 const geistSans = Geist({
@@ -25,19 +28,22 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const session = await auth()
+  const [session, cookieStore] = await Promise.all([auth(), cookies()])
+  const initialTimeZone = parseTimeZoneCookie(cookieStore.get(TIMEZONE_COOKIE_NAME)?.value)
 
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        <LayoutWrapper
-          session={session}
-          appTitle={appTitle}
-          feedbackUrl={feedbackUrl}
-          userGuideUrl={userGuideUrl}
-        >
-          {children}
-        </LayoutWrapper>
+        <TimeZoneProvider initialTimeZone={initialTimeZone}>
+          <LayoutWrapper
+            session={session}
+            appTitle={appTitle}
+            feedbackUrl={feedbackUrl}
+            userGuideUrl={userGuideUrl}
+          >
+            {children}
+          </LayoutWrapper>
+        </TimeZoneProvider>
       </body>
     </html>
   )

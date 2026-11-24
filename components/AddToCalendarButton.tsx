@@ -10,6 +10,7 @@ import {
   buildCalendarDescription,
   CalendarEventInput,
 } from '@/lib/calendar-utils'
+import { useTimeZone } from './TimeZoneProvider'
 import styles from './AddToCalendarButton.module.css'
 
 interface AddToCalendarButtonProps {
@@ -57,6 +58,7 @@ export default function AddToCalendarButton({
 }: AddToCalendarButtonProps) {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const { timeZone } = useTimeZone()
 
   useEffect(() => {
     if (!open) return
@@ -92,6 +94,7 @@ export default function AddToCalendarButton({
       carClasses,
       appUrl,
       discordUrl,
+      timeZone,
     })
 
     return {
