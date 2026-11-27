@@ -874,4 +874,387 @@ describe('RaceDetails Assign Teams', () => {
       expect(getUnassignedClassLabels()).toEqual(beforeMove)
     })
   })
+
+  describe('unsaved changes confirmation (#55)', () => {
+    const createAssignedRace = (id: string) => ({
+      id,
+      startTime: new Date('2027-01-01T10:00:00Z'),
+      endTime: new Date('2027-01-01T12:00:00Z'),
+      teamsAssigned: true,
+      maxDriversPerTeam: 3,
+      teamAssignmentStrategy: 'BALANCED_IRATING' as const,
+      registrations: [
+        {
+          id: 'reg-1',
+          carClass: { id: 'class-1', name: 'Class 1', shortName: 'C1' },
+          userId: 'user-1',
+          user: { name: 'Driver One', image: null, racerStats: [] },
+          manualDriver: null,
+          teamId: 'team-1',
+          team: { id: 'team-1', name: 'Team 1' },
+        },
+        {
+          id: 'reg-2',
+          carClass: { id: 'class-1', name: 'Class 1', shortName: 'C1' },
+          userId: 'user-2',
+          user: { name: 'Driver Two', image: null, racerStats: [] },
+          manualDriver: null,
+          teamId: null,
+          team: null,
+        },
+      ],
+      discordTeamsThreadId: null,
+      discordTeamThreads: null,
+    })
+
+    const renderAssignedRace = (id: string) =>
+      render(
+        <RaceDetails
+          race={createAssignedRace(id)}
+          {...raceEventProps}
+          userId="admin-user"
+          isAdmin
+          carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
+          teams={[
+            { id: 'team-1', name: 'Team 1', iracingTeamId: null, memberCount: 1 },
+            { id: 'team-2', name: 'Team 2', iracingTeamId: null, memberCount: 0 },
+          ]}
+          allDrivers={[]}
+        />
+      )
+
+    it('closes immediately via X, backdrop, and Escape when no changes were made (even after unlocking a team)', () => {
+      renderAssignedRace('race-confirm-clean-1')
+
+      // Close via X after unlocking a team (UI-only state)
+      fireEvent.click(screen.getByTestId('team-picker-trigger'))
+      expect(screen.getByRole('dialog', { name: 'Assign Teams' })).toBeInTheDocument()
+      fireEvent.click(screen.getByTitle('Unlock team'))
+      fireEvent.click(screen.getByRole('button', { name: 'Close team assignment' }))
+      expect(screen.queryByText('Discard Unsaved Changes?')).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog', { name: 'Assign Teams' })).not.toBeInTheDocument()
+
+      // Close via backdrop click
+      fireEvent.click(screen.getByTestId('team-picker-trigger'))
+      const overlay = document.querySelector('div[class*="teamModalOverlay_"]') as HTMLElement
+      expect(overlay).toBeTruthy()
+      fireEvent.click(overlay)
+      expect(screen.queryByText('Discard Unsaved Changes?')).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog', { name: 'Assign Teams' })).not.toBeInTheDocument()
+
+      // Close via Escape
+      fireEvent.click(screen.getByTestId('team-picker-trigger'))
+      expect(screen.getByRole('dialog', { name: 'Assign Teams' })).toBeInTheDocument()
+      fireEvent.keyDown(window, { key: 'Escape' })
+      expect(screen.queryByText('Discard Unsaved Changes?')).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog', { name: 'Assign Teams' })).not.toBeInTheDocument()
+    })
+
+    it('prompts before discarding when closing after moving a driver and reverts on Discard', () => {
+      renderAssignedRace('race-confirm-dirty-1')
+
+      fireEvent.click(screen.getByTestId('team-picker-trigger'))
+      fireEvent.click(screen.getByTitle('Unlock team'))
+      fireEvent.click(screen.getByTitle('Move to unassigned'))
+
+      // Trigger via X -> confirmation appears and focuses Keep Editing
+      fireEvent.click(screen.getByRole('button', { name: 'Close team assignment' }))
+      expect(screen.getByText('Discard Unsaved Changes?')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Keep Editing' })).toHaveFocus()
+
+      // Keep Editing dismisses only confirmation and preserves unsaved move
+      fireEvent.click(screen.getByRole('button', { name: 'Keep Editing' }))
+      expect(screen.queryByText('Discard Unsaved Changes?')).not.toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'Assign Teams' })).toBeInTheDocument()
+      expect(screen.queryByTitle('Move to unassigned')).not.toBeInTheDocument()
+
+      // Trigger via backdrop -> dismiss via Escape
+      const overlay = document.querySelector('div[class*="teamModalOverlay_"]') as HTMLElement
+      fireEvent.click(overlay)
+      expect(screen.getByText('Discard Unsaved Changes?')).toBeInTheDocument()
+      fireEvent.keyDown(window, { key: 'Escape' })
+      expect(screen.queryByText('Discard Unsaved Changes?')).not.toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'Assign Teams' })).toBeInTheDocument()
+
+      // Trigger via Escape -> dismiss via WarningDialog backdrop click
+      fireEvent.keyDown(window, { key: 'Escape' })
+      const discardDialog = screen.getByRole('dialog', { name: 'Discard Unsaved Changes?' })
+      fireEvent.click(discardDialog)
+      expect(screen.queryByText('Discard Unsaved Changes?')).not.toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'Assign Teams' })).toBeInTheDocument()
+
+      // Confirm Discard -> closes modal and reverts driver back to Team 1
+      fireEvent.click(screen.getByRole('button', { name: 'Close team assignment' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Discard' }))
+      expect(screen.queryByRole('dialog', { name: 'Assign Teams' })).not.toBeInTheDocument()
+
+      // Reopen and verify Driver One is still assigned to Team 1
+      fireEvent.click(screen.getByTestId('team-picker-trigger'))
+      fireEvent.click(screen.getByTitle('Unlock team'))
+      expect(screen.getByTitle('Move to unassigned')).toBeInTheDocument()
+    })
+
+    it('prompts when adding an empty team and clears when that empty team is removed', () => {
+      renderAssignedRace('race-confirm-add-team-1')
+
+      fireEvent.click(screen.getByTestId('team-picker-trigger'))
+      fireEvent.click(screen.getByText('Add Team'))
+
+      fireEvent.click(screen.getByRole('button', { name: 'Close team assignment' }))
+      expect(screen.getByText('Discard Unsaved Changes?')).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'Keep Editing' }))
+
+      // Remove the newly added unlocked empty team (the unlocked Remove team button)
+      const removeButtons = screen.getAllByTitle('Remove team')
+      const enabledRemoveButton = removeButtons.find((btn) => !(btn as HTMLButtonElement).disabled)
+      expect(enabledRemoveButton).toBeTruthy()
+      fireEvent.click(enabledRemoveButton!)
+
+      // Now closing should succeed without prompting
+      fireEvent.click(screen.getByRole('button', { name: 'Close team assignment' }))
+      expect(screen.queryByText('Discard Unsaved Changes?')).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog', { name: 'Assign Teams' })).not.toBeInTheDocument()
+    })
+
+    it('prompts when Max/team changes, clears when reverted, and resets on Discard', () => {
+      renderAssignedRace('race-confirm-max-1')
+
+      fireEvent.click(screen.getByTestId('team-picker-trigger'))
+      const modal = screen.getByRole('dialog', { name: 'Assign Teams' })
+      const maxInput = modal.querySelector('input[type="number"]') as HTMLInputElement
+      expect(maxInput.value).toBe('3')
+
+      fireEvent.change(maxInput, { target: { value: '2' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Close team assignment' }))
+      expect(screen.getByText('Discard Unsaved Changes?')).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'Keep Editing' }))
+
+      // Revert back to 3 -> closes immediately
+      fireEvent.change(maxInput, { target: { value: '3' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Close team assignment' }))
+      expect(screen.queryByText('Discard Unsaved Changes?')).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog', { name: 'Assign Teams' })).not.toBeInTheDocument()
+
+      // Change to 5 and Discard -> resets to 3 on reopen
+      fireEvent.click(screen.getByTestId('team-picker-trigger'))
+      const reopenedModal = screen.getByRole('dialog', { name: 'Assign Teams' })
+      const reopenedInput = reopenedModal.querySelector('input[type="number"]') as HTMLInputElement
+      fireEvent.change(reopenedInput, { target: { value: '5' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Close team assignment' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Discard' }))
+
+      fireEvent.click(screen.getByTestId('team-picker-trigger'))
+      const finalModal = screen.getByRole('dialog', { name: 'Assign Teams' })
+      const finalInput = finalModal.querySelector('input[type="number"]') as HTMLInputElement
+      expect(finalInput.value).toBe('3')
+    })
+
+    it('dismisses nested overlays on Escape before prompting to discard unsaved changes', async () => {
+      vi.mocked(saveRaceEdits).mockResolvedValue({ message: 'Database error' } as any)
+      renderAssignedRace('race-confirm-escape-layers-1')
+
+      fireEvent.click(screen.getByTestId('team-picker-trigger'))
+      fireEvent.click(screen.getByTitle('Unlock team'))
+
+      // Open team name picker dropdown -> Escape closes dropdown first
+      fireEvent.click(screen.getByTitle('Change team'))
+      expect(screen.getByPlaceholderText('Search teams...')).toBeInTheDocument()
+      fireEvent.keyDown(window, { key: 'Escape' })
+      expect(screen.queryByPlaceholderText('Search teams...')).not.toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'Assign Teams' })).toBeInTheDocument()
+
+      // Make an edit, open Confirm Save and Notify -> Escape closes save confirm first
+      fireEvent.click(screen.getByTitle('Move to unassigned'))
+      fireEvent.click(screen.getByRole('button', { name: 'Save and Notify' }))
+      expect(screen.getByText('Confirm Save and Notify')).toBeInTheDocument()
+      fireEvent.keyDown(window, { key: 'Escape' })
+      expect(screen.queryByText('Confirm Save and Notify')).not.toBeInTheDocument()
+      expect(screen.queryByText('Discard Unsaved Changes?')).not.toBeInTheDocument()
+
+      // Trigger a failed save -> Escape dismisses Save failed modal first
+      fireEvent.click(screen.getByRole('button', { name: 'Save and Notify' }))
+      fireEvent.click(screen.getByLabelText('Confirm save and notify'))
+      await waitFor(() => {
+        expect(screen.getByText('Save failed')).toBeInTheDocument()
+      })
+      fireEvent.keyDown(window, { key: 'Escape' })
+      expect(screen.queryByText('Save failed')).not.toBeInTheDocument()
+      expect(screen.queryByText('Discard Unsaved Changes?')).not.toBeInTheDocument()
+
+      // Next Escape finally triggers Discard Unsaved Changes
+      fireEvent.keyDown(window, { key: 'Escape' })
+      expect(screen.getByText('Discard Unsaved Changes?')).toBeInTheDocument()
+    })
+
+    it('ignores close attempts while saving and closes immediately without prompting on save success', async () => {
+      let resolveSave!: (value: { message: string }) => void
+      vi.mocked(saveRaceEdits).mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveSave = resolve
+          }) as any
+      )
+
+      renderAssignedRace('race-confirm-saving-1')
+
+      fireEvent.click(screen.getByTestId('team-picker-trigger'))
+      fireEvent.click(screen.getByTitle('Unlock team'))
+      fireEvent.click(screen.getByTitle('Move to unassigned'))
+
+      fireEvent.click(screen.getByRole('button', { name: 'Save and Notify' }))
+      fireEvent.click(screen.getByLabelText('Confirm save and notify'))
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Close team assignment' })).toBeDisabled()
+      })
+
+      // Attempting to close via Escape or backdrop while saving does nothing
+      fireEvent.keyDown(window, { key: 'Escape' })
+      const overlay = document.querySelector('div[class*="teamModalOverlay_"]') as HTMLElement
+      fireEvent.click(overlay)
+      expect(screen.queryByText('Discard Unsaved Changes?')).not.toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'Assign Teams' })).toBeInTheDocument()
+
+      // Resolve save -> modal closes immediately without prompting
+      await act(async () => {
+        resolveSave({ message: 'Success' })
+      })
+
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog', { name: 'Assign Teams' })).not.toBeInTheDocument()
+      })
+      expect(screen.queryByText('Discard Unsaved Changes?')).not.toBeInTheDocument()
+    })
+
+    it('closes cleanly on reopen after saving an emptied team without false positives', async () => {
+      vi.mocked(saveRaceEdits).mockResolvedValue({ message: 'Success' } as any)
+      renderAssignedRace('race-confirm-reopen-after-empty-save-1')
+
+      fireEvent.click(screen.getByTestId('team-picker-trigger'))
+      fireEvent.click(screen.getByTitle('Unlock team'))
+      fireEvent.click(screen.getByTitle('Move to unassigned'))
+      fireEvent.click(screen.getByRole('button', { name: 'Save and Notify' }))
+      fireEvent.click(screen.getByLabelText('Confirm save and notify'))
+
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog', { name: 'Assign Teams' })).not.toBeInTheDocument()
+      })
+
+      // Reopen and immediately close without editing -> must not prompt
+      fireEvent.click(screen.getByTestId('team-picker-trigger'))
+      expect(screen.getByRole('dialog', { name: 'Assign Teams' })).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'Close team assignment' }))
+      expect(screen.queryByText('Discard Unsaved Changes?')).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog', { name: 'Assign Teams' })).not.toBeInTheDocument()
+    })
+
+    it('handles multiple mounted RaceDetails modals independently on Escape', () => {
+      render(
+        <>
+          <RaceDetails
+            race={createAssignedRace('race-multi-1')}
+            {...raceEventProps}
+            userId="admin-user"
+            isAdmin
+            carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
+            teams={[{ id: 'team-1', name: 'Team 1', iracingTeamId: null, memberCount: 1 }]}
+            allDrivers={[]}
+          />
+          <RaceDetails
+            race={createAssignedRace('race-multi-2')}
+            {...raceEventProps}
+            userId="admin-user"
+            isAdmin
+            carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
+            teams={[{ id: 'team-1', name: 'Team 1', iracingTeamId: null, memberCount: 1 }]}
+            allDrivers={[]}
+          />
+        </>
+      )
+
+      const triggers = screen.getAllByTestId('team-picker-trigger')
+      fireEvent.click(triggers[1]!)
+      const dialog = screen.getByRole('dialog', { name: 'Assign Teams' })
+      expect(dialog).toHaveAttribute('aria-labelledby', 'assign-teams-title-race-multi-2')
+
+      fireEvent.keyDown(window, { key: 'Escape' })
+      expect(screen.queryByRole('dialog', { name: 'Assign Teams' })).not.toBeInTheDocument()
+    })
+
+    it('notifies onDropdownToggle(false) when closing the modal cleanly or discarding', () => {
+      const onDropdownToggle = vi.fn()
+      render(
+        <RaceDetails
+          race={createAssignedRace('race-confirm-overlay-toggle-1')}
+          {...raceEventProps}
+          userId="admin-user"
+          isAdmin
+          onDropdownToggle={onDropdownToggle}
+          carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
+          teams={[{ id: 'team-1', name: 'Team 1', iracingTeamId: null, memberCount: 1 }]}
+          allDrivers={[]}
+        />
+      )
+
+      fireEvent.click(screen.getByTestId('team-picker-trigger'))
+      expect(onDropdownToggle).toHaveBeenLastCalledWith(true)
+
+      fireEvent.click(screen.getByTitle('Unlock team'))
+      fireEvent.click(screen.getByTitle('Move to unassigned'))
+      fireEvent.click(screen.getByRole('button', { name: 'Close team assignment' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Discard' }))
+
+      expect(onDropdownToggle).toHaveBeenLastCalledWith(false)
+    })
+
+    it('detects edits to a new server registration that arrives while the modal is open', () => {
+      const initialRace = createAssignedRace('race-confirm-server-arrival-1')
+      const { rerender } = render(
+        <RaceDetails
+          race={initialRace}
+          {...raceEventProps}
+          userId="admin-user"
+          isAdmin
+          carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
+          teams={[{ id: 'team-1', name: 'Team 1', iracingTeamId: null, memberCount: 1 }]}
+          allDrivers={[]}
+        />
+      )
+
+      fireEvent.click(screen.getByTestId('team-picker-trigger'))
+
+      const updatedRace = {
+        ...initialRace,
+        registrations: [
+          ...initialRace.registrations,
+          {
+            id: 'reg-server-3',
+            carClass: { id: 'class-1', name: 'Class 1', shortName: 'C1' },
+            userId: 'user-3',
+            user: { name: 'Server Driver', image: null, racerStats: [] },
+            manualDriver: null,
+            teamId: null,
+            team: null,
+          },
+        ],
+      }
+
+      rerender(
+        <RaceDetails
+          race={updatedRace}
+          {...raceEventProps}
+          userId="admin-user"
+          isAdmin
+          carClasses={[{ id: 'class-1', name: 'Class 1', shortName: 'C1' }]}
+          teams={[{ id: 'team-1', name: 'Team 1', iracingTeamId: null, memberCount: 1 }]}
+          allDrivers={[]}
+        />
+      )
+
+      // Untouched server arrival -> closing still succeeds with no false positive
+      fireEvent.click(screen.getByRole('button', { name: 'Close team assignment' }))
+      expect(screen.queryByText('Discard Unsaved Changes?')).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog', { name: 'Assign Teams' })).not.toBeInTheDocument()
+    })
+  })
 })

@@ -128,4 +128,32 @@ describe('AdminDriverSearch', () => {
       expect(screen.getByText('Failed to register driver')).toBeInTheDocument()
     })
   })
+
+  it('closes dropdown on Escape and notifies onDropdownToggle(false) on unmount', async () => {
+    const onDropdownToggle = vi.fn()
+    const user = userEvent.setup()
+    const { unmount } = render(
+      <AdminDriverSearch
+        raceId="race-1"
+        registeredUserIds={[]}
+        allDrivers={mockDrivers}
+        defaultCarClassId="class-1"
+        onDropdownToggle={onDropdownToggle}
+      />
+    )
+
+    await user.click(screen.getByRole('button', { name: /Add Driver/i }))
+    expect(screen.getByPlaceholderText('Search drivers...')).toBeInTheDocument()
+    expect(onDropdownToggle).toHaveBeenLastCalledWith(true)
+
+    await user.keyboard('{Escape}')
+    expect(screen.queryByPlaceholderText('Search drivers...')).not.toBeInTheDocument()
+    expect(onDropdownToggle).toHaveBeenLastCalledWith(false)
+
+    // Reopen and unmount -> must notify false on unmount
+    await user.click(screen.getByRole('button', { name: /Add Driver/i }))
+    expect(onDropdownToggle).toHaveBeenLastCalledWith(true)
+    unmount()
+    expect(onDropdownToggle).toHaveBeenLastCalledWith(false)
+  })
 })

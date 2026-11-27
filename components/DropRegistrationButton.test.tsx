@@ -57,4 +57,30 @@ describe('DropRegistrationButton', () => {
     // Button returns to idle state
     expect(screen.getByRole('button', { name: /Drop registration/i })).toBeInTheDocument()
   })
+
+  it('cancels confirmation on Escape and notifies onConfirmingChange(false) on unmount', async () => {
+    const onConfirmingChange = vi.fn()
+    const user = userEvent.setup()
+    const { unmount } = render(
+      <DropRegistrationButton
+        registrationId="reg-1"
+        confirmStyle="inline"
+        onConfirmingChange={onConfirmingChange}
+      />
+    )
+
+    await user.click(screen.getByRole('button', { name: /Drop registration/i }))
+    expect(screen.getByText('Confirm Drop')).toBeInTheDocument()
+    expect(onConfirmingChange).toHaveBeenLastCalledWith(true)
+
+    await user.keyboard('{Escape}')
+    expect(screen.queryByText('Confirm Drop')).not.toBeInTheDocument()
+    expect(onConfirmingChange).toHaveBeenLastCalledWith(false)
+
+    // Reopen and unmount -> must notify false on unmount
+    await user.click(screen.getByRole('button', { name: /Drop registration/i }))
+    expect(onConfirmingChange).toHaveBeenLastCalledWith(true)
+    unmount()
+    expect(onConfirmingChange).toHaveBeenLastCalledWith(false)
+  })
 })
