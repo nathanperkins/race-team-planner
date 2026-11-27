@@ -5,7 +5,7 @@ set -eo pipefail
 # Ensure we are in the project root
 cd "$(dirname "$0")/.."
 
-ENV=$1
+ENV="${1:-}"
 if [[ -z "$ENV" ]]; then
   echo "Usage: ./scripts/deploy.sh [environment]"
   echo "Example: ./scripts/deploy.sh staging"
@@ -19,6 +19,21 @@ TFVARS_FILE="terraform/${ENV}.tfvars"
 if [[ ! -f "$TFVARS_FILE" ]]; then
   echo "Error: Variable file $TFVARS_FILE not found."
   exit 1
+fi
+
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "Error: deploy.sh must be run from inside a git repository."
+  exit 1
+fi
+
+GIT_STATUS=$(git status --porcelain)
+if [[ "$ENV" == "prod" || "$ENV" == "production" ]]; then
+  if [[ -n "$GIT_STATUS" ]]; then
+    echo "Error: Working tree has uncommitted or untracked changes."
+    echo "Commit or stash all changes before deploying to $ENV."
+    git status --short
+    exit 1
+  fi
 fi
 
 echo "🚀 Deploying to environment: $ENV"
@@ -44,12 +59,24 @@ fi
 APP_NAME="${APP_NAME:-race-team-planner}"
 REPO_NAME="$APP_NAME"
 IMAGE_NAME="$APP_NAME"
-TAG="latest"
+
+if [[ -z "${IMAGE_TAG:-}" ]]; then
+  GIT_SHA=$(git rev-parse --short=7 HEAD)
+  EXACT_TAG=$(git describe --tags --exact-match 2>/dev/null || true)
+  EXACT_TAG="${EXACT_TAG//\//-}"
+  if [[ -n "$GIT_STATUS" ]]; then
+    IMAGE_TAG="${GIT_SHA}-dirty"
+  elif [[ -n "$EXACT_TAG" ]]; then
+    IMAGE_TAG="${EXACT_TAG}-${GIT_SHA}"
+  else
+    IMAGE_TAG="$GIT_SHA"
+  fi
+fi
 
 echo "Project: $PROJECT_ID"
 echo "Region: $REGION"
 echo "App: $APP_NAME"
-
+echo "Image Tag: $IMAGE_TAG"
 
 # Initialize Terraform with environment-specific state prefix
 echo "Initializing Terraform for $ENV..."
@@ -63,69 +90,78 @@ echo "Applying Terraform changes..."
 (cd terraform && terraform apply -var-file="${ENV}.tfvars")
 
 echo "Authenticating Docker with Artifact Registry..."
-gcloud auth configure-docker ${REGION}-docker.pkg.dev --quiet
+gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
 
 echo "Building Docker image..."
-IMAGE_URI="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:${TAG}"
+IMAGE_REPO="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}"
+IMAGE_URI="${IMAGE_REPO}:${IMAGE_TAG}"
+IMAGE_LATEST_URI="${IMAGE_REPO}:latest"
 # Use --platform linux/amd64 for Cloud Run compatibility
-docker build --platform linux/amd64 -t $IMAGE_URI .
+docker build --platform linux/amd64 -t "$IMAGE_URI" -t "$IMAGE_LATEST_URI" .
 
 echo "Building Migration Docker image..."
-MIGRATE_IMAGE_URI="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}-migrate:latest"
-docker build --platform linux/amd64 -t $MIGRATE_IMAGE_URI -f Dockerfile.migrate .
+MIGRATE_IMAGE_REPO="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}-migrate"
+MIGRATE_IMAGE_URI="${MIGRATE_IMAGE_REPO}:${IMAGE_TAG}"
+MIGRATE_IMAGE_LATEST_URI="${MIGRATE_IMAGE_REPO}:latest"
+docker build --platform linux/amd64 -t "$MIGRATE_IMAGE_URI" -t "$MIGRATE_IMAGE_LATEST_URI" -f Dockerfile.migrate .
 
 echo "Building Database Tools Docker image..."
-DBTOOLS_IMAGE_URI="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}-dbtools:latest"
-docker build --platform linux/amd64 -t $DBTOOLS_IMAGE_URI -f Dockerfile.dbtools .
+DBTOOLS_IMAGE_REPO="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}-dbtools"
+DBTOOLS_IMAGE_URI="${DBTOOLS_IMAGE_REPO}:${IMAGE_TAG}"
+DBTOOLS_IMAGE_LATEST_URI="${DBTOOLS_IMAGE_REPO}:latest"
+docker build --platform linux/amd64 -t "$DBTOOLS_IMAGE_URI" -t "$DBTOOLS_IMAGE_LATEST_URI" -f Dockerfile.dbtools .
 
 echo "Pushing images to Artifact Registry..."
-docker push $IMAGE_URI
-docker push $MIGRATE_IMAGE_URI
-docker push $DBTOOLS_IMAGE_URI
+docker push "$IMAGE_URI"
+docker push "$IMAGE_LATEST_URI"
+docker push "$MIGRATE_IMAGE_URI"
+docker push "$MIGRATE_IMAGE_LATEST_URI"
+docker push "$DBTOOLS_IMAGE_URI"
+docker push "$DBTOOLS_IMAGE_LATEST_URI"
 
 echo "Updating migration job with new image..."
-gcloud run jobs update ${APP_NAME}-migrate \
-  --image $MIGRATE_IMAGE_URI \
-  --region $REGION \
-  --project $PROJECT_ID
+gcloud run jobs update "${APP_NAME}-migrate" \
+  --image "$MIGRATE_IMAGE_URI" \
+  --region "$REGION" \
+  --project "$PROJECT_ID"
 
 echo "Updating backup job with new image..."
-gcloud run jobs update ${APP_NAME}-db-backup \
-  --image $DBTOOLS_IMAGE_URI \
-  --region $REGION \
-  --project $PROJECT_ID
+gcloud run jobs update "${APP_NAME}-db-backup" \
+  --image "$DBTOOLS_IMAGE_URI" \
+  --region "$REGION" \
+  --project "$PROJECT_ID"
 
 echo "Updating restore job with new image..."
-gcloud run jobs update ${APP_NAME}-db-restore \
-  --image $DBTOOLS_IMAGE_URI \
-  --region $REGION \
-  --project $PROJECT_ID
+gcloud run jobs update "${APP_NAME}-db-restore" \
+  --image "$DBTOOLS_IMAGE_URI" \
+  --region "$REGION" \
+  --project "$PROJECT_ID"
 
 echo "Updating restore-test job with new image..."
-gcloud run jobs update ${APP_NAME}-db-restore-test \
-  --image $DBTOOLS_IMAGE_URI \
-  --region $REGION \
-  --project $PROJECT_ID
+gcloud run jobs update "${APP_NAME}-db-restore-test" \
+  --image "$DBTOOLS_IMAGE_URI" \
+  --region "$REGION" \
+  --project "$PROJECT_ID"
 
 echo "Updating wipe job with new image..."
-gcloud run jobs update ${APP_NAME}-db-wipe \
-  --image $DBTOOLS_IMAGE_URI \
-  --region $REGION \
-  --project $PROJECT_ID
+gcloud run jobs update "${APP_NAME}-db-wipe" \
+  --image "$DBTOOLS_IMAGE_URI" \
+  --region "$REGION" \
+  --project "$PROJECT_ID"
 
 echo "Running database migrations..."
 echo "Monitor migration job here: https://console.cloud.google.com/run/jobs/details/${REGION}/${APP_NAME}-migrate/executions?project=${PROJECT_ID}"
-gcloud run jobs execute ${APP_NAME}-migrate \
-  --region $REGION \
-  --project $PROJECT_ID \
+gcloud run jobs execute "${APP_NAME}-migrate" \
+  --region "$REGION" \
+  --project "$PROJECT_ID" \
   --wait
 
 echo "Deploying to Cloud Run..."
-gcloud run deploy $APP_NAME \
-  --image $IMAGE_URI \
-  --region $REGION \
-  --project $PROJECT_ID \
+gcloud run deploy "$APP_NAME" \
+  --image "$IMAGE_URI" \
+  --region "$REGION" \
+  --project "$PROJECT_ID" \
   --platform managed \
   --allow-unauthenticated
 
-echo "✅ Deployment to $ENV complete!"
+echo "✅ Deployment to $ENV complete (image tag: $IMAGE_TAG)!"
