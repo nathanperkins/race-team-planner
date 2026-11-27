@@ -82,6 +82,37 @@ describe('auth', () => {
       expect(verifyGuildMembership).not.toHaveBeenCalled()
     })
 
+    it('redirects with email_required when Discord account has no email (phone-only account)', async () => {
+      const result = await capturedConfig.callbacks.signIn({
+        account: { provider: 'discord' },
+        profile: { id: 'discord-phone-only', email: null, verified: false },
+      })
+      expect(result).toBe('/not-found?error=email_required')
+      expect(verifyGuildMembership).not.toHaveBeenCalled()
+    })
+
+    it('redirects with email_required when Discord email is missing, blank, or unverified', async () => {
+      const cases = [
+        { id: 'discord-null-verified', email: null, verified: true },
+        { id: 'discord-undefined-verified', email: undefined, verified: true },
+        { id: 'discord-empty', email: '', verified: true },
+        { id: 'discord-blank', email: '   ', verified: true },
+        { id: 'discord-unverified', email: 'driver@example.com', verified: false },
+        { id: 'discord-no-flag', email: 'driver@example.com' },
+        { id: 'discord-truthy-string', email: 'driver@example.com', verified: 'true' as any },
+      ]
+
+      for (const profile of cases) {
+        const result = await capturedConfig.callbacks.signIn({
+          account: { provider: 'discord' },
+          profile,
+        })
+        expect(result).toBe('/not-found?error=email_required')
+      }
+
+      expect(verifyGuildMembership).not.toHaveBeenCalled()
+    })
+
     it('returns redirect URL when membership check denies access', async () => {
       vi.mocked(verifyGuildMembership).mockResolvedValue({
         granted: false,
@@ -90,7 +121,7 @@ describe('auth', () => {
 
       const result = await capturedConfig.callbacks.signIn({
         account: { provider: 'discord' },
-        profile: { id: 'discord-denied' },
+        profile: { id: 'discord-denied', email: 'driver@example.com', verified: true },
       })
 
       expect(result).toBe('/not-found?error=access_denied_guild_membership')
@@ -104,7 +135,7 @@ describe('auth', () => {
 
       const result = await capturedConfig.callbacks.signIn({
         account: { provider: 'discord' },
-        profile: { id: 'discord-granted' },
+        profile: { id: 'discord-granted', email: 'driver@example.com', verified: true },
       })
 
       expect(result).toBe(true)
@@ -118,7 +149,7 @@ describe('auth', () => {
 
       const result = await capturedConfig.callbacks.signIn({
         account: { provider: 'discord' },
-        profile: { id: 'discord-config-error' },
+        profile: { id: 'discord-config-error', email: 'driver@example.com', verified: true },
       })
 
       expect(result).toBe('/not-found?error=config_error')
@@ -144,12 +175,12 @@ describe('auth', () => {
 
       await capturedConfig.callbacks.signIn({
         account: { provider: 'discord' },
-        profile: { id: 'discord-with-pending' },
+        profile: { id: 'discord-with-pending', email: 'a@b.com', verified: true },
       })
       await capturedConfig.events.signIn({
         user: { id: 'user-123', email: 'a@b.com' },
         account: { provider: 'discord' },
-        profile: { id: 'discord-with-pending' },
+        profile: { id: 'discord-with-pending', email: 'a@b.com', verified: true },
       })
 
       expect(syncDiscordProfile).toHaveBeenCalledWith(
@@ -203,13 +234,13 @@ describe('auth', () => {
 
       await capturedConfig.callbacks.signIn({
         account: { provider: 'discord' },
-        profile: { id: 'discord-expired' },
+        profile: { id: 'discord-expired', email: 'a@b.com', verified: true },
       })
       vi.advanceTimersByTime(61_000)
       await capturedConfig.events.signIn({
         user: { id: 'user-123', email: 'a@b.com' },
         account: { provider: 'discord' },
-        profile: { id: 'discord-expired' },
+        profile: { id: 'discord-expired', email: 'a@b.com', verified: true },
       })
 
       expect(syncDiscordProfile).toHaveBeenCalledWith(

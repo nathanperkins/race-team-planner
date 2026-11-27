@@ -69,12 +69,8 @@ async function getDiscordThreadParentInfo(options: { threadId: string; botToken:
   }, DISCORD_RETRY_CONFIG)
 }
 
-export enum GuildMembershipStatus {
-  MEMBER = 'member',
-  NOT_MEMBER = 'access_denied_guild_membership',
-  CONFIG_ERROR = 'config_error',
-  API_ERROR = 'api_error',
-}
+import { GuildMembershipStatus } from './auth-errors'
+export { GuildMembershipStatus }
 
 export interface GuildMembershipResult {
   status: GuildMembershipStatus
