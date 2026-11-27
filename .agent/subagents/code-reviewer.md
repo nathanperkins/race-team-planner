@@ -61,7 +61,6 @@ This is a Next.js/React application for planning endurance racing teams. Key tec
 
 ### Project-Specific
 
-- [ ] Uses beads (bd) for issue tracking where appropriate
 - [ ] Follows CLAUDE.md and AGENTS.md guidelines
 - [ ] Quality checks pass: `npm run format && git hook run pre-commit`
 - [ ] No `Co-Authored-By` trailers in commits

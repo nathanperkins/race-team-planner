@@ -51,9 +51,3 @@ raw_data/
 next-env.d.ts
 
 /app/generated/prisma
-
-# bv (beads viewer) local config and caches
-.bv/
-.beads/*.jsonl
-.beads/*
-!.beads/README.md
