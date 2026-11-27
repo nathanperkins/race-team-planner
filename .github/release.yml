@@ -1,0 +1,35 @@
+changelog:
+  exclude:
+    labels:
+      - ignore-for-release
+      - duplicate
+      - invalid
+      - wontfix
+      - not reproducible
+  categories:
+    - title: Features & Enhancements
+      labels:
+        - enhancement
+    - title: Bug Fixes
+      labels:
+        - bug
+    - title: Performance & Optimizations
+      labels:
+        - optimization
+    - title: Security & Dependencies
+      labels:
+        - security
+        - dependencies
+    - title: Deployment & Infrastructure
+      labels:
+        - deployment
+    - title: Documentation
+      labels:
+        - documentation
+    - title: Maintenance & Tech Debt
+      labels:
+        - chore
+        - tech debt
+    - title: Other Changes
+      labels:
+        - '*'
