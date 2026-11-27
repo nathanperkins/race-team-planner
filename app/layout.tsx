@@ -30,6 +30,14 @@ export default async function RootLayout({
 }>) {
   const [session, cookieStore] = await Promise.all([auth(), cookies()])
   const initialTimeZone = parseTimeZoneCookie(cookieStore.get(TIMEZONE_COOKIE_NAME)?.value)
+  const hasStaleSessionCookie =
+    !session &&
+    Boolean(
+      cookieStore.get('authjs.session-token') ||
+      cookieStore.get('__Secure-authjs.session-token') ||
+      cookieStore.get('authjs.session-token.0') ||
+      cookieStore.get('__Secure-authjs.session-token.0')
+    )
 
   return (
     <html lang="en">
@@ -37,6 +45,7 @@ export default async function RootLayout({
         <TimeZoneProvider initialTimeZone={initialTimeZone}>
           <LayoutWrapper
             session={session}
+            needsCookieSync={Boolean(session?.needsCookieRefresh || hasStaleSessionCookie)}
             appTitle={appTitle}
             feedbackUrl={feedbackUrl}
             userGuideUrl={userGuideUrl}

@@ -39,7 +39,7 @@ export const authConfig = {
 
       return true
     },
-    async jwt({ token, user, trigger, session }) {
+    async jwt({ token, user, account, profile, trigger, session }) {
       // 1. Initial login: copy persistent fields to token
       if (user) {
         token.id = user.id
@@ -47,6 +47,14 @@ export const authConfig = {
         token.iracingCustomerId = user.iracingCustomerId
         token.expectationsVersion = user.expectationsVersion
         token.version = SESSION_VERSION
+        token.accessVerifiedAt = Date.now()
+      }
+
+      if (account?.provider) {
+        token.provider = account.provider
+        if (account.provider === 'discord') {
+          token.discordId = account.providerAccountId || (profile?.id as string | undefined)
+        }
       }
 
       // 2. Handle updates from useSession().update(data)
@@ -70,6 +78,9 @@ export const authConfig = {
         session.user.iracingCustomerId = token.iracingCustomerId as number
         session.user.expectationsVersion = (token.expectationsVersion as number) || 0
         session.version = (token.version as number) || 0
+        if (token.needsCookieRefresh) {
+          session.needsCookieRefresh = true
+        }
       }
       return session
     },

@@ -1,15 +1,61 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Sidebar from './Sidebar'
 import { Session } from 'next-auth'
 import { Menu, X } from 'lucide-react'
 import { SessionProvider } from 'next-auth/react'
 import styles from './sidebar.module.css'
 
+/**
+ * Syncs server-side JWT cookie updates (after 1-hour access revalidation) or
+ * clears a revoked/stale session cookie via NextAuth's Route Handler
+ * (`GET /api/auth/session`), since Server Components cannot write `Set-Cookie`.
+ *
+ * Uses a direct fetch instead of `useSession().update()` so it takes a single
+ * roundtrip and never sets SessionContext `loading = true` (which would block
+ * concurrent onboarding `update()` calls).
+ */
+function SessionCookieSync({ needsSync, hadSession }: { needsSync: boolean; hadSession: boolean }) {
+  const router = useRouter()
+  const syncedRef = useRef(false)
+
+  useEffect(() => {
+    if (!needsSync) {
+      syncedRef.current = false
+      return
+    }
+    if (syncedRef.current) return
+    syncedRef.current = true
+
+    const controller = new AbortController()
+    fetch('/api/auth/session', {
+      credentials: 'same-origin',
+      cache: 'no-store',
+      signal: controller.signal,
+    })
+      .then((res) => (res.ok ? res.json() : undefined))
+      .then((data) => {
+        if (hadSession && data === null) {
+          router.replace('/login')
+        }
+      })
+      .catch(() => {
+        // Allow retry on next render if the request failed or was aborted
+        syncedRef.current = false
+      })
+
+    return () => controller.abort()
+  }, [needsSync, hadSession, router])
+
+  return null
+}
+
 interface LayoutWrapperProps {
   children: React.ReactNode
   session: Session | null
+  needsCookieSync?: boolean
   appTitle: string
   feedbackUrl?: string
   userGuideUrl?: string
@@ -18,6 +64,7 @@ interface LayoutWrapperProps {
 export default function LayoutWrapper({
   children,
   session,
+  needsCookieSync,
   appTitle,
   feedbackUrl,
   userGuideUrl,
@@ -40,6 +87,10 @@ export default function LayoutWrapper({
 
   return (
     <SessionProvider session={session}>
+      <SessionCookieSync
+        needsSync={Boolean(needsCookieSync ?? session?.needsCookieRefresh)}
+        hadSession={Boolean(session)}
+      />
       <div className={styles.layoutContainer}>
         {session && (
           <>

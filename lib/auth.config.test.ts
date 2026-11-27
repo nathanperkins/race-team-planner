@@ -52,13 +52,40 @@ describe('auth.config', () => {
           expectationsVersion: 1,
         }
         const token = {} as any
-        const result = await (authConfig.callbacks as any).jwt({ token, user })
+        const account = { provider: 'discord', providerAccountId: 'discord-789' }
+        const result = await (authConfig.callbacks as any).jwt({ token, user, account })
 
         expect(result.id).toBe(user.id)
         expect(result.role).toBe(user.role)
         expect(result.iracingCustomerId).toBe(user.iracingCustomerId)
         expect(result.expectationsVersion).toBe(user.expectationsVersion)
         expect(result.version).toBe(SESSION_VERSION)
+        expect(result.provider).toBe('discord')
+        expect(result.discordId).toBe('discord-789')
+        expect(typeof result.accessVerifiedAt).toBe('number')
+      })
+
+      it('falls back to profile.id when account.providerAccountId is absent', async () => {
+        const result = await (authConfig.callbacks as any).jwt({
+          token: {},
+          user: { id: 'user-123', role: UserRole.USER, expectationsVersion: 1 },
+          account: { provider: 'discord' },
+          profile: { id: 'discord-from-profile' },
+        })
+
+        expect(result.provider).toBe('discord')
+        expect(result.discordId).toBe('discord-from-profile')
+      })
+
+      it('does not set discordId for credentials provider', async () => {
+        const result = await (authConfig.callbacks as any).jwt({
+          token: {},
+          user: { id: 'mock-1', role: UserRole.ADMIN, expectationsVersion: 1 },
+          account: { provider: 'credentials', providerAccountId: 'mock-1' },
+        })
+
+        expect(result.provider).toBe('credentials')
+        expect(result.discordId).toBeUndefined()
       })
 
       it('updates token fields on update trigger', async () => {
@@ -76,13 +103,14 @@ describe('auth.config', () => {
     })
 
     describe('session', () => {
-      it('transfers fields from token to session', async () => {
+      it('transfers fields from token to session and omits needsCookieRefresh when falsy', async () => {
         const token = {
           id: 'user-123',
           role: UserRole.ADMIN,
           iracingCustomerId: 456,
           expectationsVersion: 1,
           version: SESSION_VERSION,
+          needsCookieRefresh: false,
         }
         const session = { user: {} } as any
         const result = await (authConfig.callbacks as any).session({ session, token })
@@ -92,6 +120,21 @@ describe('auth.config', () => {
         expect(result.user.iracingCustomerId).toBe(token.iracingCustomerId)
         expect(result.user.expectationsVersion).toBe(token.expectationsVersion)
         expect(result.version).toBe(token.version)
+        expect(result.needsCookieRefresh).toBeUndefined()
+      })
+
+      it('propagates needsCookieRefresh when set on token', async () => {
+        const token = {
+          id: 'user-123',
+          role: UserRole.USER,
+          expectationsVersion: 1,
+          version: SESSION_VERSION,
+          needsCookieRefresh: true,
+        }
+        const session = { user: {} } as any
+        const result = await (authConfig.callbacks as any).session({ session, token })
+
+        expect(result.needsCookieRefresh).toBe(true)
       })
     })
   })

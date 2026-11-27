@@ -6,6 +6,8 @@ import Credentials from 'next-auth/providers/credentials'
 import { features, SESSION_VERSION } from '@/lib/config'
 import {
   verifyGuildMembership,
+  shouldRevalidateAccess,
+  revalidateDiscordAccess,
   shouldRefreshUser,
   refreshUserData,
   syncDiscordProfile,
@@ -82,32 +84,74 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
       return true
     },
-    async jwt({ token, user, trigger, session }) {
+    async jwt({ token, user, account, profile, trigger, session }) {
       // 1. Run base mapping from authConfig
       if (authConfig.callbacks?.jwt) {
-        token = await authConfig.callbacks.jwt({
+        const baseToken = await authConfig.callbacks.jwt({
           token,
           user,
           trigger,
           session,
-          account: null,
-          profile: undefined,
+          account,
+          profile,
         })
+        if (!baseToken) return null
+        token = baseToken
       }
 
-      // 2. Auto-heal: Refresh from DB if info is missing OR if we're explicitly updating.
-      if (token.id && shouldRefreshUser(token, trigger)) {
-        logger.debug(`Refreshing data for user ${token.id} (trigger: ${trigger})`)
-        const dbUser = await refreshUserData(token.id as string)
+      // Reset any previously persisted cookie-refresh hint; it is only re-enabled
+      // below if this request actually performs an expired-token revalidation.
+      token.needsCookieRefresh = false
+
+      const userId = (token.id as string | undefined) || token.sub
+
+      // 2. Access Token Expiration: Re-verify Discord guild membership and refresh roles after 1 hour
+      if (userId && shouldRevalidateAccess(token, trigger)) {
+        logger.debug(`Revalidating Discord access for user ${userId} (trigger: ${trigger})`)
+        const revalidation = await revalidateDiscordAccess(userId, token.discordId)
+
+        if (revalidation.status === 'revoked') {
+          return null
+        }
+
+        if (revalidation.status === 'valid') {
+          token.id = userId
+          token.role = revalidation.user.role
+          if (revalidation.user.name) {
+            token.name = revalidation.user.name
+          }
+          token.iracingCustomerId = revalidation.user.iracingCustomerId
+          token.expectationsVersion = revalidation.user.expectationsVersion
+          token.discordId = revalidation.discordId
+          token.provider = 'discord'
+          token.version = SESSION_VERSION
+          token.accessVerifiedAt = revalidation.verifiedAt
+          token.lastChecked = revalidation.verifiedAt
+          token.needsCookieRefresh = trigger !== 'update'
+          return token
+        }
+
+        // Skipped (only possible when features.mockAuth is enabled for dev credentials users)
+        token.id = userId
+        token.provider = token.provider || 'credentials'
+        token.accessVerifiedAt = revalidation.verifiedAt
+        token.needsCookieRefresh = trigger !== 'update'
+      }
+
+      // 3. Auto-heal: Refresh from DB if info is missing OR if we're explicitly updating.
+      if (userId && shouldRefreshUser(token, trigger)) {
+        logger.debug(`Refreshing data for user ${userId} (trigger: ${trigger})`)
+        const dbUser = await refreshUserData(userId)
         if (dbUser) {
           logger.debug(`Found DB user. ID: ${dbUser.iracingCustomerId}, Role: ${dbUser.role}`)
+          token.id = userId
           token.role = dbUser.role
           token.iracingCustomerId = dbUser.iracingCustomerId
           token.expectationsVersion = dbUser.expectationsVersion
           token.version = SESSION_VERSION
           token.lastChecked = Date.now()
         } else {
-          logger.warn(`Failed to find user in DB during refresh: ${token.id}`)
+          logger.warn(`Failed to find user in DB during refresh: ${userId}`)
         }
       }
 
