@@ -1315,4 +1315,81 @@ describe('RaceDetails Discord thread links', () => {
       ).not.toBeInTheDocument()
     })
   })
+
+  describe('LIVE badge community racer state (#152)', () => {
+    it('shows muted LIVE badge when live timeslot has no registered racers', () => {
+      const now = new Date()
+      const mockRace = {
+        id: 'race-live-empty',
+        startTime: new Date(now.getTime() - 60_000),
+        endTime: new Date(now.getTime() + 60_000),
+        teamsAssigned: false,
+        maxDriversPerTeam: 2,
+        teamAssignmentStrategy: 'BALANCED_IRATING' as const,
+        registrations: [],
+        discordTeamsThreadId: null,
+        discordTeamThreads: null,
+      }
+
+      render(
+        <RaceDetails
+          race={mockRace}
+          {...raceEventProps}
+          userId="viewer-user"
+          isAdmin={false}
+          carClasses={[{ id: 'class-1', name: 'GT3', shortName: 'GT3' }]}
+          teams={[]}
+          allDrivers={[]}
+        />
+      )
+
+      const badge = screen.getByText('LIVE')
+      expect(badge).toHaveClass(styles.liveBadgeMuted)
+      expect(badge).toHaveAttribute('title', 'Live now — no community racers registered')
+    })
+
+    it('shows active (non-muted) LIVE badge when live timeslot has registered racers', () => {
+      const now = new Date()
+      const mockRace = {
+        id: 'race-live-active',
+        startTime: new Date(now.getTime() - 60_000),
+        endTime: new Date(now.getTime() + 60_000),
+        teamsAssigned: false,
+        maxDriversPerTeam: 2,
+        teamAssignmentStrategy: 'BALANCED_IRATING' as const,
+        registrations: [
+          {
+            id: 'reg-1',
+            carClass: { id: 'class-1', name: 'GT3', shortName: 'GT3' },
+            userId: 'user-1',
+            user: { name: 'Active Driver', image: null, racerStats: [] },
+            manualDriver: null,
+            teamId: null,
+            team: null,
+          },
+        ],
+        discordTeamsThreadId: null,
+        discordTeamThreads: null,
+      }
+
+      render(
+        <RaceDetails
+          race={mockRace}
+          {...raceEventProps}
+          userId="viewer-user"
+          isAdmin={false}
+          carClasses={[{ id: 'class-1', name: 'GT3', shortName: 'GT3' }]}
+          teams={[]}
+          allDrivers={[]}
+        />
+      )
+
+      const badge = screen.getByText('LIVE')
+      expect(badge).not.toHaveClass(styles.liveBadgeMuted)
+      expect(badge).toHaveAttribute(
+        'title',
+        'Community racers are currently racing in this timeslot'
+      )
+    })
+  })
 })

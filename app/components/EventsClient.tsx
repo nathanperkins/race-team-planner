@@ -179,11 +179,15 @@ export default function EventsClient({
                   if (!latest || end > latest) return end
                   return latest
                 }, null)
-                const isLive = event.races.some((race) => {
+                const liveRaces = event.races.filter((race) => {
                   const start = new Date(race.startTime)
                   const end = new Date(race.endTime)
                   return now >= start && now <= end
                 })
+                const isLive = liveRaces.length > 0
+                const hasLiveCommunityRacer = liveRaces.some(
+                  (race) => race.registrations.length > 0
+                )
                 const isCompleted = lastRaceEnd ? now > lastRaceEnd : now > new Date(event.endTime)
                 const isUserRegistered = event.races.some((race) =>
                   race.registrations.some((reg) => reg.userId === userId)
@@ -209,8 +213,21 @@ export default function EventsClient({
                     <div className={`${styles.eventRight} ${variantClass}`}>
                       <div className={styles.eventRightTop}>
                         {isLive && (
-                          <div className={styles.liveBadge}>
-                            <span className={styles.liveDot} />
+                          <div
+                            className={`${tooltip}${styles.liveBadge}${
+                              !hasLiveCommunityRacer ? ` ${styles.liveBadgeMuted}` : ''
+                            }`}
+                            title={
+                              hasLiveCommunityRacer
+                                ? 'Community racers are currently racing in this event'
+                                : 'Live now — no community racers registered in the active timeslot'
+                            }
+                          >
+                            <span
+                              className={`${styles.liveDot}${
+                                !hasLiveCommunityRacer ? ` ${styles.liveDotMuted}` : ''
+                              }`}
+                            />
                             LIVE
                           </div>
                         )}
@@ -296,6 +313,7 @@ export default function EventsClient({
                           const raceEnd = new Date(race.endTime)
                           const isRaceCompleted = now > raceEnd
                           const isRaceLive = now >= raceStart && now <= raceEnd
+                          const isRaceLiveMuted = isRaceLive && race.registrations.length === 0
                           return (
                             <div
                               key={race.id}
@@ -303,7 +321,9 @@ export default function EventsClient({
                                 isRaceCompleted
                                   ? styles.racePillCompleted
                                   : isRaceLive
-                                    ? styles.racePillLive
+                                    ? `${styles.racePillLive}${
+                                        isRaceLiveMuted ? ` ${styles.racePillLiveMuted}` : ''
+                                      }`
                                     : ''
                               }`}
                             >

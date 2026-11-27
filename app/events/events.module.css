@@ -435,6 +435,13 @@
   box-shadow: 0 0 10px rgba(16, 185, 129, 0.15);
 }
 
+.racePillLiveMuted {
+  color: #94a3b8;
+  background: rgba(148, 163, 184, 0.12);
+  border-color: rgba(148, 163, 184, 0.3);
+  box-shadow: none;
+}
+
 .racePillCompleted::after {
   content: '';
   position: absolute;
@@ -498,6 +505,13 @@
   line-height: 1;
 }
 
+.liveBadgeMuted {
+  background-color: rgba(148, 163, 184, 0.12);
+  color: #94a3b8;
+  border-color: rgba(148, 163, 184, 0.32);
+  box-shadow: none;
+}
+
 .registeredBadge {
   font-size: 0.75rem;
   background-color: #064e3b;
@@ -519,6 +533,12 @@
   background-color: #10b981;
   border-radius: 50%;
   animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.liveDotMuted {
+  background-color: #94a3b8;
+  animation: none;
+  opacity: 0.75;
 }
 
 @keyframes pulse {

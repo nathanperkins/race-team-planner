@@ -432,6 +432,92 @@ describe('EventsClient LIVE badge', () => {
 
     expect(screen.queryByText('LIVE')).not.toBeInTheDocument()
   })
+
+  it('shows muted LIVE badge and muted live race pill when live timeslot has no community racers', () => {
+    const now = new Date()
+    const weeks = [
+      makeWeek({
+        events: [
+          makeEvent({
+            races: [
+              makeRace({
+                id: 'live-empty',
+                startTime: new Date(now.getTime() - 60_000),
+                endTime: new Date(now.getTime() + 60_000),
+                registrations: [],
+              }),
+              // Non-live future timeslot WITH racers should not un-mute the live badge
+              makeRace({
+                id: 'future-populated',
+                startTime: new Date(now.getTime() + 3_600_000),
+                endTime: new Date(now.getTime() + 7_200_000),
+                registrations: [makeRegistration()],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ]
+
+    const { container } = render(
+      <EventsClient
+        weeks={weeks}
+        isAdmin={false}
+        userId="user-1"
+        userLicenseLevel={null}
+        teams={[]}
+      />
+    )
+
+    const liveBadges = screen.getAllByText('LIVE')
+    expect(liveBadges.length).toBeGreaterThan(0)
+    expect(liveBadges[0]!.className).toContain('liveBadgeMuted')
+    expect(liveBadges[0]).toHaveAttribute(
+      'title',
+      'Live now — no community racers registered in the active timeslot'
+    )
+    expect(container.querySelector('[class*="racePillLiveMuted"]')).toBeInTheDocument()
+  })
+
+  it('shows active (non-muted) LIVE badge when a community racer is in the active live timeslot', () => {
+    const now = new Date()
+    const weeks = [
+      makeWeek({
+        events: [
+          makeEvent({
+            races: [
+              makeRace({
+                id: 'live-populated',
+                startTime: new Date(now.getTime() - 60_000),
+                endTime: new Date(now.getTime() + 60_000),
+                registrations: [makeRegistration()],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ]
+
+    const { container } = render(
+      <EventsClient
+        weeks={weeks}
+        isAdmin={false}
+        userId="user-1"
+        userLicenseLevel={null}
+        teams={[]}
+      />
+    )
+
+    const liveBadges = screen.getAllByText('LIVE')
+    expect(liveBadges.length).toBeGreaterThan(0)
+    expect(liveBadges[0]!.className).not.toContain('liveBadgeMuted')
+    expect(liveBadges[0]).toHaveAttribute(
+      'title',
+      'Community racers are currently racing in this event'
+    )
+    expect(container.querySelector('[class*="racePillLive"]')).toBeInTheDocument()
+    expect(container.querySelector('[class*="racePillLiveMuted"]')).not.toBeInTheDocument()
+  })
 })
 
 // ---------------------------------------------------------------------------
