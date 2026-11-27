@@ -2863,8 +2863,21 @@ export default function RaceDetails({
                 Timeslot: {formatRaceDateTime(race.startTime, timeZone)}
               </h4>
               {isRaceLive && (
-                <span className={styles.liveBadge}>
-                  <span className={styles.liveDot} />
+                <span
+                  className={`${styles.liveBadge}${
+                    pendingRegistrations.length === 0 ? ` ${styles.liveBadgeMuted}` : ''
+                  }`}
+                  title={
+                    pendingRegistrations.length > 0
+                      ? 'Community racers are currently racing in this timeslot'
+                      : 'Live now — no community racers registered'
+                  }
+                >
+                  <span
+                    className={`${styles.liveDot}${
+                      pendingRegistrations.length === 0 ? ` ${styles.liveDotMuted}` : ''
+                    }`}
+                  />
                   LIVE
                 </span>
               )}

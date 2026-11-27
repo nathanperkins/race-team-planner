@@ -296,12 +296,25 @@
   margin-left: 0.5rem;
 }
 
+.liveBadgeMuted {
+  background-color: rgba(148, 163, 184, 0.12);
+  color: #94a3b8;
+  border-color: rgba(148, 163, 184, 0.32);
+  box-shadow: none;
+}
+
 .liveDot {
   width: 6px;
   height: 6px;
   background-color: #10b981;
   border-radius: 50%;
   animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.liveDotMuted {
+  background-color: #94a3b8;
+  animation: none;
+  opacity: 0.75;
 }
 
 @keyframes pulse {
