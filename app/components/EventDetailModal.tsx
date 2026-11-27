@@ -3,6 +3,7 @@
 import {
   X,
   Cloud,
+  Globe,
   ShieldCheck,
   ShieldX,
   Thermometer,
@@ -19,8 +20,7 @@ const logger = createLogger('EventDetailModal')
 import RaceDetails from '@/components/RaceDetails'
 import EditEventButton from '@/app/admin/EditEventButton'
 import {
-  getLicenseForGroup,
-  getLicenseColor,
+  getLicenseBadgeInfo,
   formatDuration,
   getSeriesNameOnly,
   isLicenseEligible,
@@ -95,9 +95,8 @@ export default function EventDetailModal({
   const [allDrivers, setAllDrivers] = useState<Driver[]>([])
   const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({})
 
-  const license = getLicenseForGroup(event.licenseGroup)
-  const licenseColor = getLicenseColor(license)
-  const isEligible = isLicenseEligible(userLicenseLevel, license)
+  const licenseBadge = getLicenseBadgeInfo(event.licenseGroup)
+  const isEligible = isLicenseEligible(userLicenseLevel, licenseBadge.license)
 
   const isAnyDropdownOpen = Object.values(openDropdowns).some(Boolean)
   const displayRaces = useMemo(() => {
@@ -196,18 +195,26 @@ export default function EventDetailModal({
                   <div
                     className={`instant-tooltip ${styles.licenseBadgeInline}`}
                     style={{
-                      borderColor: licenseColor,
-                      color: licenseColor,
-                      backgroundColor: `${licenseColor}30`,
+                      borderColor: licenseBadge.color,
+                      color: licenseBadge.color,
+                      backgroundColor: `${licenseBadge.color}30`,
                     }}
                     title={
-                      isEligible
-                        ? `You are eligible for this event`
-                        : 'You do not meet the license requirements for this event'
+                      licenseBadge.isOpenToAll
+                        ? 'No license requirement — open to all drivers'
+                        : isEligible
+                          ? 'You are eligible for this event'
+                          : 'You do not meet the license requirements for this event'
                     }
                   >
-                    {isEligible ? <ShieldCheck size={18} /> : <ShieldX size={18} color="#ef4444" />}
-                    {license}
+                    {licenseBadge.isOpenToAll ? (
+                      <Globe size={18} />
+                    ) : isEligible ? (
+                      <ShieldCheck size={18} />
+                    ) : (
+                      <ShieldX size={18} color="#ef4444" />
+                    )}
+                    {licenseBadge.label}
                   </div>
                 </div>
                 <div className={styles.trackName}>

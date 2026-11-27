@@ -128,7 +128,7 @@ function makeEvent(
     name: fields.name ?? 'IMSA Endurance Series',
     startTime: fields.startTime ?? new Date('2026-02-15T06:00:00Z'),
     endTime: fields.endTime ?? new Date('2026-02-15T08:00:00Z'),
-    licenseGroup: fields.licenseGroup ?? 3,
+    licenseGroup: 'licenseGroup' in fields ? fields.licenseGroup : 3,
     durationMins: 120,
     track: 'Daytona',
     trackConfig: 'Road',
@@ -564,6 +564,26 @@ describe('EventsClient license eligibility', () => {
     )
 
     expect(container.querySelector('[class*="eventRowIneligible"]')).toBeInTheDocument()
+  })
+
+  it('displays an Open to All badge with open-enrollment tooltip when event has no license requirement', () => {
+    const weeks = [makeWeek({ events: [makeEvent({ licenseGroup: null })] })]
+
+    const { container } = render(
+      <EventsClient
+        weeks={weeks}
+        isAdmin={false}
+        userId="user-1"
+        userLicenseLevel={null}
+        teams={[]}
+      />
+    )
+
+    expect(container.querySelector('[class*="eventRowIneligible"]')).not.toBeInTheDocument()
+    const badges = screen.getAllByText('Open to All')
+    expect(badges.length).toBeGreaterThan(0)
+    expect(badges[0]).toHaveAttribute('title', 'No license requirement — open to all drivers')
+    expect(screen.queryByText('N/A')).not.toBeInTheDocument()
   })
 })
 

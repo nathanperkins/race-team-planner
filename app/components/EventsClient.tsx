@@ -6,15 +6,14 @@ import EventDetailModal from './EventDetailModal'
 import { Prisma } from '@prisma/client'
 import styles from '../events/events.module.css'
 import {
-  getLicenseForGroup,
-  getLicenseColor,
+  getLicenseBadgeInfo,
   formatDuration,
   getSeriesNameOnly,
   isLicenseEligible,
   LicenseLevel,
 } from '@/lib/utils'
 import type { CSSProperties } from 'react'
-import { Check, ShieldCheck, ShieldX, Timer, User } from 'lucide-react'
+import { Check, Globe, ShieldCheck, ShieldX, Timer, User } from 'lucide-react'
 import { useTimeZone } from '@/components/TimeZoneProvider'
 import { formatRaceDateTime } from '@/lib/timezone-utils'
 
@@ -173,8 +172,8 @@ export default function EventsClient({
 
             <div className={styles.weekBody}>
               {week.events.map((event) => {
-                const license = getLicenseForGroup(event.licenseGroup)
-                const isEligible = isLicenseEligible(userLicenseLevel, license)
+                const licenseBadge = getLicenseBadgeInfo(event.licenseGroup)
+                const isEligible = isLicenseEligible(userLicenseLevel, licenseBadge.license)
                 const lastRaceEnd = event.races.reduce<Date | null>((latest, race) => {
                   const end = new Date(race.endTime)
                   if (!latest || end > latest) return end
@@ -193,14 +192,13 @@ export default function EventsClient({
                   (sum, race) => sum + race.registrations.length,
                   0
                 )
-                const licenseColor = getLicenseColor(license)
                 const licenseStyle: LicenseStyle = {
-                  ['--licColor']: licenseColor,
+                  ['--licColor']: licenseBadge.color,
                 }
                 const badgeStyle = {
-                  borderColor: licenseColor,
-                  color: licenseColor,
-                  backgroundColor: `${licenseColor}30`,
+                  borderColor: licenseBadge.color,
+                  color: licenseBadge.color,
+                  backgroundColor: `${licenseBadge.color}30`,
                 }
 
                 const eventRight = (variant: 'mobile' | 'desktop') => {
@@ -230,18 +228,22 @@ export default function EventsClient({
                         <div
                           className={`${tooltip}${styles.licenseBadge}`}
                           title={
-                            !isEligible
-                              ? 'You do not meet the license requirements for this event'
-                              : `You are eligible for this event`
+                            licenseBadge.isOpenToAll
+                              ? 'No license requirement — open to all drivers'
+                              : !isEligible
+                                ? 'You do not meet the license requirements for this event'
+                                : 'You are eligible for this event'
                           }
                           style={badgeStyle}
                         >
-                          {isEligible ? (
+                          {licenseBadge.isOpenToAll ? (
+                            <Globe size={14} />
+                          ) : isEligible ? (
                             <ShieldCheck size={14} />
                           ) : (
                             <ShieldX size={14} color="#ef4444" />
                           )}
-                          {license}
+                          {licenseBadge.label}
                         </div>
                       </div>
                       <div className={styles.driverPill}>

@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { getLicenseForGroup, LicenseLevel } from './utils'
+import {
+  getLicenseBadgeInfo,
+  getLicenseColor,
+  getLicenseForGroup,
+  LicenseLevel,
+  OPEN_LICENSE_COLOR,
+  OPEN_LICENSE_LABEL,
+} from './utils'
 
 describe('getLicenseForGroup', () => {
   it('returns "Rookie" when licenseGroup is 1', () => {
@@ -45,5 +52,41 @@ describe('getLicenseForGroup', () => {
   it('returns "N/A" when licenseGroup is an invalid number', () => {
     expect(getLicenseForGroup(99)).toBe('N/A')
     expect(getLicenseForGroup(-1)).toBe('N/A')
+  })
+})
+
+describe('getLicenseBadgeInfo', () => {
+  it('returns Open to All badge metadata when licenseGroup is null or undefined', () => {
+    expect(getLicenseBadgeInfo(null)).toEqual({
+      license: 'N/A',
+      label: OPEN_LICENSE_LABEL,
+      color: OPEN_LICENSE_COLOR,
+      isOpenToAll: true,
+    })
+    expect(getLicenseBadgeInfo(undefined)).toEqual({
+      license: 'N/A',
+      label: OPEN_LICENSE_LABEL,
+      color: OPEN_LICENSE_COLOR,
+      isOpenToAll: true,
+    })
+  })
+
+  it('returns standard license badge metadata for valid license levels', () => {
+    expect(getLicenseBadgeInfo(LicenseLevel.B)).toEqual({
+      license: 'Class B',
+      label: 'Class B',
+      color: '#22c55e',
+      isOpenToAll: false,
+    })
+  })
+
+  it('distinguishes unknown/invalid non-null licenseGroup from Open to All', () => {
+    expect(getLicenseBadgeInfo(99)).toEqual({
+      license: 'N/A',
+      label: 'N/A',
+      color: '#94a3b8',
+      isOpenToAll: false,
+    })
+    expect(getLicenseColor(OPEN_LICENSE_LABEL)).toBe(OPEN_LICENSE_COLOR)
   })
 })
