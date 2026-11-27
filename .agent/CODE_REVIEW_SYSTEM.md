@@ -154,7 +154,7 @@ Claude will automatically delegate to the specialized code-reviewer for thorough
 
 ### Follows CLAUDE.md
 
-- Uses beads (bd) for tracking
+- Uses GitHub Issues (gh) for tracking
 - No `Co-Authored-By` trailers
 - TDD workflow
 - Quality gate before commit
@@ -179,8 +179,6 @@ Runs:
 git add .
 git commit -m "message"
 git push
-bd close <id>
-bd sync
 ```
 
 ## Review Priority System

@@ -186,8 +186,6 @@ This skill integrates with your CLAUDE.md workflow:
    git add .
    git commit -m "message"
    git push
-   bd close <id>
-   bd sync
    ```
 
 ## Important Notes
@@ -196,7 +194,7 @@ This skill integrates with your CLAUDE.md workflow:
 - **Stop on critical issues** - Do not proceed until resolved
 - **Re-run after major fixes** - Verify fixes didn't introduce new issues
 - **Document skipped items** - If user skips warnings, note in commit message
-- **Follow project rules** - No Co-Authored-By, use beads, etc.
+- **Follow project rules** - No Co-Authored-By, etc.
 
 ## After Review Complete
 
@@ -215,6 +213,4 @@ To commit:
 git add .
 git commit -m "..."
 git push
-bd close <id>
-bd sync
 ```
