@@ -23,6 +23,7 @@ import {
   type DragEvent,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -61,6 +62,7 @@ import {
 } from '@/lib/team-modal-unsaved-changes'
 
 const logger = createLogger('RaceDetails')
+const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect
 
 export interface RaceWithRegistrations {
   id: string
@@ -1793,9 +1795,10 @@ export default function RaceDetails({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [teamPickerId])
 
-  useEffect(() => {
-    if (!isTeamModalOpen || !canAssignTeams) return
-    const handleKeyDown = (event: KeyboardEvent) => {
+  const escapeHandlerRef = useRef<(event: KeyboardEvent) => void>(() => {})
+
+  useIsomorphicLayoutEffect(() => {
+    escapeHandlerRef.current = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.isComposing) return
 
       if (isSaving && !saveError) {
@@ -1852,25 +1855,17 @@ export default function RaceDetails({
       event.stopPropagation()
       requestCloseTeamModal()
     }
+  })
+
+  useIsomorphicLayoutEffect(() => {
+    if (!isTeamModalOpen || !canAssignTeams) return
+    const handleKeyDown = (event: KeyboardEvent) => {
+      escapeHandlerRef.current(event)
+    }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [
-    isTeamModalOpen,
-    canAssignTeams,
-    isSaving,
-    saveError,
-    crossClassWarning,
-    teamMembershipWarning,
-    saveConfirming,
-    teamClassWarning,
-    teamPickerId,
-    isAddDriverOpen,
-    isDropConfirming,
-    confirmDiscardOpen,
-    closeTeamPicker,
-    requestCloseTeamModal,
-  ])
+  }, [isTeamModalOpen, canAssignTeams])
 
   useEffect(() => {
     if (!isTeamModalOpen) return
