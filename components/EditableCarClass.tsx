@@ -84,6 +84,18 @@ export default function EditableCarClass({
   }, [])
 
   useEffect(() => {
+    if (!isOpen) return
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.isComposing || event.defaultPrevented) return
+      event.preventDefault()
+      event.stopPropagation()
+      setIsOpen(false)
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen])
+
+  useEffect(() => {
     const handleResize = () => {
       if (!isOpen) return
       requestAnimationFrame(updateDropdownPlacement)

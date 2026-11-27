@@ -740,6 +740,11 @@
   right: 0.75rem;
 }
 
+.teamModalClose:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .teamModalBody {
   padding: 1rem 0.75rem 1.5rem;
   overflow: auto;

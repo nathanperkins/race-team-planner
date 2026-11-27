@@ -63,6 +63,17 @@ export default function AdminDriverSearch({
   const [errorMessage, setErrorMessage] = useState('')
   const [isPending, setIsPending] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const onDropdownToggleRef = useRef(onDropdownToggle)
+
+  useEffect(() => {
+    onDropdownToggleRef.current = onDropdownToggle
+  }, [onDropdownToggle])
+
+  useEffect(() => {
+    return () => {
+      onDropdownToggleRef.current?.(false)
+    }
+  }, [])
 
   // Filter drivers not yet registered
   const unregisteredDrivers = allDrivers.filter((d) => !registeredUserIds.includes(d.id))
@@ -108,7 +119,20 @@ export default function AdminDriverSearch({
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  useEffect(() => {
+    if (!isOpen) return
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.isComposing || event.defaultPrevented) return
+      event.preventDefault()
+      event.stopPropagation()
+      setIsOpen(false)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen])
 
   useEffect(() => {
     if (!isOpen) return

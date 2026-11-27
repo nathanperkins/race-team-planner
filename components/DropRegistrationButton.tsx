@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { deleteRegistration } from '@/app/actions'
 import styles from './DropRegistrationButton.module.css'
 import { Trash2, Check, X, ChevronDown } from 'lucide-react'
@@ -31,6 +31,30 @@ export default function DropRegistrationButton({
 }: Props) {
   const [status, setStatus] = useState<'idle' | 'confirming' | 'deleting'>('idle')
   const [dropError, setDropError] = useState('')
+  const onConfirmingChangeRef = useRef(onConfirmingChange)
+
+  useEffect(() => {
+    onConfirmingChangeRef.current = onConfirmingChange
+  }, [onConfirmingChange])
+
+  useEffect(() => {
+    return () => {
+      onConfirmingChangeRef.current?.(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (status !== 'confirming') return
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.isComposing || event.defaultPrevented) return
+      event.preventDefault()
+      event.stopPropagation()
+      setStatus('idle')
+      onConfirmingChangeRef.current?.(false)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [status])
   const handleInitialClick = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()

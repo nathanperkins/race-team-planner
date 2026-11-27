@@ -30,6 +30,7 @@ import {
 } from 'react'
 import styles from './RaceDetails.module.css'
 import LoadingOverlay from './LoadingOverlay'
+import WarningDialog from './WarningDialog'
 import DropRegistrationButton from './DropRegistrationButton'
 import QuickRegistration from './QuickRegistration'
 import EditableCarClass from './EditableCarClass'
@@ -52,6 +53,12 @@ import {
   getTeamMembershipWarningMessage,
   shouldWarnForTeamMembership,
 } from '@/lib/team-membership-warning'
+import {
+  createTeamModalBaseline,
+  hasTeamModalPendingChanges,
+  mergeServerRegistrationsIntoBaseline,
+  type TeamModalBaseline,
+} from '@/lib/team-modal-unsaved-changes'
 
 const logger = createLogger('RaceDetails')
 
@@ -293,6 +300,7 @@ export default function RaceDetails({
   const now = new Date()
   const isRaceCompleted = now > new Date(race.endTime)
   const isRaceLive = now >= new Date(race.startTime) && now <= new Date(race.endTime)
+  const canAssignTeams = isAdmin && !isRaceCompleted
 
   // Calculate race license requirement for eligibility checking
   const raceLicense = eventLicenseGroup !== undefined ? getLicenseForGroup(eventLicenseGroup) : null
@@ -361,6 +369,7 @@ export default function RaceDetails({
   const [extraTeams, setExtraTeams] = useState<LocalTeam[]>([])
   const [revealedTeamIds, setRevealedTeamIds] = useState<string[]>([])
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false)
+  const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false)
   const [teamsAssigned, setTeamsAssigned] = useState(!!race.teamsAssigned)
   const [dragOverTeamId, setDragOverTeamId] = useState<string | null>(null)
   const [lockedTeamIds, setLockedTeamIds] = useState<Set<string>>(new Set())
@@ -383,6 +392,9 @@ export default function RaceDetails({
   const lastRaceIdRef = useRef<string | null>(null)
   const lastRegistrationIdsRef = useRef<string>('')
   const lastRegistrationSnapshotRef = useRef<string>('')
+  const modalBaselineRef = useRef<TeamModalBaseline<
+    RaceWithRegistrations['registrations'][0]
+  > | null>(null)
 
   const teamList = useMemo(() => [...teams, ...extraTeams], [extraTeams, teams])
   const revealedTeamSet = useMemo(() => new Set(revealedTeamIds), [revealedTeamIds])
@@ -881,9 +893,16 @@ export default function RaceDetails({
       lastRaceIdRef.current = race.id
       lastRegistrationIdsRef.current = nextRegistrationIds
       lastRegistrationSnapshotRef.current = nextRegistrationSnapshot
+      modalBaselineRef.current = null
       const nextStrategy = race.teamAssignmentStrategy
+      setConfirmDiscardOpen(false)
+      setIsTeamModalOpen(false)
+      setIsAddDriverOpen(false)
+      setIsDropConfirming(false)
       setExtraTeams([])
       setRevealedTeamIds([])
+      setEmptyTeamCarClassOverrides({})
+      setTeamOrder([])
       setTeamsAssigned(!!race.teamsAssigned)
       teamOverridesRef.current = new Map()
       extraTeamCounter.current = 1
@@ -938,6 +957,10 @@ export default function RaceDetails({
                 : null,
             }
           })
+        }
+
+        if (isTeamModalOpen) {
+          mergeServerRegistrationsIntoBaseline(modalBaselineRef.current, race.registrations)
         }
 
         const prevById = new Map(prev.map((reg) => [reg.id, reg]))
@@ -1036,6 +1059,12 @@ export default function RaceDetails({
         updatePendingAddition(registrationId, { teamId, carClassId: classId })
       }
       teamOverridesRef.current.set(registrationId, { teamId, teamName })
+      setEmptyTeamCarClassOverrides((prev) => {
+        if (!(teamId in prev)) return prev
+        const next = { ...prev }
+        delete next[teamId]
+        return next
+      })
       setPendingRegistrations((prev) =>
         prev.map((reg) =>
           reg.id === registrationId
@@ -1067,6 +1096,7 @@ export default function RaceDetails({
 
   const handleSave = () => {
     setSaveConfirming(false)
+    setConfirmDiscardOpen(false)
     const payload = pendingRegistrations
       .filter((reg) => !isTempRegistrationId(reg.id))
       .filter((reg) => isAdmin || reg.userId === userId)
@@ -1101,7 +1131,11 @@ export default function RaceDetails({
           setSaveError(result?.message || 'Failed to save changes')
           return
         }
+        modalBaselineRef.current = null
+        setConfirmDiscardOpen(false)
         setIsTeamModalOpen(false)
+        setIsAddDriverOpen(false)
+        setIsDropConfirming(false)
         setExtraTeams([])
         setRevealedTeamIds([])
         setLockedTeamIds(new Set())
@@ -1112,6 +1146,7 @@ export default function RaceDetails({
         setTeamPickerQuery('')
         setTeamNameOverrides({})
         setEmptyTeamCarClassOverrides({})
+        setTeamOrder([])
         setTeamClassWarning(null)
         setTeamMembershipWarning(null)
         setAcknowledgedTeamMembershipDriverKeys(new Set())
@@ -1126,11 +1161,41 @@ export default function RaceDetails({
     })
   }
 
-  const handleCloseTeamModal = () => {
-    setIsTeamModalOpen(false)
-    setSaveConfirming(false)
+  const handleOpenTeamModal = useCallback(() => {
+    modalBaselineRef.current = createTeamModalBaseline({
+      registrations: pendingRegistrations,
+      maxDrivers: pendingMaxDrivers,
+      strategy: pendingStrategy,
+      raceSnapshot: lastRegistrationSnapshotRef.current,
+    })
+    setConfirmDiscardOpen(false)
+    setSaveError('')
+    setIsAddDriverOpen(false)
+    setIsDropConfirming(false)
+    setTeamOrder([])
     teamOverridesRef.current = new Map()
-    setPendingRegistrations(race.registrations)
+    setPendingAdditions([])
+    setPendingDrops(new Set())
+    setAcknowledgedTeamMembershipDriverKeys(new Set())
+    setIsTeamModalOpen(true)
+    initializeLockedTeams()
+  }, [initializeLockedTeams, pendingMaxDrivers, pendingRegistrations, pendingStrategy])
+
+  const handleCloseTeamModal = useCallback(() => {
+    const baseline = modalBaselineRef.current
+    modalBaselineRef.current = null
+    setConfirmDiscardOpen(false)
+    setIsTeamModalOpen(false)
+    setIsAddDriverOpen(false)
+    setIsDropConfirming(false)
+    setSaveConfirming(false)
+    setSaveError('')
+    teamOverridesRef.current = new Map()
+    const serverChangedWhileOpen =
+      baseline !== null && baseline.raceSnapshot !== lastRegistrationSnapshotRef.current
+    setPendingRegistrations(
+      serverChangedWhileOpen || !baseline ? race.registrations : baseline.registrations
+    )
     setExtraTeams([])
     setRevealedTeamIds([])
     setLockedTeamIds(new Set())
@@ -1145,7 +1210,47 @@ export default function RaceDetails({
     setTeamNameOverrides({})
     setEmptyTeamCarClassOverrides({})
     setTeamOrder([])
-  }
+    if (baseline) {
+      setPendingMaxDrivers(baseline.maxDrivers)
+      setPendingMaxDriversText(baseline.maxDrivers ? String(baseline.maxDrivers) : '')
+      setPendingStrategy(baseline.strategy)
+    }
+  }, [race.registrations])
+
+  const requestCloseTeamModal = useCallback(() => {
+    if (isSaving) return
+    const hasPendingChanges = hasTeamModalPendingChanges({
+      baseline: modalBaselineRef.current,
+      pendingRegistrations,
+      pendingAdditionsCount: pendingAdditions.length,
+      pendingDropsCount: pendingDrops.size,
+      extraTeamsCount: extraTeams.length,
+      revealedTeamIds,
+      teamNameOverrides,
+      emptyTeamCarClassOverrides,
+      teamOrder,
+      pendingMaxDrivers,
+      pendingStrategy,
+    })
+    if (hasPendingChanges) {
+      setConfirmDiscardOpen(true)
+      return
+    }
+    handleCloseTeamModal()
+  }, [
+    emptyTeamCarClassOverrides,
+    extraTeams.length,
+    handleCloseTeamModal,
+    isSaving,
+    pendingAdditions.length,
+    pendingDrops.size,
+    pendingMaxDrivers,
+    pendingRegistrations,
+    pendingStrategy,
+    revealedTeamIds,
+    teamNameOverrides,
+    teamOrder,
+  ])
 
   const createTempTeam = useCallback(
     (nameOverride?: string) => {
@@ -1325,6 +1430,12 @@ export default function RaceDetails({
         delete next[teamId]
         return next
       })
+      setEmptyTeamCarClassOverrides((prev) => {
+        if (!(teamId in prev)) return prev
+        const next = { ...prev }
+        delete next[teamId]
+        return next
+      })
       if (teamPickerId === teamId) {
         setTeamPickerId(null)
         setTeamPickerQuery('')
@@ -1424,6 +1535,12 @@ export default function RaceDetails({
         delete next[currentTeamId]
         return next
       })
+      setEmptyTeamCarClassOverrides((prev) => {
+        if (!(currentTeamId in prev)) return prev
+        const next = { ...prev }
+        delete next[currentTeamId]
+        return next
+      })
       setLockedTeamIds((prev) => {
         if (!prev.has(currentTeamId)) return prev
         const next = new Set(prev)
@@ -1490,6 +1607,14 @@ export default function RaceDetails({
         updatePendingAddition(registrationId, { teamId })
       }
       teamOverridesRef.current.set(registrationId, { teamId, teamName })
+      if (teamId) {
+        setEmptyTeamCarClassOverrides((prev) => {
+          if (!(teamId in prev)) return prev
+          const next = { ...prev }
+          delete next[teamId]
+          return next
+        })
+      }
       setPendingRegistrations((prev) =>
         prev.map((reg) =>
           reg.id === registrationId
@@ -1669,6 +1794,85 @@ export default function RaceDetails({
   }, [teamPickerId])
 
   useEffect(() => {
+    if (!isTeamModalOpen || !canAssignTeams) return
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.isComposing) return
+
+      if (isSaving && !saveError) {
+        event.preventDefault()
+        event.stopPropagation()
+        return
+      }
+      if (confirmDiscardOpen) {
+        event.preventDefault()
+        event.stopPropagation()
+        setConfirmDiscardOpen(false)
+        return
+      }
+      if (saveError) {
+        event.preventDefault()
+        event.stopPropagation()
+        setSaveError('')
+        return
+      }
+      if (crossClassWarning) {
+        event.preventDefault()
+        event.stopPropagation()
+        setCrossClassWarning(null)
+        return
+      }
+      if (teamMembershipWarning) {
+        event.preventDefault()
+        event.stopPropagation()
+        setTeamMembershipWarning(null)
+        return
+      }
+      if (saveConfirming) {
+        event.preventDefault()
+        event.stopPropagation()
+        setSaveConfirming(false)
+        return
+      }
+      if (teamClassWarning) {
+        event.preventDefault()
+        event.stopPropagation()
+        setTeamClassWarning(null)
+        return
+      }
+      if (teamPickerId) {
+        event.preventDefault()
+        event.stopPropagation()
+        closeTeamPicker()
+        return
+      }
+      if (isAddDriverOpen || isDropConfirming || event.defaultPrevented) {
+        return
+      }
+      event.preventDefault()
+      event.stopPropagation()
+      requestCloseTeamModal()
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [
+    isTeamModalOpen,
+    canAssignTeams,
+    isSaving,
+    saveError,
+    crossClassWarning,
+    teamMembershipWarning,
+    saveConfirming,
+    teamClassWarning,
+    teamPickerId,
+    isAddDriverOpen,
+    isDropConfirming,
+    confirmDiscardOpen,
+    closeTeamPicker,
+    requestCloseTeamModal,
+  ])
+
+  useEffect(() => {
     if (!isTeamModalOpen) return
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setTeamOrder((prev) => {
@@ -1762,6 +1966,14 @@ export default function RaceDetails({
         }
         const teamName = teamId ? teamNameById.get(teamId) || 'Team' : undefined
         teamOverridesRef.current.set(existingReg.id, { teamId, teamName })
+        if (teamId) {
+          setEmptyTeamCarClassOverrides((prev) => {
+            if (!(teamId in prev)) return prev
+            const next = { ...prev }
+            delete next[teamId]
+            return next
+          })
+        }
         setPendingRegistrations((prev) => {
           const exists = prev.find((reg) => reg.id === existingReg.id)
           const updatedReg = {
@@ -1893,7 +2105,6 @@ export default function RaceDetails({
   )
 
   const showTeamsInCard = teamsAssigned
-  const canAssignTeams = isAdmin && !isRaceCompleted
   const enableDrag = canAssignTeams && isTeamModalOpen
   const currentUserRegistration = pendingRegistrations.find((reg) => reg.userId === userId)
   const isCurrentUserAssignedToTeam = !!(
@@ -2635,6 +2846,16 @@ export default function RaceDetails({
 
   return (
     <>
+      <WarningDialog
+        isOpen={confirmDiscardOpen && isTeamModalOpen && canAssignTeams}
+        title="Discard Unsaved Changes?"
+        message="You have unapplied team assignment changes. Are you sure you want to close without saving?"
+        confirmLabel="Discard"
+        cancelLabel="Keep Editing"
+        confirmTone="destructive"
+        onConfirm={handleCloseTeamModal}
+        onCancel={() => setConfirmDiscardOpen(false)}
+      />
       {isSaving && <LoadingOverlay message="Saving and notifying..." />}
       <div
         className={`${styles.raceCard} ${isRaceCompleted ? styles.raceCardCompleted : ''}`}
@@ -2769,17 +2990,7 @@ export default function RaceDetails({
                     />
                   </div>
                   <div className={styles.adminActionSlot}>
-                    <TeamPickerTrigger
-                      onOpen={() => {
-                        teamOverridesRef.current = new Map()
-                        setPendingAdditions([])
-                        setPendingDrops(new Set())
-                        setAcknowledgedTeamMembershipDriverKeys(new Set())
-                        setIsTeamModalOpen(true)
-                        initializeLockedTeams()
-                      }}
-                      disabled={!canAssignTeams}
-                    />
+                    <TeamPickerTrigger onOpen={handleOpenTeamModal} disabled={!canAssignTeams} />
                   </div>
                 </div>
               </div>
@@ -2829,11 +3040,19 @@ export default function RaceDetails({
             ))}
 
           {isTeamModalOpen && canAssignTeams && (
-            <div className={styles.teamModalOverlay} onClick={handleCloseTeamModal}>
-              <div className={styles.teamModal} onClick={(event) => event.stopPropagation()}>
+            <div className={styles.teamModalOverlay} onClick={requestCloseTeamModal}>
+              <div
+                className={styles.teamModal}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={`assign-teams-title-${race.id}`}
+                onClick={(event) => event.stopPropagation()}
+              >
                 <div className={styles.teamModalHeader}>
                   <div className={styles.teamModalHeaderContent}>
-                    <h3 className={styles.teamModalTitle}>Assign Teams</h3>
+                    <h3 id={`assign-teams-title-${race.id}`} className={styles.teamModalTitle}>
+                      Assign Teams
+                    </h3>
                     <p className={styles.teamModalSubtitle}>
                       Drag drivers between teams, then save when you are ready.
                     </p>
@@ -2852,7 +3071,8 @@ export default function RaceDetails({
                   <button
                     type="button"
                     className={styles.teamModalClose}
-                    onClick={handleCloseTeamModal}
+                    onClick={requestCloseTeamModal}
+                    disabled={isSaving}
                     aria-label="Close team assignment"
                   >
                     <X size={18} />
