@@ -112,6 +112,7 @@ export async function checkGuildMembership(userId: string): Promise<GuildMembers
       headers: {
         Authorization: `Bot ${botToken}`,
       },
+      signal: AbortSignal.timeout(10_000),
     })
 
     if (response.ok) {

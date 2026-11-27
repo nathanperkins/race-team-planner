@@ -12,6 +12,7 @@ declare module 'next-auth' {
       expectationsVersion: number
     }
     version: number
+    needsCookieRefresh?: boolean
   }
 
   interface User {
@@ -36,5 +37,10 @@ declare module 'next-auth/jwt' {
     iracingCustomerId?: number | null
     expectationsVersion: number
     version: number
+    provider?: string
+    discordId?: string
+    accessVerifiedAt?: number
+    lastChecked?: number
+    needsCookieRefresh?: boolean
   }
 }
