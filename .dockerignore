@@ -1,8 +1,11 @@
 .agent
 .beads
+.beads.gate.lock
 .codex
 .claude
+.gemini
 Dockerfile
+Dockerfile.*
 .dockerignore
 .env*
 !.env.example
@@ -13,3 +16,12 @@ README.md
 .next
 .git
 terraform/
+coverage/
+tsconfig.tsbuildinfo
+**/*.test.ts
+**/*.test.tsx
+lib/test-helpers/
+vitest.config.ts
+vitest.setup.ts
+vitest.integration.config.ts
+vitest.integration.setup.ts
