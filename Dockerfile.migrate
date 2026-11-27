@@ -5,9 +5,12 @@ WORKDIR /app
 # Install system dependencies for Prisma
 RUN apk add --no-cache openssl libc6-compat
 
-# Install global prisma CLI
-# Match version with package.json
-RUN npm install -g prisma@6.19.1
+# Install global prisma CLI matching package.json so versions cannot drift
+COPY package.json ./package.json
+RUN PRISMA_VERSION="$(node -p "(require('./package.json').devDependencies?.prisma || require('./package.json').dependencies?.prisma || '').replace(/^[^0-9]*/, '')")" && \
+    test -n "$PRISMA_VERSION" && \
+    npm install -g "prisma@${PRISMA_VERSION}" && \
+    rm package.json
 
 # Copy schema and migrations
 COPY prisma ./prisma
