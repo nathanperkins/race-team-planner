@@ -8,6 +8,9 @@
     "Steven Case"
   ],
   "license": "UNLICENSED",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "dev": "next dev --turbo",
     "build": "next build",
