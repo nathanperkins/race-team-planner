@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { type ReactNode, useEffect, useRef } from 'react'
 import { Check, X } from 'lucide-react'
 import styles from './WarningDialog.module.css'
 
@@ -13,6 +13,7 @@ interface WarningDialogProps {
   confirmLabel?: string
   cancelLabel?: string
   hideCancel?: boolean
+  confirmTone?: 'default' | 'destructive'
 }
 
 export default function WarningDialog({
@@ -24,8 +25,33 @@ export default function WarningDialog({
   confirmLabel,
   cancelLabel,
   hideCancel = false,
+  confirmTone = 'default',
 }: WarningDialogProps) {
+  const cancelButtonRef = useRef<HTMLButtonElement>(null)
+  const confirmButtonRef = useRef<HTMLButtonElement>(null)
+  const previousFocusRef = useRef<HTMLElement | null>(null)
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    previousFocusRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null
+
+    const target = !hideCancel ? cancelButtonRef.current : confirmButtonRef.current
+    target?.focus()
+
+    return () => {
+      previousFocusRef.current?.focus()
+      previousFocusRef.current = null
+    }
+  }, [isOpen, hideCancel])
+
   if (!isOpen) return null
+
+  const cancelClassName =
+    confirmTone === 'destructive' ? styles.warningNeutral : styles.warningCancel
+  const confirmClassName =
+    confirmTone === 'destructive' ? styles.warningDestructive : styles.warningConfirm
 
   return (
     <div
@@ -41,8 +67,9 @@ export default function WarningDialog({
         <div className={styles.warningModalActions}>
           {!hideCancel && (
             <button
+              ref={cancelButtonRef}
               type="button"
-              className={styles.warningCancel}
+              className={cancelClassName}
               onClick={onCancel}
               aria-label={cancelLabel || 'Cancel'}
             >
@@ -51,8 +78,9 @@ export default function WarningDialog({
             </button>
           )}
           <button
+            ref={confirmButtonRef}
             type="button"
-            className={styles.warningConfirm}
+            className={confirmClassName}
             onClick={onConfirm}
             aria-label={confirmLabel || 'Confirm'}
           >

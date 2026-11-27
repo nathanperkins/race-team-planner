@@ -144,4 +144,96 @@ describe('EditEventModal', () => {
     expect(tzSelect).toHaveValue('UTC')
     expect(startInput.value).toBe('2027-06-01T10:00')
   })
+
+  describe('unsaved changes confirmation (#56)', () => {
+    it('closes immediately when no fields were changed or only display timezone was switched', async () => {
+      const user = userEvent.setup()
+      render(
+        <TimeZoneProvider initialTimeZone="America/Los_Angeles">
+          <EditEventModal onClose={mockOnClose} event={mockEvent} />
+        </TimeZoneProvider>
+      )
+
+      // Switching timezone converts display time without modifying the underlying UTC instant
+      await user.selectOptions(screen.getByLabelText(/time zone/i), 'UTC')
+      await user.click(screen.getByRole('button', { name: /cancel/i }))
+
+      expect(mockOnClose).toHaveBeenCalledTimes(1)
+      expect(
+        screen.queryByRole('dialog', { name: 'Discard Unsaved Changes?' })
+      ).not.toBeInTheDocument()
+    })
+
+    it('prompts before closing when an existing event field is edited and allows keeping or discarding edits', async () => {
+      const user = userEvent.setup()
+      const { container } = render(<EditEventModal onClose={mockOnClose} event={mockEvent} />)
+
+      const nameInput = screen.getByLabelText(/event name/i)
+      await user.type(nameInput, ' Special')
+
+      // Clicking backdrop shows discard confirmation
+      const backdrop = container.querySelector('[class*="backdrop"]') as HTMLElement
+      await user.click(backdrop)
+      const dialog = screen.getByRole('dialog', { name: 'Discard Unsaved Changes?' })
+      expect(dialog).toBeInTheDocument()
+      expect(mockOnClose).not.toHaveBeenCalled()
+
+      // Keep Editing preserves changes
+      await user.click(within(dialog).getByRole('button', { name: /keep editing/i }))
+      expect(
+        screen.queryByRole('dialog', { name: 'Discard Unsaved Changes?' })
+      ).not.toBeInTheDocument()
+      expect(nameInput).toHaveValue('Sebring 12hr Special')
+
+      // Pressing Escape prompts again, then confirming Discard closes the modal
+      await user.keyboard('{Escape}')
+      const secondDialog = screen.getByRole('dialog', { name: 'Discard Unsaved Changes?' })
+      await user.click(within(secondDialog).getByRole('button', { name: /discard/i }))
+      expect(mockOnClose).toHaveBeenCalledTimes(1)
+    })
+
+    it('prompts when an existing timeslot value is modified or a timeslot is added in edit mode', async () => {
+      const user = userEvent.setup()
+      render(<EditEventModal onClose={mockOnClose} event={mockEvent} />)
+
+      const startInput = document.querySelector('input[name="startTimes"]') as HTMLInputElement
+      await user.clear(startInput)
+      await user.type(startInput, '2027-06-02T14:00')
+      await user.click(screen.getByRole('button', { name: /close modal/i }))
+
+      expect(screen.getByRole('dialog', { name: 'Discard Unsaved Changes?' })).toBeInTheDocument()
+      expect(mockOnClose).not.toHaveBeenCalled()
+    })
+
+    it('closes without confirmation if an edit in edit mode is reverted back to original value', async () => {
+      const user = userEvent.setup()
+      render(<EditEventModal onClose={mockOnClose} event={mockEvent} />)
+
+      const nameInput = screen.getByLabelText(/event name/i)
+      await user.type(nameInput, 'X')
+      await user.keyboard('{Backspace}')
+
+      await user.click(screen.getByRole('button', { name: /cancel/i }))
+      expect(mockOnClose).toHaveBeenCalledTimes(1)
+      expect(
+        screen.queryByRole('dialog', { name: 'Discard Unsaved Changes?' })
+      ).not.toBeInTheDocument()
+    })
+
+    it('dismisses Delete Event dialog on Escape without opening discard confirmation', async () => {
+      const user = userEvent.setup()
+      render(<EditEventModal onClose={mockOnClose} event={mockEvent} />)
+
+      await user.type(screen.getByLabelText(/event name/i), ' Edited')
+      await user.click(screen.getByRole('button', { name: /delete event/i }))
+      expect(screen.getByRole('dialog', { name: 'Delete Event?' })).toBeInTheDocument()
+
+      await user.keyboard('{Escape}')
+      expect(screen.queryByRole('dialog', { name: 'Delete Event?' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('dialog', { name: 'Discard Unsaved Changes?' })
+      ).not.toBeInTheDocument()
+      expect(mockOnClose).not.toHaveBeenCalled()
+    })
+  })
 })

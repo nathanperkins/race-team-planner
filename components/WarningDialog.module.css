@@ -44,7 +44,9 @@
 }
 
 .warningConfirm,
-.warningCancel {
+.warningCancel,
+.warningNeutral,
+.warningDestructive {
   min-width: 2.75rem;
   min-height: 2.75rem;
   border-radius: 999px;
@@ -68,11 +70,22 @@
   background: rgba(16, 185, 129, 0.34);
 }
 
-.warningCancel {
+.warningCancel,
+.warningDestructive {
   background: rgba(239, 68, 68, 0.22);
   color: #fca5a5;
 }
 
-.warningCancel:hover {
+.warningCancel:hover,
+.warningDestructive:hover {
   background: rgba(239, 68, 68, 0.34);
+}
+
+.warningNeutral {
+  background: rgba(148, 163, 184, 0.2);
+  color: #e2e8f0;
+}
+
+.warningNeutral:hover {
+  background: rgba(148, 163, 184, 0.32);
 }

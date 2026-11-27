@@ -5,9 +5,11 @@ import { useActionState, useEffect, useRef, useState } from 'react'
 import { createCustomEvent } from './actions'
 import styles from './AddEventModal.module.css'
 import LoadingOverlay from '@/components/LoadingOverlay'
+import WarningDialog from '@/components/WarningDialog'
 import { useTimeZone } from '@/components/TimeZoneProvider'
 import { DEFAULT_TIMEZONE, convertDateTimeLocalTimeZone } from '@/lib/timezone-utils'
 import CustomEventFormFields from './CustomEventFormFields'
+import { useUnsavedCustomEventGuard } from './useUnsavedCustomEventGuard'
 
 interface AddEventModalProps {
   onClose: () => void
@@ -39,14 +41,25 @@ export default function AddEventModal({ onClose }: AddEventModalProps) {
       if (formRef.current) {
         formRef.current.reset()
       }
-      setTimeout(() => onClose(), 500)
+      const timer = setTimeout(() => onClose(), 500)
+      return () => clearTimeout(timer)
     }
   }, [state.message, onClose])
+
+  const { confirmDiscardOpen, requestClose, confirmDiscard, cancelDiscard } =
+    useUnsavedCustomEventGuard({
+      formRef,
+      timeslots,
+      timeZone,
+      onClose,
+      isBusy: pending,
+      isSaved: state.message === 'Success',
+    })
 
   // Close on backdrop click
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === modalRef.current) {
-      onClose()
+      requestClose()
     }
   }
 
@@ -54,10 +67,23 @@ export default function AddEventModal({ onClose }: AddEventModalProps) {
     <>
       {pending && <LoadingOverlay message="Creating event..." />}
       <div className={styles.backdrop} ref={modalRef} onClick={handleBackdropClick}>
-        <div className={styles.modal}>
+        <div
+          className={styles.modal}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="add-custom-event-title"
+        >
           <div className={styles.header}>
-            <h2 className={styles.title}>Add Custom Event</h2>
-            <button className={styles.closeButton} onClick={onClose} type="button">
+            <h2 id="add-custom-event-title" className={styles.title}>
+              Add Custom Event
+            </h2>
+            <button
+              className={styles.closeButton}
+              onClick={requestClose}
+              type="button"
+              aria-label="Close modal"
+              disabled={pending}
+            >
               <X size={24} />
             </button>
           </div>
@@ -80,7 +106,12 @@ export default function AddEventModal({ onClose }: AddEventModalProps) {
             )}
 
             <div className={styles.actions}>
-              <button type="button" className={styles.cancelButton} onClick={onClose}>
+              <button
+                type="button"
+                className={styles.cancelButton}
+                onClick={requestClose}
+                disabled={pending}
+              >
                 Cancel
               </button>
               <button type="submit" className={styles.submitButton} disabled={pending}>
@@ -90,6 +121,16 @@ export default function AddEventModal({ onClose }: AddEventModalProps) {
           </form>
         </div>
       </div>
+      <WarningDialog
+        isOpen={confirmDiscardOpen}
+        title="Discard Unsaved Changes?"
+        message="You have unsaved changes. Are you sure you want to close and discard them?"
+        confirmLabel="Discard"
+        cancelLabel="Keep Editing"
+        confirmTone="destructive"
+        onConfirm={confirmDiscard}
+        onCancel={cancelDiscard}
+      />
     </>
   )
 }

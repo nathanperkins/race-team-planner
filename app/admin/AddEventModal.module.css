@@ -46,8 +46,13 @@
   transition: color 0.2s;
 }
 
-.closeButton:hover {
+.closeButton:hover:not(:disabled) {
   color: white;
+}
+
+.closeButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .form {
@@ -138,8 +143,13 @@
   color: #d1d5db;
 }
 
-.cancelButton:hover {
+.cancelButton:hover:not(:disabled) {
   background: #4b5563;
+}
+
+.cancelButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .submitButton {

@@ -10,6 +10,7 @@ import { useTimeZone } from '@/components/TimeZoneProvider'
 import { convertDateTimeLocalTimeZone, formatDateTimeForInput } from '@/lib/timezone-utils'
 import CustomEventFormFields from './CustomEventFormFields'
 import { CustomEventData } from './customEventSchema'
+import { useUnsavedCustomEventGuard } from './useUnsavedCustomEventGuard'
 
 interface EditEventModalProps {
   onClose: () => void
@@ -24,20 +25,15 @@ export default function EditEventModal({ onClose, event }: EditEventModalProps) 
   const [deleteError, setDeleteError] = useState('')
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const modalRef = useRef<HTMLDivElement>(null)
+  const formRef = useRef<HTMLFormElement>(null)
 
   // Close on successful submission
   useEffect(() => {
     if (state.message === 'Success') {
-      setTimeout(() => onClose(), 500)
+      const timer = setTimeout(() => onClose(), 500)
+      return () => clearTimeout(timer)
     }
   }, [state.message, onClose])
-
-  // Close on backdrop click
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === modalRef.current) {
-      onClose()
-    }
-  }
 
   const [timeslots, setTimeslots] = useState<Array<{ id: string; startTime: string }>>(() => {
     if (event.races && event.races.length > 0) {
@@ -48,6 +44,25 @@ export default function EditEventModal({ onClose, event }: EditEventModalProps) 
     }
     return [{ id: '', startTime: formatDateTimeForInput(event.startTime || '', viewerTimeZone) }]
   })
+
+  const { confirmDiscardOpen, requestClose, confirmDiscard, cancelDiscard } =
+    useUnsavedCustomEventGuard({
+      formRef,
+      timeslots,
+      timeZone,
+      onClose,
+      isBusy: pending || isDeleting,
+      isSaved: state.message === 'Success',
+      isOtherDialogOpen: confirmDeleteOpen,
+      onOtherDialogEscape: () => setConfirmDeleteOpen(false),
+    })
+
+  // Close on backdrop click
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === modalRef.current) {
+      requestClose()
+    }
+  }
 
   const handleTimeZoneChange = (nextTimeZone: string) => {
     setTimeslots((prev) =>
@@ -80,15 +95,28 @@ export default function EditEventModal({ onClose, event }: EditEventModalProps) 
         <LoadingOverlay message={isDeleting ? 'Deleting event...' : 'Updating event...'} />
       )}
       <div className={styles.backdrop} ref={modalRef} onClick={handleBackdropClick}>
-        <div className={styles.modal}>
+        <div
+          className={styles.modal}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="edit-custom-event-title"
+        >
           <div className={styles.header}>
-            <h2 className={styles.title}>Edit Custom Event</h2>
-            <button className={styles.closeButton} onClick={onClose} type="button">
+            <h2 id="edit-custom-event-title" className={styles.title}>
+              Edit Custom Event
+            </h2>
+            <button
+              className={styles.closeButton}
+              onClick={requestClose}
+              type="button"
+              aria-label="Close modal"
+              disabled={pending || isDeleting}
+            >
               <X size={24} />
             </button>
           </div>
 
-          <form action={formAction} className={styles.form}>
+          <form action={formAction} className={styles.form} ref={formRef}>
             <input type="hidden" name="eventId" value={event.id} />
 
             <CustomEventFormFields
@@ -121,7 +149,12 @@ export default function EditEventModal({ onClose, event }: EditEventModalProps) 
                 {isDeleting ? 'Deleting...' : 'Delete Event'}
               </button>
               <div style={{ flex: 1 }} />
-              <button type="button" className={styles.cancelButton} onClick={onClose}>
+              <button
+                type="button"
+                className={styles.cancelButton}
+                onClick={requestClose}
+                disabled={pending || isDeleting}
+              >
                 Cancel
               </button>
               <button
@@ -141,6 +174,16 @@ export default function EditEventModal({ onClose, event }: EditEventModalProps) 
         message="Are you sure you want to delete this event? This action cannot be undone."
         onConfirm={handleDelete}
         onCancel={() => setConfirmDeleteOpen(false)}
+      />
+      <WarningDialog
+        isOpen={confirmDiscardOpen}
+        title="Discard Unsaved Changes?"
+        message="You have unsaved changes. Are you sure you want to close and discard them?"
+        confirmLabel="Discard"
+        cancelLabel="Keep Editing"
+        confirmTone="destructive"
+        onConfirm={confirmDiscard}
+        onCancel={cancelDiscard}
       />
     </>
   )
