@@ -18,6 +18,16 @@ const LICENSE_NAMES: Record<LicenseLevel, string> = {
   [LicenseLevel.PWC]: 'PWC',
 }
 
+export const OPEN_LICENSE_LABEL = 'Open to All'
+export const OPEN_LICENSE_COLOR = '#14b8a6'
+
+export interface LicenseBadgeInfo {
+  license: string
+  label: string
+  color: string
+  isOpenToAll: boolean
+}
+
 export function getLicenseForGroup(licenseGroup?: number | null): string {
   if (licenseGroup && LICENSE_NAMES[licenseGroup as LicenseLevel]) {
     return LICENSE_NAMES[licenseGroup as LicenseLevel]
@@ -36,8 +46,31 @@ export function getLicenseColor(name: string): string {
       return '#facc15'
     case LICENSE_NAMES[LicenseLevel.D]:
       return '#fb923c'
+    case OPEN_LICENSE_LABEL:
+      return OPEN_LICENSE_COLOR
+    case 'N/A':
+      return '#94a3b8'
     default:
       return '#ef4444'
+  }
+}
+
+export function getLicenseBadgeInfo(licenseGroup?: number | null): LicenseBadgeInfo {
+  const license = getLicenseForGroup(licenseGroup)
+  const isOpenToAll = licenseGroup === null || licenseGroup === undefined
+  if (isOpenToAll) {
+    return {
+      license,
+      label: OPEN_LICENSE_LABEL,
+      color: OPEN_LICENSE_COLOR,
+      isOpenToAll: true,
+    }
+  }
+  return {
+    license,
+    label: license,
+    color: getLicenseColor(license),
+    isOpenToAll: false,
   }
 }
 

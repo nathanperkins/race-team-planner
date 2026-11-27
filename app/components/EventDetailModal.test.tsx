@@ -209,4 +209,19 @@ describe('EventDetailModal', () => {
     expect(screen.getByText(/3\/6\s*•\s*11:00 AM PST/)).toBeInTheDocument()
     expect(screen.getByText(/3\/6\s*•\s*5:00 PM PST/)).toBeInTheDocument()
   })
+
+  it('displays an Open to All badge when event has no license requirement', () => {
+    render(
+      <EventDetailModal
+        {...defaultProps}
+        event={{ ...mockEvent, licenseGroup: null } as any}
+        userLicenseLevel={null}
+      />
+    )
+
+    const badge = screen.getByText('Open to All')
+    expect(badge).toBeInTheDocument()
+    expect(badge).toHaveAttribute('title', 'No license requirement — open to all drivers')
+    expect(screen.queryByText('N/A')).not.toBeInTheDocument()
+  })
 })
