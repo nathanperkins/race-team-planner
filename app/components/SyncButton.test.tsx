@@ -25,22 +25,7 @@ describe('SyncButton', () => {
 
   it('shows loading modal while sync is running', async () => {
     const user = userEvent.setup()
-    vi.mocked(syncGlobalDataAction).mockImplementation(
-      () =>
-        new Promise((resolve) =>
-          setTimeout(
-            () =>
-              resolve({
-                success: true,
-                eventsCount: 5,
-                carClassesCount: 3,
-                usersCount: 10,
-                teamsCount: 2,
-              }),
-            100
-          )
-        )
-    )
+    vi.mocked(syncGlobalDataAction).mockImplementation(() => new Promise(() => {}))
 
     render(<SyncButton />)
     await user.click(screen.getByRole('button', { name: /sync with iracing/i }))
@@ -51,22 +36,7 @@ describe('SyncButton', () => {
 
   it('disables the button while sync is running', async () => {
     const user = userEvent.setup()
-    vi.mocked(syncGlobalDataAction).mockImplementation(
-      () =>
-        new Promise((resolve) =>
-          setTimeout(
-            () =>
-              resolve({
-                success: true,
-                eventsCount: 5,
-                carClassesCount: 3,
-                usersCount: 10,
-                teamsCount: 2,
-              }),
-            100
-          )
-        )
-    )
+    vi.mocked(syncGlobalDataAction).mockImplementation(() => new Promise(() => {}))
 
     render(<SyncButton />)
     await user.click(screen.getByRole('button', { name: /sync with iracing/i }))

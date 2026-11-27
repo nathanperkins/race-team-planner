@@ -25,12 +25,7 @@ describe('TriggerReportButton', () => {
 
   it('shows loading modal while action is running', async () => {
     const user = userEvent.setup()
-    vi.mocked(triggerWeeklyReportAction).mockImplementation(
-      () =>
-        new Promise((resolve) =>
-          setTimeout(() => resolve({ success: true, message: 'Done.' }), 100)
-        )
-    )
+    vi.mocked(triggerWeeklyReportAction).mockImplementation(() => new Promise(() => {}))
 
     render(<TriggerReportButton />)
     await user.click(screen.getByRole('button', { name: /send weekly report/i }))
@@ -41,12 +36,7 @@ describe('TriggerReportButton', () => {
 
   it('disables the trigger button while action is running', async () => {
     const user = userEvent.setup()
-    vi.mocked(triggerWeeklyReportAction).mockImplementation(
-      () =>
-        new Promise((resolve) =>
-          setTimeout(() => resolve({ success: true, message: 'Done.' }), 100)
-        )
-    )
+    vi.mocked(triggerWeeklyReportAction).mockImplementation(() => new Promise(() => {}))
 
     render(<TriggerReportButton />)
     await user.click(screen.getByRole('button', { name: /send weekly report/i }))

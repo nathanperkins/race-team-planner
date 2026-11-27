@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import EditEventModal from './EditEventModal'
@@ -61,8 +61,12 @@ describe('EditEventModal', () => {
   })
 
   it('shows loading overlay while updating event', async () => {
+    let resolveUpdate!: (value: { message: string }) => void
     vi.mocked(updateCustomEvent).mockImplementation(
-      () => new Promise((resolve) => setTimeout(() => resolve({ message: '' }), 200))
+      () =>
+        new Promise((resolve) => {
+          resolveUpdate = resolve
+        })
     )
 
     const user = userEvent.setup()
@@ -71,12 +75,19 @@ describe('EditEventModal', () => {
     await user.click(screen.getByRole('button', { name: /update event/i }))
 
     expect(screen.getByRole('heading', { name: 'Updating event...' })).toBeInTheDocument()
+
+    await act(async () => {
+      resolveUpdate({ message: '' })
+    })
   })
 
   it('shows loading overlay while deleting event', async () => {
+    let resolveDelete!: (value: { success: boolean; message: string }) => void
     vi.mocked(deleteCustomEvent).mockImplementation(
       () =>
-        new Promise((resolve) => setTimeout(() => resolve({ success: false, message: '' }), 200))
+        new Promise((resolve) => {
+          resolveDelete = resolve
+        })
     )
 
     const user = userEvent.setup()
@@ -87,6 +98,10 @@ describe('EditEventModal', () => {
     await user.click(within(dialog).getByRole('button', { name: /confirm/i }))
 
     expect(screen.getByRole('heading', { name: 'Deleting event...' })).toBeInTheDocument()
+
+    await act(async () => {
+      resolveDelete({ success: false, message: '' })
+    })
   })
 
   it('does not delete if confirmation modal is cancelled', async () => {

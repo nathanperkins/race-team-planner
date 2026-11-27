@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import AddEventModal from './AddEventModal'
@@ -63,8 +63,12 @@ describe('AddEventModal', () => {
   })
 
   it('shows loading overlay while creating event', async () => {
+    let resolveCreate!: (value: { message: string }) => void
     vi.mocked(createCustomEvent).mockImplementation(
-      () => new Promise((resolve) => setTimeout(() => resolve({ message: '' }), 200))
+      () =>
+        new Promise((resolve) => {
+          resolveCreate = resolve
+        })
     )
 
     const user = userEvent.setup()
@@ -74,11 +78,19 @@ describe('AddEventModal', () => {
     await user.click(screen.getByRole('button', { name: /create event/i }))
 
     expect(screen.getByRole('heading', { name: 'Creating event...' })).toBeInTheDocument()
+
+    await act(async () => {
+      resolveCreate({ message: '' })
+    })
   })
 
   it('disables submit button while pending', async () => {
+    let resolveCreate!: (value: { message: string }) => void
     vi.mocked(createCustomEvent).mockImplementation(
-      () => new Promise((resolve) => setTimeout(() => resolve({ message: '' }), 200))
+      () =>
+        new Promise((resolve) => {
+          resolveCreate = resolve
+        })
     )
 
     const user = userEvent.setup()
@@ -88,6 +100,10 @@ describe('AddEventModal', () => {
     await user.click(screen.getByRole('button', { name: /create event/i }))
 
     expect(screen.getByRole('button', { name: /creating/i })).toBeDisabled()
+
+    await act(async () => {
+      resolveCreate({ message: '' })
+    })
   })
 
   it('shows error message on submission failure', async () => {
@@ -224,8 +240,12 @@ describe('AddEventModal', () => {
     })
 
     it('blocks closing via Escape or close button while submission is pending', async () => {
+      let resolveCreate!: (value: { message: string }) => void
       vi.mocked(createCustomEvent).mockImplementation(
-        () => new Promise((resolve) => setTimeout(() => resolve({ message: '' }), 200))
+        () =>
+          new Promise((resolve) => {
+            resolveCreate = resolve
+          })
       )
 
       const user = userEvent.setup()
@@ -242,6 +262,10 @@ describe('AddEventModal', () => {
       expect(
         screen.queryByRole('dialog', { name: 'Discard Unsaved Changes?' })
       ).not.toBeInTheDocument()
+
+      await act(async () => {
+        resolveCreate({ message: '' })
+      })
     })
 
     it('closes without discard confirmation after save succeeds', async () => {
