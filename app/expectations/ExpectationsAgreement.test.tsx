@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { SessionContextValue, useSession } from 'next-auth/react'
@@ -36,13 +36,25 @@ describe('ExpectationsAgreement', () => {
     expect(screen.getByText(/have read and understand/i)).toBeInTheDocument()
   })
 
-  const slowAgree = () =>
-    new Promise<{ success: true; data: { expectationsVersion: number } }>((resolve) =>
-      setTimeout(() => resolve({ success: true, data: { expectationsVersion: 1 } }), 200)
-    )
+  type AgreeResult = { success: true; data: { expectationsVersion: number } }
+
+  const createDeferredAgree = () => {
+    let resolveAgree!: (value: AgreeResult) => void
+    const promise = new Promise<AgreeResult>((resolve) => {
+      resolveAgree = resolve
+    })
+    return {
+      mock: () => promise,
+      finish: () =>
+        act(async () => {
+          resolveAgree({ success: true, data: { expectationsVersion: 1 } })
+        }),
+    }
+  }
 
   it('shows loading overlay while saving agreement', async () => {
-    vi.mocked(agreeToExpectations).mockImplementation(slowAgree)
+    const deferred = createDeferredAgree()
+    vi.mocked(agreeToExpectations).mockImplementation(deferred.mock)
 
     const user = userEvent.setup()
     render(<ExpectationsAgreement />)
@@ -50,10 +62,13 @@ describe('ExpectationsAgreement', () => {
     await user.click(screen.getByRole('button', { name: /i agree/i }))
 
     expect(screen.getByRole('heading', { name: 'Saving agreement...' })).toBeInTheDocument()
+
+    await deferred.finish()
   })
 
   it('disables the button while pending', async () => {
-    vi.mocked(agreeToExpectations).mockImplementation(slowAgree)
+    const deferred = createDeferredAgree()
+    vi.mocked(agreeToExpectations).mockImplementation(deferred.mock)
 
     const user = userEvent.setup()
     render(<ExpectationsAgreement />)
@@ -62,10 +77,13 @@ describe('ExpectationsAgreement', () => {
 
     // Button text changes to "Agreeing..." while pending
     expect(screen.getByRole('button', { name: /agreeing/i })).toBeDisabled()
+
+    await deferred.finish()
   })
 
   it('calls agreeToExpectations when button is clicked', async () => {
-    vi.mocked(agreeToExpectations).mockImplementation(slowAgree)
+    const deferred = createDeferredAgree()
+    vi.mocked(agreeToExpectations).mockImplementation(deferred.mock)
 
     const user = userEvent.setup()
     render(<ExpectationsAgreement />)
@@ -73,5 +91,7 @@ describe('ExpectationsAgreement', () => {
     await user.click(screen.getByRole('button', { name: /i agree/i }))
 
     expect(agreeToExpectations).toHaveBeenCalledTimes(1)
+
+    await deferred.finish()
   })
 })

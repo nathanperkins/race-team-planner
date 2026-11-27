@@ -31,12 +31,7 @@ describe('BackfillNicknamesButton', () => {
 
   it('shows in-progress state while action is running', async () => {
     const user = userEvent.setup()
-    vi.mocked(backfillDiscordNicknamesAction).mockImplementation(
-      () =>
-        new Promise((resolve) =>
-          setTimeout(() => resolve({ success: true, message: 'Done.' }), 100)
-        )
-    )
+    vi.mocked(backfillDiscordNicknamesAction).mockImplementation(() => new Promise(() => {}))
 
     render(<BackfillNicknamesButton />)
     await user.click(screen.getByRole('button', { name: /backfill discord nicknames/i }))
@@ -47,12 +42,7 @@ describe('BackfillNicknamesButton', () => {
 
   it('disables the trigger button while running', async () => {
     const user = userEvent.setup()
-    vi.mocked(backfillDiscordNicknamesAction).mockImplementation(
-      () =>
-        new Promise((resolve) =>
-          setTimeout(() => resolve({ success: true, message: 'Done.' }), 100)
-        )
-    )
+    vi.mocked(backfillDiscordNicknamesAction).mockImplementation(() => new Promise(() => {}))
 
     render(<BackfillNicknamesButton />)
     await user.click(screen.getByRole('button', { name: /backfill discord nicknames/i }))
