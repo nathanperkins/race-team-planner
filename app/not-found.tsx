@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { MapPinOff, ArrowLeft, ShieldAlert } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
-import { GuildMembershipStatus } from '@/lib/discord'
+import { AUTH_ERROR_EMAIL_REQUIRED, GuildMembershipStatus } from '@/lib/auth-errors'
 import styles from './error.module.css'
 import { Suspense } from 'react'
 
@@ -14,17 +14,29 @@ function ErrorContent() {
   const isAccessDenied = error === GuildMembershipStatus.NOT_MEMBER
   const isConfigError = error === GuildMembershipStatus.CONFIG_ERROR
   const isApiError = error === GuildMembershipStatus.API_ERROR
+  const isEmailRequired = error === AUTH_ERROR_EMAIL_REQUIRED
 
-  if (isAccessDenied || isConfigError || isApiError) {
+  if (isAccessDenied || isConfigError || isApiError || isEmailRequired) {
     return (
       <div className={styles.container}>
         <ShieldAlert size={64} className={styles.errorIcon} />
         <h1 className={styles.title}>
-          {isAccessDenied ? 'Membership Required' : 'Authentication Error'}
+          {isAccessDenied
+            ? 'Membership Required'
+            : isEmailRequired
+              ? 'Confirmed Email Required'
+              : 'Authentication Error'}
         </h1>
         <p className={styles.message}>
           {isAccessDenied ? (
             <>Access is restricted to members of our Discord Community.</>
+          ) : isEmailRequired ? (
+            <>
+              This application only supports Discord accounts with a confirmed email address.
+              <br />
+              Please add and verify an email address on your Discord account, then try signing in
+              again.
+            </>
           ) : isConfigError ? (
             <>
               The application is missing required Discord configuration.

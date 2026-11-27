@@ -4,6 +4,7 @@ import prisma from './prisma'
 import { authConfig } from './auth.config'
 import Credentials from 'next-auth/providers/credentials'
 import { features, SESSION_VERSION } from '@/lib/config'
+import { AUTH_ERROR_EMAIL_REQUIRED } from '@/lib/auth-errors'
 import {
   verifyGuildMembership,
   shouldRevalidateAccess,
@@ -70,12 +71,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         return true
       }
 
-      // 2. Perform Guild Membership Check for Discord
+      // 2. Perform Confirmed Email & Guild Membership Checks for Discord
       if (account?.provider === 'discord') {
         if (!profile?.id) {
           logger.error('Discord sign-in attempted without a profile ID')
           return false
         }
+
+        const hasEmail = typeof profile.email === 'string' && profile.email.trim().length > 0
+        const isVerified = profile.verified === true
+        if (!hasEmail || !isVerified) {
+          logger.info(
+            {
+              discordId: profile.id,
+              hasEmail,
+              verified: isVerified,
+            },
+            'Discord sign-in denied: confirmed email required'
+          )
+          return `/not-found?error=${AUTH_ERROR_EMAIL_REQUIRED}`
+        }
+
         const check = await verifyGuildMembership(profile.id as string)
         if (!check.granted) return check.redirectUrl
         setPendingMembership(profile.id as string, check.data)
