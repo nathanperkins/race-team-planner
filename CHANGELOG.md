@@ -6,7 +6,7 @@ The most notable changes to this project are documented here.
 
 **Released on <time datetime="2026-11-27">November 27, 2026</time>**
 
-[27 issues completed][Milestone 6] by **[Nathan]**.
+[28 issues completed][Milestone 6] by **[Nathan]**.
 
 ### Highlights
 
@@ -41,7 +41,7 @@ Version 1.6 delivers major quality-of-life improvements across events, authentic
 
 ### Sync & Performance
 
-- **Regular iRacing team membership sync** - Automated the 4-hour sync job to keep iRacing team memberships up to date ([#172](https://github.com/nathanperkins/race-team-planner/issues/172) by [Nathan])
+- **Regular iRacing team membership sync** - Automated the 4-hour sync job to keep iRacing team memberships up to date, including negative iRacing team IDs ([#172](https://github.com/nathanperkins/race-team-planner/issues/172), [#243](https://github.com/nathanperkins/race-team-planner/issues/243) by [Nathan])
 - **Faster cold starts** - Parallelized startup instrumentation checks to reduce Cloud Run cold start latency ([#166](https://github.com/nathanperkins/race-team-planner/issues/166) by [Nathan])
 
 ### Infrastructure & Maintenance

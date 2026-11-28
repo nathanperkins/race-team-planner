@@ -108,9 +108,10 @@ describe('syncSingleTeamMembers', () => {
       { id: 'user-other', iracingCustomerId: 9999 },
     ]
 
-    const result = await syncSingleTeamMembers('team-db-1', 55555, preloadedUsers)
+    const result = await syncSingleTeamMembers('team-db-1', -330963, preloadedUsers)
 
     expect(result).toEqual({ synced: true, memberCount: 2 })
+    expect(fetchTeamMembers).toHaveBeenCalledWith(-330963)
     expect(prisma.user.findMany).not.toHaveBeenCalled()
     expect(prisma.teamMember.upsert).toHaveBeenCalledTimes(2)
     expect(prisma.teamMemberRole.deleteMany).toHaveBeenCalledWith({
@@ -147,8 +148,8 @@ describe('syncSingleTeamMembers', () => {
     expect(mockLogger.warn).toHaveBeenCalled()
   })
 
-  it('skips placeholder teams with non-positive iracingTeamId', async () => {
-    const result = await syncSingleTeamMembers('placeholder-team', -101)
+  it('skips teams with invalid zero or non-integer iracingTeamId', async () => {
+    const result = await syncSingleTeamMembers('invalid-team', 0)
 
     expect(result).toEqual({ synced: false, memberCount: 0 })
     expect(fetchTeamMembers).not.toHaveBeenCalled()
@@ -156,7 +157,7 @@ describe('syncSingleTeamMembers', () => {
   })
 })
 
-describe('runIRacingSync team membership refresh (issue #172)', () => {
+describe('runIRacingSync team membership refresh (issues #172, #243)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     resetMockLogger()
@@ -185,10 +186,10 @@ describe('runIRacingSync team membership refresh (issue #172)', () => {
     vi.mocked(prisma.user.update).mockResolvedValue({} as never)
   })
 
-  it('syncs real iRacing teams (iracingTeamId > 0) during scheduled sync and continues past individual team failures', async () => {
+  it('syncs real iRacing teams (including negative team IDs) during scheduled sync and continues past individual team failures', async () => {
     vi.mocked(prisma.team.findMany).mockResolvedValue([
-      { id: 'team-1', iracingTeamId: 11111 },
-      { id: 'team-2', iracingTeamId: 22222 },
+      { id: 'team-1', iracingTeamId: -330963 },
+      { id: 'team-2', iracingTeamId: -330964 },
     ] as never)
 
     vi.mocked(fetchTeamMembers)
@@ -209,12 +210,14 @@ describe('runIRacingSync team membership refresh (issue #172)', () => {
     const result = await runIRacingSync(SyncSource.CRON)
 
     expect(prisma.team.findMany).toHaveBeenCalledWith({
-      where: { iracingTeamId: { gt: 0 } },
+      where: {
+        OR: [{ iracingTeamId: { gt: 0 } }, { teamMembers: { some: {} } }],
+      },
       select: { id: true, iracingTeamId: true },
     })
     expect(fetchTeamMembers).toHaveBeenCalledTimes(2)
-    expect(fetchTeamMembers).toHaveBeenNthCalledWith(1, 11111)
-    expect(fetchTeamMembers).toHaveBeenNthCalledWith(2, 22222)
+    expect(fetchTeamMembers).toHaveBeenNthCalledWith(1, -330963)
+    expect(fetchTeamMembers).toHaveBeenNthCalledWith(2, -330964)
     expect(result).toEqual({
       success: true,
       eventsCount: 0,

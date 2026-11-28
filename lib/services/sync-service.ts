@@ -154,10 +154,13 @@ export async function runIRacingSync(source: SyncSource = SyncSource.MANUAL) {
     }
     logger.info(`[${source}] Finished syncing stats.`)
 
-    // 5b. Sync iRacing Team Memberships for all registered iRacing teams
+    // 5b. Sync iRacing Team Memberships for all registered iRacing teams.
+    // Real iRacing team IDs returned by /data/team/get are negative integers
+    // (e.g. -330963), while unlinked manual placeholder teams have negative IDs
+    // and zero synced teamMembers (matching TeamManagement's isManualTeam check).
     const teamsToSync = await prisma.team.findMany({
       where: {
-        iracingTeamId: { gt: 0 },
+        OR: [{ iracingTeamId: { gt: 0 } }, { teamMembers: { some: {} } }],
       },
       select: { id: true, iracingTeamId: true },
     })
@@ -312,11 +315,8 @@ export async function syncSingleTeamMembers(
   iracingTeamId: number,
   preloadedUsers?: Array<{ id: string; iracingCustomerId: number | null }>
 ): Promise<{ synced: boolean; memberCount: number }> {
-  if (!iracingTeamId || iracingTeamId <= 0) {
-    logger.warn(
-      { teamId, iracingTeamId },
-      'Skipping team member sync for non-iRacing placeholder team'
-    )
+  if (!iracingTeamId || !Number.isInteger(iracingTeamId)) {
+    logger.warn({ teamId, iracingTeamId }, 'Skipping team member sync for invalid iracingTeamId')
     return { synced: false, memberCount: 0 }
   }
 
