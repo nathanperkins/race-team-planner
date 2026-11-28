@@ -76,6 +76,39 @@ We have a script that handles the entire pipeline (Terraform, Docker build, Migr
 5.  **Updates** and **Executes** the Cloud Run Migration Job.
 6.  **Deploys** the new application revision to Cloud Run.
 
+## Pausing & Resuming an Environment (Cost Saving)
+
+To minimize GCP billing when a non-production environment (like `staging`) is not actively in use—without tearing down DNS, SSL certificates, or Discord configuration—use `scripts/toggle-env.sh`:
+
+```bash
+# Check current state of Cloud Run ingress and Cloud Scheduler jobs
+./scripts/toggle-env.sh staging status
+
+# Preview what pausing will do without making changes
+./scripts/toggle-env.sh staging pause --dry-run
+
+# Pause staging (stops scheduled Cloud Run jobs and blocks public traffic)
+./scripts/toggle-env.sh staging pause
+
+# Resume staging when you need it again (takes a few seconds, no rebuild needed)
+./scripts/toggle-env.sh staging resume
+```
+
+### What `pause` stops vs. preserves
+
+- **Stopped (eliminates Cloud Run compute & scheduled job usage)**:
+  - Pauses all 4 Cloud Scheduler jobs (`sync-job`, `weekly-notification`, `db-backup-hourly`, `db-restore-test-weekly`), stopping hourly backup jobs, 4-hour iRacing syncs, weekly 2 vCPU restore tests, and weekly Discord notifications.
+  - Restricts Cloud Run service ingress to `internal` (and ensures `min-instances=0`) so external traffic/crawlers cannot wake container instances.
+- **Preserved intact (no tedious re-setup required)**:
+  - Cloud Run service definition and custom domain mapping (DNS records and managed TLS certificate stay intact).
+  - Secret Manager secrets (Discord OAuth/bot tokens, iRacing credentials, NextAuth, Prisma encryption key).
+  - GCS backup bucket, Artifact Registry `:latest` images, and Supabase database.
+
+> **Notes**:
+>
+> - Pausing `prod` / `production` requires interactive confirmation (or `--force` in non-interactive shells).
+> - Running `./scripts/deploy.sh <env>` later applies Terraform (`ingress = "INGRESS_TRAFFIC_ALL"`) and brings the service back online; run `./scripts/toggle-env.sh <env> resume` if you also want to resume the scheduler jobs without redeploying.
+
 ## Troubleshooting
 
 - **Permission Errors**: Ensure your local `gcloud` user has the Editor or Owner role on the project.
