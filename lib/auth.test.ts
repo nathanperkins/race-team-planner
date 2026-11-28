@@ -68,7 +68,7 @@ describe('auth', () => {
   })
 
   describe('adapter.linkAccount OAuth token stripping (#237)', () => {
-    it('strips access_token, refresh_token, and id_token while preserving required Account fields', async () => {
+    it('strips all unused OAuth token and metadata fields while preserving required Account fields', async () => {
       mockLinkAccount.mockResolvedValue({ id: 'account-1' })
 
       const inputAccount = {
@@ -82,6 +82,7 @@ describe('auth', () => {
         expires_at: 1_800_000_000,
         token_type: 'Bearer',
         scope: 'identify email',
+        session_state: 'some-state',
       }
 
       const result = await capturedConfig.adapter.linkAccount(inputAccount)
@@ -94,13 +95,18 @@ describe('auth', () => {
         type: 'oauth',
         provider: 'discord',
         providerAccountId: 'discord-456',
-        expires_at: 1_800_000_000,
-        token_type: 'Bearer',
-        scope: 'identify email',
       })
-      expect(persisted).not.toHaveProperty('access_token')
-      expect(persisted).not.toHaveProperty('refresh_token')
-      expect(persisted).not.toHaveProperty('id_token')
+      for (const strippedField of [
+        'access_token',
+        'refresh_token',
+        'id_token',
+        'expires_at',
+        'token_type',
+        'scope',
+        'session_state',
+      ]) {
+        expect(persisted).not.toHaveProperty(strippedField)
+      }
       // Does not mutate caller input
       expect(inputAccount.access_token).toBe('secret-access-token')
     })

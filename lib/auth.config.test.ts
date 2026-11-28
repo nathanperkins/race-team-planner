@@ -185,6 +185,7 @@ describe('auth.config', () => {
             expires_at: 1_800_000_000,
             token_type: 'Bearer',
             scope: 'identify email',
+            session_state: 'some-state',
           })
         ).toEqual({})
       } finally {

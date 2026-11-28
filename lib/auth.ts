@@ -58,17 +58,25 @@ const mockAuthProvider = Credentials({
 
 const baseAdapter = PrismaAdapter(prisma)
 type AdapterAccountInput = Parameters<NonNullable<typeof baseAdapter.linkAccount>>[0]
-const OAUTH_TOKEN_KEYS = new Set(['access_token', 'refresh_token', 'id_token'])
+const STRIPPED_ACCOUNT_FIELDS = new Set([
+  'access_token',
+  'refresh_token',
+  'id_token',
+  'expires_at',
+  'token_type',
+  'scope',
+  'session_state',
+])
 
 function stripOAuthTokens(account: AdapterAccountInput): AdapterAccountInput {
   return Object.fromEntries(
-    Object.entries(account).filter(([key]) => !OAUTH_TOKEN_KEYS.has(key))
+    Object.entries(account).filter(([key]) => !STRIPPED_ACCOUNT_FIELDS.has(key))
   ) as AdapterAccountInput
 }
 
 const adapter = {
   ...baseAdapter,
-  // Defense-in-depth: never persist OAuth token fields for any provider (#237)
+  // Defense-in-depth: never persist unused OAuth token/metadata fields for any provider (#237)
   linkAccount: (data: AdapterAccountInput) => baseAdapter.linkAccount!(stripOAuthTokens(data)),
 }
 
