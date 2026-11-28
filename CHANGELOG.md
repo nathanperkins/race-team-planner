@@ -2,6 +2,56 @@
 
 The most notable changes to this project are documented here.
 
+## Version 1.6 {#version-1.6}
+
+**Released on <time datetime="2026-11-27">November 27, 2026</time>**
+
+[27 issues completed][Milestone 6] by **[Nathan]**.
+
+### Highlights
+
+Version 1.6 delivers major quality-of-life improvements across events, authentication security, Discord notifications, and cloud infrastructure. User-facing updates include timezone selection across event views and forms, unsaved-changes protection in modals, clearer license and live-event badges, iRacing team membership warnings, and iRacing IDs on the roster. Under the hood, this release adds 1-hour Discord access revalidation, fixes multi-timeslot Discord notification bugs, upgrades the runtime to Node 26 LTS, hardens CI/CD and Docker builds, and introduces cost-saving controls for staging and Cloud Run.
+
+### Events & Team Picker
+
+- **Time zone selection** - Added time zone selection to the event viewer and create/edit custom event dialogs, displaying timezone abbreviations on every timeslot pill ([#168](https://github.com/nathanperkins/race-team-planner/issues/168) by [Nathan])
+- **Unsaved changes confirmation** - Closing the team picker modal or custom event create/edit modal with pending edits now prompts for confirmation before discarding changes ([#55](https://github.com/nathanperkins/race-team-planner/issues/55), [#56](https://github.com/nathanperkins/race-team-planner/issues/56) by [Nathan])
+- **iRacing team membership warning** - Timeslot details now display a warning indicator when a racer is assigned to a team they are not a member of on iRacing ([#161](https://github.com/nathanperkins/race-team-planner/issues/161) by [Nathan])
+- **Open to All license badge** - Events with no license requirement now display a distinct "Open to All" badge instead of omitting the license indicator ([#81](https://github.com/nathanperkins/race-team-planner/issues/81) by [Nathan])
+- **Muted LIVE badge for empty timeslots** - The `LIVE` badge and active timeslot pill now appear in a muted style when no community racers are registered in the live timeslot, reserving the pulsing highlight for active community races ([#152](https://github.com/nathanperkins/race-team-planner/issues/152) by [Nathan])
+- **Single-class dropdown cleanup** - Hidden the "change car class" dropdown on registrations when an event only has a single car class ([#111](https://github.com/nathanperkins/race-team-planner/issues/111) by [Nathan])
+
+### Roster
+
+- **iRacing ID column** - Added each driver's iRacing Customer ID to the roster view ([#171](https://github.com/nathanperkins/race-team-planner/issues/171) by [Nathan])
+
+### Discord Notifications
+
+- **Car class in drop messages** - Roster change notifications now include the driver's car class when they drop from a race ([#170](https://github.com/nathanperkins/race-team-planner/issues/170) by [Nathan])
+- **Fix: missing drop notification in team picker** - Removing an unassigned racer via the team picker now properly emits a drop notification ([#160](https://github.com/nathanperkins/race-team-planner/issues/160) by [Nathan])
+- **Fix: racers-in-class count excluded team-assigned drivers** - Race registration notifications now include drivers already assigned to teams in the per-class racer list ([#173](https://github.com/nathanperkins/race-team-planner/issues/173) by [Nathan])
+- **Fix: multi-timeslot team threads and drop timestamps** - Isolated team threads and drop timestamps per timeslot so multi-timeslot events always display the correct timeslot information ([#174](https://github.com/nathanperkins/race-team-planner/issues/174), [#175](https://github.com/nathanperkins/race-team-planner/issues/175) by [Nathan])
+
+### Authentication & Security
+
+- **1-hour access token expiration & role revalidation** - Sessions now automatically re-verify Discord guild membership and sync role/nickname changes once an hour, revoking access if a user leaves the server ([#156](https://github.com/nathanperkins/race-team-planner/issues/156) by [Nathan])
+- **Confirmed Discord email required** - Phone-only or unverified-email Discord accounts now receive a clear error message instead of failing during sign-in ([#176](https://github.com/nathanperkins/race-team-planner/issues/176) by [Nathan])
+- **Stop persisting Discord OAuth tokens (Prisma 7 prep)** - Stopped writing unused Discord OAuth token/metadata fields to `Account` and added a one-time migration clearing existing encrypted token columns ahead of Prisma 7 ([#237](https://github.com/nathanperkins/race-team-planner/issues/237) by [Nathan])
+- **OAuth issuer & dependency security updates** - Configured explicit Discord OAuth issuer for RFC 9207 compliance and applied npm security patches ([Nathan])
+
+### Sync & Performance
+
+- **Regular iRacing team membership sync** - Automated the 4-hour sync job to keep iRacing team memberships up to date ([#172](https://github.com/nathanperkins/race-team-planner/issues/172) by [Nathan])
+- **Faster cold starts** - Parallelized startup instrumentation checks to reduce Cloud Run cold start latency ([#166](https://github.com/nathanperkins/race-team-planner/issues/166) by [Nathan])
+
+### Infrastructure & Maintenance
+
+- **Node.js 26 LTS upgrade** - Upgraded Docker images and CI from EOL Node 20 to Node 26 LTS, pinned via `.nvmrc` ([#196](https://github.com/nathanperkins/race-team-planner/issues/196) by [Nathan])
+- **Cost-saving environment toggle & Cloud Run billing fix** - Added `scripts/toggle-env.sh` to pause/resume staging Cloud Scheduler jobs and Cloud Run ingress without disturbing DNS or Discord ([#227](https://github.com/nathanperkins/race-team-planner/issues/227) by [Nathan]), and capped Cloud Run service max instances to `1` with request-based billing (`cpu_idle = true`)
+- **Hardened deployments & Docker builds** - Updated `scripts/deploy.sh` with immutable git SHA image tags and dirty-tree protection for prod ([#198](https://github.com/nathanperkins/race-team-planner/issues/198) by [Nathan]), and improved Docker layer caching, `.dockerignore`, and `Dockerfile.migrate` Prisma version syncing ([#200](https://github.com/nathanperkins/race-team-planner/issues/200) by [Nathan])
+- **CI, Dependabot & release automation** - Upgraded CI with concurrency, least-privilege permissions, Postgres 17, and PR Docker build verification ([#199](https://github.com/nathanperkins/race-team-planner/issues/199) by [Nathan]), added grouped weekly Dependabot updates ([#197](https://github.com/nathanperkins/race-team-planner/issues/197) by [Nathan]), and added `.github/release.yml` with the `1.6.0` version bump ([#201](https://github.com/nathanperkins/race-team-planner/issues/201) by [Nathan])
+- **React 19 & test quality** - Eliminated `setState` inside `useEffect` hooks for React 19 compatibility ([#178](https://github.com/nathanperkins/race-team-planner/issues/178) by [Nathan]) and resolved strict TypeScript errors in test fixtures ([#179](https://github.com/nathanperkins/race-team-planner/issues/179) by [Nathan])
+
 ## Version 1.5 {#version-1.5}
 
 **Released on <time datetime="2026-03-18">March 18, 2026</time>**
@@ -283,5 +333,6 @@ Thanks to our testers for these suggestions and bug reports!
 [Milestone 3]: https://github.com/nathanperkins/race-team-planner/issues?q=milestone%3A1.3%20is%3Aclosed%20reason%3Acompleted
 [Milestone 4]: https://github.com/nathanperkins/race-team-planner/issues?q=milestone%3A1.4%20is%3Aclosed%20reason%3Acompleted
 [Milestone 5]: https://github.com/nathanperkins/race-team-planner/issues?q=milestone%3A1.5%20is%3Aclosed%20reason%3Acompleted
+[Milestone 6]: https://github.com/nathanperkins/race-team-planner/issues?q=milestone%3A1.6%20is%3Aclosed%20reason%3Acompleted%20is%3Aissue
 [Feedback 1]: https://github.com/nathanperkins/race-team-planner/issues?q=milestone%3A1.1%20is%3Aclosed%20reason%3Acompleted%20label%3Afeedback
 [Feedback 2]: https://github.com/nathanperkins/race-team-planner/issues?q=milestone%3A1.2%20is%3Aclosed%20reason%3Acompleted%20label%3Afeedback
