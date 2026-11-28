@@ -16,6 +16,14 @@ resource "google_artifact_registry_repository" "app_repo" {
   }
 
   cleanup_policies {
+    id     = "keep-recent-versions"
+    action = "KEEP"
+    most_recent_versions {
+      keep_count = 3
+    }
+  }
+
+  cleanup_policies {
     id     = "delete-untagged"
     action = "DELETE"
     condition {
@@ -28,7 +36,7 @@ resource "google_artifact_registry_repository" "app_repo" {
     id     = "delete-old-versions"
     action = "DELETE"
     condition {
-      older_than = "14400s" # 4 hours (except latest tag)
+      older_than = "14400s" # 4 hours (except latest & 3 most recent versions)
     }
   }
 
