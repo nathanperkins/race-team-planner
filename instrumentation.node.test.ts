@@ -144,14 +144,17 @@ describe('instrumentation.node', () => {
     )
   })
 
-  it('uses SimpleSpanProcessor and disables periodic metrics on Cloud Run (cpu_idle = true)', async () => {
+  it('uses BatchSpanProcessor for traces and disables periodic metrics on Cloud Run (cpu_idle = true)', async () => {
     vi.stubEnv('K_SERVICE', 'iracing-team-planner')
 
     await import('./instrumentation.node')
 
     expect(mockTraceExporterCtor).toHaveBeenCalledTimes(1)
-    expect(mockSimpleSpanProcessorCtor).toHaveBeenCalledTimes(1)
-    expect(mockBatchSpanProcessorCtor).not.toHaveBeenCalled()
+    expect(mockBatchSpanProcessorCtor).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'gcp-trace-exporter' }),
+      { exportTimeoutMillis: 8_000 }
+    )
+    expect(mockSimpleSpanProcessorCtor).not.toHaveBeenCalled()
     expect(mockPeriodicMetricReaderCtor).not.toHaveBeenCalled()
     expect(mockOtlpTraceExporterCtor).not.toHaveBeenCalled()
     expect(mockOtlpMetricExporterCtor).not.toHaveBeenCalled()
@@ -160,7 +163,7 @@ describe('instrumentation.node', () => {
       expect.objectContaining({
         serviceName: 'SRG Team Planner (test)',
         resourceDetectors: [{ kind: 'gcp-detector' }],
-        spanProcessors: [expect.objectContaining({ kind: 'simple-span-processor' })],
+        spanProcessors: [expect.objectContaining({ kind: 'batch-span-processor' })],
         metricReaders: [],
       })
     )

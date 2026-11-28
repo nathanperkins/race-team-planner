@@ -6,7 +6,7 @@ import { TraceExporter } from '@google-cloud/opentelemetry-cloud-trace-exporter'
 import { gcpDetector } from '@opentelemetry/resource-detector-gcp'
 import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics'
 import { PrismaInstrumentation } from '@prisma/instrumentation'
-import { BatchSpanProcessor, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-node'
+import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-node'
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http'
 import { UndiciInstrumentation } from '@opentelemetry/instrumentation-undici'
 import { createLogger } from '@/lib/logger'
@@ -35,22 +35,23 @@ if (!isCloudRun && !process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
   const serviceName = appTitle
 
   // On Cloud Run with request-based billing (cpu_idle = true), Cloud Run
-  // throttles container CPU immediately between HTTP requests. Background
-  // timers (BatchSpanProcessor's 5s flush delay and PeriodicExportingMetricReader's
-  // 60s interval) stall mid-export while throttled and fail with Timeout /
-  // out-of-order TimeSeries errors when the next request wakes the instance.
+  // throttles container CPU immediately between HTTP requests:
   //
-  // - Traces on Cloud Run use SimpleSpanProcessor so spans begin exporting
-  //   immediately while request CPU is active, with no idle background timer.
-  // - Metrics on Cloud Run are omitted because Cloud Run natively reports CPU,
-  //   memory, request count, and latency to Cloud Monitoring.
-  // - Locally (docker-compose OTel stack), keep BatchSpanProcessor +
-  //   PeriodicExportingMetricReader with OTLP proto exporters.
-  const spanProcessor = isCloudRun
-    ? new SimpleSpanProcessor(new TraceExporter())
-    : new BatchSpanProcessor(new OTLPTraceExporter({}), {
-        exportTimeoutMillis: 8_000,
-      })
+  // - Traces use BatchSpanProcessor everywhere so high-volume requests like the
+  //   4-hour iRacing sync (500+ Prisma spans) pack into 1–2 BatchWriteSpans RPCs
+  //   instead of exhausting Cloud Trace's free per-minute write-request quota.
+  //   Keep exportTimeoutMillis under Cloud Run's 10 s SIGTERM→SIGKILL window.
+  // - Metrics on Cloud Run are omitted because PeriodicExportingMetricReader's
+  //   60 s background timer stalls while throttled (causing timeouts and
+  //   out-of-order TimeSeries errors) and Cloud Run already reports CPU, memory,
+  //   request count, and latency natively to Cloud Monitoring.
+  // - Locally (docker-compose OTel stack), keep PeriodicExportingMetricReader
+  //   with OTLP proto exporters.
+  const traceExporter = isCloudRun ? new TraceExporter() : new OTLPTraceExporter({})
+
+  const spanProcessor = new BatchSpanProcessor(traceExporter, {
+    exportTimeoutMillis: 8_000,
+  })
 
   const metricReaders = isCloudRun
     ? []
