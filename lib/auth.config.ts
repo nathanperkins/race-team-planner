@@ -11,6 +11,11 @@ export const authConfig = {
             clientId: process.env.AUTH_DISCORD_ID,
             clientSecret: process.env.AUTH_DISCORD_SECRET,
             issuer: 'https://discord.com',
+            // Never persist Discord OAuth tokens in the Account table (#237);
+            // sessions use JWT cookies and guild revalidation uses DISCORD_BOT_TOKEN.
+            account() {
+              return {}
+            },
           }),
         ]
       : []),

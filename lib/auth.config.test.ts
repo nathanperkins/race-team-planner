@@ -163,5 +163,38 @@ describe('auth.config', () => {
         vi.resetModules()
       }
     })
+
+    it('strips OAuth token fields via Discord provider account callback (#237)', async () => {
+      vi.resetModules()
+      const originalEnv = process.env.AUTH_DISCORD_ID
+      process.env.AUTH_DISCORD_ID = 'test-discord-id'
+      try {
+        const { authConfig: freshConfig } = await import('./auth.config')
+        const discordProvider = freshConfig.providers.find(
+          (p: any) => (typeof p === 'function' ? p().id : p.id) === 'discord'
+        ) as any
+        const providerConfig =
+          typeof discordProvider === 'function' ? discordProvider() : discordProvider
+        const accountFn = providerConfig.account ?? providerConfig.options?.account
+        expect(typeof accountFn).toBe('function')
+        expect(
+          accountFn({
+            access_token: 'secret-access-token',
+            refresh_token: 'secret-refresh-token',
+            id_token: 'secret-id-token',
+            expires_at: 1_800_000_000,
+            token_type: 'Bearer',
+            scope: 'identify email',
+          })
+        ).toEqual({})
+      } finally {
+        if (originalEnv !== undefined) {
+          process.env.AUTH_DISCORD_ID = originalEnv
+        } else {
+          delete process.env.AUTH_DISCORD_ID
+        }
+        vi.resetModules()
+      }
+    })
   })
 })

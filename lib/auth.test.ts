@@ -18,8 +18,12 @@ vi.mock('next-auth', () => ({
   }),
 }))
 
+const mockLinkAccount = vi.fn()
+
 vi.mock('@auth/prisma-adapter', () => ({
-  PrismaAdapter: vi.fn(() => ({})),
+  PrismaAdapter: vi.fn(() => ({
+    linkAccount: mockLinkAccount,
+  })),
 }))
 
 vi.mock('@/lib/prisma', () => ({ default: {} }))
@@ -61,6 +65,45 @@ describe('auth', () => {
   afterEach(() => {
     vi.clearAllMocks()
     vi.useRealTimers()
+  })
+
+  describe('adapter.linkAccount OAuth token stripping (#237)', () => {
+    it('strips access_token, refresh_token, and id_token while preserving required Account fields', async () => {
+      mockLinkAccount.mockResolvedValue({ id: 'account-1' })
+
+      const inputAccount = {
+        userId: 'user-123',
+        type: 'oauth',
+        provider: 'discord',
+        providerAccountId: 'discord-456',
+        access_token: 'secret-access-token',
+        refresh_token: 'secret-refresh-token',
+        id_token: 'secret-id-token',
+        expires_at: 1_800_000_000,
+        token_type: 'Bearer',
+        scope: 'identify email',
+      }
+
+      const result = await capturedConfig.adapter.linkAccount(inputAccount)
+
+      expect(result).toEqual({ id: 'account-1' })
+      expect(mockLinkAccount).toHaveBeenCalledTimes(1)
+      const persisted = mockLinkAccount.mock.calls[0][0]
+      expect(persisted).toEqual({
+        userId: 'user-123',
+        type: 'oauth',
+        provider: 'discord',
+        providerAccountId: 'discord-456',
+        expires_at: 1_800_000_000,
+        token_type: 'Bearer',
+        scope: 'identify email',
+      })
+      expect(persisted).not.toHaveProperty('access_token')
+      expect(persisted).not.toHaveProperty('refresh_token')
+      expect(persisted).not.toHaveProperty('id_token')
+      // Does not mutate caller input
+      expect(inputAccount.access_token).toBe('secret-access-token')
+    })
   })
 
   describe('signIn callback', () => {
