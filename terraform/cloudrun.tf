@@ -9,6 +9,11 @@ resource "google_cloud_run_v2_service" "default" {
     name = "${var.app_name}-service"
   }
 
+  scaling {
+    min_instance_count = 0
+    max_instance_count = 1
+  }
+
   template {
     service_account = google_service_account.cloud_run_sa.email
 
@@ -37,6 +42,7 @@ resource "google_cloud_run_v2_service" "default" {
           cpu    = "1000m"
           memory = "512Mi"
         }
+        cpu_idle          = true
         startup_cpu_boost = true
       }
 
