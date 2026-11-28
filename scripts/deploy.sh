@@ -38,13 +38,21 @@ fi
 
 echo "🚀 Deploying to environment: $ENV"
 
-# Extract project_id and region from tfvars if not provided as env vars
-# Using a simpler awk approach to extract quoted values
-EXTRACTED_PROJECT_ID=$(grep '^\s*project_id\s*=' "$TFVARS_FILE" | head -1 | awk -F '"' '{print $2}')
-EXTRACTED_REGION=$(grep '^\s*region\s*=' "$TFVARS_FILE" | head -1 | awk -F '"' '{print $2}')
+# Extract project_id, region, and optional app_name from tfvars if not provided as env vars
+extract_tfvar() {
+  local key="$1"
+  local file="$2"
+  grep -E "^[[:space:]]*${key}[[:space:]]*=" "$file" 2>/dev/null \
+    | head -1 \
+    | sed -E 's/^[^=]*=[[:space:]]*"([^"]*)".*/\1/' || true
+}
 
-PROJECT_ID=${PROJECT_ID:-$EXTRACTED_PROJECT_ID}
-REGION=${REGION:-$EXTRACTED_REGION}
+EXTRACTED_PROJECT_ID=$(extract_tfvar "project_id" "$TFVARS_FILE")
+EXTRACTED_REGION=$(extract_tfvar "region" "$TFVARS_FILE")
+EXTRACTED_APP_NAME=$(extract_tfvar "app_name" "$TFVARS_FILE")
+
+PROJECT_ID="${PROJECT_ID:-${EXTRACTED_PROJECT_ID:-}}"
+REGION="${REGION:-${EXTRACTED_REGION:-}}"
 
 if [ -z "$PROJECT_ID" ]; then
   echo "Error: project_id not found in $TFVARS_FILE. Please add it."
@@ -56,7 +64,7 @@ if [ -z "$REGION" ]; then
   exit 1
 fi
 
-APP_NAME="${APP_NAME:-race-team-planner}"
+APP_NAME="${APP_NAME:-${EXTRACTED_APP_NAME:-race-team-planner}}"
 REPO_NAME="$APP_NAME"
 IMAGE_NAME="$APP_NAME"
 
