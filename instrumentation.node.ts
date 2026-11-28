@@ -3,11 +3,10 @@ import { NodeSDK } from '@opentelemetry/sdk-node'
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto'
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-proto'
 import { TraceExporter } from '@google-cloud/opentelemetry-cloud-trace-exporter'
-import { MetricExporter } from '@google-cloud/opentelemetry-cloud-monitoring-exporter'
 import { gcpDetector } from '@opentelemetry/resource-detector-gcp'
 import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics'
 import { PrismaInstrumentation } from '@prisma/instrumentation'
-import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-node'
+import { BatchSpanProcessor, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-node'
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http'
 import { UndiciInstrumentation } from '@opentelemetry/instrumentation-undici'
 import { createLogger } from '@/lib/logger'
@@ -35,18 +34,32 @@ if (!isCloudRun && !process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
 } else {
   const serviceName = appTitle
 
-  // On Cloud Run, use Google Cloud exporters which authenticate via ADC
-  // (Application Default Credentials) automatically using the attached SA.
-  // Locally, use OTLP proto exporters pointed at the docker-compose otel stack.
-  const traceExporter = isCloudRun ? new TraceExporter() : new OTLPTraceExporter({})
-  const metricExporter = isCloudRun ? new MetricExporter() : new OTLPMetricExporter({})
+  // On Cloud Run with request-based billing (cpu_idle = true), Cloud Run
+  // throttles container CPU immediately between HTTP requests. Background
+  // timers (BatchSpanProcessor's 5s flush delay and PeriodicExportingMetricReader's
+  // 60s interval) stall mid-export while throttled and fail with Timeout /
+  // out-of-order TimeSeries errors when the next request wakes the instance.
+  //
+  // - Traces on Cloud Run use SimpleSpanProcessor so spans begin exporting
+  //   immediately while request CPU is active, with no idle background timer.
+  // - Metrics on Cloud Run are omitted because Cloud Run natively reports CPU,
+  //   memory, request count, and latency to Cloud Monitoring.
+  // - Locally (docker-compose OTel stack), keep BatchSpanProcessor +
+  //   PeriodicExportingMetricReader with OTLP proto exporters.
+  const spanProcessor = isCloudRun
+    ? new SimpleSpanProcessor(new TraceExporter())
+    : new BatchSpanProcessor(new OTLPTraceExporter({}), {
+        exportTimeoutMillis: 8_000,
+      })
 
-  const spanProcessor = new BatchSpanProcessor(traceExporter, {
-    // Keep well under Cloud Run's 10 s SIGTERM→SIGKILL grace period so the
-    // forceFlush inside sdk.shutdown() completes before the process is killed.
-    // The default is 30 s, which would always be killed mid-flush.
-    exportTimeoutMillis: 8_000,
-  })
+  const metricReaders = isCloudRun
+    ? []
+    : [
+        new PeriodicExportingMetricReader({
+          exporter: new OTLPMetricExporter({}),
+          exportIntervalMillis: 60_000,
+        }),
+      ]
 
   const sdk = new NodeSDK({
     serviceName,
@@ -55,12 +68,7 @@ if (!isCloudRun && !process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
     // in its Service filter rather than falling back to a generic resource type.
     resourceDetectors: isCloudRun ? [gcpDetector] : [],
     spanProcessors: [spanProcessor],
-    metricReaders: [
-      new PeriodicExportingMetricReader({
-        exporter: metricExporter,
-        exportIntervalMillis: 60_000,
-      }),
-    ],
+    metricReaders,
     // Selective instrumentations only — avoids loading unused packages (AWS,
     // Cassandra, gRPC, Kafka, MongoDB, etc.) that increase cold start time.
     instrumentations: [
@@ -83,9 +91,7 @@ if (!isCloudRun && !process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
   sdk.start()
 
   if (isCloudRun) {
-    logger.info(
-      `OpenTelemetry SDK started (service: ${serviceName}, exporter: Google Cloud Trace/Monitoring)`
-    )
+    logger.info(`OpenTelemetry SDK started (service: ${serviceName}, exporter: Google Cloud Trace)`)
   } else {
     logger.info(
       `OpenTelemetry SDK started (service: ${serviceName}, endpoint: ${process.env.OTEL_EXPORTER_OTLP_ENDPOINT})`
@@ -95,8 +101,7 @@ if (!isCloudRun && !process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
   const shutdown = async (signal: string) => {
     logger.info(`${signal} received, flushing telemetry...`)
     // Race against a hard deadline so we always exit before Cloud Run sends
-    // SIGKILL (default grace period is 10 s). The BatchSpanProcessor
-    // exportTimeoutMillis is set to 8 s, so a normal flush should win.
+    // SIGKILL (default grace period is 10 s).
     let flushed = false
     await Promise.race([
       sdk.shutdown().then(() => {
